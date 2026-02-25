@@ -1,0 +1,35 @@
+{"protocolVersion":"0.1.1","runnerVersion":"1.29.0","pid":66720,"type":"start","time":0}
+{"suite":{"id":0,"platform":"vm","path":"test/tom_basics_network_test.dart"},"type":"suite","time":0}
+{"test":{"id":1,"name":"loading test/tom_basics_network_test.dart","suiteID":0,"groupIDs":[],"metadata":{"skip":false,"skipReason":null},"line":null,"column":null,"url":null},"type":"testStart","time":1}
+{"count":1,"time":7,"type":"allSuites"}
+{"testID":1,"result":"success","skipped":false,"hidden":true,"type":"testDone","time":483}
+{"group":{"id":2,"suiteID":0,"parentID":null,"name":"","metadata":{"skip":false,"skipReason":null},"testCount":12,"line":null,"column":null,"url":null},"type":"group","time":484}
+{"group":{"id":3,"suiteID":0,"parentID":2,"name":"RetryConfig","metadata":{"skip":false,"skipReason":null},"testCount":2,"line":7,"column":3,"url":"file:///Users/alexiskyaw/Desktop/Code/tom2/xternal/tom_module_basics/tom_basics_network/test/tom_basics_network_test.dart"},"type":"group","time":485}
+{"test":{"id":4,"name":"RetryConfig default config has correct delays","suiteID":0,"groupIDs":[2,3],"metadata":{"skip":false,"skipReason":null},"line":8,"column":5,"url":"file:///Users/alexiskyaw/Desktop/Code/tom2/xternal/tom_module_basics/tom_basics_network/test/tom_basics_network_test.dart"},"type":"testStart","time":485}
+{"testID":4,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":497}
+{"test":{"id":5,"name":"RetryConfig custom config accepts custom delays","suiteID":0,"groupIDs":[2,3],"metadata":{"skip":false,"skipReason":null},"line":13,"column":5,"url":"file:///Users/alexiskyaw/Desktop/Code/tom2/xternal/tom_module_basics/tom_basics_network/test/tom_basics_network_test.dart"},"type":"testStart","time":498}
+{"testID":5,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":509}
+{"group":{"id":6,"suiteID":0,"parentID":2,"name":"RetryExhaustedException","metadata":{"skip":false,"skipReason":null},"testCount":1,"line":19,"column":3,"url":"file:///Users/alexiskyaw/Desktop/Code/tom2/xternal/tom_module_basics/tom_basics_network/test/tom_basics_network_test.dart"},"type":"group","time":509}
+{"test":{"id":7,"name":"RetryExhaustedException toString includes attempts","suiteID":0,"groupIDs":[2,6],"metadata":{"skip":false,"skipReason":null},"line":20,"column":5,"url":"file:///Users/alexiskyaw/Desktop/Code/tom2/xternal/tom_module_basics/tom_basics_network/test/tom_basics_network_test.dart"},"type":"testStart","time":510}
+{"testID":7,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":517}
+{"group":{"id":8,"suiteID":0,"parentID":2,"name":"withRetry","metadata":{"skip":false,"skipReason":null},"testCount":3,"line":29,"column":3,"url":"file:///Users/alexiskyaw/Desktop/Code/tom2/xternal/tom_module_basics/tom_basics_network/test/tom_basics_network_test.dart"},"type":"group","time":517}
+{"test":{"id":9,"name":"withRetry succeeds on first attempt","suiteID":0,"groupIDs":[2,8],"metadata":{"skip":false,"skipReason":null},"line":30,"column":5,"url":"file:///Users/alexiskyaw/Desktop/Code/tom2/xternal/tom_module_basics/tom_basics_network/test/tom_basics_network_test.dart"},"type":"testStart","time":518}
+{"testID":9,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":521}
+{"test":{"id":10,"name":"withRetry retries on retryable errors","suiteID":0,"groupIDs":[2,8],"metadata":{"skip":false,"skipReason":null},"line":40,"column":5,"url":"file:///Users/alexiskyaw/Desktop/Code/tom2/xternal/tom_module_basics/tom_basics_network/test/tom_basics_network_test.dart"},"type":"testStart","time":521}
+{"testID":10,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":541}
+{"test":{"id":11,"name":"withRetry throws RetryExhaustedException when all retries fail","suiteID":0,"groupIDs":[2,8],"metadata":{"skip":false,"skipReason":null},"line":56,"column":5,"url":"file:///Users/alexiskyaw/Desktop/Code/tom2/xternal/tom_module_basics/tom_basics_network/test/tom_basics_network_test.dart"},"type":"testStart","time":541}
+{"testID":11,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":582}
+{"group":{"id":12,"suiteID":0,"parentID":2,"name":"ServerDiscovery","metadata":{"skip":false,"skipReason":null},"testCount":6,"line":67,"column":3,"url":"file:///Users/alexiskyaw/Desktop/Code/tom2/xternal/tom_module_basics/tom_basics_network/test/tom_basics_network_test.dart"},"type":"group","time":583}
+{"test":{"id":13,"name":"ServerDiscovery getLocalIpAddresses returns list","suiteID":0,"groupIDs":[2,12],"metadata":{"skip":false,"skipReason":null},"line":68,"column":5,"url":"file:///Users/alexiskyaw/Desktop/Code/tom2/xternal/tom_module_basics/tom_basics_network/test/tom_basics_network_test.dart"},"type":"testStart","time":584}
+{"testID":13,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":591}
+{"test":{"id":14,"name":"ServerDiscovery getSubnetAddresses returns 253 addresses","suiteID":0,"groupIDs":[2,12],"metadata":{"skip":false,"skipReason":null},"line":73,"column":5,"url":"file:///Users/alexiskyaw/Desktop/Code/tom2/xternal/tom_module_basics/tom_basics_network/test/tom_basics_network_test.dart"},"type":"testStart","time":592}
+{"testID":14,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":597}
+{"test":{"id":15,"name":"ServerDiscovery DiscoveryOptions has sensible defaults","suiteID":0,"groupIDs":[2,12],"metadata":{"skip":false,"skipReason":null},"line":82,"column":5,"url":"file:///Users/alexiskyaw/Desktop/Code/tom2/xternal/tom_module_basics/tom_basics_network/test/tom_basics_network_test.dart"},"type":"testStart","time":597}
+{"testID":15,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":598}
+{"test":{"id":16,"name":"ServerDiscovery DiscoveryOptions copyWith works","suiteID":0,"groupIDs":[2,12],"metadata":{"skip":false,"skipReason":null},"line":90,"column":5,"url":"file:///Users/alexiskyaw/Desktop/Code/tom2/xternal/tom_module_basics/tom_basics_network/test/tom_basics_network_test.dart"},"type":"testStart","time":599}
+{"testID":16,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":600}
+{"test":{"id":17,"name":"ServerDiscovery DiscoveredServer properties work","suiteID":0,"groupIDs":[2,12],"metadata":{"skip":false,"skipReason":null},"line":98,"column":5,"url":"file:///Users/alexiskyaw/Desktop/Code/tom2/xternal/tom_module_basics/tom_basics_network/test/tom_basics_network_test.dart"},"type":"testStart","time":600}
+{"testID":17,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":602}
+{"test":{"id":18,"name":"ServerDiscovery DiscoveryFailedException message","suiteID":0,"groupIDs":[2,12],"metadata":{"skip":false,"skipReason":null},"line":109,"column":5,"url":"file:///Users/alexiskyaw/Desktop/Code/tom2/xternal/tom_module_basics/tom_basics_network/test/tom_basics_network_test.dart"},"type":"testStart","time":603}
+{"testID":18,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":604}
+{"success":true,"type":"done","time":613}

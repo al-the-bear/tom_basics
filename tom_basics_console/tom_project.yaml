@@ -1,0 +1,4 @@
+project_id: BSCC
+name: basics-console
+description: >-
+  Console/CLI utilities.

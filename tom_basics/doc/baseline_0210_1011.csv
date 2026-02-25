@@ -1,0 +1,7 @@
+ID,Groups,Description,Baseline [02-10 10:11],[02-10 13:56],[02-10 14:05]
+,TomBaseException,creates exception with key and message,OK/OK,OK/OK,OK/OK
+,TomBaseException,creates exception with parameters,OK/OK,OK/OK,OK/OK
+,TomBaseException,uses provided uuid when specified,OK/OK,OK/OK,OK/OK
+,TomBaseException,captures rootException,OK/OK,OK/OK,OK/OK
+,TomBaseException,toString includes key information,OK/OK,OK/OK,OK/OK
+,TomBaseException,stackTrace is captured,OK/OK,OK/OK,OK/OK

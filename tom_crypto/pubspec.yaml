@@ -1,0 +1,22 @@
+name: tom_crypto
+description: Cryptographic utilities for secure authentication and data protection including JWT tokens, password hashing, and RSA encryption.
+version: 1.0.1
+repository: https://github.com/al-the-bear/tom_crypto
+
+environment:
+  sdk: ^3.10.0
+
+dependencies:
+  tom_basics: ^1.0.0
+  dart_jsonwebtoken: ^3.1.1
+  pointycastle: ^3.9.1
+  asn1lib: ^1.5.8
+
+dev_dependencies:
+  lints: ^6.0.0
+  test: ^1.25.6
+
+# Test keys used in documentation and unit tests - not real secrets
+false_secrets:
+  - /lib/src/jwt_token.dart
+  - /test/tom_crypto_test.dart

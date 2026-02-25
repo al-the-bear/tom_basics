@@ -1,0 +1,20 @@
+{"protocolVersion":"0.1.1","runnerVersion":"1.29.0","pid":66643,"type":"start","time":0}
+{"suite":{"id":0,"platform":"vm","path":"test/tom_basics_test.dart"},"type":"suite","time":0}
+{"test":{"id":1,"name":"loading test/tom_basics_test.dart","suiteID":0,"groupIDs":[],"metadata":{"skip":false,"skipReason":null},"line":null,"column":null,"url":null},"type":"testStart","time":1}
+{"count":1,"time":8,"type":"allSuites"}
+{"testID":1,"result":"success","skipped":false,"hidden":true,"type":"testDone","time":387}
+{"group":{"id":2,"suiteID":0,"parentID":null,"name":"","metadata":{"skip":false,"skipReason":null},"testCount":6,"line":null,"column":null,"url":null},"type":"group","time":391}
+{"group":{"id":3,"suiteID":0,"parentID":2,"name":"TomBaseException","metadata":{"skip":false,"skipReason":null},"testCount":6,"line":5,"column":3,"url":"file:///Users/alexiskyaw/Desktop/Code/tom2/xternal/tom_module_basics/tom_basics/test/tom_basics_test.dart"},"type":"group","time":395}
+{"test":{"id":4,"name":"TomBaseException creates exception with key and message","suiteID":0,"groupIDs":[2,3],"metadata":{"skip":false,"skipReason":null},"line":6,"column":5,"url":"file:///Users/alexiskyaw/Desktop/Code/tom2/xternal/tom_module_basics/tom_basics/test/tom_basics_test.dart"},"type":"testStart","time":395}
+{"testID":4,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":413}
+{"test":{"id":5,"name":"TomBaseException creates exception with parameters","suiteID":0,"groupIDs":[2,3],"metadata":{"skip":false,"skipReason":null},"line":15,"column":5,"url":"file:///Users/alexiskyaw/Desktop/Code/tom2/xternal/tom_module_basics/tom_basics/test/tom_basics_test.dart"},"type":"testStart","time":413}
+{"testID":5,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":415}
+{"test":{"id":6,"name":"TomBaseException uses provided uuid when specified","suiteID":0,"groupIDs":[2,3],"metadata":{"skip":false,"skipReason":null},"line":27,"column":5,"url":"file:///Users/alexiskyaw/Desktop/Code/tom2/xternal/tom_module_basics/tom_basics/test/tom_basics_test.dart"},"type":"testStart","time":416}
+{"testID":6,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":417}
+{"test":{"id":7,"name":"TomBaseException captures rootException","suiteID":0,"groupIDs":[2,3],"metadata":{"skip":false,"skipReason":null},"line":37,"column":5,"url":"file:///Users/alexiskyaw/Desktop/Code/tom2/xternal/tom_module_basics/tom_basics/test/tom_basics_test.dart"},"type":"testStart","time":418}
+{"testID":7,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":423}
+{"test":{"id":8,"name":"TomBaseException toString includes key information","suiteID":0,"groupIDs":[2,3],"metadata":{"skip":false,"skipReason":null},"line":48,"column":5,"url":"file:///Users/alexiskyaw/Desktop/Code/tom2/xternal/tom_module_basics/tom_basics/test/tom_basics_test.dart"},"type":"testStart","time":423}
+{"testID":8,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":426}
+{"test":{"id":9,"name":"TomBaseException stackTrace is captured","suiteID":0,"groupIDs":[2,3],"metadata":{"skip":false,"skipReason":null},"line":56,"column":5,"url":"file:///Users/alexiskyaw/Desktop/Code/tom2/xternal/tom_module_basics/tom_basics/test/tom_basics_test.dart"},"type":"testStart","time":427}
+{"testID":9,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":430}
+{"success":true,"type":"done","time":437}

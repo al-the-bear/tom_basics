@@ -1,0 +1,20 @@
+name: tom_chattools
+description: Unified chat API abstraction for Telegram, WhatsApp, Signal, and other messaging platforms.
+version: 1.0.2
+repository: https://github.com/al-the-bear/tom_module_basics
+homepage: https://github.com/al-the-bear/tom_module_basics/tree/main/tom_chattools
+topics:
+  - telegram
+  - chat
+  - messaging
+  - bot
+
+environment:
+  sdk: ^3.10.4
+
+dependencies:
+  televerse: ^3.1.2
+
+dev_dependencies:
+  lints: ^6.0.0
+  test: ^1.25.6

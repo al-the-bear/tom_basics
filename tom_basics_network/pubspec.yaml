@@ -1,0 +1,19 @@
+name: tom_basics_network
+description: Network utilities for Tom applications - HTTP retry and server discovery.
+version: 1.0.1
+repository: https://github.com/al-the-bear/tom_module_basics
+homepage: https://github.com/al-the-bear/tom_module_basics/tree/main/tom_basics_network
+topics:
+  - network
+  - http
+  - retry
+
+environment:
+  sdk: ^3.10.4
+
+dependencies:
+  http: ^1.2.0
+
+dev_dependencies:
+  lints: ^6.0.0
+  test: ^1.25.6
