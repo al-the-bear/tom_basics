@@ -385,6 +385,209 @@ void main() {
       });
     });
 
+    group('Convenience alias placeholders', () {
+      test('BB-EPH-39: project-name returns dart project name', () {
+        folder.natures.add(
+          DartProjectFolder(folder, projectName: 'my_package'),
+        );
+        ctx = ExecutePlaceholderContext(rootPath: '/workspace', folder: folder);
+        expect(
+          ExecutePlaceholderResolver.resolvePlaceholder('project-name', ctx),
+          equals('my_package'),
+        );
+      });
+
+      test('BB-EPH-40: project-name throws when not a Dart project', () {
+        ctx = ExecutePlaceholderContext(rootPath: '/workspace', folder: folder);
+        expect(
+          () => ExecutePlaceholderResolver.resolvePlaceholder(
+            'project-name',
+            ctx,
+          ),
+          throwsA(
+            isA<UnresolvedPlaceholderException>()
+                .having((e) => e.placeholder, 'placeholder', 'project-name')
+                .having((e) => e.message, 'message', 'not a Dart project'),
+          ),
+        );
+      });
+
+      test('BB-EPH-41: project-version returns dart version', () {
+        folder.natures.add(
+          DartProjectFolder(
+            folder,
+            projectName: 'my_package',
+            version: '3.0.0',
+          ),
+        );
+        ctx = ExecutePlaceholderContext(rootPath: '/workspace', folder: folder);
+        expect(
+          ExecutePlaceholderResolver.resolvePlaceholder(
+            'project-version',
+            ctx,
+          ),
+          equals('3.0.0'),
+        );
+      });
+
+      test('BB-EPH-42: project-version throws when not a Dart project', () {
+        ctx = ExecutePlaceholderContext(rootPath: '/workspace', folder: folder);
+        expect(
+          () => ExecutePlaceholderResolver.resolvePlaceholder(
+            'project-version',
+            ctx,
+          ),
+          throwsA(
+            isA<UnresolvedPlaceholderException>()
+                .having(
+                  (e) => e.placeholder,
+                  'placeholder',
+                  'project-version',
+                )
+                .having((e) => e.message, 'message', 'not a Dart project'),
+          ),
+        );
+      });
+
+      test(
+        'BB-EPH-43: project-name resolves in full command string',
+        () {
+          folder.natures.add(
+            DartProjectFolder(folder, projectName: 'test_pkg'),
+          );
+          ctx = ExecutePlaceholderContext(
+            rootPath: '/workspace',
+            folder: folder,
+          );
+          final result = ExecutePlaceholderResolver.resolveCommand(
+            r'echo #{project-name}',
+            ctx,
+          );
+          expect(result, equals('echo test_pkg'));
+        },
+      );
+    });
+
+    group('Remaining nature existence placeholders', () {
+      test('BB-EPH-44: package.exists returns true when Package nature', () {
+        folder.natures.add(DartPackageFolder(folder, projectName: 'pkg'));
+        ctx = ExecutePlaceholderContext(rootPath: '/workspace', folder: folder);
+        expect(
+          ExecutePlaceholderResolver.resolvePlaceholder('package.exists', ctx),
+          equals('true'),
+        );
+      });
+
+      test('BB-EPH-45: package.exists returns false when no Package nature',
+          () {
+        ctx = ExecutePlaceholderContext(rootPath: '/workspace', folder: folder);
+        expect(
+          ExecutePlaceholderResolver.resolvePlaceholder('package.exists', ctx),
+          equals('false'),
+        );
+      });
+
+      test('BB-EPH-46: console.exists returns true when Console nature', () {
+        folder.natures.add(DartConsoleFolder(folder, projectName: 'cli'));
+        ctx = ExecutePlaceholderContext(rootPath: '/workspace', folder: folder);
+        expect(
+          ExecutePlaceholderResolver.resolvePlaceholder('console.exists', ctx),
+          equals('true'),
+        );
+      });
+
+      test('BB-EPH-47: console.exists returns false when no Console nature',
+          () {
+        ctx = ExecutePlaceholderContext(rootPath: '/workspace', folder: folder);
+        expect(
+          ExecutePlaceholderResolver.resolvePlaceholder('console.exists', ctx),
+          equals('false'),
+        );
+      });
+
+      test('BB-EPH-48: typescript.exists returns false (no TypeScript)', () {
+        ctx = ExecutePlaceholderContext(rootPath: '/workspace', folder: folder);
+        expect(
+          ExecutePlaceholderResolver.resolvePlaceholder(
+            'typescript.exists',
+            ctx,
+          ),
+          equals('false'),
+        );
+      });
+
+      test('BB-EPH-49: vscode-extension.exists returns false (no VSCode)', () {
+        ctx = ExecutePlaceholderContext(rootPath: '/workspace', folder: folder);
+        expect(
+          ExecutePlaceholderResolver.resolvePlaceholder(
+            'vscode-extension.exists',
+            ctx,
+          ),
+          equals('false'),
+        );
+      });
+
+      test('BB-EPH-50: buildkit.exists returns false (no buildkit)', () {
+        ctx = ExecutePlaceholderContext(rootPath: '/workspace', folder: folder);
+        expect(
+          ExecutePlaceholderResolver.resolvePlaceholder(
+            'buildkit.exists',
+            ctx,
+          ),
+          equals('false'),
+        );
+      });
+
+      test('BB-EPH-51: tom-project.exists returns false (no tom project)', () {
+        ctx = ExecutePlaceholderContext(rootPath: '/workspace', folder: folder);
+        expect(
+          ExecutePlaceholderResolver.resolvePlaceholder(
+            'tom-project.exists',
+            ctx,
+          ),
+          equals('false'),
+        );
+      });
+
+      test('BB-EPH-52: git.isSubmodule returns false by default', () {
+        folder.natures.add(GitFolder(folder, currentBranch: 'main'));
+        ctx = ExecutePlaceholderContext(rootPath: '/workspace', folder: folder);
+        expect(
+          ExecutePlaceholderResolver.resolvePlaceholder(
+            'git.isSubmodule',
+            ctx,
+          ),
+          equals('false'),
+        );
+      });
+
+      test('BB-EPH-53: git.isSubmodule returns true for submodule', () {
+        folder.natures.add(
+          GitFolder(folder, currentBranch: 'main', isSubmodule: true),
+        );
+        ctx = ExecutePlaceholderContext(rootPath: '/workspace', folder: folder);
+        expect(
+          ExecutePlaceholderResolver.resolvePlaceholder(
+            'git.isSubmodule',
+            ctx,
+          ),
+          equals('true'),
+        );
+      });
+    });
+
+    group('skipUnknown mode', () {
+      test('BB-EPH-54: skipUnknown leaves unknown placeholders as-is', () {
+        ctx = ExecutePlaceholderContext(rootPath: '/workspace', folder: folder);
+        final result = ExecutePlaceholderResolver.resolveCommand(
+          r'echo #{folder.name} #{unknown.thing}',
+          ctx,
+          skipUnknown: true,
+        );
+        expect(result, equals(r'echo my-project #{unknown.thing}'));
+      });
+    });
+
     group('Unknown placeholder', () {
       test('BB-EPH-25: throws for unknown placeholder', () {
         ctx = ExecutePlaceholderContext(rootPath: '/workspace', folder: folder);
@@ -416,7 +619,7 @@ void main() {
         );
         ctx = ExecutePlaceholderContext(rootPath: '/workspace', folder: folder);
         final result = ExecutePlaceholderResolver.resolveCommand(
-          r'echo ${dart.publishable?(Publishable):(Not Publishable)}',
+          r'echo #{dart.publishable?(Publishable):(Not Publishable)}',
           ctx,
         );
         expect(result, equals('echo Publishable'));
@@ -433,7 +636,7 @@ void main() {
         );
         ctx = ExecutePlaceholderContext(rootPath: '/workspace', folder: folder);
         final result = ExecutePlaceholderResolver.resolveCommand(
-          r'echo ${dart.publishable?(Publishable):(Not Publishable)}',
+          r'echo #{dart.publishable?(Publishable):(Not Publishable)}',
           ctx,
         );
         expect(result, equals('echo Not Publishable'));
@@ -450,7 +653,7 @@ void main() {
         );
         ctx = ExecutePlaceholderContext(rootPath: '/workspace', folder: folder);
         final result = ExecutePlaceholderResolver.resolveCommand(
-          r'${dart.publishable?(dart publish):()}',
+          r'#{dart.publishable?(dart publish):()}',
           ctx,
         );
         expect(result, equals(''));
@@ -461,7 +664,7 @@ void main() {
         ctx = ExecutePlaceholderContext(rootPath: '/workspace', folder: folder);
         expect(
           () => ExecutePlaceholderResolver.resolveCommand(
-            r'${dart.name?(yes):(no)}',
+            r'#{dart.name?(yes):(no)}',
             ctx,
           ),
           throwsA(
@@ -486,7 +689,7 @@ void main() {
         );
         ctx = ExecutePlaceholderContext(rootPath: '/workspace', folder: folder);
         final result = ExecutePlaceholderResolver.resolveCommand(
-          r'echo ${folder.name} is version ${dart.version}',
+          r'echo #{folder.name} is version #{dart.version}',
           ctx,
         );
         expect(result, equals('echo my-project is version 2.0.0'));
@@ -503,7 +706,7 @@ void main() {
         );
         ctx = ExecutePlaceholderContext(rootPath: '/workspace', folder: folder);
         final result = ExecutePlaceholderResolver.resolveCommand(
-          r'Publishing ${dart.name}: ${dart.publishable?(dart pub publish):(skipping)}',
+          r'Publishing #{dart.name}: #{dart.publishable?(dart pub publish):(skipping)}',
           ctx,
         );
         expect(result, equals('Publishing test_pkg: dart pub publish'));
@@ -512,7 +715,7 @@ void main() {
       test('BB-EPH-32: resolves command with path placeholders', () {
         ctx = ExecutePlaceholderContext(rootPath: '/workspace', folder: folder);
         final result = ExecutePlaceholderResolver.resolveCommand(
-          r'cd ${folder} && ls ${root}',
+          r'cd #{folder} && ls #{root}',
           ctx,
         );
         expect(result, equals('cd /workspace/my-project && ls /workspace'));
@@ -572,6 +775,12 @@ void main() {
         expect(help.containsKey('dart.exists'), isTrue);
         expect(help.containsKey('git.branch'), isTrue);
       });
+
+      test('BB-EPH-55: getPlaceholderHelp includes project-name alias', () {
+        final help = ExecutePlaceholderResolver.getPlaceholderHelp();
+        expect(help.containsKey('project-name'), isTrue);
+        expect(help.containsKey('project-version'), isTrue);
+      });
     });
   });
 
@@ -583,7 +792,7 @@ void main() {
       );
       expect(
         exception.toString(),
-        equals(r'Unresolved placeholder ${dart.name} in /path/to/folder'),
+        equals(r'Unresolved placeholder #{dart.name} in /path/to/folder'),
       );
     });
 
@@ -596,7 +805,7 @@ void main() {
       expect(
         exception.toString(),
         equals(
-          r'Unresolved placeholder ${dart.name} in /path/to/folder: not a Dart project',
+          r'Unresolved placeholder #{dart.name} in /path/to/folder: not a Dart project',
         ),
       );
     });

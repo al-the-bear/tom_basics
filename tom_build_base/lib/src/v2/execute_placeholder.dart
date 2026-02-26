@@ -30,7 +30,7 @@ class UnresolvedPlaceholderException implements Exception {
   @override
   String toString() {
     final msg = message != null ? ': $message' : '';
-    return 'Unresolved placeholder \${$placeholder} in $folderPath$msg';
+    return 'Unresolved placeholder #{$placeholder} in $folderPath$msg';
   }
 }
 
@@ -146,12 +146,16 @@ class ExecutePlaceholderContext {
 
 /// Resolves placeholders in command strings for execute commands.
 ///
+/// Uses `#{...}` syntax (not `${...}`) to avoid shell variable expansion
+/// conflicts when commands are typed on the command line.
+///
 /// Supports:
-/// - Path placeholders: `${root}`, `${folder}`, `${folder.name}`, `${folder.relative}`
-/// - Platform placeholders: `${current-os}`, `${current-arch}`, `${current-platform}`
-/// - Nature existence: `${dart.exists}`, `${flutter.exists}`, etc.
-/// - Nature attributes: `${dart.name}`, `${git.branch}`, etc.
-/// - Ternary expressions: `${condition?(true-value):(false-value)}`
+/// - Path placeholders: `#{root}`, `#{folder}`, `#{folder.name}`, `#{folder.relative}`
+/// - Platform placeholders: `#{current-os}`, `#{current-arch}`, `#{current-platform}`
+/// - Nature existence: `#{dart.exists}`, `#{flutter.exists}`, etc.
+/// - Nature attributes: `#{dart.name}`, `#{git.branch}`, etc.
+/// - Convenience aliases: `#{project-name}`, `#{project-version}`
+/// - Ternary expressions: `#{condition?(true-value):(false-value)}`
 class ExecutePlaceholderResolver {
   /// All known boolean placeholders that support ternary syntax.
   static const booleanPlaceholders = {
@@ -189,6 +193,28 @@ class ExecutePlaceholderResolver {
         return ctx.folderName;
       case 'folder.relative':
         return ctx.folderRelative;
+
+      // Convenience aliases (v1 compatibility)
+      case 'project-name':
+        final dartForName = ctx.dart;
+        if (dartForName == null) {
+          throw UnresolvedPlaceholderException(
+            placeholder,
+            ctx.folderPath,
+            message: 'not a Dart project',
+          );
+        }
+        return dartForName.projectName;
+      case 'project-version':
+        final dartForVer = ctx.dart;
+        if (dartForVer == null) {
+          throw UnresolvedPlaceholderException(
+            placeholder,
+            ctx.folderPath,
+            message: 'not a Dart project',
+          );
+        }
+        return dartForVer.version ?? '';
 
       // Platform placeholders
       case 'current-os':
@@ -362,12 +388,15 @@ class ExecutePlaceholderResolver {
     return booleanPlaceholders.contains(placeholder);
   }
 
-  /// Regex to match `${placeholder}` (non-ternary).
-  static final _simplePlaceholderRegex = RegExp(r'\$\{([a-zA-Z0-9._-]+)\}');
+  /// Regex to match `#{placeholder}` (non-ternary).
+  ///
+  /// Uses `#` prefix instead of `$` to avoid shell variable expansion
+  /// conflicts when used on the command line.
+  static final _simplePlaceholderRegex = RegExp(r'#\{([a-zA-Z0-9._-]+)\}');
 
-  /// Regex to match `${placeholder?(true):(false)}` (ternary).
+  /// Regex to match `#{placeholder?(true):(false)}` (ternary).
   static final _ternaryPlaceholderRegex = RegExp(
-    r'\$\{([a-zA-Z0-9._-]+)\?\(([^)]*)\):\(([^)]*)\)\}',
+    r'#\{([a-zA-Z0-9._-]+)\?\(([^)]*)\):\(([^)]*)\)\}',
   );
 
   /// Resolve all placeholders in a command string.
@@ -443,6 +472,10 @@ class ExecutePlaceholderResolver {
       'folder': 'Current folder (absolute)',
       'folder.name': 'Folder basename',
       'folder.relative': 'Folder relative to root',
+
+      // Convenience aliases
+      'project-name': 'Project name from pubspec (alias for dart.name)',
+      'project-version': 'Version from pubspec (alias for dart.version)',
 
       // Platform
       'current-os': 'Operating system (linux, macos, windows)',
