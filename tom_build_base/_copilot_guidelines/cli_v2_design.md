@@ -1163,13 +1163,13 @@ The `--modules` and `--skip-modules` options filter by **repository name or ID**
 ```
 workspace/
 ├── .git/                          # Main repo
-├── xternal/
-│   ├── tom_module_basics/
-│   │   └── .git/                  # Submodule: basics (ID: BSC)
-│   ├── tom_module_d4rt/
-│   │   └── .git/                  # Submodule: d4rt (ID: D4)
-│   └── tom_module_crypto/
-│       └── .git/                  # Submodule: crypto (ID: CRPT)
+├── tom_ai/
+│   ├── basics/
+│   │   └── .git/                  # Sub-repo: basics (ID: BSC)
+│   ├── d4rt/
+│   │   └── .git/                  # Sub-repo: d4rt (ID: D4)
+│   └── cloud/
+│       └── .git/                  # Sub-repo: cloud (ID: CLD)
 ```
 
 **Global reference:** See `_copilot_guidelines/projects_and_repos.md` for the complete list of repository names and IDs.

@@ -6,10 +6,10 @@ This document lists all projects in the workspace that depend on `tom_build_base
 
 | Project | Path | Description |
 |---------|------|-------------|
-| tom_build_kit | `xternal/tom_module_basics/tom_build_kit/` | Build tools collection (versioner, cleanup, compiler, runner, etc.) |
-| tom_analyzer | `xternal/tom_module_basics/tom_analyzer/` | Code analysis and workspace scanning tool |
-| tom_d4rt_astgen | `xternal/tom_module_basics/tom_d4rt_astgen/` | D4rt AST generator for bridge code |
-| tom_d4rt_generator | `xternal/tom_module_d4rt/tom_d4rt_generator/` | D4rt bridge code generator |
+| tom_build_kit | `devops/tom_build_kit/` | Build tools collection (versioner, cleanup, compiler, runner, etc.) |
+| tom_analyzer | `ai_build/tom_analyzer/` | Code analysis and workspace scanning tool |
+| tom_d4rt_astgen | `d4rt/tom_ast_generator/` | D4rt AST generator for bridge code |
+| tom_d4rt_generator | `d4rt/tom_d4rt_generator/` | D4rt bridge code generator |
 
 ## What They Inherit
 
