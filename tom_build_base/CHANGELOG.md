@@ -1,3 +1,10 @@
+## 2.5.3
+
+### Changed
+
+- **`execute_placeholder.dart`** — Migrated placeholder syntax from `${...}` to `%{...}` to avoid shell variable expansion (`${}`) and YAML comment stripping (`#{}` after whitespace). All regex patterns, error messages, and help text updated.
+- **`builtin_help_topics.dart`** — Updated all placeholder documentation to use `%{...}` syntax.
+
 ## 2.5.2
 
 ### Changed
