@@ -460,7 +460,7 @@ void main() {
             folder: folder,
           );
           final result = ExecutePlaceholderResolver.resolveCommand(
-            r'echo #{project-name}',
+            r'echo %{project-name}',
             ctx,
           );
           expect(result, equals('echo test_pkg'));
@@ -580,11 +580,11 @@ void main() {
       test('BB-EPH-54: skipUnknown leaves unknown placeholders as-is', () {
         ctx = ExecutePlaceholderContext(rootPath: '/workspace', folder: folder);
         final result = ExecutePlaceholderResolver.resolveCommand(
-          r'echo #{folder.name} #{unknown.thing}',
+          r'echo %{folder.name} %{unknown.thing}',
           ctx,
           skipUnknown: true,
         );
-        expect(result, equals(r'echo my-project #{unknown.thing}'));
+        expect(result, equals(r'echo my-project %{unknown.thing}'));
       });
     });
 
@@ -619,7 +619,7 @@ void main() {
         );
         ctx = ExecutePlaceholderContext(rootPath: '/workspace', folder: folder);
         final result = ExecutePlaceholderResolver.resolveCommand(
-          r'echo #{dart.publishable?(Publishable):(Not Publishable)}',
+          r'echo %{dart.publishable?(Publishable):(Not Publishable)}',
           ctx,
         );
         expect(result, equals('echo Publishable'));
@@ -636,7 +636,7 @@ void main() {
         );
         ctx = ExecutePlaceholderContext(rootPath: '/workspace', folder: folder);
         final result = ExecutePlaceholderResolver.resolveCommand(
-          r'echo #{dart.publishable?(Publishable):(Not Publishable)}',
+          r'echo %{dart.publishable?(Publishable):(Not Publishable)}',
           ctx,
         );
         expect(result, equals('echo Not Publishable'));
@@ -653,7 +653,7 @@ void main() {
         );
         ctx = ExecutePlaceholderContext(rootPath: '/workspace', folder: folder);
         final result = ExecutePlaceholderResolver.resolveCommand(
-          r'#{dart.publishable?(dart publish):()}',
+          r'%{dart.publishable?(dart publish):()}',
           ctx,
         );
         expect(result, equals(''));
@@ -664,7 +664,7 @@ void main() {
         ctx = ExecutePlaceholderContext(rootPath: '/workspace', folder: folder);
         expect(
           () => ExecutePlaceholderResolver.resolveCommand(
-            r'#{dart.name?(yes):(no)}',
+            r'%{dart.name?(yes):(no)}',
             ctx,
           ),
           throwsA(
@@ -689,7 +689,7 @@ void main() {
         );
         ctx = ExecutePlaceholderContext(rootPath: '/workspace', folder: folder);
         final result = ExecutePlaceholderResolver.resolveCommand(
-          r'echo #{folder.name} is version #{dart.version}',
+          r'echo %{folder.name} is version %{dart.version}',
           ctx,
         );
         expect(result, equals('echo my-project is version 2.0.0'));
@@ -706,7 +706,7 @@ void main() {
         );
         ctx = ExecutePlaceholderContext(rootPath: '/workspace', folder: folder);
         final result = ExecutePlaceholderResolver.resolveCommand(
-          r'Publishing #{dart.name}: #{dart.publishable?(dart pub publish):(skipping)}',
+          r'Publishing %{dart.name}: %{dart.publishable?(dart pub publish):(skipping)}',
           ctx,
         );
         expect(result, equals('Publishing test_pkg: dart pub publish'));
@@ -715,7 +715,7 @@ void main() {
       test('BB-EPH-32: resolves command with path placeholders', () {
         ctx = ExecutePlaceholderContext(rootPath: '/workspace', folder: folder);
         final result = ExecutePlaceholderResolver.resolveCommand(
-          r'cd #{folder} && ls #{root}',
+          r'cd %{folder} && ls %{root}',
           ctx,
         );
         expect(result, equals('cd /workspace/my-project && ls /workspace'));
@@ -792,7 +792,7 @@ void main() {
       );
       expect(
         exception.toString(),
-        equals(r'Unresolved placeholder #{dart.name} in /path/to/folder'),
+        equals(r'Unresolved placeholder %{dart.name} in /path/to/folder'),
       );
     });
 
@@ -805,7 +805,7 @@ void main() {
       expect(
         exception.toString(),
         equals(
-          r'Unresolved placeholder #{dart.name} in /path/to/folder: not a Dart project',
+          r'Unresolved placeholder %{dart.name} in /path/to/folder: not a Dart project',
         ),
       );
     });

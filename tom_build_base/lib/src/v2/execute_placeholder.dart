@@ -30,7 +30,7 @@ class UnresolvedPlaceholderException implements Exception {
   @override
   String toString() {
     final msg = message != null ? ': $message' : '';
-    return 'Unresolved placeholder #{$placeholder} in $folderPath$msg';
+    return 'Unresolved placeholder %{$placeholder} in $folderPath$msg';
   }
 }
 
@@ -146,16 +146,16 @@ class ExecutePlaceholderContext {
 
 /// Resolves placeholders in command strings for execute commands.
 ///
-/// Uses `#{...}` syntax (not `${...}`) to avoid shell variable expansion
-/// conflicts when commands are typed on the command line.
+/// Uses `%{...}` syntax to avoid conflicts with both shell variable expansion
+/// (`${...}`) and YAML comments (`#` after whitespace).
 ///
 /// Supports:
-/// - Path placeholders: `#{root}`, `#{folder}`, `#{folder.name}`, `#{folder.relative}`
-/// - Platform placeholders: `#{current-os}`, `#{current-arch}`, `#{current-platform}`
-/// - Nature existence: `#{dart.exists}`, `#{flutter.exists}`, etc.
-/// - Nature attributes: `#{dart.name}`, `#{git.branch}`, etc.
-/// - Convenience aliases: `#{project-name}`, `#{project-version}`
-/// - Ternary expressions: `#{condition?(true-value):(false-value)}`
+/// - Path placeholders: `%{root}`, `%{folder}`, `%{folder.name}`, `%{folder.relative}`
+/// - Platform placeholders: `%{current-os}`, `%{current-arch}`, `%{current-platform}`
+/// - Nature existence: `%{dart.exists}`, `%{flutter.exists}`, etc.
+/// - Nature attributes: `%{dart.name}`, `%{git.branch}`, etc.
+/// - Convenience aliases: `%{project-name}`, `%{project-version}`
+/// - Ternary expressions: `%{condition?(true-value):(false-value)}`
 class ExecutePlaceholderResolver {
   /// All known boolean placeholders that support ternary syntax.
   static const booleanPlaceholders = {
@@ -388,15 +388,15 @@ class ExecutePlaceholderResolver {
     return booleanPlaceholders.contains(placeholder);
   }
 
-  /// Regex to match `#{placeholder}` (non-ternary).
+  /// Regex to match `%{placeholder}` (non-ternary).
   ///
-  /// Uses `#` prefix instead of `$` to avoid shell variable expansion
-  /// conflicts when used on the command line.
-  static final _simplePlaceholderRegex = RegExp(r'#\{([a-zA-Z0-9._-]+)\}');
+  /// Uses `%` prefix to avoid conflicts with shell variable expansion
+  /// (`$`) and YAML comments (`#` after whitespace).
+  static final _simplePlaceholderRegex = RegExp(r'%\{([a-zA-Z0-9._-]+)\}');
 
-  /// Regex to match `#{placeholder?(true):(false)}` (ternary).
+  /// Regex to match `%{placeholder?(true):(false)}` (ternary).
   static final _ternaryPlaceholderRegex = RegExp(
-    r'#\{([a-zA-Z0-9._-]+)\?\(([^)]*)\):\(([^)]*)\)\}',
+    r'%\{([a-zA-Z0-9._-]+)\?\(([^)]*)\):\(([^)]*)\)\}',
   );
 
   /// Resolve all placeholders in a command string.
