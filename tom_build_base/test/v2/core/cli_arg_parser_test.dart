@@ -562,5 +562,125 @@ void main() {
         expect(args.commands, equals(['gitstatus', 'commit']));
       });
     });
+
+    group('conflicting abbreviations', () {
+      test(
+          'BB-CLI-65: Short option -c resolves to current command option '
+          'when multiple commands share same abbr [2026-02-14]', () {
+        // Simulates the buildkit scenario where both 'runner' (command option)
+        // and 'execute' (condition option) use abbr 'c'.
+        final tool = ToolDefinition(
+          name: 'test-tool',
+          description: 'Test tool with conflicting abbreviations',
+          version: '1.0',
+          mode: ToolMode.multiCommand,
+          commands: [
+            CommandDefinition(
+              name: 'runner',
+              description: 'Runner command',
+              options: [
+                OptionDefinition.option(
+                  name: 'command',
+                  abbr: 'c',
+                  description: 'Runner command option',
+                ),
+              ],
+            ),
+            CommandDefinition(
+              name: 'execute',
+              description: 'Execute command',
+              options: [
+                OptionDefinition.option(
+                  name: 'condition',
+                  abbr: 'c',
+                  description: 'Execute condition option',
+                ),
+              ],
+            ),
+          ],
+        );
+        final toolParser = CliArgParser(toolDefinition: tool);
+
+        // When using -c after :execute, it should resolve to 'condition'
+        // (execute's option), not 'command' (runner's option).
+        final args = toolParser.parse([
+          '-s',
+          '.',
+          ':execute',
+          '-c',
+          'dart.exists',
+          'echo',
+          'test',
+        ]);
+
+        expect(args.commands, equals(['execute']));
+        final perCmd = args.commandArgs['execute'];
+        expect(perCmd, isNotNull, reason: 'execute per-cmd should exist');
+        expect(
+          perCmd!.options['condition'],
+          equals('dart.exists'),
+          reason: '-c after :execute should resolve to condition, not command',
+        );
+        expect(
+          perCmd.options['command'],
+          isNull,
+          reason: 'command should not be set when -c is used in :execute',
+        );
+      });
+
+      test(
+          'BB-CLI-66: Short option -c resolves correctly for each command '
+          'context [2026-02-14]', () {
+        final tool = ToolDefinition(
+          name: 'test-tool',
+          description: 'Test tool with conflicting abbreviations',
+          version: '1.0',
+          mode: ToolMode.multiCommand,
+          commands: [
+            CommandDefinition(
+              name: 'runner',
+              description: 'Runner command',
+              options: [
+                OptionDefinition.option(
+                  name: 'command',
+                  abbr: 'c',
+                  description: 'Runner command option',
+                ),
+              ],
+            ),
+            CommandDefinition(
+              name: 'execute',
+              description: 'Execute command',
+              options: [
+                OptionDefinition.option(
+                  name: 'condition',
+                  abbr: 'c',
+                  description: 'Execute condition option',
+                ),
+              ],
+            ),
+          ],
+        );
+        final toolParser = CliArgParser(toolDefinition: tool);
+
+        // When using -c after :runner, it should resolve to 'command'
+        final args = toolParser.parse([
+          '-s',
+          '.',
+          ':runner',
+          '-c',
+          'build',
+        ]);
+
+        expect(args.commands, equals(['runner']));
+        final perCmd = args.commandArgs['runner'];
+        expect(perCmd, isNotNull);
+        expect(
+          perCmd!.options['command'],
+          equals('build'),
+          reason: '-c after :runner should resolve to command',
+        );
+      });
+    });
   });
 }

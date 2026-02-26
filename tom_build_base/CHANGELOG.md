@@ -1,3 +1,9 @@
+## 2.5.4
+
+### Fixed
+
+- **`cli_arg_parser.dart`** — Fixed short option abbreviation collision when multiple commands share the same abbreviation (e.g. `-c` used by both `runner` and `execute`). `_shortToLong` now prioritizes the current command's options before falling through to all commands.
+
 ## 2.5.3
 
 ### Changed

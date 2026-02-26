@@ -442,13 +442,16 @@ class CliArgParser {
 
   int _parseShortOption(List<String> args, int index, _ParseState state) {
     final arg = args[index];
+    final cmd = state.currentCommand;
 
     // Handle bundled short options like -rv
-    if (arg.length > 2 && !_optionExpectsValue(_shortToLong(arg[1]))) {
+    if (arg.length > 2 &&
+        !_optionExpectsValue(
+            _shortToLong(arg[1], currentCommand: cmd))) {
       // Multiple flags bundled together
       for (var i = 1; i < arg.length; i++) {
         final shortName = arg[i];
-        final longName = _shortToLong(shortName);
+        final longName = _shortToLong(shortName, currentCommand: cmd);
         _setOption(state, longName, null);
       }
       return index + 1;
@@ -456,7 +459,7 @@ class CliArgParser {
 
     // Single short option
     final shortName = arg.substring(1, 2);
-    final longName = _shortToLong(shortName);
+    final longName = _shortToLong(shortName, currentCommand: cmd);
 
     String? value;
     if (arg.length > 2) {
@@ -649,7 +652,7 @@ class CliArgParser {
     return false;
   }
 
-  String _shortToLong(String short) {
+  String _shortToLong(String short, {String? currentCommand}) {
     const mapping = {
       's': 'scan',
       'r': 'recursive',
@@ -672,9 +675,26 @@ class CliArgParser {
 
     // Check tool definition for abbreviation mapping
     if (toolDefinition != null) {
+      // Check global options first
       for (final opt in toolDefinition!.globalOptions) {
         if (opt.abbr == short) return opt.name;
       }
+
+      // When inside a command, prioritize that command's options to avoid
+      // collisions with same abbreviation in other commands (e.g. -c used
+      // by both 'runner' and 'execute' commands).
+      if (currentCommand != null) {
+        for (final cmd in toolDefinition!.commands) {
+          if (cmd.name == currentCommand) {
+            for (final opt in cmd.options) {
+              if (opt.abbr == short) return opt.name;
+            }
+            break;
+          }
+        }
+      }
+
+      // Fall back to searching all commands
       for (final cmd in toolDefinition!.commands) {
         for (final opt in cmd.options) {
           if (opt.abbr == short) return opt.name;
