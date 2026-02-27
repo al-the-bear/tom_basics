@@ -564,8 +564,7 @@ void main() {
     });
 
     group('conflicting abbreviations', () {
-      test(
-          'BB-CLI-65: Short option -c resolves to current command option '
+      test('BB-CLI-65: Short option -c resolves to current command option '
           'when multiple commands share same abbr [2026-02-14]', () {
         // Simulates the buildkit scenario where both 'runner' (command option)
         // and 'execute' (condition option) use abbr 'c'.
@@ -628,8 +627,7 @@ void main() {
         );
       });
 
-      test(
-          'BB-CLI-66: Short option -c resolves correctly for each command '
+      test('BB-CLI-66: Short option -c resolves correctly for each command '
           'context [2026-02-14]', () {
         final tool = ToolDefinition(
           name: 'test-tool',
@@ -664,13 +662,7 @@ void main() {
         final toolParser = CliArgParser(toolDefinition: tool);
 
         // When using -c after :runner, it should resolve to 'command'
-        final args = toolParser.parse([
-          '-s',
-          '.',
-          ':runner',
-          '-c',
-          'build',
-        ]);
+        final args = toolParser.parse(['-s', '.', ':runner', '-c', 'build']);
 
         expect(args.commands, equals(['runner']));
         final perCmd = args.commandArgs['runner'];

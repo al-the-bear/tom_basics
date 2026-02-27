@@ -422,10 +422,7 @@ void main() {
         );
         ctx = ExecutePlaceholderContext(rootPath: '/workspace', folder: folder);
         expect(
-          ExecutePlaceholderResolver.resolvePlaceholder(
-            'project-version',
-            ctx,
-          ),
+          ExecutePlaceholderResolver.resolvePlaceholder('project-version', ctx),
           equals('3.0.0'),
         );
       });
@@ -439,33 +436,21 @@ void main() {
           ),
           throwsA(
             isA<UnresolvedPlaceholderException>()
-                .having(
-                  (e) => e.placeholder,
-                  'placeholder',
-                  'project-version',
-                )
+                .having((e) => e.placeholder, 'placeholder', 'project-version')
                 .having((e) => e.message, 'message', 'not a Dart project'),
           ),
         );
       });
 
-      test(
-        'BB-EPH-43: project-name resolves in full command string',
-        () {
-          folder.natures.add(
-            DartProjectFolder(folder, projectName: 'test_pkg'),
-          );
-          ctx = ExecutePlaceholderContext(
-            rootPath: '/workspace',
-            folder: folder,
-          );
-          final result = ExecutePlaceholderResolver.resolveCommand(
-            r'echo %{project-name}',
-            ctx,
-          );
-          expect(result, equals('echo test_pkg'));
-        },
-      );
+      test('BB-EPH-43: project-name resolves in full command string', () {
+        folder.natures.add(DartProjectFolder(folder, projectName: 'test_pkg'));
+        ctx = ExecutePlaceholderContext(rootPath: '/workspace', folder: folder);
+        final result = ExecutePlaceholderResolver.resolveCommand(
+          r'echo %{project-name}',
+          ctx,
+        );
+        expect(result, equals('echo test_pkg'));
+      });
     });
 
     group('Remaining nature existence placeholders', () {
@@ -478,14 +463,22 @@ void main() {
         );
       });
 
-      test('BB-EPH-45: package.exists returns false when no Package nature',
-          () {
-        ctx = ExecutePlaceholderContext(rootPath: '/workspace', folder: folder);
-        expect(
-          ExecutePlaceholderResolver.resolvePlaceholder('package.exists', ctx),
-          equals('false'),
-        );
-      });
+      test(
+        'BB-EPH-45: package.exists returns false when no Package nature',
+        () {
+          ctx = ExecutePlaceholderContext(
+            rootPath: '/workspace',
+            folder: folder,
+          );
+          expect(
+            ExecutePlaceholderResolver.resolvePlaceholder(
+              'package.exists',
+              ctx,
+            ),
+            equals('false'),
+          );
+        },
+      );
 
       test('BB-EPH-46: console.exists returns true when Console nature', () {
         folder.natures.add(DartConsoleFolder(folder, projectName: 'cli'));
@@ -496,14 +489,22 @@ void main() {
         );
       });
 
-      test('BB-EPH-47: console.exists returns false when no Console nature',
-          () {
-        ctx = ExecutePlaceholderContext(rootPath: '/workspace', folder: folder);
-        expect(
-          ExecutePlaceholderResolver.resolvePlaceholder('console.exists', ctx),
-          equals('false'),
-        );
-      });
+      test(
+        'BB-EPH-47: console.exists returns false when no Console nature',
+        () {
+          ctx = ExecutePlaceholderContext(
+            rootPath: '/workspace',
+            folder: folder,
+          );
+          expect(
+            ExecutePlaceholderResolver.resolvePlaceholder(
+              'console.exists',
+              ctx,
+            ),
+            equals('false'),
+          );
+        },
+      );
 
       test('BB-EPH-48: typescript.exists returns false (no TypeScript)', () {
         ctx = ExecutePlaceholderContext(rootPath: '/workspace', folder: folder);
@@ -530,10 +531,7 @@ void main() {
       test('BB-EPH-50: buildkit.exists returns false (no buildkit)', () {
         ctx = ExecutePlaceholderContext(rootPath: '/workspace', folder: folder);
         expect(
-          ExecutePlaceholderResolver.resolvePlaceholder(
-            'buildkit.exists',
-            ctx,
-          ),
+          ExecutePlaceholderResolver.resolvePlaceholder('buildkit.exists', ctx),
           equals('false'),
         );
       });
@@ -553,10 +551,7 @@ void main() {
         folder.natures.add(GitFolder(folder, currentBranch: 'main'));
         ctx = ExecutePlaceholderContext(rootPath: '/workspace', folder: folder);
         expect(
-          ExecutePlaceholderResolver.resolvePlaceholder(
-            'git.isSubmodule',
-            ctx,
-          ),
+          ExecutePlaceholderResolver.resolvePlaceholder('git.isSubmodule', ctx),
           equals('false'),
         );
       });
@@ -567,10 +562,7 @@ void main() {
         );
         ctx = ExecutePlaceholderContext(rootPath: '/workspace', folder: folder);
         expect(
-          ExecutePlaceholderResolver.resolvePlaceholder(
-            'git.isSubmodule',
-            ctx,
-          ),
+          ExecutePlaceholderResolver.resolvePlaceholder('git.isSubmodule', ctx),
           equals('true'),
         );
       });

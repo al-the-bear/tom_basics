@@ -446,8 +446,7 @@ class CliArgParser {
 
     // Handle bundled short options like -rv
     if (arg.length > 2 &&
-        !_optionExpectsValue(
-            _shortToLong(arg[1], currentCommand: cmd))) {
+        !_optionExpectsValue(_shortToLong(arg[1], currentCommand: cmd))) {
       // Multiple flags bundled together
       for (var i = 1; i < arg.length; i++) {
         final shortName = arg[i];
