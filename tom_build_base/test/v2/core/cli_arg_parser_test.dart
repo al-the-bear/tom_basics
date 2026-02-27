@@ -674,5 +674,96 @@ void main() {
         );
       });
     });
+
+    group('nested tool options', () {
+      test('BB-CLI-67: Parses --nested flag [2026-02-22]', () {
+        final args = parser.parse(['--nested']);
+        expect(args.nested, isTrue);
+      });
+
+      test('BB-CLI-68: Parses --dump-definitions flag [2026-02-22]', () {
+        final args = parser.parse(['--dump-definitions']);
+        expect(args.dumpDefinitions, isTrue);
+      });
+
+      test('BB-CLI-69: nested defaults to false [2026-02-22]', () {
+        const args = CliArgs();
+        expect(args.nested, isFalse);
+      });
+
+      test('BB-CLI-70: dumpDefinitions defaults to false [2026-02-22]', () {
+        const args = CliArgs();
+        expect(args.dumpDefinitions, isFalse);
+      });
+
+      test('BB-CLI-71: --nested combined with command [2026-02-22]', () {
+        final args = parser.parse(['--nested', ':build']);
+        expect(args.nested, isTrue);
+        expect(args.commands, equals(['build']));
+      });
+
+      test('BB-CLI-72: --nested combined with --help [2026-02-22]', () {
+        final args = parser.parse(['--nested', '--help']);
+        expect(args.nested, isTrue);
+        expect(args.help, isTrue);
+      });
+
+      test(
+        'BB-CLI-73: --dump-definitions ignores other flags [2026-02-22]',
+        () {
+          final args = parser.parse(['--dump-definitions', '-v', ':build']);
+          expect(args.dumpDefinitions, isTrue);
+          expect(args.verbose, isTrue);
+          expect(args.commands, equals(['build']));
+        },
+      );
+    });
+
+    group('isHelpMode', () {
+      test('BB-CLI-74: isHelpMode true when help set [2026-02-22]', () {
+        const args = CliArgs(help: true);
+        expect(args.isHelpMode, isTrue);
+      });
+
+      test('BB-CLI-75: isHelpMode true when version set [2026-02-22]', () {
+        const args = CliArgs(version: true);
+        expect(args.isHelpMode, isTrue);
+      });
+
+      test('BB-CLI-76: isHelpMode true when listOnly set [2026-02-22]', () {
+        const args = CliArgs(listOnly: true);
+        expect(args.isHelpMode, isTrue);
+      });
+
+      test('BB-CLI-77: isHelpMode true when guide set [2026-02-22]', () {
+        const args = CliArgs(guide: true);
+        expect(args.isHelpMode, isTrue);
+      });
+
+      test('BB-CLI-78: isHelpMode false when none set [2026-02-22]', () {
+        const args = CliArgs();
+        expect(args.isHelpMode, isFalse);
+      });
+    });
+
+    group('withResolvedStrings preserves nested fields', () {
+      test(
+        'BB-CLI-79: withResolvedStrings preserves nested=true [2026-02-22]',
+        () {
+          const args = CliArgs(nested: true);
+          final resolved = args.withResolvedStrings((s) => s);
+          expect(resolved.nested, isTrue);
+        },
+      );
+
+      test(
+        'BB-CLI-80: withResolvedStrings preserves dumpDefinitions=true [2026-02-22]',
+        () {
+          const args = CliArgs(dumpDefinitions: true);
+          final resolved = args.withResolvedStrings((s) => s);
+          expect(resolved.dumpDefinitions, isTrue);
+        },
+      );
+    });
   });
 }

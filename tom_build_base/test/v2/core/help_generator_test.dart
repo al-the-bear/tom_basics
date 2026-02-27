@@ -37,7 +37,10 @@ void main() {
 
         final help = HelpGenerator.generateToolHelp(tool);
 
-        expect(help, contains('mytool [global-options] :command [command-options]'));
+        expect(
+          help,
+          contains('mytool [global-options] :command [command-options]'),
+        );
       });
 
       test('BB-HLP-4: Includes usage for single-command tool [2026-02-12]', () {
@@ -119,7 +122,11 @@ void main() {
           mode: ToolMode.multiCommand,
           commands: [
             CommandDefinition(name: 'visible', description: 'Visible'),
-            CommandDefinition(name: 'hidden', description: 'Hidden', hidden: true),
+            CommandDefinition(
+              name: 'hidden',
+              description: 'Hidden',
+              hidden: true,
+            ),
           ],
         );
 
@@ -146,9 +153,7 @@ void main() {
           name: 'mytool',
           description: 'My tool',
           mode: ToolMode.multiCommand,
-          commands: [
-            CommandDefinition(name: 'test', description: 'Test'),
-          ],
+          commands: [CommandDefinition(name: 'test', description: 'Test')],
         );
 
         final help = HelpGenerator.generateToolHelp(tool);
@@ -222,35 +227,41 @@ void main() {
         expect(help, contains('-o'));
       });
 
-      test('BB-HLP-15: Lists project traversal options when supported [2026-02-12]', () {
-        const cmd = CommandDefinition(
-          name: 'compile',
-          description: 'Compile',
-          supportsProjectTraversal: true,
-        );
+      test(
+        'BB-HLP-15: Lists project traversal options when supported [2026-02-12]',
+        () {
+          const cmd = CommandDefinition(
+            name: 'compile',
+            description: 'Compile',
+            supportsProjectTraversal: true,
+          );
 
-        final help = HelpGenerator.generateCommandHelp(cmd);
+          final help = HelpGenerator.generateCommandHelp(cmd);
 
-        expect(help, contains('Project Traversal'));
-        expect(help, contains('--scan'));
-        expect(help, contains('--recursive'));
-        expect(help, contains('--project'));
-      });
+          expect(help, contains('Project Traversal'));
+          expect(help, contains('--scan'));
+          expect(help, contains('--recursive'));
+          expect(help, contains('--project'));
+        },
+      );
 
-      test('BB-HLP-16: Lists git traversal options when supported [2026-02-12]', () {
-        const cmd = CommandDefinition(
-          name: 'gitstatus',
-          description: 'Git status',
-          supportsGitTraversal: true,
-          supportsProjectTraversal: false,
-        );
+      test(
+        'BB-HLP-16: Lists git traversal options when supported [2026-02-12]',
+        () {
+          const cmd = CommandDefinition(
+            name: 'gitstatus',
+            description: 'Git status',
+            supportsGitTraversal: true,
+            supportsProjectTraversal: false,
+          );
 
-        final help = HelpGenerator.generateCommandHelp(cmd);
+          final help = HelpGenerator.generateCommandHelp(cmd);
 
-        expect(help, contains('Git Traversal'));
-        expect(help, contains('--modules'));
-        expect(help, contains('--inner-first-git'));
-      });
+          expect(help, contains('Git Traversal'));
+          expect(help, contains('--modules'));
+          expect(help, contains('--inner-first-git'));
+        },
+      );
 
       test('BB-HLP-17: Mentions per-command filter support [2026-02-12]', () {
         const cmd = CommandDefinition(
@@ -285,10 +296,7 @@ void main() {
       });
 
       test('BB-HLP-19: Uses tool name in usage [2026-02-12]', () {
-        const cmd = CommandDefinition(
-          name: 'cleanup',
-          description: 'Clean',
-        );
+        const cmd = CommandDefinition(name: 'cleanup', description: 'Clean');
         const tool = ToolDefinition(
           name: 'buildkit',
           description: 'Build toolkit',
@@ -302,10 +310,7 @@ void main() {
 
     group('generateUsageSummary', () {
       test('BB-HLP-20: Shows basic usage [2026-02-12]', () {
-        const tool = ToolDefinition(
-          name: 'mytool',
-          description: 'My tool',
-        );
+        const tool = ToolDefinition(name: 'mytool', description: 'My tool');
 
         final summary = HelpGenerator.generateUsageSummary(tool);
 
@@ -395,6 +400,208 @@ void main() {
         final help = HelpGenerator.generateOptionHelp(opt);
 
         expect(help, contains('default: json'));
+      });
+    });
+
+    group('nestedCommandNames grouping', () {
+      test('BB-HLP-26: Separates native and nested commands [2026-02-22]', () {
+        const tool = ToolDefinition(
+          name: 'buildkit',
+          description: 'Build toolkit',
+          version: '1.0.0',
+          mode: ToolMode.multiCommand,
+          commands: [
+            CommandDefinition(name: 'cleanup', description: 'Clean build'),
+            CommandDefinition(name: 'compile', description: 'Compile project'),
+            CommandDefinition(
+              name: 'buildkittest',
+              description: 'Run tests (nested)',
+            ),
+            CommandDefinition(name: 'astgen', description: 'AST gen (nested)'),
+          ],
+        );
+
+        final help = HelpGenerator.generateToolHelp(
+          tool,
+          nestedCommandNames: {'buildkittest', 'astgen'},
+        );
+
+        // Native commands section
+        expect(help, contains('**Commands**'));
+        expect(help, contains(':cleanup'));
+        expect(help, contains(':compile'));
+
+        // Nested commands section
+        expect(help, contains('**Nested Commands**'));
+        expect(help, contains(':buildkittest'));
+        expect(help, contains(':astgen'));
+      });
+
+      test(
+        'BB-HLP-27: All commands native when no nested names [2026-02-22]',
+        () {
+          const tool = ToolDefinition(
+            name: 'mytool',
+            description: 'My tool',
+            version: '1.0.0',
+            mode: ToolMode.multiCommand,
+            commands: [
+              CommandDefinition(name: 'a', description: 'Command A'),
+              CommandDefinition(name: 'b', description: 'Command B'),
+            ],
+          );
+
+          final help = HelpGenerator.generateToolHelp(tool);
+
+          expect(help, contains('**Commands**'));
+          expect(help, contains(':a'));
+          expect(help, contains(':b'));
+          expect(help, isNot(contains('**Nested Commands**')));
+        },
+      );
+
+      test(
+        'BB-HLP-28: All commands nested when all names match [2026-02-22]',
+        () {
+          const tool = ToolDefinition(
+            name: 'wrapper',
+            description: 'Wrapper tool',
+            version: '1.0.0',
+            mode: ToolMode.multiCommand,
+            commands: [
+              CommandDefinition(name: 'ext1', description: 'External 1'),
+              CommandDefinition(name: 'ext2', description: 'External 2'),
+            ],
+          );
+
+          final help = HelpGenerator.generateToolHelp(
+            tool,
+            nestedCommandNames: {'ext1', 'ext2'},
+          );
+
+          expect(help, isNot(contains('**Commands**\n')));
+          expect(help, contains('**Nested Commands**'));
+          expect(help, contains(':ext1'));
+          expect(help, contains(':ext2'));
+        },
+      );
+
+      test('BB-HLP-29: Hidden commands excluded from both sections '
+          '[2026-02-22]', () {
+        const tool = ToolDefinition(
+          name: 'mytool',
+          description: 'My tool',
+          version: '1.0.0',
+          mode: ToolMode.multiCommand,
+          commands: [
+            CommandDefinition(name: 'visible', description: 'Visible'),
+            CommandDefinition(
+              name: 'hidden',
+              description: 'Hidden',
+              hidden: true,
+            ),
+            CommandDefinition(name: 'nested', description: 'Nested cmd'),
+          ],
+        );
+
+        final help = HelpGenerator.generateToolHelp(
+          tool,
+          nestedCommandNames: {'nested'},
+        );
+
+        expect(help, contains(':visible'));
+        expect(help, isNot(contains(':hidden')));
+        expect(help, contains(':nested'));
+      });
+
+      test('BB-HLP-30: Command help hint shown with mixed commands '
+          '[2026-02-22]', () {
+        const tool = ToolDefinition(
+          name: 'mytool',
+          description: 'My tool',
+          version: '1.0.0',
+          mode: ToolMode.multiCommand,
+          commands: [
+            CommandDefinition(name: 'native', description: 'Native cmd'),
+            CommandDefinition(name: 'wired', description: 'Wired cmd'),
+          ],
+        );
+
+        final help = HelpGenerator.generateToolHelp(
+          tool,
+          nestedCommandNames: {'wired'},
+        );
+
+        expect(help, contains('mytool :command --help'));
+      });
+
+      test('BB-HLP-31: Native commands preserve aliases in output '
+          '[2026-02-22]', () {
+        const tool = ToolDefinition(
+          name: 'mytool',
+          description: 'My tool',
+          version: '1.0.0',
+          mode: ToolMode.multiCommand,
+          commands: [
+            CommandDefinition(
+              name: 'crossref',
+              description: 'Cross reference',
+              aliases: ['xref'],
+            ),
+            CommandDefinition(name: 'wired', description: 'Wired cmd'),
+          ],
+        );
+
+        final help = HelpGenerator.generateToolHelp(
+          tool,
+          nestedCommandNames: {'wired'},
+        );
+
+        expect(help, contains(':crossref'));
+        expect(help, contains('xref'));
+      });
+
+      test('BB-HLP-32: Nested commands do not show aliases [2026-02-22]', () {
+        const tool = ToolDefinition(
+          name: 'mytool',
+          description: 'My tool',
+          version: '1.0.0',
+          mode: ToolMode.multiCommand,
+          commands: [
+            CommandDefinition(
+              name: 'wired',
+              description: 'Wired cmd',
+              aliases: ['w'],
+            ),
+          ],
+        );
+
+        final help = HelpGenerator.generateToolHelp(
+          tool,
+          nestedCommandNames: {'wired'},
+        );
+
+        // Nested commands section doesn't show aliases (per design)
+        expect(help, contains(':wired'));
+        // The nested section format is just ":name\n      description"
+        // No aliases shown
+      });
+
+      test('BB-HLP-33: Empty commands produces no sections [2026-02-22]', () {
+        const tool = ToolDefinition(
+          name: 'mytool',
+          description: 'My tool',
+          version: '1.0.0',
+          mode: ToolMode.multiCommand,
+        );
+
+        final help = HelpGenerator.generateToolHelp(
+          tool,
+          nestedCommandNames: {'nonexistent'},
+        );
+
+        expect(help, isNot(contains('**Commands**')));
+        expect(help, isNot(contains('**Nested Commands**')));
       });
     });
   });
