@@ -633,4 +633,223 @@ void main() {
       );
     });
   });
+
+  group('ToolWiringEntry', () {
+    test(
+      'BB-TDF-42: Standalone entry has binary as host command [2026-02-27]',
+      () {
+        const entry = ToolWiringEntry(
+          binary: 'astgen',
+          mode: WiringMode.standalone,
+        );
+
+        expect(entry.binary, equals('astgen'));
+        expect(entry.mode, equals(WiringMode.standalone));
+        expect(entry.hasCommands, isFalse);
+        expect(entry.hostCommandNames, equals({'astgen'}));
+      },
+    );
+
+    test(
+      'BB-TDF-43: Multi-command entry with command mapping [2026-02-27]',
+      () {
+        const entry = ToolWiringEntry(
+          binary: 'testkit',
+          mode: WiringMode.multiCommand,
+          commands: {'buildkittest': 'test', 'buildkitbaseline': 'baseline'},
+        );
+
+        expect(entry.binary, equals('testkit'));
+        expect(entry.mode, equals(WiringMode.multiCommand));
+        expect(entry.hasCommands, isTrue);
+        expect(
+          entry.hostCommandNames,
+          equals({'buildkittest', 'buildkitbaseline'}),
+        );
+      },
+    );
+
+    test('BB-TDF-44: Multi-command entry with null commands [2026-02-27]', () {
+      const entry = ToolWiringEntry(
+        binary: 'testkit',
+        mode: WiringMode.multiCommand,
+      );
+
+      expect(entry.hasCommands, isFalse);
+      expect(entry.hostCommandNames, isEmpty);
+    });
+
+    test('BB-TDF-45: toString includes binary and mode [2026-02-27]', () {
+      const entry = ToolWiringEntry(
+        binary: 'astgen',
+        mode: WiringMode.standalone,
+      );
+
+      final str = entry.toString();
+      expect(str, contains('astgen'));
+      expect(str, contains('standalone'));
+    });
+
+    test('BB-TDF-46: toString includes commands when present [2026-02-27]', () {
+      const entry = ToolWiringEntry(
+        binary: 'testkit',
+        mode: WiringMode.multiCommand,
+        commands: {'bt': 'test'},
+      );
+
+      final str = entry.toString();
+      expect(str, contains('commands:'));
+      expect(str, contains('bt'));
+    });
+  });
+
+  group('ToolDefinition wiring fields', () {
+    test('BB-TDF-47: Defaults to no wiring [2026-02-27]', () {
+      const tool = ToolDefinition(name: 'simple', description: 'Simple tool');
+
+      expect(tool.wiringFile, isNull);
+      expect(tool.defaultIncludes, isNull);
+      expect(tool.hasWiring, isFalse);
+    });
+
+    test('BB-TDF-48: kAutoWiringFile enables hasWiring [2026-02-27]', () {
+      const tool = ToolDefinition(
+        name: 'buildkit',
+        description: 'Build toolkit',
+        wiringFile: ToolDefinition.kAutoWiringFile,
+      );
+
+      expect(tool.wiringFile, equals(''));
+      expect(tool.hasWiring, isTrue);
+    });
+
+    test('BB-TDF-49: Explicit wiringFile enables hasWiring [2026-02-27]', () {
+      const tool = ToolDefinition(
+        name: 'testkit',
+        description: 'Test toolkit',
+        wiringFile: 'testkit_master.yaml',
+      );
+
+      expect(tool.wiringFile, equals('testkit_master.yaml'));
+      expect(tool.hasWiring, isTrue);
+    });
+
+    test('BB-TDF-50: defaultIncludes enables hasWiring [2026-02-27]', () {
+      const tool = ToolDefinition(
+        name: 'buildkit',
+        description: 'Build toolkit',
+        defaultIncludes: [
+          ToolWiringEntry(binary: 'astgen', mode: WiringMode.standalone),
+        ],
+      );
+
+      expect(tool.wiringFile, isNull);
+      expect(tool.defaultIncludes, hasLength(1));
+      expect(tool.hasWiring, isTrue);
+    });
+
+    test('BB-TDF-51: Both wiringFile and defaultIncludes [2026-02-27]', () {
+      const tool = ToolDefinition(
+        name: 'buildkit',
+        description: 'Build toolkit',
+        wiringFile: ToolDefinition.kAutoWiringFile,
+        defaultIncludes: [
+          ToolWiringEntry(
+            binary: 'testkit',
+            mode: WiringMode.multiCommand,
+            commands: {'bt': 'test'},
+          ),
+          ToolWiringEntry(binary: 'astgen', mode: WiringMode.standalone),
+          ToolWiringEntry(binary: 'd4rtgen', mode: WiringMode.standalone),
+        ],
+      );
+
+      expect(tool.hasWiring, isTrue);
+      expect(tool.defaultIncludes, hasLength(3));
+      expect(tool.defaultIncludes![0].hostCommandNames, equals({'bt'}));
+      expect(tool.defaultIncludes![1].hostCommandNames, equals({'astgen'}));
+    });
+
+    test('BB-TDF-52: copyWith preserves wiring fields [2026-02-27]', () {
+      const tool = ToolDefinition(
+        name: 'buildkit',
+        description: 'Build toolkit',
+        wiringFile: ToolDefinition.kAutoWiringFile,
+        defaultIncludes: [
+          ToolWiringEntry(binary: 'astgen', mode: WiringMode.standalone),
+        ],
+      );
+
+      final derived = tool.copyWith(name: 'supertool');
+
+      expect(derived.name, equals('supertool'));
+      expect(derived.wiringFile, equals(ToolDefinition.kAutoWiringFile));
+      expect(derived.defaultIncludes, hasLength(1));
+      expect(derived.hasWiring, isTrue);
+    });
+
+    test('BB-TDF-53: copyWith overrides wiring fields [2026-02-27]', () {
+      const tool = ToolDefinition(
+        name: 'buildkit',
+        description: 'Build toolkit',
+        wiringFile: ToolDefinition.kAutoWiringFile,
+        defaultIncludes: [
+          ToolWiringEntry(binary: 'astgen', mode: WiringMode.standalone),
+        ],
+      );
+
+      final derived = tool.copyWith(
+        wiringFile: 'custom_master.yaml',
+        defaultIncludes: [
+          const ToolWiringEntry(
+            binary: 'testkit',
+            mode: WiringMode.multiCommand,
+            commands: {'bt': 'test'},
+          ),
+        ],
+      );
+
+      expect(derived.wiringFile, equals('custom_master.yaml'));
+      expect(derived.defaultIncludes, hasLength(1));
+      expect(derived.defaultIncludes!.first.binary, equals('testkit'));
+    });
+
+    test('BB-TDF-54: Full buildkit-like wiring definition [2026-02-27]', () {
+      const tool = ToolDefinition(
+        name: 'buildkit',
+        description: 'Pipeline-based build orchestration',
+        version: '3.1.0',
+        mode: ToolMode.multiCommand,
+        features: NavigationFeatures.all,
+        wiringFile: ToolDefinition.kAutoWiringFile,
+        defaultIncludes: [
+          ToolWiringEntry(
+            binary: 'testkit',
+            mode: WiringMode.multiCommand,
+            commands: {'buildkittest': 'test', 'buildkitbaseline': 'baseline'},
+          ),
+          ToolWiringEntry(binary: 'astgen', mode: WiringMode.standalone),
+          ToolWiringEntry(binary: 'd4rtgen', mode: WiringMode.standalone),
+        ],
+        commands: [
+          CommandDefinition(name: 'cleanup', description: 'Clean artifacts'),
+          CommandDefinition(name: 'versioner', description: 'Manage versions'),
+          CommandDefinition(name: 'compiler', description: 'Compile project'),
+        ],
+      );
+
+      expect(tool.hasWiring, isTrue);
+      expect(tool.defaultIncludes, hasLength(3));
+      expect(tool.commands, hasLength(3));
+
+      // testkit wiring gives 2 host commands
+      expect(
+        tool.defaultIncludes![0].hostCommandNames,
+        equals({'buildkittest', 'buildkitbaseline'}),
+      );
+      // standalone tools give one host command each (binary name)
+      expect(tool.defaultIncludes![1].hostCommandNames, equals({'astgen'}));
+      expect(tool.defaultIncludes![2].hostCommandNames, equals({'d4rtgen'}));
+    });
+  });
 }

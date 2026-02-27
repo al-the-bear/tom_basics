@@ -342,5 +342,26 @@ void main() {
       expect(exclude.abbr, equals('x'));
       expect(exclude.type, equals(OptionType.multiOption));
     });
+
+    test('BB-OPT-27: commonOptions contains nested flag [2026-02-27]', () {
+      final nested = commonOptions.firstWhere((o) => o.name == 'nested');
+
+      expect(nested.type, equals(OptionType.flag));
+      expect(nested.abbr, isNull);
+      expect(nested.description, contains('nested'));
+    });
+
+    test(
+      'BB-OPT-28: commonOptions contains dump-definitions flag [2026-02-27]',
+      () {
+        final dump = commonOptions.firstWhere(
+          (o) => o.name == 'dump-definitions',
+        );
+
+        expect(dump.type, equals(OptionType.flag));
+        expect(dump.abbr, isNull);
+        expect(dump.description, contains('YAML'));
+      },
+    );
   });
 }

@@ -1,6 +1,7 @@
 import 'command_definition.dart';
 import 'help_topic.dart';
 import 'option_definition.dart';
+import 'tool_wiring_entry.dart';
 
 /// Mode in which a tool can operate.
 enum ToolMode {
@@ -155,6 +156,34 @@ class ToolDefinition {
   /// Only used when [requiredNatures] is null or empty.
   final Set<Type> worksWithNatures;
 
+  /// File that contains nested tool wiring configuration.
+  ///
+  /// - `null` (default): Tool does not host nested tools.
+  ///   Most tools use this (d4rtgen, astgen, findproject).
+  /// - `''` (empty / [kAutoWiringFile]): Convention-based discovery.
+  ///   Looks for `{toolname}_master.yaml` in the workspace root.
+  ///   Example: buildkit → `buildkit_master.yaml`.
+  /// - `'testkit_master.yaml'`: Explicit filename.
+  ///   Looks for this exact file in the workspace root.
+  ///
+  /// Ignored when `--nested` is active (no nested-nested).
+  final String? wiringFile;
+
+  /// Sentinel value for convention-based wiring file discovery.
+  ///
+  /// When [wiringFile] is set to this value, the framework looks for
+  /// `{toolname}_master.yaml` in the workspace root.
+  static const kAutoWiringFile = '';
+
+  /// Default nested tools wired into this tool at the code level.
+  ///
+  /// These are always included regardless of YAML configuration.
+  /// YAML `nested_tools:` entries are merged on top (YAML wins on conflict).
+  ///
+  /// - `null` (default): No code-level includes.
+  /// - `[ToolWiringEntry(...)]`: Explicit wiring entries.
+  final List<ToolWiringEntry>? defaultIncludes;
+
   const ToolDefinition({
     required this.name,
     required this.description,
@@ -168,7 +197,12 @@ class ToolDefinition {
     this.helpTopics = const [],
     this.requiredNatures,
     this.worksWithNatures = const {},
+    this.wiringFile,
+    this.defaultIncludes,
   });
+
+  /// Whether this tool has any wiring configuration (code-level or file-level).
+  bool get hasWiring => wiringFile != null || defaultIncludes != null;
 
   /// Find a help topic by name.
   ///
@@ -324,6 +358,8 @@ class ToolDefinition {
     List<HelpTopic>? helpTopics,
     Set<Type>? requiredNatures,
     Set<Type>? worksWithNatures,
+    String? wiringFile,
+    List<ToolWiringEntry>? defaultIncludes,
   }) {
     return ToolDefinition(
       name: name ?? this.name,
@@ -338,6 +374,8 @@ class ToolDefinition {
       helpTopics: helpTopics ?? this.helpTopics,
       requiredNatures: requiredNatures ?? this.requiredNatures,
       worksWithNatures: worksWithNatures ?? this.worksWithNatures,
+      wiringFile: wiringFile ?? this.wiringFile,
+      defaultIncludes: defaultIncludes ?? this.defaultIncludes,
     );
   }
 }

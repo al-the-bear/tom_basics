@@ -232,4 +232,13 @@ const List<OptionDefinition> commonOptions = [
     description: 'Show help message',
   ),
   OptionDefinition.flag(name: 'version', description: 'Show version'),
+  OptionDefinition.flag(
+    name: 'nested',
+    description: 'Run in nested mode (skip traversal, single-project)',
+  ),
+  OptionDefinition.flag(
+    name: 'dump-definitions',
+    description:
+        'Dump complete tool definition as YAML (tool info + all commands)',
+  ),
 ];
