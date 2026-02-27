@@ -653,6 +653,8 @@ List<String> _buildNestedArgs({
       final value = entry.value;
       if (value == true) {
         args.add('--$name');
+      } else if (value == false) {
+        continue; // Skip false flags
       } else if (value is String && value.isNotEmpty) {
         args.addAll(['--$name', value]);
       } else if (value is List) {
@@ -708,7 +710,7 @@ Available commands:
 If a binary is not found during help (lazy wiring tolerates this):
 
 ```
-  :buildkitAstgen   [astgen not found — run buildkit :compiler first]
+  :buildkitAstgen   [binary astgen not found]
 ```
 
 Descriptions come from the `--dump-definitions` output — specifically the
@@ -735,8 +737,7 @@ buildkit help buildkitAstgen
 If the nested binary is not available:
 
 ```
-Command :buildkitAstgen is provided by "astgen" (not found on PATH).
-Build the binary first, then run: astgen --help
+Command :buildkitAstgen — binary astgen not found.
 ```
 
 ---
@@ -814,7 +815,7 @@ List<String> validateNestedBinaries({
     if (executor is NestedToolExecutor) {
       final resolved = _resolveBinary(executor.binary);
       if (!_isBinaryOnPath(resolved)) {
-        missing.add(':$cmdName requires "$resolved" — not found');
+        missing.add(':$cmdName — binary $resolved not found');
       }
     }
   }

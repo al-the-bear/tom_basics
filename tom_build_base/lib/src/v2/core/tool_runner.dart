@@ -172,7 +172,10 @@ class ToolRunner {
 
     // Lazy wiring: merge code + YAML defaults, query only needed tools.
     if (tool.hasWiring) {
-      await _lazyWireNestedTools(cliArgs);
+      final wiringOk = await _lazyWireNestedTools(cliArgs);
+      if (!wiringOk) {
+        return const ToolResult.failure('Missing nested tool binaries');
+      }
     }
 
     // Handle help (uses _effectiveTool which now includes wired commands)
@@ -474,7 +477,10 @@ class ToolRunner {
   /// Merges code-level [ToolDefinition.defaultIncludes] with YAML
   /// `nested_tools:` entries, then queries only the needed tools.
   /// Updates [_effectiveTool] and [executors] with wired commands.
-  Future<void> _lazyWireNestedTools(CliArgs cliArgs) async {
+  ///
+  /// Returns `true` if wiring succeeded, `false` if a required binary
+  /// was missing and execution should be aborted.
+  Future<bool> _lazyWireNestedTools(CliArgs cliArgs) async {
     final workspaceRoot = findWorkspaceRoot(Directory.current.path);
     final loader = WiringLoader(tool: tool);
 
@@ -487,7 +493,7 @@ class ToolRunner {
       requestedCommands = cliArgs.commands.toSet();
     } else {
       // No commands specified — no nested tools needed
-      return;
+      return true;
     }
 
     final result = await loader.resolve(
@@ -496,15 +502,15 @@ class ToolRunner {
       tolerateMissing: cliArgs.isHelpMode,
     );
 
-    // Handle errors
+    // Handle errors — abort if any requested nested tool binary is missing.
+    // Since we only query binaries for commands the user actually requested,
+    // any error here means the user's intended command cannot run.
     if (result.hasErrors) {
       output.writeln('Error: Missing required tool binaries:');
       for (final msg in result.errors) {
         output.writeln('  - $msg');
       }
-      // Don't abort — the user might be requesting only native commands
-      // and the error is for a different wired command. The error will
-      // surface when the actual command is looked up.
+      return false;
     }
 
     // Print warnings
@@ -531,6 +537,8 @@ class ToolRunner {
       // Instead, we store the wired executors and check both maps.
       _wiredExecutors.addAll(result.executors);
     }
+
+    return true;
   }
 
   /// Wired executors merged during lazy wiring.
@@ -617,12 +625,8 @@ class ToolRunner {
       return const ToolResult.success();
     } catch (_) {
       output.writeln(
-        'Command :${executor.hostCommandName} is provided by '
-        '"${executor.binary}" (not available).',
-      );
-      output.writeln(
-        'Build the binary first, then run: '
-        '${executor.binary} --help',
+        'Command :${executor.hostCommandName} — '
+        'binary ${executor.binary} not found.',
       );
       return const ToolResult.failure('Nested help unavailable');
     }
