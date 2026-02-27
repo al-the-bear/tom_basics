@@ -6,8 +6,12 @@ import 'cli_arg_parser.dart';
 import 'command_definition.dart';
 import 'console_markdown_zone.dart';
 import 'help_generator.dart';
+import 'nested_tool_executor.dart';
+import 'binary_helpers.dart';
 import 'tool_definition.dart';
+import 'tool_definition_serializer.dart';
 import 'command_executor.dart';
+import 'wiring_loader.dart';
 import '../execute_placeholder.dart';
 import '../traversal/traversal_info.dart';
 import '../traversal/build_base.dart';
@@ -109,13 +113,16 @@ class ItemResult {
 /// Runs tools based on their definitions.
 ///
 /// Handles argument parsing, help display, command routing,
-/// and traversal execution.
+/// traversal execution, and nested tool wiring.
 class ToolRunner {
   /// Tool definition.
   final ToolDefinition tool;
 
   /// Command executors by name.
   final Map<String, CommandExecutor> executors;
+
+  /// Mutable copy of tool definition (updated during wiring).
+  late ToolDefinition _effectiveTool;
 
   /// Whether to print output.
   final bool verbose;
@@ -128,7 +135,9 @@ class ToolRunner {
     this.executors = const {},
     this.verbose = true,
     StringSink? output,
-  }) : output = _resolveOutput(output);
+  }) : output = _resolveOutput(output) {
+    _effectiveTool = tool;
+  }
 
   /// Resolve the output sink.
   ///
@@ -148,51 +157,43 @@ class ToolRunner {
     final parser = CliArgParser(toolDefinition: tool);
     final cliArgs = parser.parse(args);
 
-    // Handle help
-    if (cliArgs.help) {
-      if (cliArgs.commands.isNotEmpty) {
-        final cmdName = cliArgs.commands.first;
-        final cmd = tool.findCommand(cmdName);
-        if (cmd != null) {
-          output.writeln(HelpGenerator.generateCommandHelp(cmd, tool: tool));
-          return const ToolResult.success();
-        }
-        // Check if it's an ambiguous prefix
-        final matches = tool.findCommandsWithPrefix(cmdName);
-        if (matches.length > 1) {
-          output.writeln('Ambiguous command prefix ":$cmdName" matches:');
-          for (final match in matches) {
-            output.writeln('  :${match.name}');
-          }
-          return const ToolResult.failure('Ambiguous command prefix');
-        }
-        // Check help topics before giving up
-        final topic = tool.findHelpTopic(cmdName);
-        if (topic != null) {
-          output.writeln(HelpGenerator.generateTopicHelp(topic, tool: tool));
-          return const ToolResult.success();
-        }
-        output.writeln('Unknown command: :$cmdName');
-        return const ToolResult.failure('Unknown command');
-      }
-      output.writeln(HelpGenerator.generateToolHelp(tool));
+    // --dump-definitions: serialize tool definition and exit immediately.
+    // Intercepted before any wiring or traversal.
+    if (cliArgs.dumpDefinitions) {
+      final yaml = ToolDefinitionSerializer.toYaml(tool);
+      output.write(yaml);
       return const ToolResult.success();
+    }
+
+    // --nested: skip wiring, skip traversal, run single-project in cwd.
+    if (cliArgs.nested) {
+      return _runNestedMode(cliArgs);
+    }
+
+    // Lazy wiring: merge code + YAML defaults, query only needed tools.
+    if (tool.hasWiring) {
+      await _lazyWireNestedTools(cliArgs);
+    }
+
+    // Handle help (uses _effectiveTool which now includes wired commands)
+    if (cliArgs.help) {
+      return _handleHelp(cliArgs);
     }
 
     // Handle version (--version flag or bare 'version' positional arg)
     if (cliArgs.version || cliArgs.positionalArgs.contains('version')) {
-      output.writeln('${tool.name} v${tool.version}');
+      output.writeln('${_effectiveTool.name} v${_effectiveTool.version}');
       return const ToolResult.success();
     }
 
     // Handle multi-command mode
-    if (tool.mode == ToolMode.multiCommand) {
+    if (_effectiveTool.mode == ToolMode.multiCommand) {
       if (cliArgs.commands.isEmpty) {
-        if (tool.defaultCommand != null) {
-          return _runCommand(tool.defaultCommand!, cliArgs);
+        if (_effectiveTool.defaultCommand != null) {
+          return _runCommand(_effectiveTool.defaultCommand!, cliArgs);
         }
         output.writeln('No command specified.\n');
-        output.writeln(HelpGenerator.generateUsageSummary(tool));
+        output.writeln(HelpGenerator.generateUsageSummary(_effectiveTool));
         return const ToolResult.failure('No command specified');
       }
 
@@ -219,10 +220,10 @@ class ToolRunner {
 
   /// Run a specific command.
   Future<ToolResult> _runCommand(String cmdName, CliArgs cliArgs) async {
-    final cmd = tool.findCommand(cmdName);
+    final cmd = _effectiveTool.findCommand(cmdName);
     if (cmd == null) {
       // Check if it's an ambiguous prefix
-      final matches = tool.findCommandsWithPrefix(cmdName);
+      final matches = _effectiveTool.findCommandsWithPrefix(cmdName);
       if (matches.length > 1) {
         output.writeln('Ambiguous command prefix ":$cmdName" matches:');
         for (final match in matches) {
@@ -241,12 +242,14 @@ class ToolRunner {
     final cmdArgs =
         cliArgs.commandArgs[cmdName] ?? cliArgs.commandArgs[actualCmdName];
     if (cmdArgs != null && cmdArgs.options['help'] == true) {
-      output.writeln(HelpGenerator.generateCommandHelp(cmd, tool: tool));
+      output.writeln(
+        HelpGenerator.generateCommandHelp(cmd, tool: _effectiveTool),
+      );
       return const ToolResult.success();
     }
 
-    // Look up executor by actual command name
-    final executor = executors[actualCmdName];
+    // Look up executor by actual command name (native or wired)
+    final executor = _findExecutor(actualCmdName);
     if (executor == null) {
       return ToolResult.failure('No executor for command: $actualCmdName');
     }
@@ -325,10 +328,10 @@ class ToolRunner {
     // Validate nature configuration — every traversal command must declare
     // its nature requirements. Use FsFolder to traverse all folders.
     // For singleCommand tools (cmd == null), fall back to tool-level natures.
-    final reqNatures = cmd?.requiredNatures ?? tool.requiredNatures;
+    final reqNatures = cmd?.requiredNatures ?? _effectiveTool.requiredNatures;
     final workNatures =
         cmd?.worksWithNatures ??
-        (cmd == null ? tool.worksWithNatures : const <Type>{});
+        (cmd == null ? _effectiveTool.worksWithNatures : const <Type>{});
     final hasRequired = reqNatures != null && reqNatures.isNotEmpty;
     final hasWorksWith = workNatures.isNotEmpty;
     if (!hasRequired && !hasWorksWith) {
@@ -399,6 +402,230 @@ class ToolRunner {
     );
 
     return ToolResult.fromItems(results);
+  }
+
+  /// Run in nested mode: skip wiring, skip traversal, execute in cwd.
+  ///
+  /// Used when a host tool invokes this tool with `--nested`. The tool
+  /// runs its command directly in the current working directory without
+  /// any project traversal or nested tool wiring.
+  Future<ToolResult> _runNestedMode(CliArgs cliArgs) async {
+    // Handle help in nested mode
+    if (cliArgs.help) {
+      if (cliArgs.commands.isNotEmpty) {
+        final cmdName = cliArgs.commands.first;
+        final cmd = tool.findCommand(cmdName);
+        if (cmd != null) {
+          output.writeln(HelpGenerator.generateCommandHelp(cmd, tool: tool));
+          return const ToolResult.success();
+        }
+      }
+      output.writeln(HelpGenerator.generateToolHelp(tool));
+      return const ToolResult.success();
+    }
+
+    // Handle version
+    if (cliArgs.version) {
+      output.writeln('${tool.name} v${tool.version}');
+      return const ToolResult.success();
+    }
+
+    // Multi-command: route to single command
+    if (tool.mode == ToolMode.multiCommand) {
+      if (cliArgs.commands.isEmpty) {
+        if (tool.defaultCommand != null) {
+          return _runNestedCommand(tool.defaultCommand!, cliArgs);
+        }
+        return const ToolResult.failure(
+          'No command specified in nested mode',
+        );
+      }
+      // In nested mode, only one command at a time
+      return _runNestedCommand(cliArgs.commands.first, cliArgs);
+    }
+
+    // Single command: run default executor directly
+    final executor = executors['default'];
+    if (executor == null) {
+      return const ToolResult.failure('No default executor configured');
+    }
+    return executor.executeWithoutTraversal(cliArgs);
+  }
+
+  /// Run a single command in nested mode (no traversal).
+  Future<ToolResult> _runNestedCommand(
+    String cmdName,
+    CliArgs cliArgs,
+  ) async {
+    final cmd = tool.findCommand(cmdName);
+    if (cmd == null) {
+      return ToolResult.failure('Unknown command in nested mode: $cmdName');
+    }
+
+    final executor = executors[cmd.name];
+    if (executor == null) {
+      return ToolResult.failure('No executor for command: ${cmd.name}');
+    }
+    return executor.executeWithoutTraversal(cliArgs);
+  }
+
+  /// Lazy wire nested tools into the effective tool definition.
+  ///
+  /// Merges code-level [ToolDefinition.defaultIncludes] with YAML
+  /// `nested_tools:` entries, then queries only the needed tools.
+  /// Updates [_effectiveTool] and [executors] with wired commands.
+  Future<void> _lazyWireNestedTools(CliArgs cliArgs) async {
+    final workspaceRoot = findWorkspaceRoot(Directory.current.path);
+    final loader = WiringLoader(tool: tool);
+
+    // Determine which commands are requested
+    final Set<String>? requestedCommands;
+    if (cliArgs.isHelpMode) {
+      // Help mode: wire all tools, tolerate missing binaries
+      requestedCommands = null;
+    } else if (cliArgs.commands.isNotEmpty) {
+      requestedCommands = cliArgs.commands.toSet();
+    } else {
+      // No commands specified — no nested tools needed
+      return;
+    }
+
+    final result = await loader.resolve(
+      requestedCommands: requestedCommands,
+      workspaceRoot: workspaceRoot,
+      tolerateMissing: cliArgs.isHelpMode,
+    );
+
+    // Handle errors
+    if (result.hasErrors) {
+      output.writeln('Error: Missing required tool binaries:');
+      for (final msg in result.errors) {
+        output.writeln('  - $msg');
+      }
+      // Don't abort — the user might be requesting only native commands
+      // and the error is for a different wired command. The error will
+      // surface when the actual command is looked up.
+    }
+
+    // Print warnings
+    for (final warning in result.warnings) {
+      if (verbose) {
+        output.writeln('Warning: $warning');
+      }
+    }
+
+    // Merge wired commands into the effective tool
+    if (result.commands.isNotEmpty) {
+      _effectiveTool = _effectiveTool.copyWith(
+        commands: [..._effectiveTool.commands, ...result.commands],
+      );
+    }
+
+    // Merge wired executors (mutable map)
+    if (result.executors.isNotEmpty) {
+      final mutableExecutors =
+          Map<String, CommandExecutor>.from(executors);
+      mutableExecutors.addAll(result.executors);
+      // We can't reassign final executors, so we update _effectiveTool
+      // and use a separate lookup. Actually, executors is final const.
+      // Instead, we store the wired executors and check both maps.
+      _wiredExecutors.addAll(result.executors);
+    }
+  }
+
+  /// Wired executors merged during lazy wiring.
+  final Map<String, CommandExecutor> _wiredExecutors = {};
+
+  /// Look up an executor by command name (checks both native and wired).
+  CommandExecutor? _findExecutor(String cmdName) {
+    return executors[cmdName] ?? _wiredExecutors[cmdName];
+  }
+
+  /// Handle help display with wired commands included.
+  Future<ToolResult> _handleHelp(CliArgs cliArgs) async {
+    if (cliArgs.commands.isNotEmpty) {
+      final cmdName = cliArgs.commands.first;
+      final cmd = _effectiveTool.findCommand(cmdName);
+      if (cmd != null) {
+        // Check if this is a wired command — delegate help to nested tool
+        final wiredExec = _wiredExecutors[cmd.name];
+        if (wiredExec is NestedToolExecutor) {
+          return _delegateNestedHelp(wiredExec, cliArgs);
+        }
+        output.writeln(
+          HelpGenerator.generateCommandHelp(cmd, tool: _effectiveTool),
+        );
+        return const ToolResult.success();
+      }
+      // Check if it's an ambiguous prefix
+      final matches = _effectiveTool.findCommandsWithPrefix(cmdName);
+      if (matches.length > 1) {
+        output.writeln('Ambiguous command prefix ":$cmdName" matches:');
+        for (final match in matches) {
+          output.writeln('  :${match.name}');
+        }
+        return const ToolResult.failure('Ambiguous command prefix');
+      }
+      // Check help topics before giving up
+      final topic = _effectiveTool.findHelpTopic(cmdName);
+      if (topic != null) {
+        output.writeln(
+          HelpGenerator.generateTopicHelp(topic, tool: _effectiveTool),
+        );
+        return const ToolResult.success();
+      }
+      output.writeln('Unknown command: :$cmdName');
+      return const ToolResult.failure('Unknown command');
+    }
+    output.writeln(
+      HelpGenerator.generateToolHelp(
+        _effectiveTool,
+        nestedCommandNames: _wiredExecutors.keys.toSet(),
+      ),
+    );
+    return const ToolResult.success();
+  }
+
+  /// Delegate help for a wired command to the nested tool.
+  ///
+  /// Calls the nested tool's help system for detailed command help.
+  Future<ToolResult> _delegateNestedHelp(
+    NestedToolExecutor executor,
+    CliArgs cliArgs,
+  ) async {
+    final args = <String>['--nested'];
+    if (executor.isStandalone) {
+      args.add('--help');
+    } else {
+      args.addAll(['help', executor.nestedCommand ?? '']);
+    }
+
+    try {
+      final result = await runBinary(
+        executor.binary,
+        args,
+        Directory.current.path,
+      );
+      final stdout = result.stdout.toString().trim();
+      if (stdout.isNotEmpty) {
+        output.writeln(stdout);
+      }
+      final stderr = result.stderr.toString().trim();
+      if (stderr.isNotEmpty) {
+        output.writeln(stderr);
+      }
+      return const ToolResult.success();
+    } catch (_) {
+      output.writeln(
+        'Command :${executor.hostCommandName} is provided by '
+        '"${executor.binary}" (not available).',
+      );
+      output.writeln(
+        'Build the binary first, then run: '
+        '${executor.binary} --help',
+      );
+      return const ToolResult.failure('Nested help unavailable');
+    }
   }
 
   /// Load traversal defaults from buildkit_master.yaml navigation section.

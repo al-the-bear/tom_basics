@@ -11,7 +11,12 @@ class HelpGenerator {
   /// Generate tool-level help text.
   ///
   /// Shows tool description, usage, global options, and available commands.
-  static String generateToolHelp(ToolDefinition tool) {
+  /// If [nestedCommandNames] is provided, commands with those names are
+  /// grouped under a separate "Nested Commands" section.
+  static String generateToolHelp(
+    ToolDefinition tool, {
+    Set<String> nestedCommandNames = const {},
+  }) {
     final buf = StringBuffer();
 
     // Header
@@ -36,10 +41,21 @@ class HelpGenerator {
       buf.writeln();
     }
 
-    // Commands
-    if (tool.commands.isNotEmpty) {
+    // Split commands into native and nested
+    final nativeCommands = <CommandDefinition>[];
+    final nestedCommands = <CommandDefinition>[];
+    for (final cmd in tool.visibleCommands) {
+      if (nestedCommandNames.contains(cmd.name)) {
+        nestedCommands.add(cmd);
+      } else {
+        nativeCommands.add(cmd);
+      }
+    }
+
+    // Native commands
+    if (nativeCommands.isNotEmpty) {
       buf.writeln('<green>**Commands**</green>');
-      for (final cmd in tool.visibleCommands) {
+      for (final cmd in nativeCommands) {
         final aliasStr = cmd.aliases.isNotEmpty
             ? ' (${cmd.aliases.join(', ')})'
             : '';
@@ -47,6 +63,19 @@ class HelpGenerator {
         buf.writeln('      ${cmd.description}');
       }
       buf.writeln();
+    }
+
+    // Nested commands (from wired tools)
+    if (nestedCommands.isNotEmpty) {
+      buf.writeln('<green>**Nested Commands**</green>');
+      for (final cmd in nestedCommands) {
+        buf.writeln('  :${cmd.name}');
+        buf.writeln('      ${cmd.description}');
+      }
+      buf.writeln();
+    }
+
+    if (nativeCommands.isNotEmpty || nestedCommands.isNotEmpty) {
       buf.writeln(
         '  Use `${tool.name} :command --help` for command-specific help.',
       );

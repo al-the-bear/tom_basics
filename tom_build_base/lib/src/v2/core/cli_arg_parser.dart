@@ -100,6 +100,10 @@ class CliArgs {
   final bool version;
   final bool noSkip;
 
+  // Nested tool options
+  final bool nested;
+  final bool dumpDefinitions;
+
   // Test project options
   final bool includeTestProjects;
   final bool testProjectsOnly;
@@ -141,6 +145,8 @@ class CliArgs {
     this.help = false,
     this.version = false,
     this.noSkip = false,
+    this.nested = false,
+    this.dumpDefinitions = false,
     this.includeTestProjects = false,
     this.testProjectsOnly = false,
     this.positionalArgs = const [],
@@ -260,6 +266,9 @@ class CliArgs {
   /// Whether help or version was requested.
   bool get isHelpOrVersion => help || version;
 
+  /// Whether this is a help-related mode (help, version, list, guide).
+  bool get isHelpMode => help || version || listOnly || guide;
+
   /// Create a copy with placeholders resolved in user-provided string values.
   ///
   /// Resolves placeholders in [positionalArgs], string values in
@@ -298,6 +307,8 @@ class CliArgs {
       help: help,
       version: version,
       noSkip: noSkip,
+      nested: nested,
+      dumpDefinitions: dumpDefinitions,
       includeTestProjects: includeTestProjects,
       testProjectsOnly: testProjectsOnly,
       positionalArgs: positionalArgs.map(resolver).toList(),
@@ -591,6 +602,12 @@ class CliArgParser {
       case 'no-skip':
         state.noSkip = true;
         break;
+      case 'nested':
+        state.nested = true;
+        break;
+      case 'dump-definitions':
+        state.dumpDefinitions = true;
+        break;
       case 'include-test-projects':
         state.includeTestProjects = true;
         break;
@@ -812,6 +829,8 @@ class _ParseState {
   bool help = false;
   bool version = false;
   bool noSkip = false;
+  bool nested = false;
+  bool dumpDefinitions = false;
   bool includeTestProjects = false;
   bool testProjectsOnly = false;
   final List<String> positionalArgs = [];
@@ -850,6 +869,8 @@ class _ParseState {
       help: help,
       version: version,
       noSkip: noSkip,
+      nested: nested,
+      dumpDefinitions: dumpDefinitions,
       includeTestProjects: includeTestProjects,
       testProjectsOnly: testProjectsOnly,
       positionalArgs: positionalArgs,
