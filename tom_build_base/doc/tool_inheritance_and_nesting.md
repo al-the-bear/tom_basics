@@ -261,39 +261,60 @@ When `--nested` is active:
 
 ### 3. `--dump-definitions` Flag in commonOptions
 
-Every tool can self-describe its commands, options, and nature requirements:
+Every tool can dump its complete definition as YAML — tool metadata, all
+natively-defined commands, options, and nature requirements. This serves
+three purposes:
+
+1. **Auto-discovery** — host tools call this to register nested commands
+2. **Inspection** — developers run it to understand a tool's full structure
+3. **Testing** — tests assert against the serialized definition
 
 ```dart
 // In commonOptions:
 OptionDefinition.flag(
   name: 'dump-definitions',
-  description: 'Output tool/command definitions as YAML for registration',
+  description: 'Dump complete tool definition as YAML (tool info + all commands)',
 ),
 ```
 
-**Intercepted early in ToolRunner, before any traversal:**
+**Behavior:**
+
+- Always dumps ALL natively-defined commands — no filtering, no positional args
+- Does NOT include commands added via tool wiring (those are the host's concern)
+- Includes full tool metadata (name, version, mode, features, natures)
+- Includes all command definitions with their options, aliases, natures
+- Includes global options (tool-specific ones, not the base common options)
+- Intercepted early in ToolRunner, before any traversal or wiring
 
 ```dart
 if (cliArgs.dumpDefinitions) {
-  final filter = cliArgs.positionalArgs; // optional command names
-  final yaml = ToolDefinitionSerializer.toYaml(
-    tool,
-    commandFilter: filter.isEmpty ? null : filter,
-  );
+  final yaml = ToolDefinitionSerializer.toYaml(tool);
   print(yaml);
   return ToolResult.success();
 }
 ```
 
-**Example output of `testkit --dump-definitions test`:**
+**Example output of `testkit --dump-definitions`:**
 
 ```yaml
 name: testkit
+version: 1.2.0
+description: Test result tracking for Dart projects
 mode: multi_command
+features:
+  project_traversal: true
+  git_traversal: false
+  recursive_scan: true
+  interactive_mode: true
+  dry_run: false
+  verbose: true
 required_natures: [dart_project]
+global_options:
+  - { name: tui, type: flag, description: "Run in TUI mode (interactive)" }
 commands:
   test:
     description: Run tests and add result column to the most recent baseline
+    aliases: [t]
     options:
       - { name: test-args, type: option, description: "Arguments forwarded to dart test" }
       - { name: fail-fast, type: flag, description: "Stop on first failure" }
@@ -304,22 +325,61 @@ commands:
     options:
       - { name: test-args, type: option, description: "Arguments forwarded to dart test" }
     works_with_natures: [dart_project]
+  status:
+    description: Show test status summary
+    aliases: [s]
+    works_with_natures: [dart_project]
+  # ... all other native commands ...
 ```
 
 **Example output of `astgen --dump-definitions`:**
 
 ```yaml
 name: astgen
+version: 0.5.0
+description: AST generator for Dart projects
 mode: single_command
+features:
+  project_traversal: true
+  git_traversal: false
+  recursive_scan: true
+  verbose: true
 required_natures: [dart_project]
+global_options: []
 options:
   - { name: output, type: option, description: "Output directory" }
   - { name: force, type: flag, description: "Overwrite existing files" }
 ```
 
+**Example output of `buildkit --dump-definitions`:**
+
+```yaml
+name: buildkit
+version: 3.1.0
+description: Pipeline-based build orchestration tool
+mode: multi_command
+features:
+  project_traversal: true
+  git_traversal: true
+  recursive_scan: true
+  dry_run: true
+  verbose: true
+required_natures: []
+global_options:
+  - { name: list, abbr: l, type: flag, description: "List available pipelines and commands" }
+  - { name: workspace-recursion, abbr: w, type: flag, description: "Shell out to sub-workspaces" }
+commands:
+  versioner:
+    description: Manage project versions
+    # ... all 40+ native commands ...
+  # NOTE: nested tool commands (e.g. :buildkittest) are NOT included.
+  # They exist only at runtime via wiring, not in the native definition.
+```
+
 The `ToolDefinitionSerializer` walks the existing `ToolDefinition` →
 `CommandDefinition` → `OptionDefinition` tree. All data is already there —
-no new metadata needed.
+no new metadata needed. The host tool parses the YAML response and picks
+out only the commands it needs based on its wiring configuration.
 
 ---
 
@@ -371,20 +431,22 @@ That's it. Everything else is auto-discovered.
 ### 5. Startup Flow: Auto-Discovery
 
 When ToolRunner loads wiring, it calls each nested tool's `--dump-definitions`
-to get the full registration data:
+to get the full tool definition, then picks out the commands it needs based
+on the wiring configuration:
 
 ```
 ToolRunner.run()
   1. Parse CLI args
   2. If --nested: skip wiring, run single-project → return
-  3. If --dump-definitions: serialize and print → return
+  3. If --dump-definitions: serialize full tool definition → return
   4. If tool.wiringFile != null:
      a. Resolve wiring file path (convention or explicit)
      b. Read nested_tools: section
      c. For each entry:
         - Verify binary exists (which/where)
-        - Run: <binary> --dump-definitions [command-names]
-        - Parse the YAML response
+        - Run: <binary> --dump-definitions
+        - Parse the full YAML response
+        - Extract only the commands listed in wiring config
         - Build CommandDefinition objects (using host names from wiring)
         - Build NestedToolExecutor instances
         - Register in command + executor maps
@@ -397,12 +459,16 @@ ToolRunner.run()
 1. Reads `buildkit_master.yaml` → finds `nested_tools:`
 2. Entry `testkit`:
    - `which testkit` → `/usr/local/bin/testkit` ✓
-   - Runs `testkit --dump-definitions test baseline`
-   - Gets back: command `test` has options `test-args`, `fail-fast`, `tags`;
-     requires `dart_project` nature
-   - Creates `CommandDefinition(name: 'buildkittest', ...)` with those options
-   - Creates `NestedToolExecutor(binary: 'testkit', nestedCommand: 'test', ...)`
-   - Registers `:buildkittest` as a buildkit command
+   - Runs `testkit --dump-definitions`
+   - Gets back: full testkit definition with all 12 commands
+   - Wiring says: `buildkittest: test`, `buildkitbaseline: baseline`
+   - Extracts command `test` → creates `CommandDefinition(name: 'buildkittest', ...)`
+     with test's options and natures
+   - Extracts command `baseline` → creates `CommandDefinition(name: 'buildkitbaseline', ...)`
+   - Verifies both commands exist in the dump (error if wiring references
+     a command that doesn't exist in the nested tool)
+   - Creates `NestedToolExecutor` instances for each
+   - Registers `:buildkittest` and `:buildkitbaseline` as buildkit commands
    - Same for `:buildkitbaseline`
 3. Entry `buildkitAstgen`:
    - `which astgen` → found ✓
@@ -595,10 +661,13 @@ nested_tools:
 $ buildkit -s . -r :buildkittest --test-args="--name parser"
 
 [startup] Loading wiring from buildkit_master.yaml...
-[startup] testkit --dump-definitions test baseline
+[startup] testkit --dump-definitions
+[startup]   Full dump received: 12 commands (test, baseline, runs, status, ...)
+[startup]   Wiring: buildkittest → test, buildkitbaseline → baseline
 [startup]   → :buildkittest registered (testkit :test, natures: [dart_project])
 [startup]   → :buildkitbaseline registered (testkit :baseline, natures: [dart_project])
 [startup] astgen --dump-definitions
+[startup]   Full dump received: standalone tool, 2 options
 [startup]   → :buildkitAstgen registered (astgen standalone, natures: [dart_project])
 [startup] Binary check: testkit ✓, astgen ✓
 [traversal] Scanning . recursively...
@@ -628,11 +697,18 @@ Error: Missing required tool binaries:
 #### Registration Workflow
 
 ```bash
-# See what testkit offers:
+# Inspect what testkit offers (full dump — all commands, all options):
 $ testkit --dump-definitions
 name: testkit
+version: 1.2.0
+description: Test result tracking for Dart projects
 mode: multi_command
+features:
+  project_traversal: true
+  ...
 required_natures: [dart_project]
+global_options:
+  - { name: tui, type: flag, description: "Run in TUI mode" }
 commands:
   test:
     description: Run tests and add result column to the most recent baseline
@@ -642,14 +718,19 @@ commands:
   baseline:
     description: Create a new baseline CSV file
     ...
+  status:
+    description: Show test status summary
+    ...
+  # ... all 12 native commands listed ...
 
-# Add to buildkit_master.yaml: just the wiring
+# Pick the commands you want and add wiring to buildkit_master.yaml:
 # nested_tools:
 #   testkit:
 #     binary: testkit
 #     mode: multi_command
 #     commands:
 #       buildkittest: test
+#       buildkitbaseline: baseline
 ```
 
 ---
