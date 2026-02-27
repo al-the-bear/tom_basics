@@ -294,6 +294,10 @@ const buildkitTool = ToolDefinition(
       binary: 'astgen',
       mode: WiringMode.standalone,
     ),
+    ToolWiringEntry(
+      binary: 'd4rtgen',
+      mode: WiringMode.standalone,
+    ),
   ],
 );
 ```
@@ -327,9 +331,9 @@ Future<ToolResult> run(List<String> args) async {
     return _runNestedMode(cliArgs);
   }
 
-  // Normal mode: load wiring (if wiringFile is set), then traverse
-  if (tool.wiringFile != null) {
-    _loadAndRegisterNestedTools(cliArgs);
+  // Normal mode: lazy wiring (see Section 5), then traverse
+  if (tool.hasWiring) {  // true if wiringFile != null OR defaultIncludes != null
+    _lazyWireNestedTools(cliArgs);
   }
 
   // ... proceed with normal traversal + dispatch ...
@@ -338,7 +342,7 @@ Future<ToolResult> run(List<String> args) async {
 
 When `--nested` is active:
 - ToolRunner skips its own traversal
-- ToolRunner skips wiring file loading (no nested-nested)
+- ToolRunner skips all wiring (both `defaultIncludes` and YAML)
 - The tool executes its command directly in the current working directory
 
 ---
@@ -567,7 +571,7 @@ ToolRunner.run()
 ```
 $ buildkit :compiler
 
-[startup] Merging wiring: 2 code defaults + 0 YAML overrides → 3 wired commands
+[startup] Merging wiring: 3 code defaults + 0 YAML overrides → 4 wired commands
 [startup] Commands requested: :compiler
 [startup] No nested tools needed — skipping all --dump-definitions calls
 [traversal] ...
@@ -578,10 +582,11 @@ $ buildkit :compiler
 ```
 $ buildkit -r :cleanup :buildkittest --test-args="--name parser"
 
-[startup] Merging wiring: 2 code defaults + 0 YAML overrides → 3 wired commands
+[startup] Merging wiring: 3 code defaults + 0 YAML overrides → 4 wired commands
 [startup] Commands requested: :cleanup, :buildkittest
 [startup] Need testkit (provides :buildkittest) — querying
 [startup] Skip astgen (no commands requested)
+[startup] Skip d4rtgen (no commands requested)
 [startup] testkit --dump-definitions → 12 commands received
 [startup] Wiring: buildkittest → test, buildkitbaseline → baseline
 [startup] Binary check: testkit ✓
@@ -593,10 +598,11 @@ $ buildkit -r :cleanup :buildkittest --test-args="--name parser"
 ```
 $ buildkit --help
 
-[startup] Merging wiring: 2 code defaults + 0 YAML overrides → 3 wired commands
+[startup] Merging wiring: 3 code defaults + 0 YAML overrides → 4 wired commands
 [startup] Help requested — attempting to wire all tools
 [startup] testkit --dump-definitions → 12 commands received
 [startup] astgen: binary not found — commands marked as unavailable
+[startup] d4rtgen --dump-definitions → standalone tool
 [help] ...
 ```
 
@@ -845,6 +851,7 @@ const buildkitTool = ToolDefinition(
     ToolWiringEntry(binary: 'testkit', mode: WiringMode.multiCommand,
         commands: {'buildkittest': 'test', 'buildkitbaseline': 'baseline'}),
     ToolWiringEntry(binary: 'astgen', mode: WiringMode.standalone),
+    ToolWiringEntry(binary: 'd4rtgen', mode: WiringMode.standalone),
   ],
   // ...
 );
@@ -869,10 +876,11 @@ nested_tools:
 ```
 $ buildkit -s . -r :buildkittest --test-args="--name parser"
 
-[startup] Merging wiring: 2 code defaults + 1 YAML override → 4 wired commands
+[startup] Merging wiring: 3 code defaults + 1 YAML override → 5 wired commands
 [startup] Commands requested: :buildkittest
 [startup] Need testkit (provides :buildkittest) — querying
 [startup] Skip astgen (no commands in current request)
+[startup] Skip d4rtgen (no commands in current request)
 [startup] testkit --dump-definitions
 [startup]   Full dump received: 12 commands
 [startup]   Wiring: buildkittest → test
@@ -907,14 +915,14 @@ Error: Missing required tool binaries:
 ```
 $ buildkit :compiler
 
-[startup] Merging wiring: 2 code defaults + 0 YAML overrides → 3 wired commands
+[startup] Merging wiring: 3 code defaults + 0 YAML overrides → 4 wired commands
 [startup] Commands requested: :compiler
 [startup] No nested tools needed — skipping all --dump-definitions calls
 [traversal] Scanning . recursively...
 ```
 
-No binary checks, no `--dump-definitions` calls. Works even if testkit
-and astgen haven't been compiled yet.
+No binary checks, no `--dump-definitions` calls. Works even if testkit,
+astgen and d4rtgen haven't been compiled yet.
 
 #### Help Display
 
@@ -924,6 +932,7 @@ $ buildkit --help
 [startup] Help requested — wiring all tools
 [startup] testkit --dump-definitions → 12 commands
 [startup] astgen: binary not found — marked as unavailable
+[startup] d4rtgen --dump-definitions → standalone tool
 
 buildkit 3.1.0 — Pipeline-based build orchestration tool
 
@@ -1023,7 +1032,12 @@ Future<ItemResult> _runBinary(
 
 All binary names in both code-level `defaultIncludes` and YAML `nested_tools:`
 are stored **without** platform extensions. The `.exe` suffix is appended
-automatically on Windows at every resolution point:
+automatically on Windows at every resolution point.
+
+Binaries are assumed to be on the system PATH. There is no custom lookup in
+`$HOME/.tom/bin/` or other tool-specific directories — if a binary needs to
+be found, the user is responsible for ensuring it is on the PATH (or in a
+directory that `where`/`which` can find).
 
 ```dart
 /// Resolve a platform-specific binary name.
@@ -1033,6 +1047,7 @@ automatically on Windows at every resolution point:
 String _resolveBinary(String binary) =>
     Platform.isWindows ? '$binary.exe' : binary;
 
+/// Check if a binary is available on the system PATH.
 bool _isBinaryOnPath(String binary) {
   try {
     final cmd = Platform.isWindows ? 'where' : 'which';
@@ -1044,10 +1059,8 @@ bool _isBinaryOnPath(String binary) {
 }
 ```
 
-Also checks `$HOME/.tom/bin/<platform>/` for Tom-specific tool binaries.
-
 **Resolution points** (all use `_resolveBinary`):
-- `validateNestedBinaries` — existence check
+- `validateNestedBinaries` — existence check via `which`/`where`
 - `_runBinary` — actual process execution
 - `--dump-definitions` calls during lazy wiring
 
@@ -1162,4 +1175,4 @@ all use platform-neutral names (`testkit`, not `testkit.exe`).
    sections (e.g., `d4rtgen:` in the project's `buildkit.yaml`). The host
    tool does not need to know about this — the nested tool handles its own
    config requirements. However, the nature filter from `--dump-definitions`
-   ensures buildikit only calls the nested tool on appropriate projects.
+   ensures buildkit only calls the nested tool on appropriate projects.
