@@ -220,6 +220,90 @@ file doesn't exist, there are simply no nested tools. It does NOT fall back to
 
 ---
 
+### 1b. `defaultIncludes` on ToolDefinition
+
+A tool can declare default nested tool wiring directly in code, without
+requiring a YAML file. This is useful when certain nested tools are always
+part of the tool's design.
+
+```dart
+/// Describes how a nested tool is wired into a host tool.
+///
+/// Binary names are platform-independent — `.exe` is appended
+/// automatically on Windows at resolution time.
+class ToolWiringEntry {
+  /// Binary name (without platform extension).
+  final String binary;
+
+  /// Whether this is a multi-command or standalone tool.
+  final WiringMode mode;
+
+  /// Command mapping: `{ hostName: nestedName }`.
+  /// Required for multi-command tools. Null/empty for standalone tools
+  /// (the host command name defaults to the binary name).
+  final Map<String, String>? commands;
+
+  const ToolWiringEntry({
+    required this.binary,
+    required this.mode,
+    this.commands,
+  });
+}
+
+enum WiringMode { multiCommand, standalone }
+```
+
+```dart
+class ToolDefinition {
+  // ... existing fields (including wiringFile) ...
+
+  /// Default nested tools wired into this tool at the code level.
+  ///
+  /// These are always included regardless of YAML configuration.
+  /// YAML `nested_tools:` entries are merged on top (YAML wins on conflict).
+  ///
+  /// - `null` (default): No code-level includes.
+  /// - `[ToolWiringEntry(...)]`: Explicit wiring entries.
+  final List<ToolWiringEntry>? defaultIncludes;
+
+  const ToolDefinition({
+    // ... existing parameters ...
+    this.wiringFile,
+    this.defaultIncludes,
+  });
+}
+```
+
+**Usage example:**
+
+```dart
+const buildkitTool = ToolDefinition(
+  name: 'buildkit',
+  // ...
+  wiringFile: ToolDefinition.kAutoWiringFile,
+  defaultIncludes: [
+    ToolWiringEntry(
+      binary: 'testkit',
+      mode: WiringMode.multiCommand,
+      commands: {
+        'buildkittest': 'test',
+        'buildkitbaseline': 'baseline',
+      },
+    ),
+    ToolWiringEntry(
+      binary: 'astgen',
+      mode: WiringMode.standalone,
+    ),
+  ],
+);
+```
+
+**Merge behavior:** When both `defaultIncludes` and YAML `nested_tools:`
+define wiring for the same binary, the YAML entry takes precedence. This
+allows overriding code-level defaults in the workspace configuration.
+
+---
+
 ### 2. `--nested` Flag in commonOptions
 
 Added to `commonOptions` in tom_build_base so every tool understands it:
@@ -420,7 +504,7 @@ nested_tools:
 
 | Field | Required | Values | Purpose |
 |-------|----------|--------|---------|
-| `binary` | Yes | String | Executable name on PATH |
+| `binary` | Yes | String | Executable name (no `.exe` — added automatically on Windows) |
 | `mode` | Yes | `multi_command` / `standalone` | Whether tool has sub-commands |
 | `commands` | If multi_command | Map of `host_name: nested_name` | Command mapping with renames |
 
@@ -428,55 +512,93 @@ That's it. Everything else is auto-discovered.
 
 ---
 
-### 5. Startup Flow: Auto-Discovery
+### 5. Startup Flow: Lazy Wiring
 
-When ToolRunner loads wiring, it calls each nested tool's `--dump-definitions`
-to get the full tool definition, then picks out the commands it needs based
-on the wiring configuration:
+Wiring is **demand-driven** — the host tool only queries nested tools that are
+actually needed for the current invocation. This ensures:
+
+- **No startup failures** when workspace binaries haven't been built yet
+  (e.g., `buildkit :compiler` works even if testkit doesn't exist)
+- **No unnecessary `--dump-definitions` calls** for tools not involved
+  in the current command
+
+#### Wiring Sources
+
+The effective wiring is assembled from two sources:
+
+1. **Code-level:** `tool.defaultIncludes` (if any)
+2. **File-level:** `nested_tools:` from the resolved `wiringFile` (if file exists)
+
+YAML entries override code entries when both define wiring for the same binary.
+
+#### Flow
 
 ```
 ToolRunner.run()
-  1. Parse CLI args
+  1. Parse CLI args → determine requested commands
   2. If --nested: skip wiring, run single-project → return
   3. If --dump-definitions: serialize full tool definition → return
-  4. If tool.wiringFile != null:
-     a. Resolve wiring file path (convention or explicit)
-     b. Read nested_tools: section
-     c. For each entry:
-        - Verify binary exists (which/where)
-        - Run: <binary> --dump-definitions
-        - Parse the full YAML response
-        - Extract only the commands listed in wiring config
-        - Build CommandDefinition objects (using host names from wiring)
-        - Build NestedToolExecutor instances
-        - Register in command + executor maps
-  5. Validate all nested binaries are available for requested commands
-  6. Proceed with normal traversal + dispatch
+  4. Merge wiring sources:
+     a. Start with tool.defaultIncludes (code-level)
+     b. Overlay nested_tools: from wiringFile (file-level, wins on conflict)
+     c. Build command → wiring lookup (which entry owns which host command)
+  5. Determine which nested tools are needed:
+     - Normal invocation: only tools providing commands in the request
+     - Help/list mode: ALL wired tools are candidates
+  6. For each needed tool:
+     a. Resolve platform-aware binary name (append .exe on Windows)
+     b. Check binary exists (which/where)
+        - Help mode: skip missing binaries, mark commands as unavailable
+        - Execution mode: fail immediately if binary is missing
+     c. Run: <binary> --dump-definitions
+     d. Parse full YAML response
+     e. Extract commands listed in the wiring config
+     f. Verify all wired commands exist in the dump
+     g. Build CommandDefinition objects (host names, descriptions from dump)
+     h. Build NestedToolExecutor instances
+     i. Register in command + executor maps
+  7. Proceed with normal traversal + dispatch (or help display)
 ```
 
-**Concrete example: buildkit startup with the YAML above:**
+#### Examples
 
-1. Reads `buildkit_master.yaml` → finds `nested_tools:`
-2. Entry `testkit`:
-   - `which testkit` → `/usr/local/bin/testkit` ✓
-   - Runs `testkit --dump-definitions`
-   - Gets back: full testkit definition with all 12 commands
-   - Wiring says: `buildkittest: test`, `buildkitbaseline: baseline`
-   - Extracts command `test` → creates `CommandDefinition(name: 'buildkittest', ...)`
-     with test's options and natures
-   - Extracts command `baseline` → creates `CommandDefinition(name: 'buildkitbaseline', ...)`
-   - Verifies both commands exist in the dump (error if wiring references
-     a command that doesn't exist in the nested tool)
-   - Creates `NestedToolExecutor` instances for each
-   - Registers `:buildkittest` and `:buildkitbaseline` as buildkit commands
-   - Same for `:buildkitbaseline`
-3. Entry `buildkitAstgen`:
-   - `which astgen` → found ✓
-   - Runs `astgen --dump-definitions`
-   - Gets back: standalone tool, options `output`, `force`; requires `dart_project`
-   - Creates `CommandDefinition(name: 'buildkitAstgen', ...)` with those options
-   - Creates `NestedToolExecutor(binary: 'astgen', mode: standalone, ...)`
-   - Registers `:buildkitAstgen` as a buildkit command
+**Only native commands — no nested tools queried:**
+
+```
+$ buildkit :compiler
+
+[startup] Merging wiring: 2 code defaults + 0 YAML overrides → 3 wired commands
+[startup] Commands requested: :compiler
+[startup] No nested tools needed — skipping all --dump-definitions calls
+[traversal] ...
+```
+
+**Mixed native + nested — only the needed tool is queried:**
+
+```
+$ buildkit -r :cleanup :buildkittest --test-args="--name parser"
+
+[startup] Merging wiring: 2 code defaults + 0 YAML overrides → 3 wired commands
+[startup] Commands requested: :cleanup, :buildkittest
+[startup] Need testkit (provides :buildkittest) — querying
+[startup] Skip astgen (no commands requested)
+[startup] testkit --dump-definitions → 12 commands received
+[startup] Wiring: buildkittest → test, buildkitbaseline → baseline
+[startup] Binary check: testkit ✓
+[traversal] ...
+```
+
+**Help mode — all tools queried, missing binaries tolerated:**
+
+```
+$ buildkit --help
+
+[startup] Merging wiring: 2 code defaults + 0 YAML overrides → 3 wired commands
+[startup] Help requested — attempting to wire all tools
+[startup] testkit --dump-definitions → 12 commands received
+[startup] astgen: binary not found — commands marked as unavailable
+[help] ...
+```
 
 ---
 
@@ -553,7 +675,67 @@ testkit --nested --verbose :test --test-args="--name parser"
 
 ---
 
-### 7. NestedToolExecutor
+### 7. Help Integration
+
+Wired commands appear in the host tool's help output alongside native commands.
+When a user asks for detailed help on a wired command, the host tool delegates
+to the nested tool.
+
+#### Command list in `--help`
+
+The general help output includes wired commands with descriptions obtained
+from `--dump-definitions`. Commands are grouped by source:
+
+```
+Available commands:
+  :cleanup          Cleanup build artifacts
+  :versioner        Manage project versions
+  :compiler         Compile project
+  ... (native commands)
+
+  Nested commands:
+  :buildkittest     Run tests and add result column (via testkit)
+  :buildkitbaseline Create a new baseline CSV file (via testkit)
+  :buildkitAstgen   AST generator for Dart projects (via astgen)
+```
+
+If a binary is not found during help (lazy wiring tolerates this):
+
+```
+  :buildkitAstgen   [astgen not found — run buildkit :compiler first]
+```
+
+Descriptions come from the `--dump-definitions` output — specifically the
+command's `description` field for multi-command tools, or the tool's
+`description` field for standalone tools.
+
+#### Detailed help: `<tool> help <command>`
+
+When the user requests detailed help for a wired command, the host tool
+delegates to the nested tool's own help system:
+
+```bash
+# For multi-command nested tools:
+buildkit help buildkittest
+# → Calls: testkit --nested help test
+# Shows testkit's native help for the :test command
+
+# For standalone nested tools:
+buildkit help buildkitAstgen
+# → Calls: astgen --nested --help
+# Shows astgen's full help output
+```
+
+If the nested binary is not available:
+
+```
+Command :buildkitAstgen is provided by "astgen" (not found on PATH).
+Build the binary first, then run: astgen --help
+```
+
+---
+
+### 8. NestedToolExecutor
 
 A single generic `CommandExecutor` subclass handles both standalone and
 multi-command nested tools:
@@ -598,23 +780,35 @@ class NestedToolExecutor extends CommandExecutor {
 
 ---
 
-### 8. Binary Pre-Check
+### 9. Binary Pre-Check
 
-Before executing any command, ToolRunner validates that all nested binaries
-required by the **requested** commands are available:
+Binary validation is integrated into the lazy wiring flow (step 6b in
+Section 5). Only binaries for **requested** commands are checked — and
+in help mode, missing binaries are tolerated:
 
 ```dart
+/// Resolve platform-aware binary name.
+String _resolveBinary(String binary) =>
+    Platform.isWindows ? '$binary.exe' : binary;
+
 /// Check that nested tool binaries are available for requested commands.
 ///
 /// Only checks binaries for commands that will actually be invoked.
 /// Running `buildkit :cleanup :versioner` does not require testkit.
-List<String> validateNestedBinaries({required Set<String> requestedCommands}) {
+///
+/// In help mode, [tolerateMissing] is true — missing binaries are
+/// returned as warnings rather than errors.
+List<String> validateNestedBinaries({
+  required Set<String> requestedCommands,
+  bool tolerateMissing = false,
+}) {
   final missing = <String>[];
   for (final cmdName in requestedCommands) {
     final executor = executors[cmdName];
     if (executor is NestedToolExecutor) {
-      if (!_isBinaryOnPath(executor.binary)) {
-        missing.add(':$cmdName requires "${executor.binary}" — not found');
+      final resolved = _resolveBinary(executor.binary);
+      if (!_isBinaryOnPath(resolved)) {
+        missing.add(':$cmdName requires "$resolved" — not found');
       }
     }
   }
@@ -623,11 +817,12 @@ List<String> validateNestedBinaries({required Set<String> requestedCommands}) {
 ```
 
 ```dart
-// In ToolRunner.run(), after wiring but before traversal:
+// In ToolRunner.run(), after lazy wiring but before traversal:
 final missingBinaries = validateNestedBinaries(
   requestedCommands: cliArgs.commands.toSet(),
+  tolerateMissing: cliArgs.isHelpMode,
 );
-if (missingBinaries.isNotEmpty) {
+if (!cliArgs.isHelpMode && missingBinaries.isNotEmpty) {
   output.writeln('Error: Missing required tool binaries:');
   for (final msg in missingBinaries) {
     output.writeln('  - $msg');
@@ -638,11 +833,27 @@ if (missingBinaries.isNotEmpty) {
 
 ---
 
-### 9. Concrete Example: Full Lifecycle
+### 10. Concrete Example: Full Lifecycle
 
-#### Wiring in `buildkit_master.yaml`
+#### Code-Level Defaults (from `buildkitTool`)
+
+```dart
+const buildkitTool = ToolDefinition(
+  name: 'buildkit',
+  wiringFile: ToolDefinition.kAutoWiringFile,
+  defaultIncludes: [
+    ToolWiringEntry(binary: 'testkit', mode: WiringMode.multiCommand,
+        commands: {'buildkittest': 'test', 'buildkitbaseline': 'baseline'}),
+    ToolWiringEntry(binary: 'astgen', mode: WiringMode.standalone),
+  ],
+  // ...
+);
+```
+
+#### Optional YAML Override in `buildkit_master.yaml`
 
 ```yaml
+# Only needed if overriding or extending code-level defaults
 nested_tools:
   testkit:
     binary: testkit
@@ -650,26 +861,23 @@ nested_tools:
     commands:
       buildkittest: test
       buildkitbaseline: baseline
-  buildkitAstgen:
-    binary: astgen
-    mode: standalone
+      buildkitstatus: status     # additional command not in code defaults
 ```
 
-#### Startup
+#### Startup (lazy — only needed tools queried)
 
 ```
 $ buildkit -s . -r :buildkittest --test-args="--name parser"
 
-[startup] Loading wiring from buildkit_master.yaml...
+[startup] Merging wiring: 2 code defaults + 1 YAML override → 4 wired commands
+[startup] Commands requested: :buildkittest
+[startup] Need testkit (provides :buildkittest) — querying
+[startup] Skip astgen (no commands in current request)
 [startup] testkit --dump-definitions
-[startup]   Full dump received: 12 commands (test, baseline, runs, status, ...)
-[startup]   Wiring: buildkittest → test, buildkitbaseline → baseline
+[startup]   Full dump received: 12 commands
+[startup]   Wiring: buildkittest → test
 [startup]   → :buildkittest registered (testkit :test, natures: [dart_project])
-[startup]   → :buildkitbaseline registered (testkit :baseline, natures: [dart_project])
-[startup] astgen --dump-definitions
-[startup]   Full dump received: standalone tool, 2 options
-[startup]   → :buildkitAstgen registered (astgen standalone, natures: [dart_project])
-[startup] Binary check: testkit ✓, astgen ✓
+[startup] Binary check: testkit ✓
 [traversal] Scanning . recursively...
 ```
 
@@ -692,6 +900,45 @@ $ buildkit :buildkittest :cleanup
 
 Error: Missing required tool binaries:
   - :buildkittest requires "testkit" — not found
+```
+
+#### Native-Only Invocation (no nested tools needed)
+
+```
+$ buildkit :compiler
+
+[startup] Merging wiring: 2 code defaults + 0 YAML overrides → 3 wired commands
+[startup] Commands requested: :compiler
+[startup] No nested tools needed — skipping all --dump-definitions calls
+[traversal] Scanning . recursively...
+```
+
+No binary checks, no `--dump-definitions` calls. Works even if testkit
+and astgen haven't been compiled yet.
+
+#### Help Display
+
+```
+$ buildkit --help
+
+[startup] Help requested — wiring all tools
+[startup] testkit --dump-definitions → 12 commands
+[startup] astgen: binary not found — marked as unavailable
+
+buildkit 3.1.0 — Pipeline-based build orchestration tool
+
+Usage: buildkit [options] :command [command-options]
+
+Commands:
+  :cleanup          Cleanup build artifacts
+  :versioner        Manage project versions
+  :compiler         Compile project
+  ... (native commands)
+
+  Nested commands:
+  :buildkittest     Run tests and add result column (via testkit)
+  :buildkitbaseline Create a new baseline CSV file (via testkit)
+  :buildkitAstgen   [astgen not found — run buildkit :compiler first]
 ```
 
 #### Registration Workflow
@@ -735,7 +982,9 @@ commands:
 
 ---
 
-### 10. `_runBinary` Helper
+### 11. `_runBinary` Helper
+
+Binary names are resolved to their platform-specific form before execution:
 
 ```dart
 Future<ItemResult> _runBinary(
@@ -743,8 +992,9 @@ Future<ItemResult> _runBinary(
   List<String> args,
   String workingDirectory,
 ) async {
+  final resolved = _resolveBinary(binary);
   final result = await Process.run(
-    binary,
+    resolved,
     args,
     workingDirectory: workingDirectory,
     runInShell: Platform.isWindows,
@@ -761,7 +1011,7 @@ Future<ItemResult> _runBinary(
   } else {
     return ItemResult.failure(
       path: workingDirectory,
-      message: '$binary exited with code ${result.exitCode}',
+      message: '$resolved exited with code ${result.exitCode}',
     );
   }
 }
@@ -769,9 +1019,20 @@ Future<ItemResult> _runBinary(
 
 ---
 
-### 11. Binary Path Resolution
+### 12. Binary Path Resolution and Platform Awareness
+
+All binary names in both code-level `defaultIncludes` and YAML `nested_tools:`
+are stored **without** platform extensions. The `.exe` suffix is appended
+automatically on Windows at every resolution point:
 
 ```dart
+/// Resolve a platform-specific binary name.
+///
+/// On Windows, appends `.exe` to the binary name.
+/// On macOS/Linux, returns the name unchanged.
+String _resolveBinary(String binary) =>
+    Platform.isWindows ? '$binary.exe' : binary;
+
 bool _isBinaryOnPath(String binary) {
   try {
     final cmd = Platform.isWindows ? 'where' : 'which';
@@ -784,6 +1045,14 @@ bool _isBinaryOnPath(String binary) {
 ```
 
 Also checks `$HOME/.tom/bin/<platform>/` for Tom-specific tool binaries.
+
+**Resolution points** (all use `_resolveBinary`):
+- `validateNestedBinaries` — existence check
+- `_runBinary` — actual process execution
+- `--dump-definitions` calls during lazy wiring
+
+This means wiring YAML, `ToolWiringEntry.binary`, and serialized definitions
+all use platform-neutral names (`testkit`, not `testkit.exe`).
 
 ---
 
@@ -799,63 +1068,74 @@ Also checks `$HOME/.tom/bin/<platform>/` for Tom-specific tool binaries.
 ### Phase 2: Core Infrastructure (Part B — tom_build_base)
 
 1. Add `wiringFile` field to `ToolDefinition`
-2. Add `--nested` flag to `commonOptions`
-3. Add `--dump-definitions` flag to `commonOptions`
-4. Implement `ToolDefinitionSerializer` (walks definition tree → YAML)
-5. Implement `NestedToolExecutor` class
-6. Implement wiring loader (reads YAML, calls `--dump-definitions`, registers)
-7. Add `validateNestedBinaries` to `ToolRunner`
-8. Wire into `ToolRunner.run()` flow (nested bypass, dump bypass, wiring load)
-9. Add `_runBinary` and `_isBinaryOnPath` helpers
-10. Add tests (mock binary execution)
-11. Publish `tom_build_base`
+2. Add `defaultIncludes` field and `ToolWiringEntry` class
+3. Add `--nested` flag to `commonOptions`
+4. Add `--dump-definitions` flag to `commonOptions`
+5. Implement `ToolDefinitionSerializer` (walks definition tree → YAML)
+6. Implement `NestedToolExecutor` class
+7. Implement lazy wiring loader (merges code + YAML, demand-driven `--dump-definitions`)
+8. Add `_resolveBinary` platform helper (`.exe` on Windows)
+9. Add `validateNestedBinaries` to `ToolRunner` (with help-mode tolerance)
+10. Implement help integration (command list with descriptions, `help <cmd>` delegation)
+11. Wire into `ToolRunner.run()` flow (nested bypass, dump bypass, lazy wiring, help)
+12. Add `_runBinary` and `_isBinaryOnPath` helpers
+13. Add tests (mock binary execution, platform resolution, help delegation)
+14. Publish `tom_build_base`
 
 ### Phase 3: Buildkit Integration (consuming)
 
 1. Set `wiringFile: ToolDefinition.kAutoWiringFile` on `buildkitTool`
-2. Add `nested_tools:` section to workspace `buildkit_master.yaml`
-3. Test end-to-end: `buildkit :buildkittest`, `buildkit :buildkitAstgen`
+2. Set `defaultIncludes: [...]` for testkit, astgen, d4rtgen
+3. Add `nested_tools:` section to workspace `buildkit_master.yaml`
+4. Test end-to-end: `buildkit :buildkittest`, `buildkit :buildkitAstgen`
+5. Test lazy behavior: `buildkit :compiler` with missing nested binaries
+6. Test help: `buildkit --help`, `buildkit help buildkittest`
 
 ---
 
 ## Architecture Summary
 
 ```
-                    ┌─────────────────────────────────┐
-                    │         tom_build_base           │
-                    │                                  │
-                    │  ToolDefinition                  │
-                    │    + wiringFile: String?          │
-                    │    + copyWith(...)                │
-                    │                                  │
-                    │  commonOptions                   │
-                    │    + --nested                    │
-                    │    + --dump-definitions           │
-                    │                                  │
-                    │  ToolRunner                       │
-                    │    + wiring loader               │
-                    │    + nested mode bypass           │
-                    │    + dump-definitions bypass      │
-                    │    + validateNestedBinaries()     │
-                    │                                  │
-                    │  NestedToolExecutor               │
-                    │  ToolDefinitionSerializer         │
-                    └──────────────┬──────────────────┘
-                                   │
-              ┌────────────────────┼────────────────────┐
-              │                    │                     │
-    ┌─────────▼────────┐  ┌───────▼────────┐  ┌────────▼───────┐
-    │     buildkit      │  │    testkit     │  │    d4rtgen     │
-    │                   │  │               │  │               │
-    │ wiringFile: ''    │  │ wiringFile:   │  │ wiringFile:   │
-    │ (auto →           │  │   null        │  │   null        │
-    │  buildkit_master) │  │ (no hosting)  │  │ (no hosting)  │
-    │                   │  │               │  │               │
-    │ Reads YAML:       │  │ Responds to:  │  │ Responds to:  │
-    │  nested_tools:    │  │ --dump-defs   │  │ --dump-defs   │
-    │   testkit: ...    │  │ --nested      │  │ --nested      │
-    │   astgen: ...     │  │               │  │               │
-    └───────────────────┘  └───────────────┘  └───────────────┘
+                    ┌──────────────────────────────────────┐
+                    │            tom_build_base             │
+                    │                                      │
+                    │  ToolDefinition                      │
+                    │    + wiringFile: String?              │
+                    │    + defaultIncludes: [WiringEntry]?  │
+                    │    + copyWith(...)                    │
+                    │                                      │
+                    │  ToolWiringEntry                      │
+                    │    binary, mode, commands             │
+                    │                                      │
+                    │  commonOptions                       │
+                    │    + --nested                        │
+                    │    + --dump-definitions               │
+                    │                                      │
+                    │  ToolRunner                           │
+                    │    + lazy wiring (demand-driven)      │
+                    │    + nested mode bypass               │
+                    │    + dump-definitions bypass          │
+                    │    + help integration                 │
+                    │    + validateNestedBinaries()         │
+                    │    + _resolveBinary() (platform)      │
+                    │                                      │
+                    │  NestedToolExecutor                   │
+                    │  ToolDefinitionSerializer             │
+                    └────────────────┬─────────────────────┘
+                                     │
+              ┌──────────────────────┼──────────────────────┐
+              │                      │                      │
+    ┌─────────▼────────┐  ┌─────────▼────────┐  ┌──────────▼───────┐
+    │     buildkit      │  │     testkit      │  │     d4rtgen      │
+    │                   │  │                  │  │                  │
+    │ wiringFile: ''    │  │ wiringFile: null  │  │ wiringFile: null │
+    │ defaultIncludes:  │  │ (no hosting)     │  │ (no hosting)     │
+    │   [testkit,       │  │                  │  │                  │
+    │    astgen,        │  │ Responds to:     │  │ Responds to:     │
+    │    d4rtgen]       │  │ --dump-defs      │  │ --dump-defs      │
+    │                   │  │ --nested         │  │ --nested         │
+    │ + YAML overrides  │  │                  │  │                  │
+    └───────────────────┘  └──────────────────┘  └──────────────────┘
 ```
 
 ---
