@@ -146,7 +146,7 @@ final runner = ToolRunner(tool: superTool, executors: executors);
 
 ---
 
-## Part B: Nested Tool Execution (Embed External Binaries)
+## Part B: Nested Tool Execution (Declarative Wiring)
 
 ### Use Case
 
@@ -155,135 +155,400 @@ The external tool is **not** a code-level dependency — it's a compiled binary
 on the PATH.
 
 **Example:** `buildkit :test` should shell out to `testkit :test`, forwarding
-relevant global and command-specific options.
+relevant command-specific options. Buildkit handles traversal; testkit executes
+in the project folder.
 
-### Two Cases
+### Design Principles
 
-#### Case 1: Embedding a Single-Command Tool
+1. **Wiring-only YAML** — The host tool's master YAML declares *how* to wire
+   nested tools (binary name, command mapping, renames). No option definitions,
+   no nature filters — those come from the nested tool itself.
+2. **Auto-discovery via `--dump-definitions`** — Every tom_build_base tool can
+   self-describe its commands, options, and nature requirements. The host tool
+   queries this at startup to auto-configure.
+3. **`--nested` flag** — Tells a nested tool to skip traversal and run in
+   single-project mode. Prevents nested-nested recursion.
+4. **No fallback** — Each tool's wiring file is independent. `buildkit_master.yaml`
+   is for buildkit only; `testkit_master.yaml` is for testkit only. No cross-tool
+   fallback.
 
-External tool has no commands — it's invoked as `d4rtgen [options]`.
+---
 
-**Syntax in host tool:** `buildkit :d4rtgen` → shells out to `d4rtgen [forwarded-options]`
+### 1. `wiringFile` on ToolDefinition
 
-#### Case 2: Embedding a Multi-Command Tool
-
-External tool has its own commands — it's invoked as `testkit :test [options]`.
-
-**Syntax in host tool:** `buildkit :test` → shells out to `testkit :test [forwarded-options]`
-
-### Design: Wrapper Executors
-
-Two new `CommandExecutor` subclasses in `tom_build_base`:
-
-#### `NestedStandaloneExecutor`
-
-For embedding a single-command tool (no sub-commands).
+A new field on `ToolDefinition` declares whether a tool supports hosting
+nested tools, and which file contains the wiring configuration.
 
 ```dart
-/// Executor that delegates to an external single-command tool binary.
+class ToolDefinition {
+  // ... existing fields ...
+
+  /// File that contains nested tool wiring configuration.
+  ///
+  /// - `null` (default): Tool does not host nested tools.
+  ///   Most tools use this (d4rtgen, astgen, findproject).
+  /// - `''` (empty / [kAutoWiringFile]): Convention-based discovery.
+  ///   Looks for `{toolname}_master.yaml` in the workspace root.
+  ///   Example: buildkit → `buildkit_master.yaml`.
+  /// - `'testkit_master.yaml'`: Explicit filename.
+  ///   Looks for this exact file in the workspace root.
+  ///
+  /// Ignored when `--nested` is active (no nested-nested).
+  final String? wiringFile;
+
+  /// Sentinel value for convention-based wiring file discovery.
+  static const kAutoWiringFile = '';
+
+  const ToolDefinition({
+    // ... existing parameters ...
+    this.wiringFile,
+  });
+}
+```
+
+**Semantics:**
+
+| `wiringFile` value | Meaning | Example tool |
+|---|---|---|
+| `null` (default) | No nested tool hosting | d4rtgen, astgen, findproject |
+| `''` (`kAutoWiringFile`) | Convention: `{toolname}_master.yaml` | buildkit |
+| `'testkit_master.yaml'` | Explicit custom file | testkit (if it hosts d4rtgen) |
+
+**No fallback.** If `wiringFile` resolves to `testkit_master.yaml` and that
+file doesn't exist, there are simply no nested tools. It does NOT fall back to
+`buildkit_master.yaml`.
+
+---
+
+### 2. `--nested` Flag in commonOptions
+
+Added to `commonOptions` in tom_build_base so every tool understands it:
+
+```dart
+// In commonOptions:
+OptionDefinition.flag(
+  name: 'nested',
+  description: 'Run in nested mode (skip traversal, single-project)',
+),
+```
+
+**Effect in ToolRunner:**
+
+```dart
+Future<ToolResult> run(List<String> args) async {
+  final cliArgs = parser.parse(args);
+
+  // Nested mode: skip traversal, skip wiring, execute in cwd only
+  if (cliArgs.nested) {
+    return _runNestedMode(cliArgs);
+  }
+
+  // Normal mode: load wiring (if wiringFile is set), then traverse
+  if (tool.wiringFile != null) {
+    _loadAndRegisterNestedTools(cliArgs);
+  }
+
+  // ... proceed with normal traversal + dispatch ...
+}
+```
+
+When `--nested` is active:
+- ToolRunner skips its own traversal
+- ToolRunner skips wiring file loading (no nested-nested)
+- The tool executes its command directly in the current working directory
+
+---
+
+### 3. `--dump-definitions` Flag in commonOptions
+
+Every tool can self-describe its commands, options, and nature requirements:
+
+```dart
+// In commonOptions:
+OptionDefinition.flag(
+  name: 'dump-definitions',
+  description: 'Output tool/command definitions as YAML for registration',
+),
+```
+
+**Intercepted early in ToolRunner, before any traversal:**
+
+```dart
+if (cliArgs.dumpDefinitions) {
+  final filter = cliArgs.positionalArgs; // optional command names
+  final yaml = ToolDefinitionSerializer.toYaml(
+    tool,
+    commandFilter: filter.isEmpty ? null : filter,
+  );
+  print(yaml);
+  return ToolResult.success();
+}
+```
+
+**Example output of `testkit --dump-definitions test`:**
+
+```yaml
+name: testkit
+mode: multi_command
+required_natures: [dart_project]
+commands:
+  test:
+    description: Run tests and add result column to the most recent baseline
+    options:
+      - { name: test-args, type: option, description: "Arguments forwarded to dart test" }
+      - { name: fail-fast, type: flag, description: "Stop on first failure" }
+      - { name: tags, type: multi, description: "Test tags to include" }
+    works_with_natures: [dart_project]
+  baseline:
+    description: Create a new baseline CSV file with current test results
+    options:
+      - { name: test-args, type: option, description: "Arguments forwarded to dart test" }
+    works_with_natures: [dart_project]
+```
+
+**Example output of `astgen --dump-definitions`:**
+
+```yaml
+name: astgen
+mode: single_command
+required_natures: [dart_project]
+options:
+  - { name: output, type: option, description: "Output directory" }
+  - { name: force, type: flag, description: "Overwrite existing files" }
+```
+
+The `ToolDefinitionSerializer` walks the existing `ToolDefinition` →
+`CommandDefinition` → `OptionDefinition` tree. All data is already there —
+no new metadata needed.
+
+---
+
+### 4. Wiring YAML in `{tool}_master.yaml`
+
+The wiring section is **purely about mapping** — which binary, which commands,
+what to rename. No option definitions, no nature filters.
+
+**Example in `buildkit_master.yaml`:**
+
+```yaml
+# Existing buildkit config (navigation, pipelines, etc.)
+navigation:
+  recursive: true
+  exclude-projects: [zom_*]
+
+buildkit:
+  pipelines:
+    build: [cleanup, versioner, runner, compiler]
+
+# NEW: nested tool wiring
+nested_tools:
+  testkit:
+    binary: testkit
+    mode: multi_command
+    commands:
+      buildkittest: test       # :buildkittest in buildkit → :test in testkit
+      buildkitbaseline: baseline  # :buildkitbaseline → :baseline in testkit
+  buildkitAstgen:
+    binary: astgen
+    mode: standalone           # single-command tool, no :commands
+  buildkitD4rtgen:
+    binary: d4rtgen
+    mode: standalone
+```
+
+**YAML structure per entry:**
+
+| Field | Required | Values | Purpose |
+|-------|----------|--------|---------|
+| `binary` | Yes | String | Executable name on PATH |
+| `mode` | Yes | `multi_command` / `standalone` | Whether tool has sub-commands |
+| `commands` | If multi_command | Map of `host_name: nested_name` | Command mapping with renames |
+
+That's it. Everything else is auto-discovered.
+
+---
+
+### 5. Startup Flow: Auto-Discovery
+
+When ToolRunner loads wiring, it calls each nested tool's `--dump-definitions`
+to get the full registration data:
+
+```
+ToolRunner.run()
+  1. Parse CLI args
+  2. If --nested: skip wiring, run single-project → return
+  3. If --dump-definitions: serialize and print → return
+  4. If tool.wiringFile != null:
+     a. Resolve wiring file path (convention or explicit)
+     b. Read nested_tools: section
+     c. For each entry:
+        - Verify binary exists (which/where)
+        - Run: <binary> --dump-definitions [command-names]
+        - Parse the YAML response
+        - Build CommandDefinition objects (using host names from wiring)
+        - Build NestedToolExecutor instances
+        - Register in command + executor maps
+  5. Validate all nested binaries are available for requested commands
+  6. Proceed with normal traversal + dispatch
+```
+
+**Concrete example: buildkit startup with the YAML above:**
+
+1. Reads `buildkit_master.yaml` → finds `nested_tools:`
+2. Entry `testkit`:
+   - `which testkit` → `/usr/local/bin/testkit` ✓
+   - Runs `testkit --dump-definitions test baseline`
+   - Gets back: command `test` has options `test-args`, `fail-fast`, `tags`;
+     requires `dart_project` nature
+   - Creates `CommandDefinition(name: 'buildkittest', ...)` with those options
+   - Creates `NestedToolExecutor(binary: 'testkit', nestedCommand: 'test', ...)`
+   - Registers `:buildkittest` as a buildkit command
+   - Same for `:buildkitbaseline`
+3. Entry `buildkitAstgen`:
+   - `which astgen` → found ✓
+   - Runs `astgen --dump-definitions`
+   - Gets back: standalone tool, options `output`, `force`; requires `dart_project`
+   - Creates `CommandDefinition(name: 'buildkitAstgen', ...)` with those options
+   - Creates `NestedToolExecutor(binary: 'astgen', mode: standalone, ...)`
+   - Registers `:buildkitAstgen` as a buildkit command
+
+---
+
+### 6. Option Forwarding
+
+When a nested command is invoked per-project, the host tool forwards only:
+
+- **Command-specific options** — as parsed by the host tool under the host
+  command name. These map 1:1 to the nested tool's command options (auto-
+  discovered from `--dump-definitions`).
+- **Behavioral global options** — `--verbose` and `--dry-run` only. These are
+  universal across all tom_build_base tools.
+- **`--nested`** — always added, to tell the nested tool to skip traversal.
+
+**NOT forwarded:**
+
+- Traversal options (`-s`, `-r`, `-R`, `-b`, `-p`, `--modules`, etc.) — the
+  host tool owns traversal.
+- Host-specific global options (`--list`, `--workspace-recursion`, `--tui`) —
+  meaningless to the nested tool.
+
+```dart
+/// Build CLI args for the nested tool invocation.
+List<String> _buildNestedArgs({
+  required CliArgs hostArgs,
+  required String hostCommandName,
+  required String nestedCommand,  // null for standalone
+  required bool isStandalone,
+}) {
+  final args = <String>['--nested'];
+
+  // Forward behavioral globals
+  if (hostArgs.verbose) args.add('--verbose');
+  if (hostArgs.dryRun) args.add('--dry-run');
+
+  // For multi-command tools, add the nested command
+  if (!isStandalone) {
+    args.add(':$nestedCommand');
+  }
+
+  // Forward command-specific options
+  final perCmd = hostArgs.commandArgs[hostCommandName];
+  if (perCmd != null) {
+    for (final entry in perCmd.options.entries) {
+      final name = entry.key;
+      final value = entry.value;
+      if (value == true) {
+        args.add('--$name');
+      } else if (value is String && value.isNotEmpty) {
+        args.addAll(['--$name', value]);
+      } else if (value is List) {
+        for (final v in value) {
+          args.addAll(['--$name', v.toString()]);
+        }
+      }
+    }
+  }
+
+  return args;
+}
+```
+
+**Example invocation chain:**
+
+```bash
+# User runs:
+buildkit -s . -r -v :buildkittest --test-args="--name parser"
+
+# Buildkit traverses projects, for each Dart project calls:
+testkit --nested --verbose :test --test-args="--name parser"
+
+# testkit sees --nested, skips traversal, runs :test in cwd
+```
+
+---
+
+### 7. NestedToolExecutor
+
+A single generic `CommandExecutor` subclass handles both standalone and
+multi-command nested tools:
+
+```dart
+/// Executor that delegates to an external tool binary.
 ///
-/// The external tool has no commands — it runs on the current project
-/// folder using its own traversal or in nested mode.
-class NestedStandaloneExecutor extends CommandExecutor {
+/// Created dynamically at startup from wiring YAML + --dump-definitions.
+class NestedToolExecutor extends CommandExecutor {
   /// Name of the external binary (must be on PATH).
   final String binary;
 
-  /// Global options to forward from host tool to nested tool.
-  ///
-  /// These are option names from the host tool's CliArgs that map
-  /// directly to the nested tool's global options.
-  /// Example: ['verbose', 'dry-run', 'scan', 'recursive']
-  final List<String> forwardGlobalOptions;
+  /// Command name in the external tool (e.g., 'test').
+  /// Null for standalone tools.
+  final String? nestedCommand;
 
-  /// Additional fixed arguments always passed to the nested tool.
-  /// Example: ['--nested'] to signal nested mode.
-  final List<String> fixedArgs;
+  /// Whether this is a standalone (single-command) tool.
+  final bool isStandalone;
 
-  NestedStandaloneExecutor({
+  /// The host command name (may differ from nestedCommand due to renames).
+  final String hostCommandName;
+
+  NestedToolExecutor({
     required this.binary,
-    this.forwardGlobalOptions = const [],
-    this.fixedArgs = const [],
+    required this.hostCommandName,
+    this.nestedCommand,
+    this.isStandalone = false,
   });
 
   @override
   Future<ItemResult> execute(CommandContext context, CliArgs args) async {
-    final cmdArgs = _buildArgs(args, context);
+    final cmdArgs = _buildNestedArgs(
+      hostArgs: args,
+      hostCommandName: hostCommandName,
+      nestedCommand: nestedCommand ?? '',
+      isStandalone: isStandalone,
+    );
     return _runBinary(binary, cmdArgs, context.path);
   }
 }
 ```
 
-#### `NestedMultiCommandExecutor`
+---
 
-For embedding a specific command from a multi-command tool.
+### 8. Binary Pre-Check
 
-```dart
-/// Executor that delegates to a specific command of an external
-/// multi-command tool binary.
-///
-/// Example: Embedding testkit's :test command inside buildkit as
-/// `buildkit :test` → `testkit :test [options]`.
-class NestedMultiCommandExecutor extends CommandExecutor {
-  /// Name of the external binary (must be on PATH).
-  final String binary;
-
-  /// Command name in the external tool (e.g., 'test' → ':test').
-  final String nestedCommand;
-
-  /// Global options to forward from host tool to nested tool.
-  final List<String> forwardGlobalOptions;
-
-  /// Command-specific options to forward.
-  ///
-  /// Maps host command option names to nested tool option names.
-  /// Use identical names for 1:1 forwarding.
-  /// Example: {'test-args': 'test-args', 'comment': 'comment'}
-  final Map<String, String> forwardCommandOptions;
-
-  /// Additional fixed arguments always passed to the nested tool.
-  final List<String> fixedArgs;
-
-  NestedMultiCommandExecutor({
-    required this.binary,
-    required this.nestedCommand,
-    this.forwardGlobalOptions = const [],
-    this.forwardCommandOptions = const {},
-    this.fixedArgs = const [],
-  });
-
-  @override
-  Future<ItemResult> execute(CommandContext context, CliArgs args) async {
-    final cmdArgs = _buildArgs(args, context);
-    return _runBinary(binary, [':$nestedCommand', ...cmdArgs], context.path);
-  }
-}
-```
-
-### Binary Pre-Check
-
-Both executors share a critical requirement: **verify the binary exists before
-any commands run**. If a user runs `buildkit :cleanup :versioner :test` and
-`testkit` is not installed, we should fail immediately — not after cleanup and
-versioner have already executed.
-
-This is handled at the `ToolRunner` level, not per-executor:
+Before executing any command, ToolRunner validates that all nested binaries
+required by the **requested** commands are available:
 
 ```dart
-/// Check that all nested executors have their binaries available.
+/// Check that nested tool binaries are available for requested commands.
 ///
-/// Called once before any command execution begins.
-/// Returns a list of missing binaries, or empty if all are available.
-List<String> validateNestedBinaries() {
+/// Only checks binaries for commands that will actually be invoked.
+/// Running `buildkit :cleanup :versioner` does not require testkit.
+List<String> validateNestedBinaries({required Set<String> requestedCommands}) {
   final missing = <String>[];
-  for (final entry in executors.entries) {
-    final executor = entry.value;
-    if (executor is NestedStandaloneExecutor) {
+  for (final cmdName in requestedCommands) {
+    final executor = executors[cmdName];
+    if (executor is NestedToolExecutor) {
       if (!_isBinaryOnPath(executor.binary)) {
-        missing.add('${entry.key}: requires "${executor.binary}"');
-      }
-    } else if (executor is NestedMultiCommandExecutor) {
-      if (!_isBinaryOnPath(executor.binary)) {
-        missing.add('${entry.key}: requires "${executor.binary}"');
+        missing.add(':$cmdName requires "${executor.binary}" — not found');
       }
     }
   }
@@ -291,190 +556,105 @@ List<String> validateNestedBinaries() {
 }
 ```
 
-The `ToolRunner.run()` method calls this before executing any command:
-
 ```dart
-Future<ToolResult> run(List<String> args) async {
-  final cliArgs = parser.parse(args);
-
-  // ... help/version handling ...
-
-  // Pre-check: validate all nested binaries are available
-  // Only check binaries for commands actually being invoked
-  final requestedCommands = cliArgs.commands.toSet();
-  final missingBinaries = validateNestedBinaries(
-    onlyCommands: requestedCommands,
-  );
-  if (missingBinaries.isNotEmpty) {
-    output.writeln('Error: Missing required tool binaries:');
-    for (final msg in missingBinaries) {
-      output.writeln('  - $msg');
-    }
-    return ToolResult.failure('Missing nested tool binaries');
-  }
-
-  // ... proceed with execution ...
-}
-```
-
-The check is scoped to only the commands being invoked. Running
-`buildkit :cleanup :versioner` should not fail just because `testkit` isn't
-installed, since `:test` isn't being called.
-
-### Option Forwarding
-
-Both executors build a CLI argument list for the nested binary:
-
-```dart
-List<String> _buildArgs(CliArgs hostArgs, CommandContext context) {
-  final args = <String>[...fixedArgs];
-
-  // Forward global options
-  for (final optName in forwardGlobalOptions) {
-    final value = hostArgs.extraOptions[optName];
-    if (value == true) {
-      args.add('--$optName');
-    } else if (value is String && value.isNotEmpty) {
-      args.addAll(['--$optName', value]);
-    } else if (value is List && value.isNotEmpty) {
-      for (final v in value) {
-        args.addAll(['--$optName', v.toString()]);
-      }
-    }
-    // Also check standard CliArgs fields
-    if (optName == 'verbose' && hostArgs.verbose) args.add('--verbose');
-    if (optName == 'dry-run' && hostArgs.dryRun) args.add('--dry-run');
-    if (optName == 'force' && hostArgs.force) args.add('--force');
-    if (optName == 'list' && hostArgs.listOnly) args.add('--list');
-  }
-
-  // Forward command-specific options (multi-command only)
-  if (this is NestedMultiCommandExecutor) {
-    final nested = this as NestedMultiCommandExecutor;
-    final cmdArgs = hostArgs.commandArgs[nested.nestedCommand];
-    if (cmdArgs != null) {
-      for (final entry in nested.forwardCommandOptions.entries) {
-        final hostOpt = entry.key;
-        final nestedOpt = entry.value;
-        final value = cmdArgs.options[hostOpt];
-        if (value == true) {
-          args.add('--$nestedOpt');
-        } else if (value is String && value.isNotEmpty) {
-          args.addAll(['--$nestedOpt', value]);
-        }
-      }
-    }
-  }
-
-  // Pass nested mode indicator and project path
-  args.addAll(['--scan', context.path, '--not-recursive']);
-
-  return args;
-}
-```
-
-**Key point:** The nested tool receives `--scan <project-path> --not-recursive`,
-which makes it operate on just the single project folder that the host tool's
-traversal is currently processing. This avoids the nested tool doing its own
-full workspace traversal.
-
-### Concrete Example: `buildkit :test`
-
-#### 1. Command Definition (in buildkit_tool.dart)
-
-```dart
-const testCommand = CommandDefinition(
-  name: 'test',
-  description: 'Run tests via testkit (delegates to testkit :test)',
-  aliases: ['t'],
-  options: [
-    OptionDefinition(
-      name: 'test-args',
-      description: 'Arguments passed to dart test',
-    ),
-    OptionDefinition(
-      name: 'comment',
-      description: 'Comment for test run',
-    ),
-  ],
-  worksWithNatures: {DartProjectFolder},
-  supportsProjectTraversal: true,
-  requiresTraversal: true,
+// In ToolRunner.run(), after wiring but before traversal:
+final missingBinaries = validateNestedBinaries(
+  requestedCommands: cliArgs.commands.toSet(),
 );
-```
-
-#### 2. Executor Registration (in buildkit_executors.dart)
-
-```dart
-'test': NestedMultiCommandExecutor(
-  binary: 'testkit',
-  nestedCommand: 'test',
-  forwardGlobalOptions: ['verbose', 'dry-run'],
-  forwardCommandOptions: {
-    'test-args': 'test-args',
-    'comment': 'comment',
-  },
-),
-```
-
-#### 3. User Experience
-
-```bash
-# Runs cleanup, versioner, then delegates to testkit for each project
-buildkit :cleanup :versioner :test
-
-# With options forwarded to testkit
-buildkit :test --test-args="--name 'parser'"
-
-# If testkit is not installed:
-# Error: Missing required tool binaries:
-#   - test: requires "testkit"
-```
-
-### Concrete Example: `buildkit :d4rtgen`
-
-#### 1. Command Definition
-
-```dart
-const d4rtgenCommand = CommandDefinition(
-  name: 'd4rtgen',
-  description: 'Generate D4rt bridges (delegates to d4rtgen)',
-  options: [
-    OptionDefinition.flag(
-      name: 'show',
-      description: 'Show config details in list mode',
-    ),
-  ],
-  worksWithNatures: {DartProjectFolder},
-  supportsProjectTraversal: true,
-  requiresTraversal: true,
-);
-```
-
-#### 2. Executor Registration
-
-```dart
-'d4rtgen': NestedStandaloneExecutor(
-  binary: 'd4rtgen',
-  forwardGlobalOptions: ['verbose', 'dry-run', 'list'],
-),
-```
-
-#### 3. User Experience
-
-```bash
-# Run d4rtgen in all projects that have d4rtgen config
-buildkit -R :d4rtgen
-
-# Combined pipeline
-buildkit :d4rtgen :runner :compiler
+if (missingBinaries.isNotEmpty) {
+  output.writeln('Error: Missing required tool binaries:');
+  for (final msg in missingBinaries) {
+    output.writeln('  - $msg');
+  }
+  return ToolResult.failure('Missing nested tool binaries');
+}
 ```
 
 ---
 
-## Shared Base: `_runBinary` Helper
+### 9. Concrete Example: Full Lifecycle
 
-Both executors use a shared helper to invoke the binary:
+#### Wiring in `buildkit_master.yaml`
+
+```yaml
+nested_tools:
+  testkit:
+    binary: testkit
+    mode: multi_command
+    commands:
+      buildkittest: test
+      buildkitbaseline: baseline
+  buildkitAstgen:
+    binary: astgen
+    mode: standalone
+```
+
+#### Startup
+
+```
+$ buildkit -s . -r :buildkittest --test-args="--name parser"
+
+[startup] Loading wiring from buildkit_master.yaml...
+[startup] testkit --dump-definitions test baseline
+[startup]   → :buildkittest registered (testkit :test, natures: [dart_project])
+[startup]   → :buildkitbaseline registered (testkit :baseline, natures: [dart_project])
+[startup] astgen --dump-definitions
+[startup]   → :buildkitAstgen registered (astgen standalone, natures: [dart_project])
+[startup] Binary check: testkit ✓, astgen ✓
+[traversal] Scanning . recursively...
+```
+
+#### Per-Project Execution
+
+```
+[tom_build_base] testkit --nested --verbose :test --test-args="--name parser"
+  → testkit sees --nested, runs :test in tom_build_base/
+  → Tests run, results tracked
+
+[tom_build_kit] testkit --nested --verbose :test --test-args="--name parser"
+  → testkit sees --nested, runs :test in tom_build_kit/
+  → Tests run, results tracked
+```
+
+#### Error: Missing Binary
+
+```
+$ buildkit :buildkittest :cleanup
+
+Error: Missing required tool binaries:
+  - :buildkittest requires "testkit" — not found
+```
+
+#### Registration Workflow
+
+```bash
+# See what testkit offers:
+$ testkit --dump-definitions
+name: testkit
+mode: multi_command
+required_natures: [dart_project]
+commands:
+  test:
+    description: Run tests and add result column to the most recent baseline
+    options:
+      - { name: test-args, type: option, ... }
+    works_with_natures: [dart_project]
+  baseline:
+    description: Create a new baseline CSV file
+    ...
+
+# Add to buildkit_master.yaml: just the wiring
+# nested_tools:
+#   testkit:
+#     binary: testkit
+#     mode: multi_command
+#     commands:
+#       buildkittest: test
+```
+
+---
+
+### 10. `_runBinary` Helper
 
 ```dart
 Future<ItemResult> _runBinary(
@@ -508,14 +688,7 @@ Future<ItemResult> _runBinary(
 
 ---
 
-## Binary Path Resolution
-
-The `_isBinaryOnPath` check should:
-
-1. Use `Process.runSync('which', [binary])` on macOS/Linux
-2. Use `Process.runSync('where', [binary])` on Windows
-3. Also check `$TOM_BINARY_PATH/<platform>/` and `$HOME/.tom/bin/<platform>/`
-   for Tom-specific tool binaries
+### 11. Binary Path Resolution
 
 ```dart
 bool _isBinaryOnPath(String binary) {
@@ -529,6 +702,8 @@ bool _isBinaryOnPath(String binary) {
 }
 ```
 
+Also checks `$HOME/.tom/bin/<platform>/` for Tom-specific tool binaries.
+
 ---
 
 ## Implementation Plan
@@ -540,22 +715,67 @@ bool _isBinaryOnPath(String binary) {
 3. Add tests
 4. Publish `tom_build_base`
 
-### Phase 2: Nested Executors (Part B)
+### Phase 2: Core Infrastructure (Part B — tom_build_base)
 
-1. Create `NestedStandaloneExecutor` class
-2. Create `NestedMultiCommandExecutor` class
-3. Add `_runBinary` and `_isBinaryOnPath` helpers
-4. Add `validateNestedBinaries` to `ToolRunner`
-5. Add pre-check call in `ToolRunner.run()`
-6. Add tests (mock binary execution)
-7. Publish `tom_build_base`
+1. Add `wiringFile` field to `ToolDefinition`
+2. Add `--nested` flag to `commonOptions`
+3. Add `--dump-definitions` flag to `commonOptions`
+4. Implement `ToolDefinitionSerializer` (walks definition tree → YAML)
+5. Implement `NestedToolExecutor` class
+6. Implement wiring loader (reads YAML, calls `--dump-definitions`, registers)
+7. Add `validateNestedBinaries` to `ToolRunner`
+8. Wire into `ToolRunner.run()` flow (nested bypass, dump bypass, wiring load)
+9. Add `_runBinary` and `_isBinaryOnPath` helpers
+10. Add tests (mock binary execution)
+11. Publish `tom_build_base`
 
 ### Phase 3: Buildkit Integration (consuming)
 
-1. Add `:test` command definition to buildkit_tool.dart
-2. Add `:d4rtgen` command definition
-3. Register `NestedMultiCommandExecutor` / `NestedStandaloneExecutor`
-4. Test end-to-end
+1. Set `wiringFile: ToolDefinition.kAutoWiringFile` on `buildkitTool`
+2. Add `nested_tools:` section to workspace `buildkit_master.yaml`
+3. Test end-to-end: `buildkit :buildkittest`, `buildkit :buildkitAstgen`
+
+---
+
+## Architecture Summary
+
+```
+                    ┌─────────────────────────────────┐
+                    │         tom_build_base           │
+                    │                                  │
+                    │  ToolDefinition                  │
+                    │    + wiringFile: String?          │
+                    │    + copyWith(...)                │
+                    │                                  │
+                    │  commonOptions                   │
+                    │    + --nested                    │
+                    │    + --dump-definitions           │
+                    │                                  │
+                    │  ToolRunner                       │
+                    │    + wiring loader               │
+                    │    + nested mode bypass           │
+                    │    + dump-definitions bypass      │
+                    │    + validateNestedBinaries()     │
+                    │                                  │
+                    │  NestedToolExecutor               │
+                    │  ToolDefinitionSerializer         │
+                    └──────────────┬──────────────────┘
+                                   │
+              ┌────────────────────┼────────────────────┐
+              │                    │                     │
+    ┌─────────▼────────┐  ┌───────▼────────┐  ┌────────▼───────┐
+    │     buildkit      │  │    testkit     │  │    d4rtgen     │
+    │                   │  │               │  │               │
+    │ wiringFile: ''    │  │ wiringFile:   │  │ wiringFile:   │
+    │ (auto →           │  │   null        │  │   null        │
+    │  buildkit_master) │  │ (no hosting)  │  │ (no hosting)  │
+    │                   │  │               │  │               │
+    │ Reads YAML:       │  │ Responds to:  │  │ Responds to:  │
+    │  nested_tools:    │  │ --dump-defs   │  │ --dump-defs   │
+    │   testkit: ...    │  │ --nested      │  │ --nested      │
+    │   astgen: ...     │  │               │  │               │
+    └───────────────────┘  └───────────────┘  └───────────────┘
+```
 
 ---
 
@@ -566,15 +786,19 @@ bool _isBinaryOnPath(String binary) {
    Recommendation: Stream for interactive use, buffer when piped.
 
 2. **Exit code propagation** — Should a nested tool failure stop the entire
-   buildkit pipeline or just mark that project as failed? Current pipeline
-   behavior is stop-on-failure, which seems correct here too.
+   pipeline or just mark that project as failed? Current pipeline behavior
+   is stop-on-failure, which seems correct here too.
 
-3. **Nested tool version checking** — Should the host tool verify the nested
-   tool's version is compatible? Could add a `minVersion` field to the
-   executor config.
+3. **Version checking** — Should the host tool verify the nested tool's version
+   is compatible? Could add `min_version:` to the wiring YAML. The
+   `--dump-definitions` output already includes the tool version.
 
-4. **Config passthrough** — Nested tools read their own `buildkit.yaml` sections.
-   Should the host tool pre-validate that the config section exists for the
-   current project, or let the nested tool handle missing config itself?
-   Recommendation: Let the nested tool handle it — it knows its own config
-   requirements best.
+4. **Caching `--dump-definitions`** — Calling `--dump-definitions` at every
+   startup adds latency. Should results be cached per binary+version?
+   Recommendation: Yes, cache in `ztmp/` keyed by binary path + mtime.
+
+5. **Config passthrough** — Nested tools read their own `buildkit.yaml`
+   sections (e.g., `d4rtgen:` in the project's `buildkit.yaml`). The host
+   tool does not need to know about this — the nested tool handles its own
+   config requirements. However, the nature filter from `--dump-definitions`
+   ensures buildikit only calls the nested tool on appropriate projects.
