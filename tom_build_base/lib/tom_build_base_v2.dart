@@ -57,6 +57,10 @@ export 'src/v2/core/help_topic.dart';
 export 'src/v2/core/builtin_help_topics.dart';
 export 'src/v2/core/console_markdown_zone.dart';
 export 'src/v2/core/tool_wiring_entry.dart';
+export 'src/v2/core/tool_definition_serializer.dart';
+export 'src/v2/core/binary_helpers.dart';
+export 'src/v2/core/nested_tool_executor.dart';
+export 'src/v2/core/wiring_loader.dart';
 
 // Workspace utilities (constants, findWorkspaceRoot)
 export 'src/v2/workspace_utils.dart';
