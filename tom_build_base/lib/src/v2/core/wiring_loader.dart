@@ -124,8 +124,7 @@ class WiringLoader {
         if (tolerateMissing) {
           warnings.add(msg);
           // Add placeholder commands for help display
-          _addUnavailableCommands(
-            commands, wiring, 'binary $binary not found');
+          _addUnavailableCommands(commands, wiring, 'binary $binary not found');
           continue;
         } else {
           errors.add(msg);

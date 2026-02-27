@@ -439,9 +439,7 @@ class ToolRunner {
         if (tool.defaultCommand != null) {
           return _runNestedCommand(tool.defaultCommand!, cliArgs);
         }
-        return const ToolResult.failure(
-          'No command specified in nested mode',
-        );
+        return const ToolResult.failure('No command specified in nested mode');
       }
       // In nested mode, only one command at a time
       return _runNestedCommand(cliArgs.commands.first, cliArgs);
@@ -456,10 +454,7 @@ class ToolRunner {
   }
 
   /// Run a single command in nested mode (no traversal).
-  Future<ToolResult> _runNestedCommand(
-    String cmdName,
-    CliArgs cliArgs,
-  ) async {
+  Future<ToolResult> _runNestedCommand(String cmdName, CliArgs cliArgs) async {
     final cmd = tool.findCommand(cmdName);
     if (cmd == null) {
       return ToolResult.failure('Unknown command in nested mode: $cmdName');
@@ -529,8 +524,7 @@ class ToolRunner {
 
     // Merge wired executors (mutable map)
     if (result.executors.isNotEmpty) {
-      final mutableExecutors =
-          Map<String, CommandExecutor>.from(executors);
+      final mutableExecutors = Map<String, CommandExecutor>.from(executors);
       mutableExecutors.addAll(result.executors);
       // We can't reassign final executors, so we update _effectiveTool
       // and use a separate lookup. Actually, executors is final const.
