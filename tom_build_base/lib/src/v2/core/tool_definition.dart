@@ -295,4 +295,80 @@ class ToolDefinition {
 
   @override
   String toString() => 'ToolDefinition($name v$version)';
+
+  /// Create a modified copy of this tool definition.
+  ///
+  /// All parameters are optional — only the ones you specify are changed.
+  /// This is the primary mechanism for tool inheritance (Part A of the
+  /// tool composition design).
+  ///
+  /// ```dart
+  /// final derived = baseTool.copyWith(
+  ///   name: 'supertool',
+  ///   commands: baseTool.commands
+  ///       .without({'dcli'})
+  ///       .replacing('runner', myRunner)
+  ///       .plus([extraCommand]),
+  /// );
+  /// ```
+  ToolDefinition copyWith({
+    String? name,
+    String? description,
+    String? version,
+    ToolMode? mode,
+    NavigationFeatures? features,
+    List<OptionDefinition>? globalOptions,
+    List<CommandDefinition>? commands,
+    String? defaultCommand,
+    String? helpFooter,
+    List<HelpTopic>? helpTopics,
+    Set<Type>? requiredNatures,
+    Set<Type>? worksWithNatures,
+  }) {
+    return ToolDefinition(
+      name: name ?? this.name,
+      description: description ?? this.description,
+      version: version ?? this.version,
+      mode: mode ?? this.mode,
+      features: features ?? this.features,
+      globalOptions: globalOptions ?? this.globalOptions,
+      commands: commands ?? this.commands,
+      defaultCommand: defaultCommand ?? this.defaultCommand,
+      helpFooter: helpFooter ?? this.helpFooter,
+      helpTopics: helpTopics ?? this.helpTopics,
+      requiredNatures: requiredNatures ?? this.requiredNatures,
+      worksWithNatures: worksWithNatures ?? this.worksWithNatures,
+    );
+  }
+}
+
+/// Extension methods for manipulating command lists.
+///
+/// Provides fluent operations for building derived tool definitions
+/// via [ToolDefinition.copyWith].
+///
+/// ```dart
+/// final commands = baseTool.commands
+///     .without({'dcli', 'findproject'})
+///     .replacing('runner', myCustomRunner)
+///     .plus([newCommand]);
+/// ```
+extension CommandListOps on List<CommandDefinition> {
+  /// Return a new list with the named commands removed.
+  List<CommandDefinition> without(Set<String> names) =>
+      where((c) => !names.contains(c.name)).toList();
+
+  /// Return a new list with the named command replaced (keeps position).
+  ///
+  /// If no command with [name] exists, the list is returned unchanged.
+  List<CommandDefinition> replacing(
+    String name,
+    CommandDefinition replacement,
+  ) => map((c) => c.name == name ? replacement : c).toList();
+
+  /// Return a new list with [additions] appended.
+  List<CommandDefinition> plus(List<CommandDefinition> additions) => [
+    ...this,
+    ...additions,
+  ];
 }
