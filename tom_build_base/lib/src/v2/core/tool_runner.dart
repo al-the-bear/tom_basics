@@ -683,7 +683,10 @@ class ToolRunner {
     return const ToolResult.success();
   }
 
-  ToolResult? _tryHandleBuiltInMacroDefineCommand(String cmdName, CliArgs cliArgs) {
+  ToolResult? _tryHandleBuiltInMacroDefineCommand(
+    String cmdName,
+    CliArgs cliArgs,
+  ) {
     if (!_isMacroDefineFeatureEligible()) return null;
 
     switch (cmdName) {
@@ -864,7 +867,10 @@ class ToolRunner {
     final eqIndex = first.indexOf('=');
     if (eqIndex <= 0) return null;
     final name = first.substring(0, eqIndex).trim();
-    final tail = <String>[first.substring(eqIndex + 1), ...cliArgs.positionalArgs.skip(1)];
+    final tail = <String>[
+      first.substring(eqIndex + 1),
+      ...cliArgs.positionalArgs.skip(1),
+    ];
     final value = tail.join(' ').trim();
     if (name.isEmpty || value.isEmpty) return null;
     return (name, value);
@@ -958,7 +964,8 @@ class ToolRunner {
     if (value == null) return 'null';
     if (value is num || value is bool) return '$value';
     final text = value.toString();
-    final needsQuote = text.isEmpty ||
+    final needsQuote =
+        text.isEmpty ||
         text.contains(':') ||
         text.contains('#') ||
         text.contains('\n') ||

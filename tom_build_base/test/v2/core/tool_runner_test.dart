@@ -186,17 +186,20 @@ void main() {
     });
 
     group('fromItems factory', () {
-      test('BB-RUN-10: Creates result from all successful items [2026-02-12]', () {
-        final result = ToolResult.fromItems([
-          const ItemResult.success(path: '/a', name: 'a'),
-          const ItemResult.success(path: '/b', name: 'b'),
-          const ItemResult.success(path: '/c', name: 'c'),
-        ]);
+      test(
+        'BB-RUN-10: Creates result from all successful items [2026-02-12]',
+        () {
+          final result = ToolResult.fromItems([
+            const ItemResult.success(path: '/a', name: 'a'),
+            const ItemResult.success(path: '/b', name: 'b'),
+            const ItemResult.success(path: '/c', name: 'c'),
+          ]);
 
-        expect(result.success, isTrue);
-        expect(result.processedCount, equals(3));
-        expect(result.failedCount, equals(0));
-      });
+          expect(result.success, isTrue);
+          expect(result.processedCount, equals(3));
+          expect(result.failedCount, equals(0));
+        },
+      );
 
       test('BB-RUN-11: Creates result from mixed items [2026-02-12]', () {
         final result = ToolResult.fromItems([
@@ -255,10 +258,7 @@ void main() {
     group('run', () {
       test('BB-RUN-16: Shows tool help for --help [2026-02-12]', () async {
         final output = StringBuffer();
-        final runner = ToolRunner(
-          tool: testTool,
-          output: output,
-        );
+        final runner = ToolRunner(tool: testTool, output: output);
 
         final result = await runner.run(['--help']);
 
@@ -269,10 +269,7 @@ void main() {
 
       test('BB-RUN-17: Shows version for --version [2026-02-12]', () async {
         final output = StringBuffer();
-        final runner = ToolRunner(
-          tool: testTool,
-          output: output,
-        );
+        final runner = ToolRunner(tool: testTool, output: output);
 
         final result = await runner.run(['--version']);
 
@@ -280,19 +277,19 @@ void main() {
         expect(output.toString(), contains('1.0.0'));
       });
 
-      test('BB-RUN-18: Shows command help for :command --help [2026-02-12]', () async {
-        final output = StringBuffer();
-        final runner = ToolRunner(
-          tool: testTool,
-          output: output,
-        );
+      test(
+        'BB-RUN-18: Shows command help for :command --help [2026-02-12]',
+        () async {
+          final output = StringBuffer();
+          final runner = ToolRunner(tool: testTool, output: output);
 
-        final result = await runner.run([':simple', '--help']);
+          final result = await runner.run([':simple', '--help']);
 
-        expect(result.success, isTrue);
-        expect(output.toString(), contains(':simple'));
-        expect(output.toString(), contains('Simple command'));
-      });
+          expect(result.success, isTrue);
+          expect(output.toString(), contains(':simple'));
+          expect(output.toString(), contains('Simple command'));
+        },
+      );
 
       test('BB-RUN-19: Finds command by alias [2026-02-12]', () async {
         final output = StringBuffer();
@@ -310,55 +307,58 @@ void main() {
         expect(output.toString(), contains(':alias'));
       });
 
-      test('BB-RUN-20: Returns error for unknown command [2026-02-12]', () async {
-        final output = StringBuffer();
-        final runner = ToolRunner(
-          tool: testTool,
-          output: output,
-        );
+      test(
+        'BB-RUN-20: Returns error for unknown command [2026-02-12]',
+        () async {
+          final output = StringBuffer();
+          final runner = ToolRunner(tool: testTool, output: output);
 
-        final result = await runner.run([':unknown']);
+          final result = await runner.run([':unknown']);
 
-        expect(result.success, isFalse);
-        expect(output.toString(), contains('Unknown command'));
-      });
+          expect(result.success, isFalse);
+          expect(output.toString(), contains('Unknown command'));
+        },
+      );
 
-      test('BB-RUN-21: Shows usage when no command specified [2026-02-12]', () async {
-        final output = StringBuffer();
-        final runner = ToolRunner(
-          tool: testTool,
-          output: output,
-        );
+      test(
+        'BB-RUN-21: Shows usage when no command specified [2026-02-12]',
+        () async {
+          final output = StringBuffer();
+          final runner = ToolRunner(tool: testTool, output: output);
 
-        final result = await runner.run([]);
+          final result = await runner.run([]);
 
-        expect(result.success, isFalse);
-        expect(output.toString(), contains('No command specified'));
-      });
+          expect(result.success, isFalse);
+          expect(output.toString(), contains('No command specified'));
+        },
+      );
 
-      test('BB-RUN-22: Executes command without traversal [2026-02-12]', () async {
-        final executor = TrackingExecutor();
-        final runner = ToolRunner(
-          tool: testTool,
-          executors: {'simple': executor},
-        );
+      test(
+        'BB-RUN-22: Executes command without traversal [2026-02-12]',
+        () async {
+          final executor = TrackingExecutor();
+          final runner = ToolRunner(
+            tool: testTool,
+            executors: {'simple': executor},
+          );
 
-        final result = await runner.run([':simple']);
+          final result = await runner.run([':simple']);
 
-        expect(result.success, isTrue);
-        expect(executor.calls, contains('no-traversal'));
-      });
+          expect(result.success, isTrue);
+          expect(executor.calls, contains('no-traversal'));
+        },
+      );
 
-      test('BB-RUN-23: Returns error when no executor for command [2026-02-12]', () async {
-        final runner = ToolRunner(
-          tool: testTool,
-          executors: {},
-        );
+      test(
+        'BB-RUN-23: Returns error when no executor for command [2026-02-12]',
+        () async {
+          final runner = ToolRunner(tool: testTool, executors: {});
 
-        final result = await runner.run([':traverse']);
+          final result = await runner.run([':traverse']);
 
-        expect(result.success, isFalse);
-      });
+          expect(result.success, isFalse);
+        },
+      );
 
       test('BB-RUN-40: help runs env checks and prints setup instructions '
           '[2026-02-28]', () async {
@@ -388,10 +388,7 @@ required-environment:
           expect(output.toString(), contains('Environment warnings:'));
           expect(output.toString(), contains('Missing TESTTOOL_REQUIRED'));
           expect(output.toString(), contains('Setup instructions:'));
-          expect(
-            output.toString(),
-            contains('Please run "testtool setup".'),
-          );
+          expect(output.toString(), contains('Please run "testtool setup".'));
         } finally {
           Directory.current = previousCwd;
           if (tempRoot.existsSync()) {
@@ -429,7 +426,10 @@ required-environment:
             result.errorMessage,
             contains('Installation requirements not met'),
           );
-          expect(output.toString(), contains('Installation requirements not met:'));
+          expect(
+            output.toString(),
+            contains('Installation requirements not met:'),
+          );
           expect(output.toString(), contains('Missing TESTTOOL_REQUIRED_RUN'));
           expect(output.toString(), contains('Setup instructions:'));
           expect(output.toString(), contains('Please run "testtool setup".'));
@@ -467,7 +467,10 @@ required-environment:
 
           expect(result.success, isTrue);
           expect(output.toString(), contains('Environment warnings:'));
-          expect(output.toString(), contains('Missing TESTTOOL_REQUIRED_DOCTOR'));
+          expect(
+            output.toString(),
+            contains('Missing TESTTOOL_REQUIRED_DOCTOR'),
+          );
           expect(output.toString(), contains('Setup instructions:'));
           expect(output.toString(), contains('Please run "testtool setup".'));
           expect(output.toString(), contains('Doctor check passed.'));
@@ -611,12 +614,15 @@ required-environment:
   });
 
   group('CommandExecutor', () {
-    test('BB-RUN-24: Base class has default executeWithoutTraversal [2026-02-12]', () async {
-      final executor = _MinimalExecutor();
+    test(
+      'BB-RUN-24: Base class has default executeWithoutTraversal [2026-02-12]',
+      () async {
+        final executor = _MinimalExecutor();
 
-      final result = await executor.executeWithoutTraversal(const CliArgs());
-      expect(result.success, isTrue);
-    });
+        final result = await executor.executeWithoutTraversal(const CliArgs());
+        expect(result.success, isTrue);
+      },
+    );
   });
 }
 

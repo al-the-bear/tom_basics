@@ -34,73 +34,76 @@ void main() {
       );
     });
 
-    test('BB-PLX-4: delegated tool argv honors precedence and command tokens',
-        () async {
-      final tempRoot = await Directory.systemTemp.createTemp('bb_plx_argv_');
-      final workspace = Directory('${tempRoot.path}/ws')..createSync();
-      final master = File('${workspace.path}/testtool_master.yaml')
-        ..createSync()
-        ..writeAsStringSync('required-environment:\n  pipelines: {}\n');
+    test(
+      'BB-PLX-4: delegated tool argv honors precedence and command tokens',
+      () async {
+        final tempRoot = await Directory.systemTemp.createTemp('bb_plx_argv_');
+        final workspace = Directory('${tempRoot.path}/ws')..createSync();
+        final master = File('${workspace.path}/testtool_master.yaml')
+          ..createSync()
+          ..writeAsStringSync('required-environment:\n  pipelines: {}\n');
 
-      final tool = ToolDefinition(
-        name: 'testtool',
-        description: 'Test tool',
-        version: '1.0.0',
-        mode: ToolMode.multiCommand,
-      );
-      final config = ToolPipelineConfig(
-        sourcePath: master.path,
-        pipelines: {
-          'ci': PipelineDefinition(
-            executable: true,
-            globalOptions: const {
-              'scan': '.',
-              'project': 'pipeline-proj',
-              'verbose': 'false',
-            },
-            core: const [
-              PipelineStepConfig(
-                commands: [
-                  PipelineCommandSpec(
-                    raw: 'testtool --project=cmd-proj --root=/cmd-root :simple',
-                    prefix: PipelineCommandPrefix.tool,
-                    body: '--project=cmd-proj --root=/cmd-root :simple',
-                  ),
-                ],
-              ),
-            ],
+        final tool = ToolDefinition(
+          name: 'testtool',
+          description: 'Test tool',
+          version: '1.0.0',
+          mode: ToolMode.multiCommand,
+        );
+        final config = ToolPipelineConfig(
+          sourcePath: master.path,
+          pipelines: {
+            'ci': PipelineDefinition(
+              executable: true,
+              globalOptions: const {
+                'scan': '.',
+                'project': 'pipeline-proj',
+                'verbose': 'false',
+              },
+              core: const [
+                PipelineStepConfig(
+                  commands: [
+                    PipelineCommandSpec(
+                      raw:
+                          'testtool --project=cmd-proj --root=/cmd-root :simple',
+                      prefix: PipelineCommandPrefix.tool,
+                      body: '--project=cmd-proj --root=/cmd-root :simple',
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          },
+        );
+
+        final output = StringBuffer();
+        final executor = ToolPipelineExecutor(tool: tool, output: output);
+        const args = CliArgs(
+          dryRun: true,
+          verbose: true,
+          root: '/inv-root',
+          scan: 'inv-scan',
+        );
+
+        final ok = await executor.executeInvocation(
+          pipelineName: 'ci',
+          config: config,
+          cliArgs: args,
+        );
+
+        expect(ok, isTrue);
+        final out = output.toString();
+        expect(
+          out,
+          contains(
+            '[PIPELINE:testtool] testtool --dry-run --scan=inv-scan --verbose '
+            '--project=cmd-proj --root=/cmd-root :simple',
           ),
-        },
-      );
+        );
 
-      final output = StringBuffer();
-      final executor = ToolPipelineExecutor(tool: tool, output: output);
-      const args = CliArgs(
-        dryRun: true,
-        verbose: true,
-        root: '/inv-root',
-        scan: 'inv-scan',
-      );
-
-      final ok = await executor.executeInvocation(
-        pipelineName: 'ci',
-        config: config,
-        cliArgs: args,
-      );
-
-      expect(ok, isTrue);
-      final out = output.toString();
-      expect(
-        out,
-        contains(
-          '[PIPELINE:testtool] testtool --dry-run --scan=inv-scan --verbose '
-          '--project=cmd-proj --root=/cmd-root :simple',
-        ),
-      );
-
-      if (tempRoot.existsSync()) {
-        await tempRoot.delete(recursive: true);
-      }
-    });
+        if (tempRoot.existsSync()) {
+          await tempRoot.delete(recursive: true);
+        }
+      },
+    );
   });
 }
