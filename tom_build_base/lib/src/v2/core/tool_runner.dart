@@ -231,8 +231,9 @@ class ToolRunner {
     if (cliArgs.positionalArgs.firstOrNull == 'help') {
       final topic = cliArgs.positionalArgs.skip(1).firstOrNull;
       if (topic != null) {
-        final builtInHelp = _tryHandleBuiltInMacroDefineHelp(topic)
-            ?? _tryHandleBuiltInPipelinesHelp(topic);
+        final builtInHelp =
+            _tryHandleBuiltInMacroDefineHelp(topic) ??
+            _tryHandleBuiltInPipelinesHelp(topic);
         if (builtInHelp != null) {
           output.writeln(builtInHelp);
           return const ToolResult.success();
@@ -666,8 +667,9 @@ class ToolRunner {
   Future<ToolResult> _handleHelp(CliArgs cliArgs) async {
     if (cliArgs.commands.isNotEmpty) {
       final cmdName = cliArgs.commands.first;
-      final builtInHelp = _tryHandleBuiltInMacroDefineHelp(cmdName)
-          ?? _tryHandleBuiltInPipelinesHelp(cmdName);
+      final builtInHelp =
+          _tryHandleBuiltInMacroDefineHelp(cmdName) ??
+          _tryHandleBuiltInPipelinesHelp(cmdName);
       if (builtInHelp != null) {
         output.writeln(builtInHelp);
         return const ToolResult.success();

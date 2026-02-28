@@ -242,8 +242,7 @@ class ToolPipelineExecutor {
     final newlineIdx = body.indexOf('\n');
     final command = (newlineIdx == -1 ? body : body.substring(0, newlineIdx))
         .trim();
-    final stdinContent =
-        newlineIdx == -1 ? '' : body.substring(newlineIdx + 1);
+    final stdinContent = newlineIdx == -1 ? '' : body.substring(newlineIdx + 1);
 
     if (command.isEmpty) {
       output.writeln('Invalid empty stdin command.');
@@ -280,10 +279,8 @@ class ToolPipelineExecutor {
     }
     await process.stdin.close();
 
-    final stdoutFuture =
-        process.stdout.transform(utf8.decoder).join();
-    final stderrFuture =
-        process.stderr.transform(utf8.decoder).join();
+    final stdoutFuture = process.stdout.transform(utf8.decoder).join();
+    final stderrFuture = process.stderr.transform(utf8.decoder).join();
     final exitCode = await process.exitCode;
     final out = await stdoutFuture;
     final err = await stderrFuture;
