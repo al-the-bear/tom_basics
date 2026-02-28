@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
@@ -200,6 +201,8 @@ class ToolPipelineExecutor {
         return _runShell(command.body, workspaceDir, cliArgs.dryRun);
       case PipelineCommandPrefix.shellScan:
         return _runShellScan(command.body, workspaceDir, cliArgs);
+      case PipelineCommandPrefix.stdin:
+        return _runStdin(command.body, workspaceDir, cliArgs.dryRun);
       case PipelineCommandPrefix.tool:
         return _runToolCommand(
           command.body,
@@ -231,6 +234,67 @@ class ToolPipelineExecutor {
       output.writeln(result.stderr.toString().trimRight());
     }
     return result.exitCode == 0;
+  }
+
+  Future<bool> _runStdin(String body, String workspaceDir, bool dryRun) async {
+    // body format: first line is the shell command, remaining lines are stdin
+    // content that will be piped to that command.
+    final newlineIdx = body.indexOf('\n');
+    final command = (newlineIdx == -1 ? body : body.substring(0, newlineIdx))
+        .trim();
+    final stdinContent =
+        newlineIdx == -1 ? '' : body.substring(newlineIdx + 1);
+
+    if (command.isEmpty) {
+      output.writeln('Invalid empty stdin command.');
+      return false;
+    }
+
+    if (dryRun || verbose) {
+      output.writeln('[PIPELINE:stdin] $command');
+      if (stdinContent.isNotEmpty) {
+        for (final line in stdinContent.split('\n')) {
+          output.writeln('  | $line');
+        }
+      }
+    }
+    if (dryRun) return true;
+
+    final String executable;
+    final List<String> args;
+    if (Platform.isWindows) {
+      executable = 'cmd';
+      args = ['/c', command];
+    } else {
+      executable = '/bin/bash';
+      args = ['-lc', command];
+    }
+
+    final process = await Process.start(
+      executable,
+      args,
+      workingDirectory: workspaceDir,
+    );
+    if (stdinContent.isNotEmpty) {
+      process.stdin.write(stdinContent);
+    }
+    await process.stdin.close();
+
+    final stdoutFuture =
+        process.stdout.transform(utf8.decoder).join();
+    final stderrFuture =
+        process.stderr.transform(utf8.decoder).join();
+    final exitCode = await process.exitCode;
+    final out = await stdoutFuture;
+    final err = await stderrFuture;
+
+    if (out.trimRight().isNotEmpty) {
+      output.writeln(out.trimRight());
+    }
+    if (err.trimRight().isNotEmpty) {
+      output.writeln(err.trimRight());
+    }
+    return exitCode == 0;
   }
 
   Future<bool> _runShellScan(

@@ -5,7 +5,7 @@ import 'package:yaml/yaml.dart';
 import '../workspace_utils.dart';
 import 'tool_definition.dart';
 
-enum PipelineCommandPrefix { tool, shell, shellScan }
+enum PipelineCommandPrefix { tool, shell, shellScan, stdin }
 
 class PipelineCommandSpec {
   final String raw;
@@ -86,6 +86,15 @@ class PipelineCommandPrefixParser {
       return PipelineCommandSpec(
         raw: rawCommand,
         prefix: PipelineCommandPrefix.shellScan,
+        body: body,
+      );
+    }
+    if (prefixToken == 'stdin') {
+      // body may be multiline: first line is the shell command,
+      // remaining lines are stdin content piped to that command.
+      return PipelineCommandSpec(
+        raw: rawCommand,
+        prefix: PipelineCommandPrefix.stdin,
         body: body,
       );
     }
@@ -198,7 +207,7 @@ class ToolPipelineConfigLoader {
         if (parsed == null) {
           throw FormatException(
             'Unsupported pipeline command prefix in "$text". '
-            'Allowed prefixes: $toolPrefix, shell, shell-scan.',
+            'Allowed prefixes: $toolPrefix, shell, shell-scan, stdin.',
           );
         }
         commands.add(parsed);

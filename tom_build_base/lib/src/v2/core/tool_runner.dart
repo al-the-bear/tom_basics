@@ -632,7 +632,8 @@ class ToolRunner {
   Future<ToolResult> _handleHelp(CliArgs cliArgs) async {
     if (cliArgs.commands.isNotEmpty) {
       final cmdName = cliArgs.commands.first;
-      final builtInHelp = _tryHandleBuiltInMacroDefineHelp(cmdName);
+      final builtInHelp = _tryHandleBuiltInMacroDefineHelp(cmdName)
+          ?? _tryHandleBuiltInPipelinesHelp(cmdName);
       if (builtInHelp != null) {
         output.writeln(builtInHelp);
         return const ToolResult.success();
@@ -739,6 +740,9 @@ class ToolRunner {
   :define <name>=<value>     Add persisted define in ${tool.name}_master.yaml
   :defines                   List persisted defines
   :undefine <name>           Remove persisted define
+
+<cyan>**Pipeline Help**</cyan>
+  Run `${tool.name} help pipelines` for pipeline configuration reference.
 ''';
   }
 
@@ -747,6 +751,59 @@ class ToolRunner {
       tool: _effectiveTool,
       fromDirectory: Directory.current.path,
     );
+  }
+
+  String? _tryHandleBuiltInPipelinesHelp(String cmdName) {
+    if (!_isMacroDefineFeatureEligible()) return null;
+    if (cmdName != 'pipelines') return null;
+    return '''<cyan>**${tool.name} Pipeline Configuration**</cyan>
+
+Pipelines are defined in <yellow>${tool.name}_master.yaml</yellow> under a <yellow>pipelines:</yellow> key.
+Each pipeline has a name and a set of steps divided into three phases.
+
+<green>**Pipeline Structure**</green>
+
+  my-pipeline:
+    executable: true          # whether this pipeline can be invoked directly
+    runBefore: [other-pipe]   # pipelines to run before this one
+    runAfter:  [other-pipe]   # pipelines to run after this one
+    global-options:           # default option values for this pipeline
+      output: build/
+    precore:                  # steps run before core (setup/validation)
+      - commands:
+          - "shell echo Starting..."
+    core:                     # main steps
+      - commands:
+          - "shell dart pub get"
+          - "${tool.name} :build"
+    postcore:                 # steps run after core (cleanup/reporting)
+      - commands:
+          - "shell echo Done."
+
+<green>**Command Prefixes**</green>
+
+  shell <cmd>          Run a shell command via /bin/bash -lc
+  shell-scan <cmd>     Run a shell command in each scanned project folder
+                       (supports placeholders: {project}, {path}, {name})
+  ${tool.name} <cmd>   Run a ${tool.name} command (e.g. "${tool.name} :build")
+  stdin <cmd>          Run a shell command with multi-line stdin input:
+                         stdin cat -n
+                         line one
+                         line two
+
+<green>**Placeholders (shell-scan)**</green>
+
+  {project}   Relative path to the project folder
+  {path}      Absolute path to the project folder
+  {name}      Project/folder name
+
+<green>**Invocation**</green>
+
+  ${tool.name} <pipeline-name>             Run a named pipeline
+  ${tool.name} <pipeline-name> --dry-run   Show commands without executing
+  ${tool.name} --list                      List available pipelines
+  ${tool.name} help pipelines             Show this help
+''';
   }
 
   ToolResult _handleRuntimeMacroDefine(CliArgs cliArgs) {
