@@ -227,6 +227,40 @@ class ToolRunner {
       return _handleHelp(cliArgs);
     }
 
+    // Handle bare 'help' positional (e.g., 'buildkit help pipelines')
+    if (cliArgs.positionalArgs.firstOrNull == 'help') {
+      final topic = cliArgs.positionalArgs.skip(1).firstOrNull;
+      if (topic != null) {
+        final builtInHelp = _tryHandleBuiltInMacroDefineHelp(topic)
+            ?? _tryHandleBuiltInPipelinesHelp(topic);
+        if (builtInHelp != null) {
+          output.writeln(builtInHelp);
+          return const ToolResult.success();
+        }
+        final topicDef = _effectiveTool.findHelpTopic(topic);
+        if (topicDef != null) {
+          output.writeln(
+            HelpGenerator.generateTopicHelp(topicDef, tool: _effectiveTool),
+          );
+          return const ToolResult.success();
+        }
+        output.writeln('Unknown help topic: $topic');
+        return const ToolResult.failure('Unknown help topic');
+      }
+      // 'help' alone — show full tool help
+      final baseHelp = HelpGenerator.generateToolHelp(
+        _effectiveTool,
+        nestedCommandNames: _wiredExecutors.keys.toSet(),
+      );
+      output.write(baseHelp);
+      final appendix = _builtInMacroDefineHelpAppendix();
+      if (appendix != null) {
+        output.writeln();
+        output.writeln(appendix);
+      }
+      return const ToolResult.success();
+    }
+
     // Handle version (--version flag or bare 'version' positional arg)
     if (cliArgs.version || cliArgs.positionalArgs.contains('version')) {
       output.writeln('${_effectiveTool.name} v${_effectiveTool.version}');
