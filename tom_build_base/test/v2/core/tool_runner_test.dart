@@ -400,6 +400,85 @@ required-environment:
         }
       });
 
+      test('BB-RUN-45: run failure prints setup instructions on env errors '
+          '[2026-02-28]', () async {
+        final tempRoot = await Directory.systemTemp.createTemp(
+          'bb_run_checks_',
+        );
+        final workspace = Directory('${tempRoot.path}/ws')..createSync();
+        final master = File('${workspace.path}/testtool_master.yaml');
+        master.writeAsStringSync('''
+required-environment:
+  setup:
+    instructions: Please run "testtool setup".
+  env-variables:
+    - name: TESTTOOL_REQUIRED_RUN
+      error: Missing TESTTOOL_REQUIRED_RUN
+''');
+
+        final previousCwd = Directory.current.path;
+        final output = StringBuffer();
+        try {
+          Directory.current = workspace.path;
+          final runner = ToolRunner(tool: testTool, output: output);
+
+          final result = await runner.run([':simple']);
+
+          expect(result.success, isFalse);
+          expect(
+            result.errorMessage,
+            contains('Installation requirements not met'),
+          );
+          expect(output.toString(), contains('Installation requirements not met:'));
+          expect(output.toString(), contains('Missing TESTTOOL_REQUIRED_RUN'));
+          expect(output.toString(), contains('Setup instructions:'));
+          expect(output.toString(), contains('Please run "testtool setup".'));
+        } finally {
+          Directory.current = previousCwd;
+          if (tempRoot.existsSync()) {
+            await tempRoot.delete(recursive: true);
+          }
+        }
+      });
+
+      test('BB-RUN-46: doctor warnings print setup instructions '
+          '[2026-02-28]', () async {
+        final tempRoot = await Directory.systemTemp.createTemp(
+          'bb_doctor_checks_',
+        );
+        final workspace = Directory('${tempRoot.path}/ws')..createSync();
+        final master = File('${workspace.path}/testtool_master.yaml');
+        master.writeAsStringSync('''
+required-environment:
+  setup:
+    instructions: Please run "testtool setup".
+  env-variables:
+    - name: TESTTOOL_REQUIRED_DOCTOR
+      warning: Missing TESTTOOL_REQUIRED_DOCTOR
+''');
+
+        final previousCwd = Directory.current.path;
+        final output = StringBuffer();
+        try {
+          Directory.current = workspace.path;
+          final runner = ToolRunner(tool: testTool, output: output);
+
+          final result = await runner.run(['doctor']);
+
+          expect(result.success, isTrue);
+          expect(output.toString(), contains('Environment warnings:'));
+          expect(output.toString(), contains('Missing TESTTOOL_REQUIRED_DOCTOR'));
+          expect(output.toString(), contains('Setup instructions:'));
+          expect(output.toString(), contains('Please run "testtool setup".'));
+          expect(output.toString(), contains('Doctor check passed.'));
+        } finally {
+          Directory.current = previousCwd;
+          if (tempRoot.existsSync()) {
+            await tempRoot.delete(recursive: true);
+          }
+        }
+      });
+
       test('BB-RUN-41: ToolRunner dispatches pipeline invocation '
           '[2026-02-28]', () async {
         final tempRoot = await Directory.systemTemp.createTemp('bb_pipe_run_');
