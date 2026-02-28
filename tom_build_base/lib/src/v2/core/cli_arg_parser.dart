@@ -500,8 +500,14 @@ class CliArgParser {
         if (value != null) cmdState.excludePatterns.addAll(_splitValue(value));
         return;
       }
-      cmdState.options[name] = value ?? true;
-      return;
+      // Global navigation/feature flags remain global even when placed after
+      // a command name, so `buildkit :cmd --dry-run` works the same as
+      // `buildkit --dry-run :cmd`.
+      if (!_isGlobalNavigationFlag(name)) {
+        cmdState.options[name] = value ?? true;
+        return;
+      }
+      // Fall through to global handling.
     }
 
     // Global options
@@ -617,6 +623,45 @@ class CliArgParser {
       default:
         state.extraOptions[name] = value ?? true;
     }
+  }
+
+  /// Returns true for flags that always route to global state, even when placed
+  /// after a command name (e.g. `buildkit :compiler --dry-run`).
+  ///
+  /// This ensures that navigation and feature flags work regardless of
+  /// whether they appear before or after the command name.
+  static bool _isGlobalNavigationFlag(String name) {
+    const globalFlags = {
+      // Feature/navigation flags
+      'dry-run', 'n',
+      'verbose', 'v',
+      'force', 'f',
+      'list', 'l',
+      'help', 'h',
+      'version', 'V',
+      // Traversal flags
+      'scan', 's',
+      'recursive', 'r',
+      'not-recursive',
+      'root', 'R',
+      'build-order', 'b',
+      'workspace-recursion',
+      'inner-first-git', 'i',
+      'outer-first-git', 'o',
+      'top-repo', 'T',
+      'recursion-exclude',
+      'modules', 'm',
+      'skip-modules',
+      'no-skip',
+      'nested',
+      'dump-definitions',
+      'include-test-projects',
+      'test-projects-only',
+      'guide',
+      'dump-config',
+      'config',
+    };
+    return globalFlags.contains(name);
   }
 
   bool _optionExpectsValue(String name) {

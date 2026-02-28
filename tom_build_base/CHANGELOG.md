@@ -1,3 +1,9 @@
+## 2.5.6
+
+### Fixed
+
+- **`cli_arg_parser.dart`** — Global navigation/feature flags (`--dry-run`, `--verbose`, `-n`, `-v`, `--force`, `--list`, etc.) now route to global state regardless of whether they appear before or after a command name. Previously `buildkit :compiler --dry-run` was silently ignored; now it works identically to `buildkit --dry-run :compiler`.
+
 ## 2.5.5
 
 ### Added

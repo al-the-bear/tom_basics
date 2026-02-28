@@ -765,5 +765,58 @@ void main() {
         },
       );
     });
+
+    group('global flags after command name', () {
+      test(
+        'BB-CLI-81: --dry-run after command routes to global state [2026-02-28]',
+        () {
+          final args = parser.parse([':compiler', '--dry-run']);
+          expect(args.dryRun, isTrue);
+          expect(args.commands, equals(['compiler']));
+        },
+      );
+
+      test(
+        'BB-CLI-82: --verbose after command routes to global state [2026-02-28]',
+        () {
+          final args = parser.parse([':compiler', '--verbose']);
+          expect(args.verbose, isTrue);
+          expect(args.commands, equals(['compiler']));
+        },
+      );
+
+      test(
+        'BB-CLI-83: -n shorthand after command routes to global dry-run [2026-02-28]',
+        () {
+          final args = parser.parse([':compiler', '-n']);
+          expect(args.dryRun, isTrue);
+          expect(args.commands, equals(['compiler']));
+        },
+      );
+
+      test(
+        'BB-CLI-84: custom flag after command still goes to per-command [2026-02-28]',
+        () {
+          final args = parser.parse([':compiler', '--all-platforms']);
+          expect(args.dryRun, isFalse);
+          expect(
+            args.commandArgs['compiler']?.options['all-platforms'],
+            isTrue,
+          );
+        },
+      );
+
+      test(
+        'BB-CLI-85: --dry-run before command same as after command [2026-02-28]',
+        () {
+          final before = parser.parse(['--dry-run', ':compiler']);
+          final after = parser.parse([':compiler', '--dry-run']);
+          expect(before.dryRun, isTrue);
+          expect(after.dryRun, isTrue);
+          expect(before.commands, equals(['compiler']));
+          expect(after.commands, equals(['compiler']));
+        },
+      );
+    });
   });
 }
