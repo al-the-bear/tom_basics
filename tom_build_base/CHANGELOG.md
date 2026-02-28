@@ -1,3 +1,9 @@
+## 2.5.9
+
+### Fixed
+
+- **`cli_arg_parser.dart`** — `:command` tokens appearing after a `:macro` or `:define` command are now treated as positional arguments (part of the macro value) rather than being dispatched as separate commands. Previously, `buildkit :macro vc=:v $1 :comp $2` would execute `:comp` immediately and store only `:v` as the macro value. Now the full token sequence is captured as the value.
+
 ## 2.5.6
 
 ### Fixed

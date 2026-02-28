@@ -393,6 +393,15 @@ class CliArgParser {
 
       // Check for command (starts with :)
       if (arg.startsWith(':')) {
+        // Special case: macro/define commands consume all remaining tokens as
+        // positional args (the value may contain :command references and
+        // placeholder tokens that must not be executed immediately).
+        if (result.currentCommand == 'macro' ||
+            result.currentCommand == 'define') {
+          result.positionalArgs.add(arg);
+          i++;
+          continue;
+        }
         final cmdName = arg.substring(1);
         result.commands.add(cmdName);
         result.currentCommand = cmdName;

@@ -819,4 +819,55 @@ void main() {
       );
     });
   });
+
+  group('BB-CLI-86+: macro/define greedy positional parsing', () {
+    late CliArgParser parser;
+    setUp(() {
+      parser = CliArgParser();
+    });
+
+    test(
+      'BB-CLI-86: :command token after :macro is treated as positional arg, '
+      'not a new command [2026-05-30]',
+      () {
+        // Simulates: buildkit :macro vc=:v $1 :comp $2
+        // (with $1/$2 already substituted or literal)
+        final args = parser.parse([':macro', 'vc=:v', r'$1', ':comp', r'$2']);
+        expect(args.commands, equals(['macro']));
+        expect(
+          args.positionalArgs,
+          equals(['vc=:v', r'$1', ':comp', r'$2']),
+        );
+      },
+    );
+
+    test(
+      'BB-CLI-87: :command token after :define is treated as positional arg, '
+      'not a new command [2026-05-30]',
+      () {
+        final args = parser.parse([
+          ':define',
+          'prefix=hello',
+          ':other',
+          'extra',
+        ]);
+        expect(args.commands, equals(['define']));
+        expect(
+          args.positionalArgs,
+          equals(['prefix=hello', ':other', 'extra']),
+        );
+      },
+    );
+
+    test(
+      'BB-CLI-88: :command before :macro is still a regular command [2026-05-30]',
+      () {
+        final args = parser.parse([':comp', ':macro', 'vc=:v', ':other']);
+        expect(args.commands, equals(['comp', 'macro']));
+        // 'vc=:v' and ':other' are both positional — ':macro' activates the
+        // greedy mode so ':other' is absorbed as a positional arg, not a command
+        expect(args.positionalArgs, equals(['vc=:v', ':other']));
+      },
+    );
+  });
 }
