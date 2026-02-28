@@ -8,6 +8,8 @@ import 'console_markdown_zone.dart';
 import 'help_generator.dart';
 import 'nested_tool_executor.dart';
 import 'binary_helpers.dart';
+import 'pipeline_config.dart';
+import 'pipeline_executor.dart';
 import 'tool_definition.dart';
 import 'tool_definition_serializer.dart';
 import 'command_executor.dart';
@@ -110,6 +112,22 @@ class ItemResult {
        message = null;
 }
 
+class _RequirementCheckResult {
+  final List<String> warnings;
+  final List<String> errors;
+  final String? setupInstructions;
+
+  const _RequirementCheckResult({
+    this.warnings = const [],
+    this.errors = const [],
+    this.setupInstructions,
+  });
+
+  bool get hasErrors => errors.isNotEmpty;
+
+  bool get hasIssues => warnings.isNotEmpty || errors.isNotEmpty;
+}
+
 /// Runs tools based on their definitions.
 ///
 /// Handles argument parsing, help display, command routing,
@@ -129,6 +147,9 @@ class ToolRunner {
 
   /// Output writer (default: stdout).
   final StringSink output;
+
+  /// Runtime-only macros (`$macro`) for this invocation session.
+  final Map<String, String> _runtimeMacros = <String, String>{};
 
   ToolRunner({
     required this.tool,
@@ -165,6 +186,29 @@ class ToolRunner {
       return const ToolResult.success();
     }
 
+    final doctorRequested = _isDoctorRequested(cliArgs);
+    final shouldValidateEnvironment =
+        doctorRequested ||
+        cliArgs.help ||
+        (!cliArgs.version && !cliArgs.positionalArgs.contains('version'));
+
+    if (shouldValidateEnvironment) {
+      final checks = _runRequiredEnvironmentChecks();
+      if (checks.hasIssues) {
+        _printRequirementIssues(checks);
+      }
+      if (doctorRequested) {
+        if (checks.hasErrors) {
+          return const ToolResult.failure('Installation requirements not met');
+        }
+        output.writeln('Doctor check passed.');
+        return const ToolResult.success();
+      }
+      if (checks.hasErrors) {
+        return const ToolResult.failure('Installation requirements not met');
+      }
+    }
+
     // --nested: skip wiring, skip traversal, run single-project in cwd.
     if (cliArgs.nested) {
       return _runNestedMode(cliArgs);
@@ -191,6 +235,11 @@ class ToolRunner {
 
     // Handle multi-command mode
     if (_effectiveTool.mode == ToolMode.multiCommand) {
+      final pipelineAttempt = await _tryRunPipelineInvocation(cliArgs);
+      if (pipelineAttempt != null) {
+        return pipelineAttempt;
+      }
+
       if (cliArgs.commands.isEmpty) {
         if (_effectiveTool.defaultCommand != null) {
           return _runCommand(_effectiveTool.defaultCommand!, cliArgs);
@@ -221,8 +270,44 @@ class ToolRunner {
     return _runWithTraversal(executor, null, cliArgs);
   }
 
+  Future<ToolResult?> _tryRunPipelineInvocation(CliArgs cliArgs) async {
+    if (cliArgs.commands.isNotEmpty) return null;
+    if (cliArgs.positionalArgs.isEmpty) return null;
+
+    final candidateName = cliArgs.positionalArgs.first;
+    if (candidateName.startsWith('-') || candidateName == 'help') return null;
+
+    final loaded = ToolPipelineConfigLoader.load(tool: _effectiveTool);
+    if (loaded == null || !loaded.hasPipelines) return null;
+
+    final definition = loaded.pipelines[candidateName];
+    if (definition == null) return null;
+
+    final executor = ToolPipelineExecutor(
+      tool: _effectiveTool,
+      output: output,
+      verbose: verbose,
+    );
+
+    final ok = await executor.executeInvocation(
+      pipelineName: candidateName,
+      config: loaded,
+      cliArgs: cliArgs,
+    );
+
+    if (!ok) {
+      return const ToolResult.failure('Pipeline execution failed');
+    }
+    return const ToolResult.success();
+  }
+
   /// Run a specific command.
   Future<ToolResult> _runCommand(String cmdName, CliArgs cliArgs) async {
+    final builtIn = _tryHandleBuiltInMacroDefineCommand(cmdName, cliArgs);
+    if (builtIn != null) {
+      return builtIn;
+    }
+
     final cmd = _effectiveTool.findCommand(cmdName);
     if (cmd == null) {
       // Check if it's an ambiguous prefix
@@ -547,6 +632,12 @@ class ToolRunner {
   Future<ToolResult> _handleHelp(CliArgs cliArgs) async {
     if (cliArgs.commands.isNotEmpty) {
       final cmdName = cliArgs.commands.first;
+      final builtInHelp = _tryHandleBuiltInMacroDefineHelp(cmdName);
+      if (builtInHelp != null) {
+        output.writeln(builtInHelp);
+        return const ToolResult.success();
+      }
+
       final cmd = _effectiveTool.findCommand(cmdName);
       if (cmd != null) {
         // Check if this is a wired command — delegate help to nested tool
@@ -579,13 +670,303 @@ class ToolRunner {
       output.writeln('Unknown command: :$cmdName');
       return const ToolResult.failure('Unknown command');
     }
-    output.writeln(
-      HelpGenerator.generateToolHelp(
-        _effectiveTool,
-        nestedCommandNames: _wiredExecutors.keys.toSet(),
-      ),
+    final baseHelp = HelpGenerator.generateToolHelp(
+      _effectiveTool,
+      nestedCommandNames: _wiredExecutors.keys.toSet(),
     );
+    output.write(baseHelp);
+    final appendix = _builtInMacroDefineHelpAppendix();
+    if (appendix != null) {
+      output.writeln();
+      output.writeln(appendix);
+    }
     return const ToolResult.success();
+  }
+
+  ToolResult? _tryHandleBuiltInMacroDefineCommand(String cmdName, CliArgs cliArgs) {
+    if (!_isMacroDefineFeatureEligible()) return null;
+
+    switch (cmdName) {
+      case 'macro':
+        return _handleRuntimeMacroDefine(cliArgs);
+      case 'macros':
+        return _handleRuntimeMacroList();
+      case 'unmacro':
+        return _handleRuntimeMacroRemove(cliArgs);
+      case 'define':
+        return _handlePersistentDefineAdd(cliArgs);
+      case 'defines':
+        return _handlePersistentDefineList();
+      case 'undefine':
+        return _handlePersistentDefineRemove(cliArgs);
+      default:
+        return null;
+    }
+  }
+
+  String? _tryHandleBuiltInMacroDefineHelp(String cmdName) {
+    if (!_isMacroDefineFeatureEligible()) return null;
+
+    switch (cmdName) {
+      case 'macro':
+        return 'Command: :macro\nDefine a runtime macro for this tool run.\nUsage: ${tool.name} :macro name=value';
+      case 'macros':
+        return 'Command: :macros\nList runtime macros for this tool run.\nUsage: ${tool.name} :macros';
+      case 'unmacro':
+        return 'Command: :unmacro\nRemove a runtime macro.\nUsage: ${tool.name} :unmacro name';
+      case 'define':
+        return 'Command: :define\nPersist a define in ${tool.name}_master.yaml.\nUsage: ${tool.name} :define name=value';
+      case 'defines':
+        return 'Command: :defines\nList persisted defines from ${tool.name}_master.yaml.\nUsage: ${tool.name} :defines';
+      case 'undefine':
+        return 'Command: :undefine\nRemove a persisted define from ${tool.name}_master.yaml.\nUsage: ${tool.name} :undefine name';
+      default:
+        return null;
+    }
+  }
+
+  String? _builtInMacroDefineHelpAppendix() {
+    if (!_isMacroDefineFeatureEligible()) return null;
+    return '''<magenta>**Runtime Macros**</magenta>
+  :macro <name>=<value>      Add runtime macro
+  :macros                    List runtime macros
+  :unmacro <name>            Remove runtime macro
+
+<magenta>**Persistent Defines**</magenta>
+  :define <name>=<value>     Add persisted define in ${tool.name}_master.yaml
+  :defines                   List persisted defines
+  :undefine <name>           Remove persisted define
+''';
+  }
+
+  bool _isMacroDefineFeatureEligible() {
+    return ToolPipelineConfigLoader.isEligible(
+      tool: _effectiveTool,
+      fromDirectory: Directory.current.path,
+    );
+  }
+
+  ToolResult _handleRuntimeMacroDefine(CliArgs cliArgs) {
+    final parsed = _parseNameValueArg(cliArgs);
+    if (parsed == null) {
+      return const ToolResult.failure('Missing argument: name=value');
+    }
+
+    final (name, value) = parsed;
+    _runtimeMacros[name] = value;
+    output.writeln('Added macro: $name: $value');
+    return const ToolResult.success(processedCount: 1);
+  }
+
+  ToolResult _handleRuntimeMacroList() {
+    if (_runtimeMacros.isEmpty) {
+      output.writeln('No macros defined.');
+      return const ToolResult.success();
+    }
+
+    final keys = _runtimeMacros.keys.toList()..sort();
+    for (final key in keys) {
+      output.writeln('$key=${_runtimeMacros[key]}');
+    }
+    return const ToolResult.success(processedCount: 1);
+  }
+
+  ToolResult _handleRuntimeMacroRemove(CliArgs cliArgs) {
+    final name = cliArgs.positionalArgs.isEmpty
+        ? ''
+        : cliArgs.positionalArgs.first.trim();
+    if (name.isEmpty) {
+      return const ToolResult.failure('Missing argument: macro name');
+    }
+
+    final removed = _runtimeMacros.remove(name);
+    if (removed == null) {
+      return ToolResult.failure('Macro not found: $name');
+    }
+
+    output.writeln('Removed macro: $name : $removed');
+    return const ToolResult.success(processedCount: 1);
+  }
+
+  ToolResult _handlePersistentDefineAdd(CliArgs cliArgs) {
+    final parsed = _parseNameValueArg(cliArgs);
+    if (parsed == null) {
+      return const ToolResult.failure('Missing argument: name=value');
+    }
+    final (name, value) = parsed;
+
+    final result = _withMasterYaml((doc) {
+      final defines = _readDefines(doc);
+      defines[name] = value;
+      final sorted = Map<String, String>.fromEntries(
+        defines.entries.toList()..sort((a, b) => a.key.compareTo(b.key)),
+      );
+      doc['defines'] = sorted;
+    });
+    if (result != null) return result;
+
+    output.writeln('Added define: $name: $value');
+    return const ToolResult.success(processedCount: 1);
+  }
+
+  ToolResult _handlePersistentDefineList() {
+    final result = _readMasterYaml();
+    if (result == null) {
+      return const ToolResult.failure('Unable to read tool master yaml');
+    }
+    final defines = _readDefines(result);
+    if (defines.isEmpty) {
+      output.writeln('No defines found.');
+      return const ToolResult.success();
+    }
+
+    final keys = defines.keys.toList()..sort();
+    for (final key in keys) {
+      output.writeln('$key=${defines[key]}');
+    }
+    return const ToolResult.success(processedCount: 1);
+  }
+
+  ToolResult _handlePersistentDefineRemove(CliArgs cliArgs) {
+    final name = cliArgs.positionalArgs.isEmpty
+        ? ''
+        : cliArgs.positionalArgs.first.trim();
+    if (name.isEmpty) {
+      return const ToolResult.failure('Missing argument: define name');
+    }
+
+    String? removedValue;
+    final result = _withMasterYaml((doc) {
+      final defines = _readDefines(doc);
+      removedValue = defines.remove(name);
+      final sorted = Map<String, String>.fromEntries(
+        defines.entries.toList()..sort((a, b) => a.key.compareTo(b.key)),
+      );
+      if (sorted.isEmpty) {
+        doc.remove('defines');
+      } else {
+        doc['defines'] = sorted;
+      }
+    });
+    if (result != null) return result;
+
+    if (removedValue == null) {
+      return ToolResult.failure('Define not found: $name');
+    }
+
+    output.writeln('Removed define: $name : $removedValue');
+    return const ToolResult.success(processedCount: 1);
+  }
+
+  (String, String)? _parseNameValueArg(CliArgs cliArgs) {
+    if (cliArgs.positionalArgs.isEmpty) return null;
+    final first = cliArgs.positionalArgs.first;
+    final eqIndex = first.indexOf('=');
+    if (eqIndex <= 0) return null;
+    final name = first.substring(0, eqIndex).trim();
+    final tail = <String>[first.substring(eqIndex + 1), ...cliArgs.positionalArgs.skip(1)];
+    final value = tail.join(' ').trim();
+    if (name.isEmpty || value.isEmpty) return null;
+    return (name, value);
+  }
+
+  Map<String, dynamic>? _readMasterYaml() {
+    final wsRoot = findWorkspaceRoot(Directory.current.path);
+    final path = '$wsRoot/${tool.name}_master.yaml';
+    final file = File(path);
+    if (!file.existsSync()) return null;
+
+    final parsed = loadYaml(file.readAsStringSync());
+    if (parsed is! YamlMap) return null;
+    return _deepToDart(parsed) as Map<String, dynamic>;
+  }
+
+  ToolResult? _withMasterYaml(void Function(Map<String, dynamic> doc) mutate) {
+    final wsRoot = findWorkspaceRoot(Directory.current.path);
+    final path = '$wsRoot/${tool.name}_master.yaml';
+    final file = File(path);
+    if (!file.existsSync()) {
+      return const ToolResult.failure('Tool master yaml not found');
+    }
+
+    final doc = _readMasterYaml();
+    if (doc == null) {
+      return const ToolResult.failure('Unable to parse tool master yaml');
+    }
+
+    mutate(doc);
+    file.writeAsStringSync(_toYaml(doc));
+    return null;
+  }
+
+  Map<String, String> _readDefines(Map<String, dynamic> doc) {
+    final raw = doc['defines'];
+    if (raw is! Map) return <String, String>{};
+    final result = <String, String>{};
+    for (final entry in raw.entries) {
+      result[entry.key.toString()] = entry.value.toString();
+    }
+    return result;
+  }
+
+  dynamic _deepToDart(dynamic value) {
+    if (value is YamlMap) {
+      final map = <String, dynamic>{};
+      for (final entry in value.entries) {
+        map[entry.key.toString()] = _deepToDart(entry.value);
+      }
+      return map;
+    }
+    if (value is YamlList) {
+      return value.map(_deepToDart).toList();
+    }
+    return value;
+  }
+
+  String _toYaml(dynamic value, {int indent = 0}) {
+    final pad = ' ' * indent;
+    if (value is Map) {
+      final lines = <String>[];
+      for (final entry in value.entries) {
+        final key = entry.key.toString();
+        final v = entry.value;
+        if (v is Map || v is List) {
+          lines.add('$pad$key:');
+          lines.add(_toYaml(v, indent: indent + 2));
+        } else {
+          lines.add('$pad$key: ${_yamlScalar(v)}');
+        }
+      }
+      return lines.join('\n');
+    }
+    if (value is List) {
+      final lines = <String>[];
+      for (final item in value) {
+        if (item is Map || item is List) {
+          lines.add('$pad-');
+          lines.add(_toYaml(item, indent: indent + 2));
+        } else {
+          lines.add('$pad- ${_yamlScalar(item)}');
+        }
+      }
+      return lines.join('\n');
+    }
+    return '$pad${_yamlScalar(value)}';
+  }
+
+  String _yamlScalar(dynamic value) {
+    if (value == null) return 'null';
+    if (value is num || value is bool) return '$value';
+    final text = value.toString();
+    final needsQuote = text.isEmpty ||
+        text.contains(':') ||
+        text.contains('#') ||
+        text.contains('\n') ||
+        text.startsWith(' ') ||
+        text.endsWith(' ');
+    if (!needsQuote) return text;
+    final escaped = text.replaceAll('\\', '\\\\').replaceAll('"', '\\"');
+    return '"$escaped"';
   }
 
   /// Delegate help for a wired command to the nested tool.
@@ -644,5 +1025,226 @@ class ToolRunner {
     } catch (e) {
       return null;
     }
+  }
+
+  bool _isDoctorRequested(CliArgs cliArgs) {
+    String normalize(String value) {
+      final trimmed = value.trim();
+      if (trimmed.startsWith(':')) return trimmed.substring(1);
+      return trimmed;
+    }
+
+    if (cliArgs.commands.any((c) => normalize(c) == 'doctor')) return true;
+    if (cliArgs.positionalArgs.any((p) => normalize(p) == 'doctor')) {
+      return true;
+    }
+    return false;
+  }
+
+  void _printRequirementIssues(_RequirementCheckResult result) {
+    if (result.warnings.isNotEmpty) {
+      output.writeln('Environment warnings:');
+      for (final warning in result.warnings) {
+        output.writeln('  - $warning');
+      }
+    }
+    if (result.errors.isNotEmpty) {
+      output.writeln('Installation requirements not met:');
+      for (final error in result.errors) {
+        output.writeln('  - $error');
+      }
+    }
+    final setupInstructions = result.setupInstructions?.trim();
+    if (result.hasIssues &&
+        setupInstructions != null &&
+        setupInstructions.isNotEmpty) {
+      output.writeln('Setup instructions:');
+      output.writeln('  $setupInstructions');
+    }
+  }
+
+  _RequirementCheckResult _runRequiredEnvironmentChecks() {
+    final wsRoot = findWorkspaceRoot(Directory.current.path);
+    final requiredMap = _loadRequiredEnvironmentSection(wsRoot);
+    if (requiredMap == null) {
+      return const _RequirementCheckResult();
+    }
+
+    final warnings = <String>[];
+    final errors = <String>[];
+    String? setupInstructions;
+
+    final setup = requiredMap['setup'];
+    if (setup is YamlMap) {
+      setupInstructions = setup['instructions']?.toString();
+    }
+
+    final envVars = requiredMap['env-variables'];
+    if (envVars is List) {
+      for (final item in envVars) {
+        if (item is! YamlMap) continue;
+        final name = item['name']?.toString();
+        if (name == null || name.isEmpty) continue;
+        final value = Platform.environment[name];
+        if (value != null && value.isNotEmpty) continue;
+        final err = item['error']?.toString();
+        final warn = item['warning']?.toString();
+        if (err != null && err.isNotEmpty) {
+          errors.add(err);
+        } else if (warn != null && warn.isNotEmpty) {
+          warnings.add(warn);
+        }
+      }
+    }
+
+    final folders = requiredMap['folders'];
+    if (folders is List) {
+      for (final item in folders) {
+        if (item is! YamlMap) continue;
+        final pathRaw = item['path']?.toString();
+        if (pathRaw == null || pathRaw.isEmpty) continue;
+        final path = _resolveEnvVars(pathRaw);
+        if (Directory(path).existsSync()) continue;
+        final err = item['error']?.toString();
+        final warn = item['warning']?.toString();
+        final name = item['name']?.toString() ?? pathRaw;
+        if (err != null && err.isNotEmpty) {
+          errors.add(err);
+        } else if (warn != null && warn.isNotEmpty) {
+          warnings.add(warn);
+        } else {
+          warnings.add('$name folder missing: $path');
+        }
+      }
+    }
+
+    final binaries = requiredMap['binaries'];
+    if (binaries is List) {
+      for (final item in binaries) {
+        if (item is! YamlMap) continue;
+        final binary = item['binary']?.toString();
+        if (binary == null || binary.isEmpty) continue;
+
+        if (!_isBinaryOnPath(binary)) {
+          final err = item['error']?.toString();
+          final warn = item['warning']?.toString();
+          if (err != null && err.isNotEmpty) {
+            errors.add(err);
+          } else if (warn != null && warn.isNotEmpty) {
+            warnings.add(warn);
+          } else {
+            warnings.add('$binary is not installed or not in PATH');
+          }
+          continue;
+        }
+
+        final versionTest = item['version-test']?.toString();
+        final versionConstraint = item['version-constraint']?.toString();
+        if (versionTest == null || versionConstraint == null) continue;
+
+        final detectedVersion = _runVersionCommand(versionTest);
+        if (detectedVersion == null) continue;
+
+        final ok = _satisfiesCaretConstraint(
+          detectedVersion,
+          versionConstraint,
+        );
+        if (!ok) {
+          final versionError = item['version-error']?.toString();
+          if (versionError != null && versionError.isNotEmpty) {
+            errors.add(
+              versionError.replaceAll(
+                '%{version-constraint}',
+                versionConstraint,
+              ),
+            );
+          } else {
+            errors.add(
+              '$binary version $detectedVersion does not satisfy '
+              '$versionConstraint',
+            );
+          }
+        }
+      }
+    }
+
+    return _RequirementCheckResult(
+      warnings: warnings,
+      errors: errors,
+      setupInstructions: setupInstructions,
+    );
+  }
+
+  YamlMap? _loadRequiredEnvironmentSection(String wsRoot) {
+    final candidates = <String>['${tool.name}_master.yaml'];
+    if (tool.name == 'buildkit' && !candidates.contains(kBuildkitMasterYaml)) {
+      candidates.add(kBuildkitMasterYaml);
+    }
+
+    for (final fileName in candidates) {
+      final file = File('$wsRoot/$fileName');
+      if (!file.existsSync()) continue;
+      try {
+        final parsed = loadYaml(file.readAsStringSync());
+        if (parsed is! YamlMap) continue;
+        final required = parsed['required-environment'];
+        if (required is YamlMap) return required;
+      } catch (_) {
+        continue;
+      }
+    }
+    return null;
+  }
+
+  String _resolveEnvVars(String input) {
+    return input.replaceAllMapped(RegExp(r'\$\[?(\w+)\]?'), (m) {
+      final name = m.group(1)!;
+      return Platform.environment[name] ?? m.group(0)!;
+    });
+  }
+
+  bool _isBinaryOnPath(String binary) {
+    final checker = Platform.isWindows ? 'where' : 'which';
+    final result = Process.runSync(checker, [binary], runInShell: true);
+    return result.exitCode == 0;
+  }
+
+  String? _runVersionCommand(String command) {
+    try {
+      final result = Platform.isWindows
+          ? Process.runSync('cmd', ['/c', command], runInShell: true)
+          : Process.runSync('/bin/bash', ['-lc', command], runInShell: true);
+      final output = '${result.stdout ?? ''}\n${result.stderr ?? ''}'.trim();
+      final match = RegExp(r'(\d+)\.(\d+)(?:\.(\d+))?').firstMatch(output);
+      if (match == null) return null;
+      final major = match.group(1)!;
+      final minor = match.group(2)!;
+      final patch = match.group(3) ?? '0';
+      return '$major.$minor.$patch';
+    } catch (_) {
+      return null;
+    }
+  }
+
+  bool _satisfiesCaretConstraint(String version, String constraint) {
+    if (!constraint.startsWith('^')) return true;
+    final minV = _parseVersionInts(constraint.substring(1));
+    final curV = _parseVersionInts(version);
+    if (minV == null || curV == null) return true;
+
+    if (curV[0] != minV[0]) return false;
+    if (curV[1] < minV[1]) return false;
+    if (curV[1] == minV[1] && curV[2] < minV[2]) return false;
+    return true;
+  }
+
+  List<int>? _parseVersionInts(String input) {
+    final m = RegExp(r'^(\d+)\.(\d+)(?:\.(\d+))?').firstMatch(input);
+    if (m == null) return null;
+    return [
+      int.parse(m.group(1)!),
+      int.parse(m.group(2)!),
+      int.parse(m.group(3) ?? '0'),
+    ];
   }
 }

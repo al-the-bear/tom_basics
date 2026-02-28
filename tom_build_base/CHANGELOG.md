@@ -1,3 +1,14 @@
+## 2.5.5
+
+### Added
+
+- **`tool_runner.dart`** — Added required-environment validation support from `<tool>_master.yaml` (including `buildkit_master.yaml` fallback for `buildkit`), with checks for environment variables, folders, binaries, and caret-version constraints.
+- **`tool_runner.dart`** — Added doctor-mode execution flow for tools: doctor requests now print requirement warnings/errors and return success/failure based on hard requirement violations.
+
+### Fixed
+
+- **`tool_runner.dart`** — Normalized doctor token detection so both `doctor` and `:doctor` forms are recognized consistently in positional and command argument paths.
+
 ## 2.5.4
 
 ### Fixed

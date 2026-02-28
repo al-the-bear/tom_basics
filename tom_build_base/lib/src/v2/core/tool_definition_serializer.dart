@@ -26,6 +26,7 @@ class ToolDefinitionSerializer {
     buf.writeln('version: ${tool.version}');
     buf.writeln('description: ${_yamlString(tool.description)}');
     buf.writeln('mode: ${_modeToString(tool.mode)}');
+    buf.writeln('pipeline_name: ${tool.pipelineName}');
 
     // Features
     buf.writeln('features:');
@@ -97,6 +98,7 @@ class ToolDefinitionSerializer {
     final version = map['version']?.toString() ?? '1.0.0';
     final description = map['description'] as String? ?? '';
     final mode = _modeFromString(map['mode'] as String? ?? 'multi_command');
+    final pipelineName = map['pipeline_name']?.toString();
 
     // Parse features
     final featMap = map['features'];
@@ -141,6 +143,7 @@ class ToolDefinitionSerializer {
       version: version,
       description: description,
       mode: mode,
+      pipelineName: pipelineName,
       features: features,
       globalOptions: globalOptions,
       commands: commands,

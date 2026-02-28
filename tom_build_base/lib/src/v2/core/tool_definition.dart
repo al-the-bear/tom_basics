@@ -123,6 +123,14 @@ class ToolDefinition {
   /// Tool mode (multi-command, single-command, hybrid).
   final ToolMode mode;
 
+  /// Prefix used for delegated pipeline command entries.
+  ///
+  /// Example: for buildkit this is usually `buildkit`, enabling
+  /// pipeline entries like `buildkit :versioner ...`.
+  ///
+  /// Defaults to [name] when not explicitly provided.
+  final String pipelineName;
+
   /// Navigation features supported by this tool.
   final NavigationFeatures features;
 
@@ -189,6 +197,7 @@ class ToolDefinition {
     required this.description,
     this.version = '1.0.0',
     this.mode = ToolMode.multiCommand,
+    String? pipelineName,
     this.features = const NavigationFeatures(),
     this.globalOptions = const [],
     this.commands = const [],
@@ -199,7 +208,7 @@ class ToolDefinition {
     this.worksWithNatures = const {},
     this.wiringFile,
     this.defaultIncludes,
-  });
+  }) : pipelineName = pipelineName ?? name;
 
   /// Whether this tool has any wiring configuration (code-level or file-level).
   bool get hasWiring => wiringFile != null || defaultIncludes != null;
@@ -350,6 +359,7 @@ class ToolDefinition {
     String? description,
     String? version,
     ToolMode? mode,
+    String? pipelineName,
     NavigationFeatures? features,
     List<OptionDefinition>? globalOptions,
     List<CommandDefinition>? commands,
@@ -366,6 +376,7 @@ class ToolDefinition {
       description: description ?? this.description,
       version: version ?? this.version,
       mode: mode ?? this.mode,
+      pipelineName: pipelineName ?? this.pipelineName,
       features: features ?? this.features,
       globalOptions: globalOptions ?? this.globalOptions,
       commands: commands ?? this.commands,

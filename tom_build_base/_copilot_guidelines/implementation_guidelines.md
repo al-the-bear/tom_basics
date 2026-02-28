@@ -41,6 +41,24 @@ The correct sequence for implementing features or fixing bugs:
 4. Verification     → Run tests, fix any failures
 ```
 
+## Critical Rule: Shared CLI Functionality Must Land in tom_build_base First
+
+When behavior belongs to shared CLI infrastructure, implement it in `tom_build_base` first and propagate by published dependency updates.
+
+Mandatory workflow:
+
+1. Modify `tom_build_base`.
+2. Test it with a test tool created inside `tom_build_base` (or an existing one there).
+3. Republish `tom_build_base`.
+4. Update the `tom_build_base` version in all tools based on `tom_build_base`.
+5. Run tests in all tools based on `tom_build_base`.
+
+Hard constraints for dependent tools (`tom_build_kit`, `tom_test_kit`, `tom_issue_kit` and others):
+
+- Never add temporary downstream code for functionality that belongs to `tom_build_base`.
+- Never implement stopgap copies in tool packages when the owning library is `tom_build_base`.
+- If integration cannot be completed in one pass, explicitly tell the user and make an integration plan first.
+
 ### 1. Specification First
 
 Before writing any code, understand **what** the code should do:

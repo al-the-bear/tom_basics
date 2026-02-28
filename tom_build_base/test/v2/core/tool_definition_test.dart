@@ -135,6 +135,7 @@ void main() {
         expect(tool.description, equals('My tool description'));
         expect(tool.version, equals('1.0.0'));
         expect(tool.mode, equals(ToolMode.multiCommand));
+        expect(tool.pipelineName, equals('mytool'));
         expect(tool.features, isA<NavigationFeatures>());
         expect(tool.globalOptions, isEmpty);
         expect(tool.commands, isEmpty);
@@ -160,11 +161,23 @@ void main() {
         expect(tool.name, equals('buildkit'));
         expect(tool.version, equals('2.0.0'));
         expect(tool.mode, equals(ToolMode.multiCommand));
+        expect(tool.pipelineName, equals('buildkit'));
         expect(tool.features, equals(NavigationFeatures.all));
         expect(tool.globalOptions, hasLength(1));
         expect(tool.commands, hasLength(1));
         expect(tool.defaultCommand, equals('status'));
         expect(tool.helpFooter, equals('Footer text'));
+      });
+
+      test('BB-TDF-11b: Supports explicit pipelineName [2026-02-28]', () {
+        const tool = ToolDefinition(
+          name: 'buildkit',
+          pipelineName: 'bktool',
+          description: 'Build toolkit',
+        );
+
+        expect(tool.name, equals('buildkit'));
+        expect(tool.pipelineName, equals('bktool'));
       });
     });
 

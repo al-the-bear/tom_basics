@@ -16,7 +16,19 @@ void main() {
         expect(yaml, contains('version: 1.0.0'));
         expect(yaml, contains('description: A simple tool'));
         expect(yaml, contains('mode: multi_command'));
+        expect(yaml, contains('pipeline_name: simple'));
         expect(yaml, contains('global_options: []'));
+      });
+
+      test('BB-SER-1b: Serializes explicit pipeline_name [2026-02-28]', () {
+        const tool = ToolDefinition(
+          name: 'buildkit',
+          pipelineName: 'bktool',
+          description: 'Build toolkit',
+        );
+
+        final yaml = ToolDefinitionSerializer.toYaml(tool);
+        expect(yaml, contains('pipeline_name: bktool'));
       });
 
       test('BB-SER-2: Serializes features correctly [2026-02-27]', () {
@@ -203,6 +215,21 @@ void main() {
         expect(tool.version, equals('1.0.0'));
         expect(tool.description, equals('A simple tool'));
         expect(tool.mode, equals(ToolMode.multiCommand));
+        expect(tool.pipelineName, equals('simple'));
+      });
+
+      test('BB-SER-10b: Parses explicit pipeline_name [2026-02-28]', () {
+        final map = {
+          'name': 'buildkit',
+          'version': '1.0.0',
+          'description': 'Build toolkit',
+          'mode': 'multi_command',
+          'pipeline_name': 'bktool',
+        };
+
+        final tool = ToolDefinitionSerializer.fromYamlMap(map);
+        expect(tool.name, equals('buildkit'));
+        expect(tool.pipelineName, equals('bktool'));
       });
 
       test('BB-SER-11: Parses features map [2026-02-27]', () {

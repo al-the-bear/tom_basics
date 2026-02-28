@@ -57,7 +57,7 @@ This package is published to pub.dev. See [Project Republishing](/_copilot_guide
 |------|-------------|
 | [build_base_projects.md](build_base_projects.md) | List of all projects depending on tom_build_base |
 | [cli_v2_design.md](cli_v2_design.md) | V2 CLI framework architecture and design specification |
-| [implementation_guidelines.md](implementation_guidelines.md) | Development workflow, test-first approach, naming conventions |
+| [implementation_guidelines.md](implementation_guidelines.md) | Development workflow, test-first approach, naming conventions, and strict shared-ownership propagation workflow |
 
 ## Quick Reference
 

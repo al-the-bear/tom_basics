@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:test/test.dart';
 import 'package:tom_build_base/tom_build_base_v2.dart';
 
@@ -356,6 +358,175 @@ void main() {
         final result = await runner.run([':traverse']);
 
         expect(result.success, isFalse);
+      });
+
+      test('BB-RUN-40: help runs env checks and prints setup instructions '
+          '[2026-02-28]', () async {
+        final tempRoot = await Directory.systemTemp.createTemp(
+          'bb_help_checks_',
+        );
+        final workspace = Directory('${tempRoot.path}/ws')..createSync();
+        final master = File('${workspace.path}/testtool_master.yaml');
+        master.writeAsStringSync('''
+required-environment:
+  setup:
+    instructions: Please run "testtool setup".
+  env-variables:
+    - name: TESTTOOL_REQUIRED
+      warning: Missing TESTTOOL_REQUIRED
+''');
+
+        final previousCwd = Directory.current.path;
+        final output = StringBuffer();
+        try {
+          Directory.current = workspace.path;
+          final runner = ToolRunner(tool: testTool, output: output);
+
+          final result = await runner.run(['--help']);
+
+          expect(result.success, isTrue);
+          expect(output.toString(), contains('Environment warnings:'));
+          expect(output.toString(), contains('Missing TESTTOOL_REQUIRED'));
+          expect(output.toString(), contains('Setup instructions:'));
+          expect(
+            output.toString(),
+            contains('Please run "testtool setup".'),
+          );
+        } finally {
+          Directory.current = previousCwd;
+          if (tempRoot.existsSync()) {
+            await tempRoot.delete(recursive: true);
+          }
+        }
+      });
+
+      test('BB-RUN-41: ToolRunner dispatches pipeline invocation '
+          '[2026-02-28]', () async {
+        final tempRoot = await Directory.systemTemp.createTemp('bb_pipe_run_');
+        final workspace = Directory('${tempRoot.path}/ws')..createSync();
+        final master = File('${workspace.path}/testtool_master.yaml');
+        master.writeAsStringSync('''
+required-environment:
+  pipelines:
+    ci:
+      executable: true
+      core:
+        - commands:
+            - shell echo ci
+''');
+
+        final previousCwd = Directory.current.path;
+        final output = StringBuffer();
+        try {
+          Directory.current = workspace.path;
+          final runner = ToolRunner(tool: testTool, output: output);
+
+          final result = await runner.run(['--dry-run', 'ci']);
+
+          expect(result.success, isTrue);
+          expect(output.toString(), contains('[PIPELINE:shell] echo ci'));
+        } finally {
+          Directory.current = previousCwd;
+          if (tempRoot.existsSync()) {
+            await tempRoot.delete(recursive: true);
+          }
+        }
+      });
+
+      test('BB-RUN-42: macro/macros runtime built-ins work when eligible '
+          '[2026-02-28]', () async {
+        final tempRoot = await Directory.systemTemp.createTemp('bb_macro_');
+        final workspace = Directory('${tempRoot.path}/ws')..createSync();
+        File('${workspace.path}/testtool_master.yaml')
+          ..createSync()
+          ..writeAsStringSync('required-environment:\n  pipelines: {}\n');
+
+        final previousCwd = Directory.current.path;
+        final output = StringBuffer();
+        try {
+          Directory.current = workspace.path;
+          final runner = ToolRunner(tool: testTool, output: output);
+
+          final add = await runner.run([':macro', 'x=:simple']);
+          expect(add.success, isTrue);
+
+          output.clear();
+          final list = await runner.run([':macros']);
+          expect(list.success, isTrue);
+          expect(output.toString(), contains('x=:simple'));
+        } finally {
+          Directory.current = previousCwd;
+          if (tempRoot.existsSync()) {
+            await tempRoot.delete(recursive: true);
+          }
+        }
+      });
+
+      test('BB-RUN-43: define/undefine persist sorted defines in master yaml '
+          '[2026-02-28]', () async {
+        final tempRoot = await Directory.systemTemp.createTemp('bb_define_');
+        final workspace = Directory('${tempRoot.path}/ws')..createSync();
+        final master = File('${workspace.path}/testtool_master.yaml')
+          ..createSync()
+          ..writeAsStringSync('required-environment:\n  pipelines: {}\n');
+
+        final previousCwd = Directory.current.path;
+        final output = StringBuffer();
+        try {
+          Directory.current = workspace.path;
+          final runner = ToolRunner(tool: testTool, output: output);
+
+          expect((await runner.run([':define', 'Z_LAST=2'])).success, isTrue);
+          expect((await runner.run([':define', 'A_FIRST=1'])).success, isTrue);
+
+          output.clear();
+          final list = await runner.run([':defines']);
+          expect(list.success, isTrue);
+          final lines = output
+              .toString()
+              .split('\n')
+              .where((l) => l.contains('='))
+              .toList();
+          expect(lines.first.trim(), 'A_FIRST=1');
+          expect(lines.last.trim(), 'Z_LAST=2');
+
+          output.clear();
+          final remove = await runner.run([':undefine', 'A_FIRST']);
+          expect(remove.success, isTrue);
+          expect(output.toString(), contains('Removed define: A_FIRST : 1'));
+
+          final yaml = master.readAsStringSync();
+          expect(yaml, contains('defines:'));
+          expect(yaml, contains('Z_LAST: 2'));
+          expect(yaml, isNot(contains('A_FIRST')));
+        } finally {
+          Directory.current = previousCwd;
+          if (tempRoot.existsSync()) {
+            await tempRoot.delete(recursive: true);
+          }
+        }
+      });
+
+      test('BB-RUN-44: built-in define commands are gated by eligibility '
+          '[2026-02-28]', () async {
+        final tempRoot = await Directory.systemTemp.createTemp('bb_gate_');
+        final workspace = Directory('${tempRoot.path}/ws')..createSync();
+
+        final previousCwd = Directory.current.path;
+        final output = StringBuffer();
+        try {
+          Directory.current = workspace.path;
+          final runner = ToolRunner(tool: testTool, output: output);
+
+          final result = await runner.run([':define', 'A=1']);
+          expect(result.success, isFalse);
+          expect(output.toString(), contains('Unknown command: :define'));
+        } finally {
+          Directory.current = previousCwd;
+          if (tempRoot.existsSync()) {
+            await tempRoot.delete(recursive: true);
+          }
+        }
       });
     });
   });
