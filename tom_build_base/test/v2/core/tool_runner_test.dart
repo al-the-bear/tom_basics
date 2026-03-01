@@ -661,8 +661,8 @@ required-environment:
         }
       });
 
-      test('BB-RUN-44: built-in define commands are gated by eligibility '
-          '[2026-02-28]', () async {
+      test('BB-RUN-44: built-in define commands show master yaml error when '
+          'file is missing [2026-02-28]', () async {
         final tempRoot = await Directory.systemTemp.createTemp('bb_gate_');
         final workspace = Directory('${tempRoot.path}/ws')..createSync();
 
@@ -674,7 +674,10 @@ required-environment:
 
           final result = await runner.run([':define', 'A=1']);
           expect(result.success, isFalse);
-          expect(output.toString(), contains('Unknown command: :define'));
+          expect(
+            output.toString(),
+            contains('Cannot find testtool_master.yaml'),
+          );
         } finally {
           Directory.current = previousCwd;
           if (tempRoot.existsSync()) {
@@ -724,7 +727,7 @@ required-environment:
           // Verify macro expansion works via @macro invocation
           output.clear();
           final runner3 = ToolRunner(tool: testTool, output: output);
-          final result = await runner3.run(['@build']);
+          await runner3.run(['@build']);
           // The macro should expand to :comp :runner commands
           // Even if they fail (no executors), the macro was expanded
           expect(output.toString(), isNot(contains('No command specified')));
@@ -905,6 +908,42 @@ testtool:
           expect(yaml, isNot(contains('DEBUG')));
           expect(yaml, contains('EXTRA'));
           expect(yaml, contains('BASE'));
+        } finally {
+          Directory.current = previousCwd;
+          if (tempRoot.existsSync()) {
+            await tempRoot.delete(recursive: true);
+          }
+        }
+      });
+
+      test('BB-RUN-50: macro/define commands show error when master yaml '
+          'is missing [2026-03-01]', () async {
+        // Use a temp dir with NO master yaml file.
+        final tempRoot = await Directory.systemTemp.createTemp(
+          'bb_no_master_',
+        );
+        final previousCwd = Directory.current.path;
+        final output = StringBuffer();
+        try {
+          Directory.current = tempRoot.path;
+          final runner = ToolRunner(tool: testTool, output: output);
+
+          // :define should produce an error mentioning the missing file.
+          final result = await runner.run([':define', 'x=1']);
+          expect(result.success, isFalse);
+          expect(
+            output.toString(),
+            contains('Cannot find testtool_master.yaml'),
+          );
+
+          // :macros should also produce the error.
+          output.clear();
+          final result2 = await runner.run([':macros']);
+          expect(result2.success, isFalse);
+          expect(
+            output.toString(),
+            contains('testtool_master.yaml'),
+          );
         } finally {
           Directory.current = previousCwd;
           if (tempRoot.existsSync()) {

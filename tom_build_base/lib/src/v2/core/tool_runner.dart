@@ -734,11 +734,21 @@ class ToolRunner {
     return const ToolResult.success();
   }
 
+  /// Known built-in macro/define command names.
+  static const _macroDefineCommands = {
+    'macro', 'macros', 'unmacro', 'define', 'defines', 'undefine',
+  };
+
   ToolResult? _tryHandleBuiltInMacroDefineCommand(
     String cmdName,
     CliArgs cliArgs,
   ) {
-    if (!_isMacroDefineFeatureEligible()) return null;
+    if (!_macroDefineCommands.contains(cmdName)) return null;
+    if (_effectiveTool.mode != ToolMode.multiCommand) return null;
+
+    // Command matches but master yaml may be missing.
+    final masterMissing = _checkMasterYamlMissing();
+    if (masterMissing != null) return masterMissing;
 
     switch (cmdName) {
       case 'macro':
@@ -759,7 +769,10 @@ class ToolRunner {
   }
 
   String? _tryHandleBuiltInMacroDefineHelp(String cmdName) {
-    if (!_isMacroDefineFeatureEligible()) return null;
+    if (!_macroDefineCommands.contains(cmdName)) return null;
+    if (_effectiveTool.mode != ToolMode.multiCommand) return null;
+    // Show help text even if master file is missing — the user may need
+    // the help to understand how to set things up.
 
     switch (cmdName) {
       case 'macro':
@@ -791,7 +804,7 @@ Options:
   }
 
   String? _builtInMacroDefineHelpAppendix() {
-    if (!_isMacroDefineFeatureEligible()) return null;
+    if (_effectiveTool.mode != ToolMode.multiCommand) return null;
     return '''<magenta>**Runtime Macros**</magenta>
   :macro <name>=<value>      Add runtime macro
   :macros                    List runtime macros
@@ -814,8 +827,22 @@ Options:
     );
   }
 
+  /// Returns an error [ToolResult] when the master yaml cannot be found,
+  /// or `null` when the file exists and everything is fine.
+  ToolResult? _checkMasterYamlMissing() {
+    if (_isMacroDefineFeatureEligible()) return null;
+    final wsRoot = findWorkspaceRoot(Directory.current.path);
+    final expected = '${_effectiveTool.name}_master.yaml';
+    output.writeln(
+      'Cannot find $expected in workspace root ($wsRoot).\n'
+      'Make sure you are running ${_effectiveTool.name} from inside the '
+      'workspace that contains $expected.',
+    );
+    return ToolResult.failure('$expected not found');
+  }
+
   String? _tryHandleBuiltInPipelinesHelp(String cmdName) {
-    if (!_isMacroDefineFeatureEligible()) return null;
+    if (_effectiveTool.mode != ToolMode.multiCommand) return null;
     if (cmdName != 'pipelines') return null;
     return '''<cyan>**${tool.name} Pipeline Configuration**</cyan>
 

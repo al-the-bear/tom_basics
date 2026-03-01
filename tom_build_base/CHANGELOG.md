@@ -1,3 +1,10 @@
+## 2.5.13
+
+### Improved
+
+- **`tool_runner.dart`** — When `:macro`, `:define`, `:defines`, `:undefine`, `:unmacro`, or `:macros` commands are used but `{tool}_master.yaml` cannot be found, a clear error message is shown explaining which file is missing and the detected workspace root. Previously these commands silently fell through to "Unknown command".
+- **`tool_runner.dart`** — Help text for macro/define/pipeline commands is now shown even when the master yaml is missing, so users can understand how to set things up.
+
 ## 2.5.12
 
 ### Fixed
