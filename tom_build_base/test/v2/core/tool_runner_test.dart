@@ -544,6 +544,74 @@ required-environment:
         }
       });
 
+      test(
+        'BB-RUN-42b: macros defined in one ToolRunner instance persist and '
+        'are visible in a fresh instance (simulating separate buildkit calls) '
+        '[2026-03-01]',
+        () async {
+          final tempRoot =
+              await Directory.systemTemp.createTemp('bb_macro_persist_');
+          final workspace = Directory('${tempRoot.path}/ws')..createSync();
+          File('${workspace.path}/testtool_master.yaml')
+            ..createSync()
+            ..writeAsStringSync('required-environment:\n  pipelines: {}\n');
+
+          final previousCwd = Directory.current.path;
+          try {
+            Directory.current = workspace.path;
+
+            // First "invocation" — defines the macro
+            {
+              final output = StringBuffer();
+              final runner1 = ToolRunner(tool: testTool, output: output);
+              final add = await runner1.run([':macro', 'vc=:v', r'$1', ':comp', r'$2']);
+              expect(add.success, isTrue);
+              expect(
+                output.toString(),
+                contains(r'Added macro: vc: :v $1 :comp $2'),
+              );
+            }
+
+            // Second "invocation" — fresh ToolRunner, must see the macro
+            {
+              final output = StringBuffer();
+              final runner2 = ToolRunner(tool: testTool, output: output);
+              final list = await runner2.run([':macros']);
+              expect(list.success, isTrue);
+              expect(
+                output.toString(),
+                allOf(
+                  isNot(contains('No macros defined')),
+                  contains(r'vc=:v $1 :comp $2'),
+                ),
+              );
+            }
+
+            // Third "invocation" — unmacro, then fourth should see it gone
+            {
+              final output = StringBuffer();
+              final runner3 = ToolRunner(tool: testTool, output: output);
+              final remove = await runner3.run([':unmacro', 'vc']);
+              expect(remove.success, isTrue);
+            }
+
+            // Fourth "invocation" — should be empty again
+            {
+              final output = StringBuffer();
+              final runner4 = ToolRunner(tool: testTool, output: output);
+              final list = await runner4.run([':macros']);
+              expect(list.success, isTrue);
+              expect(output.toString(), contains('No macros defined'));
+            }
+          } finally {
+            Directory.current = previousCwd;
+            if (tempRoot.existsSync()) {
+              await tempRoot.delete(recursive: true);
+            }
+          }
+        },
+      );
+
       test('BB-RUN-43: define/undefine persist sorted defines in master yaml '
           '[2026-02-28]', () async {
         final tempRoot = await Directory.systemTemp.createTemp('bb_define_');

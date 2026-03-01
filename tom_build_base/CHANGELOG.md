@@ -1,3 +1,9 @@
+## 2.5.10
+
+### Fixed
+
+- **`tool_runner.dart`** — Runtime macros (`:macro`, `:macros`, `:unmacro`) now persist to `{workspace_root}/{tool_name}_macros.yaml`. Previously, macros defined in one `buildkit` invocation were lost in the next invocation because they were stored only in an in-memory map. The file is written on every `add`/`remove` and loaded lazily on the first macro operation of each invocation; it is deleted automatically when the last macro is removed.
+
 ## 2.5.9
 
 ### Fixed

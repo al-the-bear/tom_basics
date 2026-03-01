@@ -149,7 +149,13 @@ class ToolRunner {
   final StringSink output;
 
   /// Runtime-only macros (`$macro`) for this invocation session.
+  ///
+  /// These are persisted to `{workspace_root}/{tool_name}_macros.yaml` so that
+  /// macros defined in one invocation are visible in subsequent ones.
   final Map<String, String> _runtimeMacros = <String, String>{};
+
+  /// Whether the persisted macros have been loaded into [_runtimeMacros].
+  bool _macrosLoaded = false;
 
   ToolRunner({
     required this.tool,
@@ -849,12 +855,15 @@ Each pipeline has a name and a set of steps divided into three phases.
     }
 
     final (name, value) = parsed;
+    _loadPersistedMacros();
     _runtimeMacros[name] = value;
+    _savePersistedMacros();
     output.writeln('Added macro: $name: $value');
     return const ToolResult.success(processedCount: 1);
   }
 
   ToolResult _handleRuntimeMacroList() {
+    _loadPersistedMacros();
     if (_runtimeMacros.isEmpty) {
       output.writeln('No macros defined.');
       return const ToolResult.success();
@@ -875,13 +884,75 @@ Each pipeline has a name and a set of steps divided into three phases.
       return const ToolResult.failure('Missing argument: macro name');
     }
 
+    _loadPersistedMacros();
     final removed = _runtimeMacros.remove(name);
     if (removed == null) {
       return ToolResult.failure('Macro not found: $name');
     }
 
+    _savePersistedMacros();
     output.writeln('Removed macro: $name : $removed');
     return const ToolResult.success(processedCount: 1);
+  }
+
+  /// Returns the path to the per-workspace macros file.
+  ///
+  /// Format: `{workspace_root}/{tool_name}_macros.yaml`
+  String _macrosFilePath() {
+    final wsRoot = findWorkspaceRoot(Directory.current.path);
+    return '$wsRoot/${tool.name}_macros.yaml';
+  }
+
+  /// Loads persisted macros from the workspace macros file into
+  /// [_runtimeMacros]. A no-op if already loaded this invocation or if the
+  /// file does not exist.
+  void _loadPersistedMacros() {
+    if (_macrosLoaded) return;
+    _macrosLoaded = true;
+
+    final file = File(_macrosFilePath());
+    if (!file.existsSync()) return;
+
+    try {
+      final parsed = loadYaml(file.readAsStringSync());
+      if (parsed is! YamlMap) return;
+      for (final entry in parsed.entries) {
+        final k = entry.key?.toString();
+        final v = entry.value?.toString();
+        if (k != null && k.isNotEmpty && v != null) {
+          _runtimeMacros[k] = v;
+        }
+      }
+    } catch (_) {
+      // Corrupt file — silently ignore; macros start empty this invocation.
+    }
+  }
+
+  /// Writes [_runtimeMacros] to the workspace macros file.
+  ///
+  /// If [_runtimeMacros] is empty the file is deleted (if it exists) so that
+  /// `{tool}_macros.yaml` is only present when there are active macros.
+  void _savePersistedMacros() {
+    final path = _macrosFilePath();
+    final file = File(path);
+
+    if (_runtimeMacros.isEmpty) {
+      if (file.existsSync()) file.deleteSync();
+      return;
+    }
+
+    // Sort entries for deterministic output.
+    final sorted = Map<String, String>.fromEntries(
+      _runtimeMacros.entries.toList()
+        ..sort((a, b) => a.key.compareTo(b.key)),
+    );
+    final buf = StringBuffer();
+    for (final entry in sorted.entries) {
+      // Encode value as a YAML quoted string to handle colons, spaces, etc.
+      final escaped = entry.value.replaceAll(r'\', r'\\').replaceAll("'", r"\'");
+      buf.writeln("${entry.key}: '$escaped'");
+    }
+    file.writeAsStringSync(buf.toString());
   }
 
   ToolResult _handlePersistentDefineAdd(CliArgs cliArgs) {
