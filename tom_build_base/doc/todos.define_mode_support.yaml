@@ -1,0 +1,141 @@
+# yaml-schema: https://tom.ai/schemas/yaml/todo.schema.json
+quest: cli_tools
+scope:
+  project: tom_build_base
+  files:
+    - lib/src/v2/core/tool_runner.dart
+    - lib/src/v2/core/cli_arg_parser.dart
+    - lib/src/v2/core/config_loader.dart
+    - test/v2/core/tool_runner_test.dart
+    - test/minitool_integration_test.dart
+created: 2026-03-01
+updated: 2026-03-01
+author: copilot
+
+todos:
+  - id: macros-in-master
+    title: Macros in master.yaml
+    description: |
+      Store macros in {tool}_master.yaml under macros: section instead of 
+      separate {tool}_macros.yaml file.
+      
+      Format:
+        macros:
+          <macroname1>: <macro-definition-1>
+    status: completed
+    completed_date: 2026-03-01
+    notes: |
+      Changed _loadPersistedMacros() and _savePersistedMacros() in tool_runner.dart.
+      Test BB-RUN-45 verifies this behavior.
+
+  - id: define-m-flag
+    title: :define -m MODE flag
+    description: |
+      Add -m MODE flag to :define command to set mode-specific defines.
+      
+      Usage: <tool> :define -m DEV <name>=<value>
+    status: completed
+    completed_date: 2026-03-01
+    references:
+      - path: lib/src/v2/core/tool_runner.dart
+        lines: "_handlePersistentDefineAdd()"
+    notes: |
+      Added _parseModeFlag() helper. Modified _handlePersistentDefineAdd() to support -m MODE.
+      Test BB-RUN-46 verifies mode-specific define storage.
+
+  - id: defines-storage-structure
+    title: Defines storage structure
+    description: |
+      Store defines under {tool}: section with mode prefixes.
+      
+      Format:
+        {tool}:
+          defines:
+            <name>: <value>
+          <MODE>-defines:
+            <name>: <value>
+    status: completed
+    completed_date: 2026-03-01
+    references:
+      - path: lib/src/v2/core/tool_runner.dart
+        lines: "_ensureToolSection(), _readToolDefines()"
+    notes: |
+      All define commands now store under {tool}: section.
+      Test BB-RUN-47 verifies default defines storage structure.
+
+  - id: project-buildkit-defines
+    title: Project buildkit.yaml defines
+    description: |
+      Allow defines to be manually added to buildkit.yaml in project directories.
+      Same sections can appear in any buildkit.yaml file.
+    status: completed
+    notes: |
+      Already supported by config_loader.dart which reads defines from all YAML 
+      config files in the hierarchy (master, workspace, project).
+
+  - id: defines-merging
+    title: Merge defines from files
+    description: |
+      When running in a project directory, merge defines from master and project 
+      buildkit.yaml files. Project defines override global defines.
+      Merge once per project to avoid repeated merging.
+    status: completed
+    references:
+      - path: lib/src/v2/core/config_loader.dart
+        description: "ConfigLoader handles hierarchical config merging"
+      - path: test/minitool_integration_test.dart
+        lines: "spec: multiple modes merge in order"
+    notes: |
+      Already implemented in config_loader.dart. Config loading merges defines 
+      from all sources with project values taking precedence.
+
+  - id: mode-specific-merging
+    title: Mode-specific defines merging
+    description: |
+      When --mode <mode1> <mode2> is specified, merge {MODE}-defines: sections
+      with the base defines: section. Modes are applied in order specified.
+      Done once per project.
+    status: completed
+    references:
+      - path: lib/src/v2/core/config_loader.dart
+        description: "_mergeConfigItems handles MODE-prefixed keys"
+      - path: test/minitool_integration_test.dart
+        lines: "200-221"
+    notes: |
+      Already implemented. Test "spec: multiple modes merge in order" verifies 
+      DEV and CLOUD modes merge correctly with base defines.
+
+  - id: tests-added
+    title: Add tests for mode resolution
+    description: |
+      Add tests for mode-specific define resolution in tom_build_base.
+    status: completed
+    completed_date: 2026-03-01
+    notes: |
+      Added tests:
+      - BB-RUN-45: macros stored in master.yaml macros: section
+      - BB-RUN-46: :define -m MODE stores mode-specific define
+      - BB-RUN-47: :define without -m stores in default defines
+      - BB-RUN-48: :defines lists both default and mode-specific defines
+      - BB-RUN-49: :undefine -m MODE removes mode-specific define
+      
+      Pre-existing tests in minitool_integration_test.dart cover config merging.
+
+  - id: commands-updated
+    title: Update :define/:defines/:undefine commands
+    description: |
+      Ensure :define, :defines, :undefine commands use master.yaml {tool}: section.
+    status: completed
+    completed_date: 2026-03-01
+    references:
+      - path: lib/src/v2/core/tool_runner.dart
+        lines: "_handlePersistentDefineAdd, _handlePersistentDefineList, _handlePersistentDefineRemove"
+      - path: lib/src/v2/core/cli_arg_parser.dart
+        description: "Extended special-case handling for :undefine command"
+    notes: |
+      All three commands rewritten:
+      - :define - stores to {tool}: defines: or {tool}: {MODE}-defines:
+      - :defines - lists all defines including mode-specific
+      - :undefine - supports -m MODE for removing mode-specific defines
+      
+      Help text updated for all commands.

@@ -120,6 +120,13 @@ class ToolDefinition {
   /// Version string (e.g., '2.0.0').
   final String version;
 
+  /// Full version string for --version output.
+  ///
+  /// If provided, this is shown instead of the default "name v{version}".
+  /// Typically includes build number, git commit, and build time.
+  /// Example: "1.0.0+42.abc1234 (2026-02-01T10:30:00.000Z)"
+  final String? versionString;
+
   /// Tool mode (multi-command, single-command, hybrid).
   final ToolMode mode;
 
@@ -196,6 +203,7 @@ class ToolDefinition {
     required this.name,
     required this.description,
     this.version = '1.0.0',
+    this.versionString,
     this.mode = ToolMode.multiCommand,
     String? pipelineName,
     this.features = const NavigationFeatures(),

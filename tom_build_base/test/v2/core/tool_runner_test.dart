@@ -544,73 +544,77 @@ required-environment:
         }
       });
 
-      test(
-        'BB-RUN-42b: macros defined in one ToolRunner instance persist and '
-        'are visible in a fresh instance (simulating separate buildkit calls) '
-        '[2026-03-01]',
-        () async {
-          final tempRoot =
-              await Directory.systemTemp.createTemp('bb_macro_persist_');
-          final workspace = Directory('${tempRoot.path}/ws')..createSync();
-          File('${workspace.path}/testtool_master.yaml')
-            ..createSync()
-            ..writeAsStringSync('required-environment:\n  pipelines: {}\n');
+      test('BB-RUN-42b: macros defined in one ToolRunner instance persist and '
+          'are visible in a fresh instance (simulating separate buildkit calls) '
+          '[2026-03-01]', () async {
+        final tempRoot = await Directory.systemTemp.createTemp(
+          'bb_macro_persist_',
+        );
+        final workspace = Directory('${tempRoot.path}/ws')..createSync();
+        File('${workspace.path}/testtool_master.yaml')
+          ..createSync()
+          ..writeAsStringSync('required-environment:\n  pipelines: {}\n');
 
-          final previousCwd = Directory.current.path;
-          try {
-            Directory.current = workspace.path;
+        final previousCwd = Directory.current.path;
+        try {
+          Directory.current = workspace.path;
 
-            // First "invocation" — defines the macro
-            {
-              final output = StringBuffer();
-              final runner1 = ToolRunner(tool: testTool, output: output);
-              final add = await runner1.run([':macro', 'vc=:v', r'$1', ':comp', r'$2']);
-              expect(add.success, isTrue);
-              expect(
-                output.toString(),
-                contains(r'Added macro: vc: :v $1 :comp $2'),
-              );
-            }
-
-            // Second "invocation" — fresh ToolRunner, must see the macro
-            {
-              final output = StringBuffer();
-              final runner2 = ToolRunner(tool: testTool, output: output);
-              final list = await runner2.run([':macros']);
-              expect(list.success, isTrue);
-              expect(
-                output.toString(),
-                allOf(
-                  isNot(contains('No macros defined')),
-                  contains(r'vc=:v $1 :comp $2'),
-                ),
-              );
-            }
-
-            // Third "invocation" — unmacro, then fourth should see it gone
-            {
-              final output = StringBuffer();
-              final runner3 = ToolRunner(tool: testTool, output: output);
-              final remove = await runner3.run([':unmacro', 'vc']);
-              expect(remove.success, isTrue);
-            }
-
-            // Fourth "invocation" — should be empty again
-            {
-              final output = StringBuffer();
-              final runner4 = ToolRunner(tool: testTool, output: output);
-              final list = await runner4.run([':macros']);
-              expect(list.success, isTrue);
-              expect(output.toString(), contains('No macros defined'));
-            }
-          } finally {
-            Directory.current = previousCwd;
-            if (tempRoot.existsSync()) {
-              await tempRoot.delete(recursive: true);
-            }
+          // First "invocation" — defines the macro
+          {
+            final output = StringBuffer();
+            final runner1 = ToolRunner(tool: testTool, output: output);
+            final add = await runner1.run([
+              ':macro',
+              'vc=:v',
+              r'$1',
+              ':comp',
+              r'$2',
+            ]);
+            expect(add.success, isTrue);
+            expect(
+              output.toString(),
+              contains(r'Added macro: vc: :v $1 :comp $2'),
+            );
           }
-        },
-      );
+
+          // Second "invocation" — fresh ToolRunner, must see the macro
+          {
+            final output = StringBuffer();
+            final runner2 = ToolRunner(tool: testTool, output: output);
+            final list = await runner2.run([':macros']);
+            expect(list.success, isTrue);
+            expect(
+              output.toString(),
+              allOf(
+                isNot(contains('No macros defined')),
+                contains(r'vc=:v $1 :comp $2'),
+              ),
+            );
+          }
+
+          // Third "invocation" — unmacro, then fourth should see it gone
+          {
+            final output = StringBuffer();
+            final runner3 = ToolRunner(tool: testTool, output: output);
+            final remove = await runner3.run([':unmacro', 'vc']);
+            expect(remove.success, isTrue);
+          }
+
+          // Fourth "invocation" — should be empty again
+          {
+            final output = StringBuffer();
+            final runner4 = ToolRunner(tool: testTool, output: output);
+            final list = await runner4.run([':macros']);
+            expect(list.success, isTrue);
+            expect(output.toString(), contains('No macros defined'));
+          }
+        } finally {
+          Directory.current = previousCwd;
+          if (tempRoot.existsSync()) {
+            await tempRoot.delete(recursive: true);
+          }
+        }
+      });
 
       test('BB-RUN-43: define/undefine persist sorted defines in master yaml '
           '[2026-02-28]', () async {
@@ -671,6 +675,228 @@ required-environment:
           final result = await runner.run([':define', 'A=1']);
           expect(result.success, isFalse);
           expect(output.toString(), contains('Unknown command: :define'));
+        } finally {
+          Directory.current = previousCwd;
+          if (tempRoot.existsSync()) {
+            await tempRoot.delete(recursive: true);
+          }
+        }
+      });
+
+      test('BB-RUN-45: macros stored in master.yaml under macros: section '
+          '[2026-03-01]', () async {
+        final tempRoot = await Directory.systemTemp.createTemp(
+          'bb_macro_master_',
+        );
+        final workspace = Directory('${tempRoot.path}/ws')..createSync();
+        final master = File('${workspace.path}/testtool_master.yaml')
+          ..createSync()
+          ..writeAsStringSync('required-environment:\n  pipelines: {}\n');
+
+        final previousCwd = Directory.current.path;
+        final output = StringBuffer();
+        try {
+          Directory.current = workspace.path;
+          final runner = ToolRunner(tool: testTool, output: output);
+
+          // Add a macro
+          expect(
+            (await runner.run([':macro', 'build=:comp :runner'])).success,
+            isTrue,
+          );
+          expect(output.toString(), contains('Added macro: build'));
+
+          // Verify it's stored under macros: section in master.yaml
+          final yaml = master.readAsStringSync();
+          expect(yaml, contains('macros:'));
+          expect(yaml, contains('build:'));
+
+          // Verify no separate macros file was created
+          final macrosFile = File('${workspace.path}/testtool_macros.yaml');
+          expect(macrosFile.existsSync(), isFalse);
+
+          // New runner instance should see the macro
+          output.clear();
+          final runner2 = ToolRunner(tool: testTool, output: output);
+          expect((await runner2.run([':macros'])).success, isTrue);
+          expect(output.toString(), contains('build'));
+        } finally {
+          Directory.current = previousCwd;
+          if (tempRoot.existsSync()) {
+            await tempRoot.delete(recursive: true);
+          }
+        }
+      });
+
+      test('BB-RUN-46: :define -m MODE stores mode-specific define '
+          '[2026-03-01]', () async {
+        final tempRoot = await Directory.systemTemp.createTemp(
+          'bb_define_mode_',
+        );
+        final workspace = Directory('${tempRoot.path}/ws')..createSync();
+        final master = File('${workspace.path}/testtool_master.yaml')
+          ..createSync()
+          ..writeAsStringSync('required-environment:\n  pipelines: {}\n');
+
+        final previousCwd = Directory.current.path;
+        final output = StringBuffer();
+        try {
+          Directory.current = workspace.path;
+          final runner = ToolRunner(tool: testTool, output: output);
+
+          // Add a mode-specific define
+          expect(
+            (await runner.run([':define', '-m', 'DEV', 'DEBUG=true'])).success,
+            isTrue,
+          );
+          expect(output.toString(), contains('Added define'));
+          expect(output.toString(), contains('DEV'));
+
+          // Verify it's stored under testtool: DEV-defines: section
+          final yaml = master.readAsStringSync();
+          expect(yaml, contains('testtool:'));
+          expect(yaml, contains('DEV-defines:'));
+          expect(yaml, contains('DEBUG'));
+
+          // Add another mode-specific define
+          output.clear();
+          expect(
+            (await runner.run([
+              ':define',
+              '-m',
+              'CI',
+              'VERBOSE=false',
+            ])).success,
+            isTrue,
+          );
+
+          final yaml2 = master.readAsStringSync();
+          expect(yaml2, contains('CI-defines:'));
+          expect(yaml2, contains('VERBOSE'));
+        } finally {
+          Directory.current = previousCwd;
+          if (tempRoot.existsSync()) {
+            await tempRoot.delete(recursive: true);
+          }
+        }
+      });
+
+      test('BB-RUN-47: :define without -m stores in default defines section '
+          '[2026-03-01]', () async {
+        final tempRoot = await Directory.systemTemp.createTemp(
+          'bb_define_default_',
+        );
+        final workspace = Directory('${tempRoot.path}/ws')..createSync();
+        final master = File('${workspace.path}/testtool_master.yaml')
+          ..createSync()
+          ..writeAsStringSync('required-environment:\n  pipelines: {}\n');
+
+        final previousCwd = Directory.current.path;
+        final output = StringBuffer();
+        try {
+          Directory.current = workspace.path;
+          final runner = ToolRunner(tool: testTool, output: output);
+
+          // Add a default define (no mode)
+          expect(
+            (await runner.run([':define', 'OUTPUT=/build'])).success,
+            isTrue,
+          );
+
+          // Verify it's stored under testtool: defines: section
+          final yaml = master.readAsStringSync();
+          expect(yaml, contains('testtool:'));
+          expect(yaml, contains('defines:'));
+          expect(yaml, contains('OUTPUT'));
+          // Should NOT have a mode prefix
+          expect(yaml, isNot(contains('-defines:')));
+        } finally {
+          Directory.current = previousCwd;
+          if (tempRoot.existsSync()) {
+            await tempRoot.delete(recursive: true);
+          }
+        }
+      });
+
+      test('BB-RUN-48: :defines lists both default and mode-specific defines '
+          '[2026-03-01]', () async {
+        final tempRoot = await Directory.systemTemp.createTemp(
+          'bb_defines_list_',
+        );
+        final workspace = Directory('${tempRoot.path}/ws')..createSync();
+        File('${workspace.path}/testtool_master.yaml')
+          ..createSync()
+          ..writeAsStringSync('''
+required-environment:
+  pipelines: {}
+testtool:
+  defines:
+    BASE_PATH: /base
+  DEV-defines:
+    DEBUG: true
+  CI-defines:
+    VERBOSE: false
+''');
+
+        final previousCwd = Directory.current.path;
+        final output = StringBuffer();
+        try {
+          Directory.current = workspace.path;
+          final runner = ToolRunner(tool: testTool, output: output);
+
+          expect((await runner.run([':defines'])).success, isTrue);
+          final out = output.toString();
+          expect(out, contains('BASE_PATH'));
+          expect(out, contains('DEV-defines:'));
+          expect(out, contains('DEBUG'));
+          expect(out, contains('CI-defines:'));
+          expect(out, contains('VERBOSE'));
+        } finally {
+          Directory.current = previousCwd;
+          if (tempRoot.existsSync()) {
+            await tempRoot.delete(recursive: true);
+          }
+        }
+      });
+
+      test('BB-RUN-49: :undefine -m MODE removes mode-specific define '
+          '[2026-03-01]', () async {
+        final tempRoot = await Directory.systemTemp.createTemp(
+          'bb_undefine_mode_',
+        );
+        final workspace = Directory('${tempRoot.path}/ws')..createSync();
+        final master = File('${workspace.path}/testtool_master.yaml')
+          ..createSync()
+          ..writeAsStringSync('''
+required-environment:
+  pipelines: {}
+testtool:
+  defines:
+    BASE: /base
+  DEV-defines:
+    DEBUG: true
+    EXTRA: value
+''');
+
+        final previousCwd = Directory.current.path;
+        final output = StringBuffer();
+        try {
+          Directory.current = workspace.path;
+          final runner = ToolRunner(tool: testTool, output: output);
+
+          // Remove mode-specific define
+          expect(
+            (await runner.run([':undefine', '-m', 'DEV', 'DEBUG'])).success,
+            isTrue,
+          );
+          expect(output.toString(), contains('Removed define'));
+          expect(output.toString(), contains('DEV'));
+
+          // Verify DEBUG is removed but EXTRA remains
+          final yaml = master.readAsStringSync();
+          expect(yaml, isNot(contains('DEBUG')));
+          expect(yaml, contains('EXTRA'));
+          expect(yaml, contains('BASE'));
         } finally {
           Directory.current = previousCwd;
           if (tempRoot.existsSync()) {

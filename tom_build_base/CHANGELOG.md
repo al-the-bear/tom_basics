@@ -1,3 +1,17 @@
+## 2.5.11
+
+### Added
+
+- **`tool_definition.dart`** — Added `versionString` property to `ToolDefinition` for custom `--version` output. When provided, this string (typically from versioner-generated code) is shown instead of the default "name vX.X.X" format.
+- **`tool_runner.dart`** — `:define` and `:undefine` commands now support `-m MODE` or `--mode MODE` flag for mode-specific defines (e.g., `buildkit :define -m DEV DEBUG=true`).
+- **`tool_runner.dart`** — `:defines` command now lists all defines including mode-specific ones (e.g., `DEV-defines:`, `CI-defines:`).
+- **`tool_runner.dart`** — Macros now stored in `{tool}_master.yaml` under `macros:` section instead of separate `{tool}_macros.yaml` file.
+- **`tool_runner.dart`** — Defines stored under `{tool}:` section in master.yaml with structure: `{tool}: defines:` for default and `{tool}: {MODE}-defines:` for mode-specific.
+
+### Changed
+
+- **`cli_arg_parser.dart`** — Extended special-case greedy argument handling to include `:undefine` command (all args after `:undefine` are treated as positional to allow `-m MODE name` syntax).
+
 ## 2.5.10
 
 ### Fixed
