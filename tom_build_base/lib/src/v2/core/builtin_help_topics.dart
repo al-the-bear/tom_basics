@@ -526,11 +526,14 @@ const _pipelinesContent = r'''
     {TOOL} <cmd>         Run a {TOOL} command (e.g. "{TOOL} :build")
     stdin <cmd>          Run with multi-line stdin input
 
+  All command types support standard %{...} placeholders.
+  Run `{TOOL} help placeholders` for the complete reference.
+
   <cyan>Shell commands:</cyan>
 
     - commands:
         - "shell dart pub get"
-        - "shell echo Build complete"
+        - "shell echo Building on %{current-platform}"
 
   <cyan>Tool commands:</cyan>
 
@@ -540,13 +543,12 @@ const _pipelinesContent = r'''
 
   <cyan>Shell-scan commands (per-project):</cyan>
 
-    - commands:
-        - "shell-scan echo {name} at {path}"
+    Shell-scan runs the command once per scanned project, with full
+    project-level placeholder context:
 
-    Placeholders for shell-scan:
-      {project}   Relative path to the project folder
-      {path}      Absolute path to the project folder
-      {name}      Project/folder name
+    - commands:
+        - "shell-scan echo %{folder.name} at %{folder}"
+        - "shell-scan dart analyze %{folder}"
 
   <cyan>Stdin commands:</cyan>
 
@@ -557,6 +559,25 @@ const _pipelinesContent = r'''
           stdin cat -n
           line one
           line two
+
+<green>**Placeholders in Pipeline Commands**</green>
+
+  All pipeline commands (shell, shell-scan, stdin) resolve standard
+  %{...} placeholders before execution:
+
+    %{root}               Workspace root path
+    %{folder}             Current folder (absolute)
+    %{folder.name}        Folder basename
+    %{folder.relative}    Folder path relative to workspace root
+    %{current-os}         Operating system (linux, macos, windows)
+    %{current-arch}       Architecture (x64, arm64)
+    %{current-platform}   Platform string (darwin-arm64, linux-x64, etc.)
+
+  Shell-scan commands additionally have access to nature-specific
+  placeholders (e.g. %{dart.name}, %{dart.version}, %{git.branch})
+  since they run in per-project traversal context.
+
+  Run `{TOOL} help placeholders` for the full list.
 
 <green>**Pipeline Invocation**</green>
 

@@ -214,12 +214,31 @@ class ToolPipelineExecutor {
     }
   }
 
+  /// Build a placeholder context for workspace-level commands (shell, stdin).
+  ///
+  /// Uses the workspace root as both root and folder, so placeholders like
+  /// `%{root}`, `%{current-os}`, `%{current-platform}`, `%{folder.name}` etc.
+  /// are available in shell and stdin pipeline commands.
+  ExecutePlaceholderContext _workspacePlaceholderContext(String workspaceDir) {
+    return ExecutePlaceholderContext(
+      rootPath: workspaceDir,
+      folder: FsFolder(path: workspaceDir),
+    );
+  }
+
   Future<bool> _runShell(String body, String workspaceDir, bool dryRun) async {
-    final command = body.trim();
-    if (command.isEmpty) {
+    final raw = body.trim();
+    if (raw.isEmpty) {
       output.writeln('Invalid empty shell command.');
       return false;
     }
+
+    final ctx = _workspacePlaceholderContext(workspaceDir);
+    final command = ExecutePlaceholderResolver.resolveCommand(
+      raw,
+      ctx,
+      skipUnknown: true,
+    );
 
     if (dryRun || verbose) {
       output.writeln('[PIPELINE:shell] $command');
@@ -240,14 +259,21 @@ class ToolPipelineExecutor {
     // body format: first line is the shell command, remaining lines are stdin
     // content that will be piped to that command.
     final newlineIdx = body.indexOf('\n');
-    final command = (newlineIdx == -1 ? body : body.substring(0, newlineIdx))
-        .trim();
+    final rawCommand =
+        (newlineIdx == -1 ? body : body.substring(0, newlineIdx)).trim();
     final stdinContent = newlineIdx == -1 ? '' : body.substring(newlineIdx + 1);
 
-    if (command.isEmpty) {
+    if (rawCommand.isEmpty) {
       output.writeln('Invalid empty stdin command.');
       return false;
     }
+
+    final ctx = _workspacePlaceholderContext(workspaceDir);
+    final command = ExecutePlaceholderResolver.resolveCommand(
+      rawCommand,
+      ctx,
+      skipUnknown: true,
+    );
 
     if (dryRun || verbose) {
       output.writeln('[PIPELINE:stdin] $command');
