@@ -1,3 +1,18 @@
+## 2.5.16
+
+### Added
+
+- **Comprehensive help topics** — Added `definesHelpTopic`, `macrosHelpTopic`, `pipelinesHelpTopic`, `wiringHelpTopic` as built-in help topics. All multiCommand tools automatically expose these via `help defines`, `help macros`, `help pipelines`, `help wiring`.
+- **`--modes` in global help** — Added `--modes` to `commonOptions` so it appears in `--help` output for all tools.
+- **`{TOOL}` placeholder in help topics** — `generateTopicHelp()` now replaces `{TOOL}` with the tool name in help topic content.
+- **Placeholder resolution in pipeline shell/stdin** — `shell` and `stdin` pipeline commands now resolve standard `%{...}` placeholders (root, current-os, current-platform, etc.) before execution. `shell-scan` already had full placeholder support.
+
+### Changed
+
+- **Pipeline help** — Converted hardcoded pipeline help from `tool_runner.dart` to a proper `HelpTopic`. Updated documentation to use correct `%{...}` placeholder syntax.
+- **Macro/define help routing** — `help defines` and `help macros` now show comprehensive topic documentation instead of brief command summaries.
+- **Help appendix** — Global help appendix now lists all 5 help topics (defines, macros, pipelines, placeholders, wiring).
+
 ## 2.5.15
 
 ### Added
