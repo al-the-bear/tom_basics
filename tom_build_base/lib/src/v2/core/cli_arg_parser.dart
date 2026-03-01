@@ -77,6 +77,9 @@ class CliArgs {
   final List<String> recursionExclude;
   final List<String> projectPatterns;
 
+  // Mode options
+  final List<String> modes;
+
   // Git options
   final List<String> modules;
   final List<String> skipModules;
@@ -128,6 +131,7 @@ class CliArgs {
     this.excludeProjects = const [],
     this.recursionExclude = const [],
     this.projectPatterns = const [],
+    this.modes = const [],
     this.modules = const [],
     this.skipModules = const [],
     this.innerFirstGit = false,
@@ -290,6 +294,7 @@ class CliArgs {
       excludeProjects: excludeProjects,
       recursionExclude: recursionExclude,
       projectPatterns: projectPatterns,
+      modes: modes,
       modules: modules,
       skipModules: skipModules,
       innerFirstGit: innerFirstGit,
@@ -556,6 +561,9 @@ class CliArgParser {
       case 'p':
         if (value != null) state.projectPatterns.addAll(_splitValue(value));
         break;
+      case 'modes':
+        if (value != null) state.modes.addAll(_splitValue(value));
+        break;
       case 'modules':
       case 'm':
         if (value != null) state.modules.addAll(_splitValue(value));
@@ -661,6 +669,7 @@ class CliArgParser {
       'outer-first-git', 'o',
       'top-repo', 'T',
       'recursion-exclude',
+      'modes',
       'modules', 'm',
       'skip-modules',
       'no-skip',
@@ -688,6 +697,7 @@ class CliArgParser {
       'recursion-exclude',
       'project',
       'p',
+      'modes',
       'modules',
       'm',
       'skip-modules',
@@ -868,6 +878,7 @@ class _ParseState {
   final List<String> excludeProjects = [];
   final List<String> recursionExclude = [];
   final List<String> projectPatterns = [];
+  final List<String> modes = [];
   final List<String> modules = [];
   final List<String> skipModules = [];
   bool innerFirstGit = false;
@@ -908,6 +919,7 @@ class _ParseState {
       excludeProjects: excludeProjects,
       recursionExclude: recursionExclude,
       projectPatterns: projectPatterns,
+      modes: modes,
       modules: modules,
       skipModules: skipModules,
       innerFirstGit: innerFirstGit,

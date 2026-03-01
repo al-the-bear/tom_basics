@@ -481,6 +481,10 @@ class ToolRunner {
       return ToolResult.failure('Command$cmdLabel has no nature configuration');
     }
 
+    // Load master defines once before traversal.
+    // Merges default defines with mode-specific defines based on --modes.
+    final masterDefines = _loadMasterDefines(cliArgs.modes);
+
     // Execute with traversal
     final results = <ItemResult>[];
 
@@ -517,19 +521,31 @@ class ToolRunner {
           }
         }
 
-        // Resolve placeholders in CLI args per folder.
+        // Resolve %{...} placeholders in CLI args per folder.
         // Uses skipUnknown: true so command-specific placeholders (e.g.,
         // compiler's ${file}) are left for the executor's own resolver.
         final placeholderCtx = ExecutePlaceholderContext.fromCommandContext(
           context,
           executionRoot,
         );
-        final resolvedArgs = cliArgs.withResolvedStrings(
+        final placeholderResolvedArgs = cliArgs.withResolvedStrings(
           (s) => ExecutePlaceholderResolver.resolveCommand(
             s,
             placeholderCtx,
             skipUnknown: true,
           ),
+        );
+
+        // Resolve @[name] define placeholders per folder.
+        // Merges master defines with per-project buildkit.yaml defines
+        // (project overrides master).
+        final projectDefines = _loadProjectDefines(
+          context.fsFolder.path,
+          masterDefines,
+          cliArgs.modes,
+        );
+        final resolvedArgs = placeholderResolvedArgs.withResolvedStrings(
+          (s) => _resolveDefineString(s, projectDefines),
         );
 
         final result = await executor.execute(context, resolvedArgs);
@@ -1223,6 +1239,118 @@ Each pipeline has a name and a set of steps divided into three phases.
       result[entry.key.toString()] = entry.value.toString();
     }
     return result;
+  }
+
+  /// Regex for `@[name]` define placeholders.
+  static final _definePlaceholderPattern =
+      RegExp(r'@\[([a-zA-Z_][a-zA-Z0-9_-]*)\]');
+
+  /// Load defines from the master yaml, merging default + mode-specific.
+  ///
+  /// Reads the tool section's `defines:` key, then overlays any
+  /// `{MODE}-defines:` sections for the given [modes].
+  /// Returns an empty map if no master yaml or no defines exist.
+  Map<String, String> _loadMasterDefines(List<String> modes) {
+    final doc = _readMasterYaml();
+    if (doc == null) return const {};
+
+    final toolSection = doc[tool.name] as Map<String, dynamic>? ?? {};
+    final defines = _readToolDefines(toolSection, 'defines');
+
+    // Overlay mode-specific defines (later modes override earlier ones)
+    for (final mode in modes) {
+      final modeDefines = _readToolDefines(
+        toolSection,
+        '$mode-defines',
+      );
+      defines.addAll(modeDefines);
+    }
+
+    return _resolveDefineChain(defines);
+  }
+
+  /// Load defines for a specific project folder, merged with master defines.
+  ///
+  /// Reads `buildkit.yaml` (or `{tool.name}.yaml`) in [projectPath],
+  /// extracts `defines:` and `{tool.name}: defines:`, and overlays
+  /// mode-specific sections. Project defines override [masterDefines].
+  Map<String, String> _loadProjectDefines(
+    String projectPath,
+    Map<String, String> masterDefines,
+    List<String> modes,
+  ) {
+    final merged = Map<String, String>.from(masterDefines);
+
+    final projectFile = File('$projectPath/buildkit.yaml');
+    if (!projectFile.existsSync()) return merged;
+
+    try {
+      final parsed = loadYaml(projectFile.readAsStringSync());
+      if (parsed is! YamlMap) return merged;
+      final projectDoc = _deepToDart(parsed) as Map<String, dynamic>;
+
+      // Extract from top-level defines:
+      _mergeDefineSection(merged, projectDoc['defines']);
+      // Extract from tool-specific section, e.g. buildkit: defines:
+      final toolSection =
+          projectDoc[tool.name] as Map<String, dynamic>? ?? {};
+      _mergeDefineSection(merged, toolSection['defines']);
+
+      // Overlay mode-specific defines from project
+      for (final mode in modes) {
+        _mergeDefineSection(merged, projectDoc['$mode-defines']);
+        _mergeDefineSection(merged, toolSection['$mode-defines']);
+      }
+    } catch (_) {
+      // Corrupt project yaml — silently use master defines only.
+    }
+
+    return _resolveDefineChain(merged);
+  }
+
+  /// Merge a defines section into [target].
+  void _mergeDefineSection(Map<String, String> target, dynamic section) {
+    if (section is! Map) return;
+    for (final entry in section.entries) {
+      target[entry.key.toString()] = entry.value.toString();
+    }
+  }
+
+  /// Resolve `@[name]` define placeholders in a string.
+  ///
+  /// Unresolved placeholders are left as-is.
+  String _resolveDefineString(String input, Map<String, String> defines) {
+    if (defines.isEmpty) return input;
+    return input.replaceAllMapped(_definePlaceholderPattern, (match) {
+      final name = match.group(1)!;
+      return defines[name] ?? match.group(0)!;
+    });
+  }
+
+  /// Resolve defines that reference other defines.
+  ///
+  /// Supports chained references like `@[buildPath]/@[subdir]`
+  /// with a maximum depth of 10.
+  Map<String, String> _resolveDefineChain(Map<String, String> defines) {
+    final resolved = <String, String>{};
+    const maxDepth = 10;
+
+    String resolveValue(String value, int depth) {
+      if (depth > maxDepth) return value;
+      return value.replaceAllMapped(_definePlaceholderPattern, (match) {
+        final name = match.group(1)!;
+        final replacement = defines[name];
+        if (replacement != null) {
+          return resolveValue(replacement, depth + 1);
+        }
+        return match.group(0)!;
+      });
+    }
+
+    for (final entry in defines.entries) {
+      resolved[entry.key] = resolveValue(entry.value, 0);
+    }
+    return resolved;
   }
 
   dynamic _deepToDart(dynamic value) {

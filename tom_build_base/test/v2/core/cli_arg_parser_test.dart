@@ -22,6 +22,7 @@ void main() {
         expect(args.excludeProjects, isEmpty);
         expect(args.recursionExclude, isEmpty);
         expect(args.projectPatterns, isEmpty);
+        expect(args.modes, isEmpty);
         expect(args.modules, isEmpty);
         expect(args.skipModules, isEmpty);
         expect(args.innerFirstGit, isFalse);
@@ -867,6 +868,40 @@ void main() {
         // 'vc=:v' and ':other' are both positional — ':macro' activates the
         // greedy mode so ':other' is absorbed as a positional arg, not a command
         expect(args.positionalArgs, equals(['vc=:v', ':other']));
+      },
+    );
+
+    test(
+      'BB-CLI-89: Parses --modes as global flag [2026-06-14]',
+      () {
+        final args = parser.parse(['--modes', 'DEV', ':simple']);
+        expect(args.modes, equals(['DEV']));
+        expect(args.commands, equals(['simple']));
+      },
+    );
+
+    test(
+      'BB-CLI-90: Parses --modes with comma-separated values [2026-06-14]',
+      () {
+        final args = parser.parse(['--modes', 'DEV,CI', ':simple']);
+        expect(args.modes, equals(['DEV', 'CI']));
+      },
+    );
+
+    test(
+      'BB-CLI-91: --modes after command is still global [2026-06-14]',
+      () {
+        final args = parser.parse([':simple', '--modes', 'PROD']);
+        expect(args.modes, equals(['PROD']));
+        expect(args.commands, equals(['simple']));
+      },
+    );
+
+    test(
+      'BB-CLI-92: modes defaults to empty list [2026-06-14]',
+      () {
+        final args = parser.parse([':simple']);
+        expect(args.modes, isEmpty);
       },
     );
   });

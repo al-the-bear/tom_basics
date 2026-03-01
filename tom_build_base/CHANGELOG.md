@@ -1,3 +1,11 @@
+## 2.5.15
+
+### Added
+
+- **`cli_arg_parser.dart`** — Added `--modes` as a recognized global CLI flag. Accepts comma-separated mode names (e.g., `--modes DEV` or `--modes DEV,CI`). Parsed into `CliArgs.modes` as `List<String>`.
+- **`tool_runner.dart`** — `@[name]` define placeholders are now resolved per-folder during traversal. Defines are loaded from `{tool}_master.yaml` (default + mode-specific sections based on `--modes`), then merged with per-project `buildkit.yaml` defines (project overrides master). Resolution happens after `%{name}` placeholder resolution and before executor execution.
+- **`tool_runner.dart`** — Per-project `buildkit.yaml` define loading: project-level `buildkit.yaml` files can override master defines via `defines:` or `{tool}: defines:` sections, including mode-specific `{MODE}-defines:` sections.
+
 ## 2.5.14
 
 ### Fixed
