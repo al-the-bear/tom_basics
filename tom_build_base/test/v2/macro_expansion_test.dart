@@ -114,23 +114,27 @@ void main() {
       });
     });
 
-    group('BB-MAC-07: missing arguments for placeholders', () {
-      test('missing \$1 argument throws error', () {
+    group('BB-MAC-07: missing arguments use empty strings', () {
+      test('missing \$1 argument becomes empty string', () {
         final macros = {'vp': ':versioner --project \$1'};
         final args = ['@vp']; // Missing argument for $1
-        expect(
-          () => expandMacros(args, macros),
-          throwsA(isA<MacroExpansionException>()),
-        );
+        final result = expandMacros(args, macros);
+        expect(result, equals([':versioner', '--project', '']));
       });
 
-      test('missing \$2 argument throws error', () {
+      test('missing \$2 argument becomes empty string', () {
         final macros = {'gs': ':gitstatus --project \$1 --modules \$2'};
         final args = ['@gs', 'tom_core']; // Missing argument for $2
-        expect(
-          () => expandMacros(args, macros),
-          throwsA(isA<MacroExpansionException>()),
-        );
+        final result = expandMacros(args, macros);
+        expect(result, equals([':gitstatus', '--project', 'tom_core',
+            '--modules', '']));
+      });
+
+      test('all arguments missing become empty strings', () {
+        final macros = {'gs': ':gitstatus \$1 \$2'};
+        final args = ['@gs'];
+        final result = expandMacros(args, macros);
+        expect(result, equals([':gitstatus', '', '']));
       });
     });
 

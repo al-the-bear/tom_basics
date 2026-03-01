@@ -35,8 +35,8 @@ class MacroExpansionException implements Exception {
 /// [macros] map. Placeholders in the macro value are substituted with
 /// arguments following the macro invocation.
 ///
-/// Returns a new list with macros expanded. Throws [MacroExpansionException]
-/// if a macro requires more arguments than provided.
+/// Returns a new list with macros expanded. Missing positional arguments
+/// are replaced with empty strings.
 List<String> expandMacros(List<String> args, Map<String, String> macros) {
   if (args.isEmpty || macros.isEmpty) return List.of(args);
 
@@ -101,23 +101,14 @@ List<String> expandMacros(List<String> args, Map<String, String> macros) {
     // $$ consumes all remaining args after positional placeholders
     argsToConsume = args.length - argStart;
   } else {
-    argsToConsume = requiredArgs;
+    argsToConsume = requiredArgs.clamp(0, args.length - argStart);
   }
 
-  // Validate we have enough args
-  final availableArgs = args.length - argStart;
-  if (requiredArgs > availableArgs) {
-    throw MacroExpansionException(
-      'Not enough arguments for macro',
-      name,
-      detail: 'requires $requiredArgs argument(s), got $availableArgs',
-    );
-  }
-
-  // Build positional arg map
+  // Build positional arg map — missing args become empty strings
   final positionalArgs = <int, String>{};
-  for (var n = 1; n <= requiredArgs && (argStart + n - 1) < args.length; n++) {
-    positionalArgs[n] = args[argStart + n - 1];
+  for (var n = 1; n <= requiredArgs; n++) {
+    positionalArgs[n] =
+        (argStart + n - 1) < args.length ? args[argStart + n - 1] : '';
   }
 
   // Get rest args

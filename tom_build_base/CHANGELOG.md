@@ -1,3 +1,9 @@
+## 2.5.14
+
+### Fixed
+
+- **`macro_expansion.dart`** — Missing positional arguments (`$1`–`$9`) in macros are now treated as empty strings instead of throwing `MacroExpansionException`. This allows macros like `@vc` to be invoked without arguments even when the macro value contains placeholders.
+
 ## 2.5.13
 
 ### Improved
