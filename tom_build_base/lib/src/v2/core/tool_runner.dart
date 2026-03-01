@@ -6,6 +6,7 @@ import 'cli_arg_parser.dart';
 import 'command_definition.dart';
 import 'console_markdown_zone.dart';
 import 'help_generator.dart';
+import 'macro_expansion.dart';
 import 'nested_tool_executor.dart';
 import 'binary_helpers.dart';
 import 'pipeline_config.dart';
@@ -180,9 +181,13 @@ class ToolRunner {
 
   /// Run the tool with command-line arguments.
   Future<ToolResult> run(List<String> args) async {
+    // Expand macros before parsing (loads persisted macros if needed)
+    _loadPersistedMacros();
+    final expandedArgs = expandMacros(args, _runtimeMacros);
+
     // Parse arguments
     final parser = CliArgParser(toolDefinition: tool);
-    final cliArgs = parser.parse(args);
+    final cliArgs = parser.parse(expandedArgs);
 
     // --dump-definitions: serialize tool definition and exit immediately.
     // Intercepted before any wiring or traversal.
@@ -270,7 +275,8 @@ class ToolRunner {
 
     // Handle version (--version flag or bare 'version' positional arg)
     if (cliArgs.version || cliArgs.positionalArgs.contains('version')) {
-      final versionOutput = _effectiveTool.versionString ??
+      final versionOutput =
+          _effectiveTool.versionString ??
           '${_effectiveTool.name} v${_effectiveTool.version}';
       output.writeln(versionOutput);
       return const ToolResult.success();

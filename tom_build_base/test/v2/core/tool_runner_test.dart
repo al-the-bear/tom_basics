@@ -720,6 +720,14 @@ required-environment:
           final runner2 = ToolRunner(tool: testTool, output: output);
           expect((await runner2.run([':macros'])).success, isTrue);
           expect(output.toString(), contains('build'));
+
+          // Verify macro expansion works via @macro invocation
+          output.clear();
+          final runner3 = ToolRunner(tool: testTool, output: output);
+          final result = await runner3.run(['@build']);
+          // The macro should expand to :comp :runner commands
+          // Even if they fail (no executors), the macro was expanded
+          expect(output.toString(), isNot(contains('No command specified')));
         } finally {
           Directory.current = previousCwd;
           if (tempRoot.existsSync()) {

@@ -1,3 +1,9 @@
+## 2.5.12
+
+### Fixed
+
+- **`tool_runner.dart`** — Macro expansion (`@macroName`) now actually works. The `expandMacros()` function from `macro_expansion.dart` was never called during `run()`, so `@macro` invocations were passed through unparsed. Expansion now happens before arg parsing, after loading persisted macros.
+
 ## 2.5.11
 
 ### Added
