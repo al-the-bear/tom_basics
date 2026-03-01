@@ -8,6 +8,7 @@ import 'console_markdown_zone.dart';
 import 'help_generator.dart';
 import 'macro_expansion.dart';
 import 'nested_tool_executor.dart';
+import 'builtin_help_topics.dart';
 import 'binary_helpers.dart';
 import 'pipeline_config.dart';
 import 'pipeline_executor.dart';
@@ -233,6 +234,11 @@ class ToolRunner {
       }
     }
 
+    // Auto-inject master YAML help topics for multiCommand tools.
+    if (_effectiveTool.mode == ToolMode.multiCommand) {
+      _injectMasterYamlHelpTopics();
+    }
+
     // Handle help (uses _effectiveTool which now includes wired commands)
     if (cliArgs.help) {
       return _handleHelp(cliArgs);
@@ -242,9 +248,7 @@ class ToolRunner {
     if (cliArgs.positionalArgs.firstOrNull == 'help') {
       final topic = cliArgs.positionalArgs.skip(1).firstOrNull;
       if (topic != null) {
-        final builtInHelp =
-            _tryHandleBuiltInMacroDefineHelp(topic) ??
-            _tryHandleBuiltInPipelinesHelp(topic);
+        final builtInHelp = _tryHandleBuiltInMacroDefineHelp(topic);
         if (builtInHelp != null) {
           output.writeln(builtInHelp);
           return const ToolResult.success();
@@ -697,9 +701,7 @@ class ToolRunner {
   Future<ToolResult> _handleHelp(CliArgs cliArgs) async {
     if (cliArgs.commands.isNotEmpty) {
       final cmdName = cliArgs.commands.first;
-      final builtInHelp =
-          _tryHandleBuiltInMacroDefineHelp(cmdName) ??
-          _tryHandleBuiltInPipelinesHelp(cmdName);
+      final builtInHelp = _tryHandleBuiltInMacroDefineHelp(cmdName);
       if (builtInHelp != null) {
         output.writeln(builtInHelp);
         return const ToolResult.success();
@@ -786,6 +788,8 @@ class ToolRunner {
 
   String? _tryHandleBuiltInMacroDefineHelp(String cmdName) {
     if (!_macroDefineCommands.contains(cmdName)) return null;
+    // 'defines' and 'macros' are handled as comprehensive help topics now.
+    if (cmdName == 'defines' || cmdName == 'macros') return null;
     if (_effectiveTool.mode != ToolMode.multiCommand) return null;
     // Show help text even if master file is missing — the user may need
     // the help to understand how to set things up.
@@ -831,8 +835,13 @@ Options:
   :defines                          List all defines (default and mode-specific)
   :undefine [-m MODE] <name>        Remove define (use -m for mode-specific)
 
-<cyan>**Pipeline Help**</cyan>
-  Run `${tool.name} help pipelines` for pipeline configuration reference.
+<cyan>**Help Topics**</cyan>
+  Run `${tool.name} help <topic>` for detailed information:
+    defines         Persistent key-value defines in master and project YAML
+    macros          Runtime command-line macros with argument substitution
+    pipelines       Multi-step pipeline configuration in master YAML
+    placeholders    Placeholder types and resolution in YAML config files
+    wiring          Nested tool integration via master YAML configuration
 ''';
   }
 
@@ -857,57 +866,22 @@ Options:
     return ToolResult.failure('$expected not found');
   }
 
-  String? _tryHandleBuiltInPipelinesHelp(String cmdName) {
-    if (_effectiveTool.mode != ToolMode.multiCommand) return null;
-    if (cmdName != 'pipelines') return null;
-    return '''<cyan>**${tool.name} Pipeline Configuration**</cyan>
-
-Pipelines are defined in <yellow>${tool.name}_master.yaml</yellow> under a <yellow>pipelines:</yellow> key.
-Each pipeline has a name and a set of steps divided into three phases.
-
-<green>**Pipeline Structure**</green>
-
-  my-pipeline:
-    executable: true          # whether this pipeline can be invoked directly
-    runBefore: [other-pipe]   # pipelines to run before this one
-    runAfter:  [other-pipe]   # pipelines to run after this one
-    global-options:           # default option values for this pipeline
-      output: build/
-    precore:                  # steps run before core (setup/validation)
-      - commands:
-          - "shell echo Starting..."
-    core:                     # main steps
-      - commands:
-          - "shell dart pub get"
-          - "${tool.name} :build"
-    postcore:                 # steps run after core (cleanup/reporting)
-      - commands:
-          - "shell echo Done."
-
-<green>**Command Prefixes**</green>
-
-  shell <cmd>          Run a shell command via /bin/bash -lc
-  shell-scan <cmd>     Run a shell command in each scanned project folder
-                       (supports placeholders: {project}, {path}, {name})
-  ${tool.name} <cmd>   Run a ${tool.name} command (e.g. "${tool.name} :build")
-  stdin <cmd>          Run a shell command with multi-line stdin input:
-                         stdin cat -n
-                         line one
-                         line two
-
-<green>**Placeholders (shell-scan)**</green>
-
-  {project}   Relative path to the project folder
-  {path}      Absolute path to the project folder
-  {name}      Project/folder name
-
-<green>**Invocation**</green>
-
-  ${tool.name} <pipeline-name>             Run a named pipeline
-  ${tool.name} <pipeline-name> --dry-run   Show commands without executing
-  ${tool.name} --list                      List available pipelines
-  ${tool.name} help pipelines             Show this help
-''';
+  /// Auto-inject built-in help topics for multiCommand tools.
+  ///
+  /// Adds topics from [masterYamlHelpTopics] that are not already present
+  /// in the tool's [helpTopics]. This ensures all multiCommand tools
+  /// automatically expose help for defines, macros, pipelines, and wiring.
+  void _injectMasterYamlHelpTopics() {
+    final existing = _effectiveTool.helpTopics.map((t) => t.name).toSet();
+    final toAdd =
+        masterYamlHelpTopics
+            .where((t) => !existing.contains(t.name))
+            .toList();
+    if (toAdd.isNotEmpty) {
+      _effectiveTool = _effectiveTool.copyWith(
+        helpTopics: [..._effectiveTool.helpTopics, ...toAdd],
+      );
+    }
   }
 
   ToolResult _handleRuntimeMacroDefine(CliArgs cliArgs) {

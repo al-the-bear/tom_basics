@@ -216,6 +216,11 @@ const List<OptionDefinition> commonOptions = [
     description: 'Workspace root path',
     valueName: 'path',
   ),
+  OptionDefinition.multi(
+    name: 'modes',
+    description: 'Active modes for mode-specific defines (e.g., DEV, CI)',
+    valueName: 'mode',
+  ),
   OptionDefinition.flag(
     name: 'verbose',
     abbr: 'v',

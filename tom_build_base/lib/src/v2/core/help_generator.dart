@@ -191,7 +191,8 @@ class HelpGenerator {
       buf.writeln('**${tool.name}** v${tool.version}');
       buf.writeln();
     }
-    buf.write(topic.content);
+    final toolName = tool?.name ?? 'tool';
+    buf.write(topic.content.replaceAll('{TOOL}', toolName));
     return buf.toString();
   }
 

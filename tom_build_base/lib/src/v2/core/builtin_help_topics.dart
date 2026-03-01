@@ -2,14 +2,33 @@
 ///
 /// These topics are automatically registered when tools opt in.
 /// Use [defaultHelpTopics] to get all built-in topics.
+/// Use [masterYamlHelpTopics] for topics specific to tools with a master YAML.
 library;
 
 import 'help_topic.dart';
 
-/// All built-in help topics.
+/// All built-in help topics that apply to every tool.
 ///
 /// Tools can include these in their [ToolDefinition.helpTopics].
 const List<HelpTopic> defaultHelpTopics = [placeholdersHelpTopic];
+
+/// Help topics for tools that use a `{tool}_master.yaml` configuration file.
+///
+/// These topics are automatically injected by [ToolRunner] when it detects
+/// that the tool has multi-command mode and a master YAML file.
+/// Individual tools do NOT need to add these to their `helpTopics` list.
+///
+/// Covers: defines, macros, pipelines, wiring.
+const List<HelpTopic> masterYamlHelpTopics = [
+  definesHelpTopic,
+  macrosHelpTopic,
+  pipelinesHelpTopic,
+  wiringHelpTopic,
+];
+
+// ─────────────────────────────────────────────────────────────
+// PLACEHOLDERS
+// ─────────────────────────────────────────────────────────────
 
 /// Help topic documenting placeholder and environment variable usage.
 const placeholdersHelpTopic = HelpTopic(
@@ -255,4 +274,442 @@ Each system is independent and uses its own syntax.
       commands:
         - mkdir -p $TOM_BINARY_PATH/%{target-platform-vs}
         - dart compile exe %{file} -o $TOM_BINARY_PATH/%{target-platform-vs}/%{file.name}
+''';
+
+// ─────────────────────────────────────────────────────────────
+// DEFINES
+// ─────────────────────────────────────────────────────────────
+
+/// Help topic documenting the defines system.
+const definesHelpTopic = HelpTopic(
+  name: 'defines',
+  summary: 'Persistent key-value defines in master and project YAML',
+  content: _definesContent,
+);
+
+const _definesContent = r'''
+<cyan>**Persistent Defines**</cyan>
+
+  Defines are key-value pairs stored in {TOOL}_master.yaml that act as
+  reusable constants. They are referenced in YAML config files as @[name]
+  placeholders and resolved before commands are executed.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+<green>**Manage Defines**</green>
+
+  {TOOL} :define <name>=<value>           Add a default define
+  {TOOL} :define -m DEV <name>=<value>    Add a mode-specific define
+  {TOOL} :defines                         List all defines
+  {TOOL} :undefine <name>                 Remove a default define
+  {TOOL} :undefine -m DEV <name>          Remove a mode-specific define
+
+<green>**YAML Structure**</green>
+
+  Defines are stored in the tool section of {TOOL}_master.yaml:
+
+    {TOOL}:
+      defines:
+        output-dir: build/release
+        arch: darwin-arm64
+      DEV-defines:
+        output-dir: build/debug
+        debug-flags: --enable-asserts
+      CI-defines:
+        output-dir: /tmp/ci-output
+
+<green>**Mode-Specific Defines**</green>
+
+  Modes allow different define values per environment. Activate modes
+  with the --modes flag:
+
+    {TOOL} --modes DEV :execute "echo @[output-dir]"
+    {TOOL} --modes DEV,CI :build
+
+  Mode defines are applied on top of default defines in order.
+  Later modes override earlier ones.
+
+  <cyan>Resolution order:</cyan>
+    1. Default defines  (defines:)
+    2. First mode       (DEV-defines: if --modes DEV,CI)
+    3. Second mode      (CI-defines: if --modes DEV,CI)
+    4. Project defines  (from buildkit.yaml per project)
+
+<green>**Referencing Defines**</green>
+
+  Use @[name] syntax anywhere in YAML config files:
+
+    compiler:
+      binaryPath: @[output-dir]/bin/@[arch]
+
+  Defines are resolved recursively (max depth 10):
+
+    defines:
+      base: /opt/tools
+      bin:  @[base]/bin      → /opt/tools/bin
+      app:  @[bin]/myapp     → /opt/tools/bin/myapp
+
+<green>**Project-Level Overrides**</green>
+
+  Each project can override master defines in its buildkit.yaml:
+
+    defines:
+      output-dir: custom/path    # overrides master value
+
+  Project-level mode defines also work:
+
+    DEV-defines:
+      debug-flags: --verbose     # overrides master DEV value
+
+<green>**Resolution Context**</green>
+
+  Defines (@[...]) are resolved AFTER config placeholders (@{...}):
+
+    defines:
+      out: @{workspace-root}/build
+    compiler:
+      outputDir: @[out]/@{project-name}
+
+  This means a define value can contain @{...} config placeholders.
+''';
+
+// ─────────────────────────────────────────────────────────────
+// MACROS
+// ─────────────────────────────────────────────────────────────
+
+/// Help topic documenting the macro system.
+const macrosHelpTopic = HelpTopic(
+  name: 'macros',
+  summary: 'Runtime command-line macros with argument substitution',
+  content: _macrosContent,
+);
+
+const _macrosContent = r'''
+<cyan>**Runtime Macros**</cyan>
+
+  Macros are command-line shortcuts stored in {TOOL}_macros.yaml.
+  They expand @name tokens in arguments to full command sequences
+  with positional argument substitution.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+<green>**Manage Macros**</green>
+
+  {TOOL} :macro <name>=<value>      Add or update a macro
+  {TOOL} :macros                    List all macros
+  {TOOL} :unmacro <name>            Remove a macro
+
+  Macros persist across invocations in {TOOL}_macros.yaml.
+
+<green>**Invoke a Macro**</green>
+
+  Use the @name prefix to invoke a macro:
+
+    {TOOL} @mymacro [args...]
+
+  Example:
+
+    {TOOL} :macro bp=:build --project $1
+    {TOOL} @bp tom_core         →  {TOOL} :build --project tom_core
+
+<green>**Argument Placeholders**</green>
+
+  Macro values can contain positional placeholders:
+
+    $1 through $9        Positional arguments after @name
+    $$                   All remaining arguments (rest/spread)
+
+  <cyan>Positional example:</cyan>
+
+    :macro vp=:versioner --project $1
+    @vp tom_core --list    →  :versioner --project tom_core --list
+
+  <cyan>Rest-args example:</cyan>
+
+    :macro all=:execute $$
+    @all --verbose --dry-run "echo hello"
+    →  :execute --verbose --dry-run "echo hello"
+
+  <cyan>Multiple positional:</cyan>
+
+    :macro pair=:copy $1 $2
+    @pair source.txt dest.txt    →  :copy source.txt dest.txt
+
+  <cyan>Unused placeholders:</cyan>
+
+    If a positional placeholder is not provided, it is replaced
+    with an empty string. Extra arguments beyond the highest
+    placeholder are appended.
+
+<green>**Escaping**</green>
+
+  To use a literal $1 in a macro value (not as a placeholder),
+  escape it with a backslash:
+
+    :macro literal=echo \$1 costs $1
+    @literal 5    →  echo $1 costs 5
+
+<green>**Nested Macros**</green>
+
+  Macros can reference other macros in their value:
+
+    :macro base=:build --release
+    :macro full=@base --project $1
+
+    @full tom_core    →  :build --release --project tom_core
+
+<green>**Storage**</green>
+
+  Macros are stored in {TOOL}_macros.yaml in the workspace root,
+  separate from the master YAML. They are plain key-value pairs:
+
+    bp: ":build --project $1"
+    t: ":test --project $1"
+    all: ":execute $$"
+''';
+
+// ─────────────────────────────────────────────────────────────
+// PIPELINES
+// ─────────────────────────────────────────────────────────────
+
+/// Help topic documenting pipeline configuration.
+const pipelinesHelpTopic = HelpTopic(
+  name: 'pipelines',
+  summary: 'Multi-step pipeline configuration in master YAML',
+  content: _pipelinesContent,
+);
+
+const _pipelinesContent = r'''
+<cyan>**Pipeline Configuration**</cyan>
+
+  Pipelines are multi-step workflows defined in {TOOL}_master.yaml
+  under a pipelines: key. Each pipeline has a name and can contain
+  steps divided into three phases.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+<green>**Pipeline Structure**</green>
+
+    pipelines:
+      my-pipeline:
+        executable: true          # can be invoked directly (default: true)
+        runBefore: [other-pipe]   # pipelines to run first
+        runAfter:  [other-pipe]   # pipelines to run after
+        global-options:           # default option values
+          output: build/
+        precore:                  # setup/validation steps
+          - commands:
+              - "shell echo Starting..."
+        core:                     # main steps
+          - commands:
+              - "shell dart pub get"
+              - "{TOOL} :build"
+        postcore:                 # cleanup/reporting steps
+          - commands:
+              - "shell echo Done."
+
+  <cyan>Phases</cyan>
+
+    precore    Runs before the main work (setup, validation)
+    core       The main pipeline steps
+    postcore   Runs after the main work (cleanup, reporting)
+
+  Each phase contains a list of step groups, where each group has a
+  commands: list of command strings.
+
+<green>**Command Prefixes**</green>
+
+  Each command string starts with a prefix that determines execution:
+
+    shell <cmd>          Run a shell command via /bin/bash -lc
+    shell-scan <cmd>     Run in each scanned project folder
+    {TOOL} <cmd>         Run a {TOOL} command (e.g. "{TOOL} :build")
+    stdin <cmd>          Run with multi-line stdin input
+
+  <cyan>Shell commands:</cyan>
+
+    - commands:
+        - "shell dart pub get"
+        - "shell echo Build complete"
+
+  <cyan>Tool commands:</cyan>
+
+    - commands:
+        - "{TOOL} :build --release"
+        - "{TOOL} :versioner --bump patch"
+
+  <cyan>Shell-scan commands (per-project):</cyan>
+
+    - commands:
+        - "shell-scan echo {name} at {path}"
+
+    Placeholders for shell-scan:
+      {project}   Relative path to the project folder
+      {path}      Absolute path to the project folder
+      {name}      Project/folder name
+
+  <cyan>Stdin commands:</cyan>
+
+    Multi-line input piped to a shell command:
+
+    - commands:
+        - |
+          stdin cat -n
+          line one
+          line two
+
+<green>**Pipeline Invocation**</green>
+
+    {TOOL} <pipeline-name>                Run a named pipeline
+    {TOOL} <pipeline-name> --dry-run      Show commands without executing
+    {TOOL} --list                         List available pipelines
+
+  Pipelines are invoked by their name as a positional argument
+  (without the : prefix used for commands).
+
+<green>**Pipeline Dependencies**</green>
+
+    runBefore: [setup, validate]
+    runAfter:  [report]
+
+  The framework executes dependent pipelines automatically.
+  Circular dependencies are detected and rejected.
+
+<green>**Nested Workspaces**</green>
+
+  When a pipeline runs, the framework also discovers nested workspaces
+  (sub-directories containing their own {TOOL}_master.yaml). For each
+  nested workspace, the pipeline is delegated to a fresh {TOOL} process.
+
+  Global traversal options (--project, --exclude, --root) disable
+  nested-workspace delegation.
+
+<green>**Global Options**</green>
+
+  Pipelines can set default options via global-options:
+
+    pipelines:
+      release:
+        global-options:
+          output: dist/
+          verbose: "true"
+        core:
+          - commands:
+              - "shell dart compile exe %{file}"
+''';
+
+// ─────────────────────────────────────────────────────────────
+// WIRING
+// ─────────────────────────────────────────────────────────────
+
+/// Help topic documenting nested tool wiring.
+const wiringHelpTopic = HelpTopic(
+  name: 'wiring',
+  summary: 'Nested tool integration via master YAML configuration',
+  content: _wiringContent,
+);
+
+const _wiringContent = r'''
+<cyan>**Tool Wiring**</cyan>
+
+  Wiring lets a host tool ({TOOL}) incorporate commands from other
+  standalone CLI tools. Wired commands appear in {TOOL}'s help and
+  can be invoked as if they were native commands.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+<green>**How Wiring Works**</green>
+
+  1. The host tool defines a wiringFile (typically {TOOL}_master.yaml)
+  2. Nested tools are listed in the nested_tools: section of that file
+  3. At startup, {TOOL} queries each nested tool via --dump-definitions
+  4. Wired commands appear as "Nested Commands" in {TOOL} --help
+
+  Wired commands are delegated to the nested tool binary with the
+  --nested flag, so nested tools run in single-project mode within
+  the host tool's traversal context.
+
+<green>**YAML Configuration**</green>
+
+  In {TOOL}_master.yaml:
+
+    nested_tools:
+      testkit:
+        binary: testkit
+        mode: multi_command
+        commands:
+          buildkittest: test
+          buildkitbaseline: baseline
+      astgen:
+        binary: astgen
+        mode: standalone
+
+  <cyan>Fields:</cyan>
+
+    binary         Binary name to execute (resolved via PATH)
+    mode           multi_command or standalone
+    commands       Command name mapping (host-name: nested-name)
+
+<green>**Multi-Command Wiring**</green>
+
+  For multi-command tools, the commands: map connects host command
+  names to nested tool command names:
+
+    testkit:
+      binary: testkit
+      mode: multi_command
+      commands:
+        buildkittest: test          # {TOOL} :buildkittest → testkit :test
+        buildkitbaseline: baseline  # {TOOL} :buildkitbaseline → testkit :baseline
+
+  This allows the host tool to expose specific commands from nested
+  tools under custom names.
+
+<green>**Standalone Wiring**</green>
+
+  Standalone tools are wired as a single command using the binary
+  name as the command name:
+
+    astgen:
+      binary: astgen
+      mode: standalone
+
+  Invoke with: {TOOL} :astgen [args...]
+
+<green>**Code-Level Wiring**</green>
+
+  Tools can also define default wiring in code via defaultIncludes:
+
+    ToolDefinition(
+      name: 'buildkit',
+      defaultIncludes: [
+        ToolWiringEntry(
+          binary: 'testkit',
+          mode: WiringMode.multiCommand,
+          commands: {'buildkittest': 'test'},
+        ),
+      ],
+    )
+
+  YAML nested_tools: entries override code-level defaults for the
+  same binary name. This allows users to customize wiring without
+  modifying tool source code.
+
+<green>**Lazy Resolution**</green>
+
+  Wiring is lazy — only the nested tools needed for the current
+  invocation are queried. In help mode, all tools are queried but
+  missing binaries produce warnings instead of errors.
+
+<green>**Binary Resolution**</green>
+
+  Nested tool binaries are resolved via PATH. On Windows, .exe is
+  appended automatically. The binary must support --dump-definitions
+  to report its command definitions to the host tool.
+
+<green>**Verifying Wiring**</green>
+
+    {TOOL} --help                   See wired commands under Nested Commands
+    {TOOL} help :wired-cmd          Help for a specific wired command
+    {TOOL} --dump-definitions       Full YAML dump including wired commands
 ''';
