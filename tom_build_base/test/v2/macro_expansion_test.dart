@@ -126,8 +126,10 @@ void main() {
         final macros = {'gs': ':gitstatus --project \$1 --modules \$2'};
         final args = ['@gs', 'tom_core']; // Missing argument for $2
         final result = expandMacros(args, macros);
-        expect(result, equals([':gitstatus', '--project', 'tom_core',
-            '--modules', '']));
+        expect(
+          result,
+          equals([':gitstatus', '--project', 'tom_core', '--modules', '']),
+        );
       });
 
       test('all arguments missing become empty strings', () {

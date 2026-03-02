@@ -1,13 +1,16 @@
-# Tool Inheritance and Nesting Design
+# Tool Inheritance and Nesting
 
-> Design document for extending `tom_build_base` to support tool composition,
-> command inheritance, and nested tool execution.
+> Reference documentation for tool composition, command inheritance, and nested tool
+> execution in `tom_build_base`.
 
-## Status
+## Related Documentation
 
-Draft — February 2026
+- [Build Base User Guide](build_base_user_guide.md) — Comprehensive guide to implementing tools
+- [CLI Tools Navigation](cli_tools_navigation.md) — Standard navigation options and help topics
+- [Modes and Placeholders](modes_and_placeholders.md) — Mode system and placeholder resolution
+- [Multi-Workspace Pipelines, Macros, and Defines](multiws_pipelines_macros_defines.md) — Pipeline execution, runtime macros, persistent defines
 
-## Problem Statement
+## Overview
 
 The Tom toolchain has multiple CLI tools built on `tom_build_base`:
 
@@ -19,13 +22,11 @@ The Tom toolchain has multiple CLI tools built on `tom_build_base`:
 - **findproject** — single-command project finder
 
 All share the same `tom_build_base` infrastructure (`ToolDefinition`, `ToolRunner`,
-`CommandExecutor`, traversal, placeholders, `buildkit.yaml` config). But today there
-is **no mechanism** for:
+`CommandExecutor`, traversal, placeholders, `buildkit.yaml` config). `tom_build_base`
+provides two mechanisms for tool composition:
 
-1. A new tool to inherit commands from an existing tool
-2. A tool to embed another tool as a command (nested execution)
-
-This document defines the design for both capabilities.
+1. **Tool Inheritance** — A new tool can inherit commands from an existing tool (`copyWith`)
+2. **Nested Tool Execution** — A tool can embed another tool as a command (declarative wiring)
 
 ---
 
@@ -39,18 +40,13 @@ replace others, and add new ones.
 **Example:** A `tom` super-tool that has all buildkit commands plus d4rtgen and
 astgen, but removes `:dcli` and replaces `:runner` with a custom version.
 
-### Current Limitation
+### Implementation: `copyWith` + Command List Helpers
 
 `ToolDefinition` is a `const`-constructible immutable class. All fields are `final`.
-There is no `copyWith`, no builder, no merge. Creating a derived tool requires
-re-declaring every field from scratch.
+Composition is supported via `copyWith` on `ToolDefinition` and list manipulation
+extensions on `List<CommandDefinition>`.
 
-`ToolRunner` takes a flat `Map<String, CommandExecutor>` and a `ToolDefinition`.
-There's no composition API.
-
-### Proposed Solution: `copyWith` + `mergeExecutors`
-
-#### 1. Add `copyWith` to `ToolDefinition`
+#### 1. `copyWith` on `ToolDefinition`
 
 ```dart
 class ToolDefinition {
@@ -137,11 +133,11 @@ final executors = {
 final runner = ToolRunner(tool: superTool, executors: executors);
 ```
 
-### Implementation Scope
+### Implementation Notes
 
-- Add `copyWith` to `ToolDefinition` — ~20 lines
-- Add `CommandListOps` extension — ~15 lines
-- Both go in `tom_build_base`, no changes needed in consuming tools
+- `copyWith` is on `ToolDefinition` in `tool_definition.dart`
+- `CommandListOps` extension is in the same file
+- Both are in `tom_build_base`, no changes needed in consuming tools
 - Fully backward-compatible (additive only)
 
 ---
@@ -1070,43 +1066,6 @@ all use platform-neutral names (`testkit`, not `testkit.exe`).
 
 ---
 
-## Implementation Plan
-
-### Phase 1: Tool Inheritance (Part A)
-
-1. Add `copyWith` to `ToolDefinition`
-2. Add `CommandListOps` extension
-3. Add tests
-4. Publish `tom_build_base`
-
-### Phase 2: Core Infrastructure (Part B — tom_build_base)
-
-1. Add `wiringFile` field to `ToolDefinition`
-2. Add `defaultIncludes` field and `ToolWiringEntry` class
-3. Add `--nested` flag to `commonOptions`
-4. Add `--dump-definitions` flag to `commonOptions`
-5. Implement `ToolDefinitionSerializer` (walks definition tree → YAML)
-6. Implement `NestedToolExecutor` class
-7. Implement lazy wiring loader (merges code + YAML, demand-driven `--dump-definitions`)
-8. Add `_resolveBinary` platform helper (`.exe` on Windows)
-9. Add `validateNestedBinaries` to `ToolRunner` (with help-mode tolerance)
-10. Implement help integration (command list with descriptions, `help <cmd>` delegation)
-11. Wire into `ToolRunner.run()` flow (nested bypass, dump bypass, lazy wiring, help)
-12. Add `_runBinary` and `_isBinaryOnPath` helpers
-13. Add tests (mock binary execution, platform resolution, help delegation)
-14. Publish `tom_build_base`
-
-### Phase 3: Buildkit Integration (consuming)
-
-1. Set `wiringFile: ToolDefinition.kAutoWiringFile` on `buildkitTool`
-2. Set `defaultIncludes: [...]` for testkit, astgen, d4rtgen
-3. Add `nested_tools:` section to workspace `buildkit_master.yaml`
-4. Test end-to-end: `buildkit :buildkittest`, `buildkit :buildkitAstgen`
-5. Test lazy behavior: `buildkit :compiler` with missing nested binaries
-6. Test help: `buildkit --help`, `buildkit help buildkittest`
-
----
-
 ## Architecture Summary
 
 ```
@@ -1124,12 +1083,14 @@ all use platform-neutral names (`testkit`, not `testkit.exe`).
                     │  commonOptions                       │
                     │    + --nested                        │
                     │    + --dump-definitions               │
+                    │    + --modes                         │
                     │                                      │
                     │  ToolRunner                           │
                     │    + lazy wiring (demand-driven)      │
                     │    + nested mode bypass               │
                     │    + dump-definitions bypass          │
                     │    + help integration                 │
+                    │    + help topics (auto-injected)      │
                     │    + validateNestedBinaries()         │
                     │    + _resolveBinary() (platform)      │
                     │                                      │
@@ -1154,26 +1115,16 @@ all use platform-neutral names (`testkit`, not `testkit.exe`).
 
 ---
 
-## Open Questions
+## Design Notes
 
-1. **Streaming vs buffered output** — Should nested tool output stream in
-   real-time (using `Process.start`) or be buffered (`Process.run`)?
-   Recommendation: Stream for interactive use, buffer when piped.
+These notes document design decisions made during implementation:
 
-2. **Exit code propagation** — Should a nested tool failure stop the entire
-   pipeline or just mark that project as failed? Current pipeline behavior
-   is stop-on-failure, which seems correct here too.
+1. **Streaming vs buffered output** — Nested tool output currently uses buffered execution (`Process.run`). Streaming (`Process.start`) may be added later for interactive use cases.
 
-3. **Version checking** — Should the host tool verify the nested tool's version
-   is compatible? Could add `min_version:` to the wiring YAML. The
-   `--dump-definitions` output already includes the tool version.
+2. **Exit code propagation** — A nested tool failure stops pipeline processing for that project (fail-fast), consistent with native command behavior.
 
-4. **Caching `--dump-definitions`** — Calling `--dump-definitions` at every
-   startup adds latency. Should results be cached per binary+version?
-   Recommendation: Yes, cache in `ztmp/` keyed by binary path + mtime.
+3. **Version checking** — The host tool does not currently verify nested tool versions. The `--dump-definitions` output includes the tool version, enabling future `min_version:` support in wiring YAML.
 
-5. **Config passthrough** — Nested tools read their own `buildkit.yaml`
-   sections (e.g., `d4rtgen:` in the project's `buildkit.yaml`). The host
-   tool does not need to know about this — the nested tool handles its own
-   config requirements. However, the nature filter from `--dump-definitions`
-   ensures buildkit only calls the nested tool on appropriate projects.
+4. **Caching `--dump-definitions`** — Results are not currently cached. Lazy wiring minimizes impact by only querying tools needed for the current invocation.
+
+5. **Config passthrough** — Nested tools read their own config sections (e.g., `d4rtgen:` in `buildkit.yaml`). The host tool doesn't need to know about this — nature filters from `--dump-definitions` ensure the host only invokes nested tools on appropriate projects.

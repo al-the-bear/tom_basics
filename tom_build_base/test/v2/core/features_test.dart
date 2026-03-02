@@ -6,7 +6,7 @@
 ///
 /// Test IDs:
 /// - BB-MOD-01 through BB-MOD-10: modes functionality
-/// - BB-DEF-01 through BB-DEF-10: define/undefine commands  
+/// - BB-DEF-01 through BB-DEF-10: define/undefine commands
 /// - BB-MCR-01 through BB-MCR-10: macro/unmacro commands
 /// - BB-PLH-01 through BB-PLH-10: placeholder resolution
 /// - BB-PIP-01 through BB-PIP-10: pipeline execution
@@ -46,7 +46,7 @@ const _multiTool = ToolDefinition(
 
 /// Helper to create a minimal workspace with one Dart project.
 Future<({Directory tempRoot, Directory workspace, Directory project})>
-    createMinimalWorkspace() async {
+createMinimalWorkspace() async {
   final tempRoot = await Directory.systemTemp.createTemp('bb_feature_');
   final workspace = Directory(p.join(tempRoot.path, 'ws'))..createSync();
   final project = Directory(p.join(workspace.path, 'my_project'))..createSync();
@@ -77,11 +77,14 @@ void main() {
       expect(result.modes, equals(['DEV']));
     });
 
-    test('BB-MOD-02: --modes flag parses comma-separated values [2026-06-15]', () {
-      final parser = CliArgParser(toolDefinition: _multiTool);
-      final result = parser.parse(['--modes', 'DEV,CI,PROD', ':execute']);
-      expect(result.modes, equals(['DEV', 'CI', 'PROD']));
-    });
+    test(
+      'BB-MOD-02: --modes flag parses comma-separated values [2026-06-15]',
+      () {
+        final parser = CliArgParser(toolDefinition: _multiTool);
+        final result = parser.parse(['--modes', 'DEV,CI,PROD', ':execute']);
+        expect(result.modes, equals(['DEV', 'CI', 'PROD']));
+      },
+    );
 
     test('BB-MOD-03: --modes defaults to empty [2026-06-15]', () {
       final parser = CliArgParser(toolDefinition: _multiTool);
@@ -91,7 +94,13 @@ void main() {
 
     test('BB-MOD-04: multiple --modes flags concatenate [2026-06-15]', () {
       final parser = CliArgParser(toolDefinition: _multiTool);
-      final result = parser.parse(['--modes', 'DEV', '--modes', 'CI', ':execute']);
+      final result = parser.parse([
+        '--modes',
+        'DEV',
+        '--modes',
+        'CI',
+        ':execute',
+      ]);
       expect(result.modes, equals(['DEV', 'CI']));
     });
   });
@@ -103,16 +112,17 @@ void main() {
       final previousCwd = Directory.current.path;
       try {
         Directory.current = ws.workspace.path;
-        
+
         final output = StringBuffer();
         final runner = ToolRunner(tool: _multiTool, output: output);
         final result = await runner.run([':define', 'newKey=newValue']);
-        
+
         expect(result.success, isTrue);
         expect(output.toString(), contains('Added define'));
 
-        final content = File(p.join(ws.workspace.path, 'testtool_master.yaml'))
-            .readAsStringSync();
+        final content = File(
+          p.join(ws.workspace.path, 'testtool_master.yaml'),
+        ).readAsStringSync();
         expect(content, contains('newKey: newValue'));
       } finally {
         Directory.current = previousCwd;
@@ -122,38 +132,49 @@ void main() {
       }
     });
 
-    test('BB-DEF-02: :define with -m adds mode-specific define [2026-06-15]', () async {
-      final ws = await createMinimalWorkspace();
-      final previousCwd = Directory.current.path;
-      try {
-        Directory.current = ws.workspace.path;
-        
-        final output = StringBuffer();
-        final runner = ToolRunner(tool: _multiTool, output: output);
-        final result = await runner.run([':define', '-m', 'DEV', 'debug=enabled']);
-        
-        expect(result.success, isTrue);
-        expect(output.toString(), contains('DEV mode'));
+    test(
+      'BB-DEF-02: :define with -m adds mode-specific define [2026-06-15]',
+      () async {
+        final ws = await createMinimalWorkspace();
+        final previousCwd = Directory.current.path;
+        try {
+          Directory.current = ws.workspace.path;
 
-        final content = File(p.join(ws.workspace.path, 'testtool_master.yaml'))
-            .readAsStringSync();
-        expect(content, contains('DEV-defines:'));
-      } finally {
-        Directory.current = previousCwd;
-        if (ws.tempRoot.existsSync()) {
-          await ws.tempRoot.delete(recursive: true);
+          final output = StringBuffer();
+          final runner = ToolRunner(tool: _multiTool, output: output);
+          final result = await runner.run([
+            ':define',
+            '-m',
+            'DEV',
+            'debug=enabled',
+          ]);
+
+          expect(result.success, isTrue);
+          expect(output.toString(), contains('DEV mode'));
+
+          final content = File(
+            p.join(ws.workspace.path, 'testtool_master.yaml'),
+          ).readAsStringSync();
+          expect(content, contains('DEV-defines:'));
+        } finally {
+          Directory.current = previousCwd;
+          if (ws.tempRoot.existsSync()) {
+            await ws.tempRoot.delete(recursive: true);
+          }
         }
-      }
-    });
+      },
+    );
 
     test('BB-DEF-03: :defines lists all defines [2026-06-15]', () async {
       final ws = await createMinimalWorkspace();
       final previousCwd = Directory.current.path;
       try {
         Directory.current = ws.workspace.path;
-        
+
         // Add some defines
-        File(p.join(ws.workspace.path, 'testtool_master.yaml')).writeAsStringSync('''
+        File(
+          p.join(ws.workspace.path, 'testtool_master.yaml'),
+        ).writeAsStringSync('''
 testtool:
   defines:
     alpha: valueA
@@ -161,11 +182,11 @@ testtool:
   DEV-defines:
     gamma: valueC
 ''');
-        
+
         final output = StringBuffer();
         final runner = ToolRunner(tool: _multiTool, output: output);
         final result = await runner.run([':defines']);
-        
+
         expect(result.success, isTrue);
         final out = output.toString();
         expect(out, contains('alpha'));
@@ -184,23 +205,26 @@ testtool:
       final previousCwd = Directory.current.path;
       try {
         Directory.current = ws.workspace.path;
-        
+
         // Set up initial defines
-        File(p.join(ws.workspace.path, 'testtool_master.yaml')).writeAsStringSync('''
+        File(
+          p.join(ws.workspace.path, 'testtool_master.yaml'),
+        ).writeAsStringSync('''
 testtool:
   defines:
     toRemove: value
     toKeep: value
 ''');
-        
+
         final output = StringBuffer();
         final runner = ToolRunner(tool: _multiTool, output: output);
         final result = await runner.run([':undefine', 'toRemove']);
-        
+
         expect(result.success, isTrue);
-        
-        final content = File(p.join(ws.workspace.path, 'testtool_master.yaml'))
-            .readAsStringSync();
+
+        final content = File(
+          p.join(ws.workspace.path, 'testtool_master.yaml'),
+        ).readAsStringSync();
         expect(content, isNot(contains('toRemove')));
         expect(content, contains('toKeep'));
       } finally {
@@ -219,16 +243,20 @@ testtool:
       final previousCwd = Directory.current.path;
       try {
         Directory.current = ws.workspace.path;
-        
+
         final output = StringBuffer();
         final runner = ToolRunner(tool: _multiTool, output: output);
-        final result = await runner.run([':macro', 'build=:execute echo build']);
-        
+        final result = await runner.run([
+          ':macro',
+          'build=:execute echo build',
+        ]);
+
         expect(result.success, isTrue);
         expect(output.toString(), contains('Added macro'));
 
-        final content = File(p.join(ws.workspace.path, 'testtool_master.yaml'))
-            .readAsStringSync();
+        final content = File(
+          p.join(ws.workspace.path, 'testtool_master.yaml'),
+        ).readAsStringSync();
         expect(content, contains('macros:'));
         expect(content, contains('build:'));
       } finally {
@@ -244,9 +272,11 @@ testtool:
       final previousCwd = Directory.current.path;
       try {
         Directory.current = ws.workspace.path;
-        
+
         // Set up macros
-        File(p.join(ws.workspace.path, 'testtool_master.yaml')).writeAsStringSync('''
+        File(
+          p.join(ws.workspace.path, 'testtool_master.yaml'),
+        ).writeAsStringSync('''
 testtool:
   defines:
     mode: PROD
@@ -254,11 +284,11 @@ macros:
   build: ":compile --release"
   test: ":test-runner"
 ''');
-        
+
         final output = StringBuffer();
         final runner = ToolRunner(tool: _multiTool, output: output);
         final result = await runner.run([':macros']);
-        
+
         expect(result.success, isTrue);
         final out = output.toString();
         expect(out, contains('build'));
@@ -276,9 +306,11 @@ macros:
       final previousCwd = Directory.current.path;
       try {
         Directory.current = ws.workspace.path;
-        
+
         // Set up macros
-        File(p.join(ws.workspace.path, 'testtool_master.yaml')).writeAsStringSync('''
+        File(
+          p.join(ws.workspace.path, 'testtool_master.yaml'),
+        ).writeAsStringSync('''
 testtool:
   defines:
     mode: PROD
@@ -286,15 +318,16 @@ macros:
   toRemove: ":cmd1"
   toKeep: ":cmd2"
 ''');
-        
+
         final output = StringBuffer();
         final runner = ToolRunner(tool: _multiTool, output: output);
         final result = await runner.run([':unmacro', 'toRemove']);
-        
+
         expect(result.success, isTrue);
-        
-        final content = File(p.join(ws.workspace.path, 'testtool_master.yaml'))
-            .readAsStringSync();
+
+        final content = File(
+          p.join(ws.workspace.path, 'testtool_master.yaml'),
+        ).readAsStringSync();
         expect(content, isNot(contains('toRemove')));
         expect(content, contains('toKeep'));
       } finally {
@@ -323,19 +356,22 @@ macros:
 
   // ============ Placeholder Resolution Tests ============
   group('Execute Placeholders', () {
-    test('BB-PLH-01: folder placeholder resolves to absolute path [2026-06-15]', () {
-      final folder = FsFolder(path: '/workspace/my-project');
-      final ctx = ExecutePlaceholderContext(
-        rootPath: '/workspace',
-        folder: folder,
-      );
-      
-      final result = ExecutePlaceholderResolver.resolveCommand(
-        r'echo %{folder}',
-        ctx,
-      );
-      expect(result, equals('echo /workspace/my-project'));
-    });
+    test(
+      'BB-PLH-01: folder placeholder resolves to absolute path [2026-06-15]',
+      () {
+        final folder = FsFolder(path: '/workspace/my-project');
+        final ctx = ExecutePlaceholderContext(
+          rootPath: '/workspace',
+          folder: folder,
+        );
+
+        final result = ExecutePlaceholderResolver.resolveCommand(
+          r'echo %{folder}',
+          ctx,
+        );
+        expect(result, equals('echo /workspace/my-project'));
+      },
+    );
 
     test('BB-PLH-02: folder.name resolves to folder basename [2026-06-15]', () {
       final folder = FsFolder(path: '/workspace/my-project');
@@ -343,7 +379,7 @@ macros:
         rootPath: '/workspace',
         folder: folder,
       );
-      
+
       final result = ExecutePlaceholderResolver.resolveCommand(
         r'echo %{folder.name}',
         ctx,
@@ -351,49 +387,58 @@ macros:
       expect(result, equals('echo my-project'));
     });
 
-    test('BB-PLH-03: folder.relative resolves relative to root [2026-06-15]', () {
-      final folder = FsFolder(path: '/workspace/packages/my-project');
-      final ctx = ExecutePlaceholderContext(
-        rootPath: '/workspace',
-        folder: folder,
-      );
-      
-      final result = ExecutePlaceholderResolver.resolveCommand(
-        r'echo %{folder.relative}',
-        ctx,
-      );
-      expect(result, equals('echo packages/my-project'));
-    });
+    test(
+      'BB-PLH-03: folder.relative resolves relative to root [2026-06-15]',
+      () {
+        final folder = FsFolder(path: '/workspace/packages/my-project');
+        final ctx = ExecutePlaceholderContext(
+          rootPath: '/workspace',
+          folder: folder,
+        );
 
-    test('BB-PLH-04: current-platform placeholder resolves to OS info [2026-06-15]', () {
-      final folder = FsFolder(path: '/workspace');
-      final ctx = ExecutePlaceholderContext(
-        rootPath: '/workspace',
-        folder: folder,
-        currentOs: 'linux',
-        currentArch: 'x64',
-      );
-      
-      final result = ExecutePlaceholderResolver.resolveCommand(
-        r'echo %{current-platform}',
-        ctx,
-      );
-      expect(result, equals('echo linux-x64'));
-    });
+        final result = ExecutePlaceholderResolver.resolveCommand(
+          r'echo %{folder.relative}',
+          ctx,
+        );
+        expect(result, equals('echo packages/my-project'));
+      },
+    );
 
-    test('BB-PLH-05: root placeholder resolves to workspace root [2026-06-15]', () {
-      final folder = FsFolder(path: '/workspace/sub/project');
-      final ctx = ExecutePlaceholderContext(
-        rootPath: '/workspace',
-        folder: folder,
-      );
-      
-      final result = ExecutePlaceholderResolver.resolveCommand(
-        r'cd %{root}',
-        ctx,
-      );
-      expect(result, equals('cd /workspace'));
-    });
+    test(
+      'BB-PLH-04: current-platform placeholder resolves to OS info [2026-06-15]',
+      () {
+        final folder = FsFolder(path: '/workspace');
+        final ctx = ExecutePlaceholderContext(
+          rootPath: '/workspace',
+          folder: folder,
+          currentOs: 'linux',
+          currentArch: 'x64',
+        );
+
+        final result = ExecutePlaceholderResolver.resolveCommand(
+          r'echo %{current-platform}',
+          ctx,
+        );
+        expect(result, equals('echo linux-x64'));
+      },
+    );
+
+    test(
+      'BB-PLH-05: root placeholder resolves to workspace root [2026-06-15]',
+      () {
+        final folder = FsFolder(path: '/workspace/sub/project');
+        final ctx = ExecutePlaceholderContext(
+          rootPath: '/workspace',
+          folder: folder,
+        );
+
+        final result = ExecutePlaceholderResolver.resolveCommand(
+          r'cd %{root}',
+          ctx,
+        );
+        expect(result, equals('cd /workspace'));
+      },
+    );
 
     test('BB-PLH-06: multiple placeholders in single command [2026-06-15]', () {
       final folder = FsFolder(path: '/workspace/my-project');
@@ -403,7 +448,7 @@ macros:
         currentOs: 'linux',
         currentArch: 'x64',
       );
-      
+
       final result = ExecutePlaceholderResolver.resolveCommand(
         r'cp %{folder.name}.tar.gz %{root}/dist/%{current-platform}/',
         ctx,
@@ -422,12 +467,12 @@ macros:
         version: '1.0.0',
       );
       folderWithNatures.natures.add(dartFolder);
-      
+
       final ctx = ExecutePlaceholderContext(
         rootPath: '/workspace',
         folder: folderWithNatures,
       );
-      
+
       final result = ExecutePlaceholderResolver.resolveCommand(
         r'echo %{dart.exists?(is-dart):(not-dart)}',
         ctx,
@@ -441,7 +486,7 @@ macros:
         rootPath: '/workspace',
         folder: folder,
       );
-      
+
       final result = ExecutePlaceholderResolver.resolveCommand(
         r'echo %{dart.exists?(is-dart):(not-dart)}',
         ctx,
@@ -457,8 +502,10 @@ macros:
       final previousCwd = Directory.current.path;
       try {
         Directory.current = ws.workspace.path;
-        
-        File(p.join(ws.workspace.path, 'testtool_master.yaml')).writeAsStringSync('''
+
+        File(
+          p.join(ws.workspace.path, 'testtool_master.yaml'),
+        ).writeAsStringSync('''
 testtool:
   defines:
     mode: PROD
@@ -469,12 +516,12 @@ testtool:
         - commands:
             - "shell echo hello"
 ''');
-        
+
         final config = ToolPipelineConfigLoader.load(
           tool: _multiTool,
           fromDirectory: ws.workspace.path,
         );
-        
+
         expect(config, isNotNull);
         expect(config!.pipelines, contains('test'));
         expect(config.pipelines['test']!.executable, isTrue);
@@ -486,13 +533,17 @@ testtool:
       }
     });
 
-    test('BB-PIP-02: pipeline definition has correct stages [2026-06-15]', () async {
-      final ws = await createMinimalWorkspace();
-      final previousCwd = Directory.current.path;
-      try {
-        Directory.current = ws.workspace.path;
-        
-        File(p.join(ws.workspace.path, 'testtool_master.yaml')).writeAsStringSync('''
+    test(
+      'BB-PIP-02: pipeline definition has correct stages [2026-06-15]',
+      () async {
+        final ws = await createMinimalWorkspace();
+        final previousCwd = Directory.current.path;
+        try {
+          Directory.current = ws.workspace.path;
+
+          File(
+            p.join(ws.workspace.path, 'testtool_master.yaml'),
+          ).writeAsStringSync('''
 testtool:
   defines:
     mode: PROD
@@ -509,121 +560,146 @@ testtool:
         - commands:
             - "shell echo postcore"
 ''');
-        
-        final config = ToolPipelineConfigLoader.load(
-          tool: _multiTool,
-          fromDirectory: ws.workspace.path,
-        );
-        
-        expect(config, isNotNull);
-        final pipeline = config!.pipelines['build']!;
-        expect(pipeline.precore, hasLength(1));
-        expect(pipeline.core, hasLength(1));
-        expect(pipeline.postcore, hasLength(1));
-      } finally {
-        Directory.current = previousCwd;
-        if (ws.tempRoot.existsSync()) {
-          await ws.tempRoot.delete(recursive: true);
+
+          final config = ToolPipelineConfigLoader.load(
+            tool: _multiTool,
+            fromDirectory: ws.workspace.path,
+          );
+
+          expect(config, isNotNull);
+          final pipeline = config!.pipelines['build']!;
+          expect(pipeline.precore, hasLength(1));
+          expect(pipeline.core, hasLength(1));
+          expect(pipeline.postcore, hasLength(1));
+        } finally {
+          Directory.current = previousCwd;
+          if (ws.tempRoot.existsSync()) {
+            await ws.tempRoot.delete(recursive: true);
+          }
         }
-      }
-    });
+      },
+    );
 
-    test('BB-PIP-03: PipelineCommandPrefixParser parses shell prefix [2026-06-15]', () {
-      final result = PipelineCommandPrefixParser.parse(
-        'shell echo hello',
-        toolPrefix: 'testtool',
-      );
-      
-      expect(result, isNotNull);
-      expect(result!.prefix, equals(PipelineCommandPrefix.shell));
-      expect(result.body, equals('echo hello'));
-    });
+    test(
+      'BB-PIP-03: PipelineCommandPrefixParser parses shell prefix [2026-06-15]',
+      () {
+        final result = PipelineCommandPrefixParser.parse(
+          'shell echo hello',
+          toolPrefix: 'testtool',
+        );
 
-    test('BB-PIP-04: PipelineCommandPrefixParser parses shell-scan prefix [2026-06-15]', () {
-      final result = PipelineCommandPrefixParser.parse(
-        'shell-scan echo project',
-        toolPrefix: 'testtool',
-      );
-      
-      expect(result, isNotNull);
-      expect(result!.prefix, equals(PipelineCommandPrefix.shellScan));
-      expect(result.body, equals('echo project'));
-    });
+        expect(result, isNotNull);
+        expect(result!.prefix, equals(PipelineCommandPrefix.shell));
+        expect(result.body, equals('echo hello'));
+      },
+    );
 
-    test('BB-PIP-05: PipelineCommandPrefixParser parses tool prefix [2026-06-15]', () {
-      final result = PipelineCommandPrefixParser.parse(
-        'testtool :build --release',
-        toolPrefix: 'testtool',
-      );
-      
-      expect(result, isNotNull);
-      expect(result!.prefix, equals(PipelineCommandPrefix.tool));
-      expect(result.body, equals(':build --release'));
-    });
+    test(
+      'BB-PIP-04: PipelineCommandPrefixParser parses shell-scan prefix [2026-06-15]',
+      () {
+        final result = PipelineCommandPrefixParser.parse(
+          'shell-scan echo project',
+          toolPrefix: 'testtool',
+        );
 
-    test('BB-PIP-06: PipelineCommandPrefixParser parses stdin prefix [2026-06-15]', () {
-      final result = PipelineCommandPrefixParser.parse(
-        'stdin cat > output.txt',
-        toolPrefix: 'testtool',
-      );
-      
-      expect(result, isNotNull);
-      expect(result!.prefix, equals(PipelineCommandPrefix.stdin));
-      expect(result.body, equals('cat > output.txt'));
-    });
+        expect(result, isNotNull);
+        expect(result!.prefix, equals(PipelineCommandPrefix.shellScan));
+        expect(result.body, equals('echo project'));
+      },
+    );
+
+    test(
+      'BB-PIP-05: PipelineCommandPrefixParser parses tool prefix [2026-06-15]',
+      () {
+        final result = PipelineCommandPrefixParser.parse(
+          'testtool :build --release',
+          toolPrefix: 'testtool',
+        );
+
+        expect(result, isNotNull);
+        expect(result!.prefix, equals(PipelineCommandPrefix.tool));
+        expect(result.body, equals(':build --release'));
+      },
+    );
+
+    test(
+      'BB-PIP-06: PipelineCommandPrefixParser parses stdin prefix [2026-06-15]',
+      () {
+        final result = PipelineCommandPrefixParser.parse(
+          'stdin cat > output.txt',
+          toolPrefix: 'testtool',
+        );
+
+        expect(result, isNotNull);
+        expect(result!.prefix, equals(PipelineCommandPrefix.stdin));
+        expect(result.body, equals('cat > output.txt'));
+      },
+    );
 
     test('BB-PIP-07: pipeline option resolver merges options [2026-06-15]', () {
       final pipelineOpts = {'verbose': 'true'};
       final invocationOpts = {'project': 'my_*'};
       final commandOpts = {'dry-run': 'true'};
-      
+
       final merged = PipelineOptionResolver.resolveEffectiveOptions(
         pipelineOptions: pipelineOpts,
         invocationOptions: invocationOpts,
         commandOptions: commandOpts,
       );
-      
+
       expect(merged, containsPair('verbose', 'true'));
       expect(merged, containsPair('project', 'my_*'));
       expect(merged, containsPair('dry-run', 'true'));
     });
 
-    test('BB-PIP-08: pipeline option resolver - command overrides invocation [2026-06-15]', () {
-      final invocationOpts = {'project': 'old_*'};
-      final commandOpts = {'project': 'new_*'};
-      
-      final merged = PipelineOptionResolver.resolveEffectiveOptions(
-        pipelineOptions: {},
-        invocationOptions: invocationOpts,
-        commandOptions: commandOpts,
-      );
-      
-      // Command options should override invocation options (later in spread)
-      expect(merged['project'], equals('new_*'));
-    });
+    test(
+      'BB-PIP-08: pipeline option resolver - command overrides invocation [2026-06-15]',
+      () {
+        final invocationOpts = {'project': 'old_*'};
+        final commandOpts = {'project': 'new_*'};
 
-    test('BB-PIP-09: hasDisqualifyingTraversalOptions detects root [2026-06-15]', () {
-      const cliArgs = CliArgs(root: '/some/path');
-      expect(
-        PipelineOptionResolver.hasDisqualifyingTraversalOptions(cliArgs),
-        isTrue,
-      );
-    });
+        final merged = PipelineOptionResolver.resolveEffectiveOptions(
+          pipelineOptions: {},
+          invocationOptions: invocationOpts,
+          commandOptions: commandOpts,
+        );
 
-    test('BB-PIP-10: hasDisqualifyingTraversalOptions detects project patterns [2026-06-15]', () {
-      const cliArgs = CliArgs(projectPatterns: ['my_*']);
-      expect(
-        PipelineOptionResolver.hasDisqualifyingTraversalOptions(cliArgs),
-        isTrue,
-      );
-    });
+        // Command options should override invocation options (later in spread)
+        expect(merged['project'], equals('new_*'));
+      },
+    );
 
-    test('BB-PIP-11: hasDisqualifyingTraversalOptions - empty args ok [2026-06-15]', () {
-      const cliArgs = CliArgs();
-      expect(
-        PipelineOptionResolver.hasDisqualifyingTraversalOptions(cliArgs),
-        isFalse,
-      );
-    });
+    test(
+      'BB-PIP-09: hasDisqualifyingTraversalOptions detects root [2026-06-15]',
+      () {
+        const cliArgs = CliArgs(root: '/some/path');
+        expect(
+          PipelineOptionResolver.hasDisqualifyingTraversalOptions(cliArgs),
+          isTrue,
+        );
+      },
+    );
+
+    test(
+      'BB-PIP-10: hasDisqualifyingTraversalOptions detects project patterns [2026-06-15]',
+      () {
+        const cliArgs = CliArgs(projectPatterns: ['my_*']);
+        expect(
+          PipelineOptionResolver.hasDisqualifyingTraversalOptions(cliArgs),
+          isTrue,
+        );
+      },
+    );
+
+    test(
+      'BB-PIP-11: hasDisqualifyingTraversalOptions - empty args ok [2026-06-15]',
+      () {
+        const cliArgs = CliArgs();
+        expect(
+          PipelineOptionResolver.hasDisqualifyingTraversalOptions(cliArgs),
+          isFalse,
+        );
+      },
+    );
   });
 }

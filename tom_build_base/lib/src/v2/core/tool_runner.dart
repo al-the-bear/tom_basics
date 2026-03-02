@@ -754,7 +754,12 @@ class ToolRunner {
 
   /// Known built-in macro/define command names.
   static const _macroDefineCommands = {
-    'macro', 'macros', 'unmacro', 'define', 'defines', 'undefine',
+    'macro',
+    'macros',
+    'unmacro',
+    'define',
+    'defines',
+    'undefine',
   };
 
   ToolResult? _tryHandleBuiltInMacroDefineCommand(
@@ -873,10 +878,9 @@ Options:
   /// automatically expose help for defines, macros, pipelines, and wiring.
   void _injectMasterYamlHelpTopics() {
     final existing = _effectiveTool.helpTopics.map((t) => t.name).toSet();
-    final toAdd =
-        masterYamlHelpTopics
-            .where((t) => !existing.contains(t.name))
-            .toList();
+    final toAdd = masterYamlHelpTopics
+        .where((t) => !existing.contains(t.name))
+        .toList();
     if (toAdd.isNotEmpty) {
       _effectiveTool = _effectiveTool.copyWith(
         helpTopics: [..._effectiveTool.helpTopics, ...toAdd],
@@ -1216,8 +1220,9 @@ Options:
   }
 
   /// Regex for `@[name]` define placeholders.
-  static final _definePlaceholderPattern =
-      RegExp(r'@\[([a-zA-Z_][a-zA-Z0-9_-]*)\]');
+  static final _definePlaceholderPattern = RegExp(
+    r'@\[([a-zA-Z_][a-zA-Z0-9_-]*)\]',
+  );
 
   /// Load defines from the master yaml, merging default + mode-specific.
   ///
@@ -1233,10 +1238,7 @@ Options:
 
     // Overlay mode-specific defines (later modes override earlier ones)
     for (final mode in modes) {
-      final modeDefines = _readToolDefines(
-        toolSection,
-        '$mode-defines',
-      );
+      final modeDefines = _readToolDefines(toolSection, '$mode-defines');
       defines.addAll(modeDefines);
     }
 
@@ -1266,8 +1268,7 @@ Options:
       // Extract from top-level defines:
       _mergeDefineSection(merged, projectDoc['defines']);
       // Extract from tool-specific section, e.g. buildkit: defines:
-      final toolSection =
-          projectDoc[tool.name] as Map<String, dynamic>? ?? {};
+      final toolSection = projectDoc[tool.name] as Map<String, dynamic>? ?? {};
       _mergeDefineSection(merged, toolSection['defines']);
 
       // Overlay mode-specific defines from project

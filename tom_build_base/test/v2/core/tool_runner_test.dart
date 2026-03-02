@@ -919,9 +919,7 @@ testtool:
       test('BB-RUN-50: macro/define commands show error when master yaml '
           'is missing [2026-03-01]', () async {
         // Use a temp dir with NO master yaml file.
-        final tempRoot = await Directory.systemTemp.createTemp(
-          'bb_no_master_',
-        );
+        final tempRoot = await Directory.systemTemp.createTemp('bb_no_master_');
         final previousCwd = Directory.current.path;
         final output = StringBuffer();
         try {
@@ -940,10 +938,7 @@ testtool:
           output.clear();
           final result2 = await runner.run([':macros']);
           expect(result2.success, isFalse);
-          expect(
-            output.toString(),
-            contains('testtool_master.yaml'),
-          );
+          expect(output.toString(), contains('testtool_master.yaml'));
         } finally {
           Directory.current = previousCwd;
           if (tempRoot.existsSync()) {
@@ -952,78 +947,73 @@ testtool:
         }
       });
 
-      test(
-        'BB-RUN-51: @[name] defines resolve per-folder from master yaml '
-        '[2026-06-14]',
-        () async {
-          final tempRoot = await Directory.systemTemp.createTemp(
-            'bb_define_resolve_',
-          );
-          final previousCwd = Directory.current.path;
-          final output = StringBuffer();
-          try {
-            // Create master yaml with defines
-            final master = File('${tempRoot.path}/testtool_master.yaml');
-            master.writeAsStringSync('''
+      test('BB-RUN-51: @[name] defines resolve per-folder from master yaml '
+          '[2026-06-14]', () async {
+        final tempRoot = await Directory.systemTemp.createTemp(
+          'bb_define_resolve_',
+        );
+        final previousCwd = Directory.current.path;
+        final output = StringBuffer();
+        try {
+          // Create master yaml with defines
+          final master = File('${tempRoot.path}/testtool_master.yaml');
+          master.writeAsStringSync('''
 testtool:
   defines:
     mode: PROD
     buildPath: /home/user/build
 ''');
-            // Create a project folder
-            final projectDir = Directory('${tempRoot.path}/my_project');
-            projectDir.createSync();
-            File('${projectDir.path}/pubspec.yaml').writeAsStringSync(
-              'name: my_project\nversion: 1.0.0\n',
-            );
+          // Create a project folder
+          final projectDir = Directory('${tempRoot.path}/my_project');
+          projectDir.createSync();
+          File(
+            '${projectDir.path}/pubspec.yaml',
+          ).writeAsStringSync('name: my_project\nversion: 1.0.0\n');
 
-            Directory.current = tempRoot.path;
+          Directory.current = tempRoot.path;
 
-            // Create a capturing executor that records resolved args
-            final captured = <CliArgs>[];
-            final captureExecutor = _CapturingExecutor(captured);
+          // Create a capturing executor that records resolved args
+          final captured = <CliArgs>[];
+          final captureExecutor = _CapturingExecutor(captured);
 
-            final runner = ToolRunner(
-              tool: _singleExecuteTool,
-              output: output,
-              executors: {'execute': captureExecutor},
-            );
-
-            final result = await runner.run([
-              '-r',
-              ':execute',
-              'echo',
-              '@[mode]',
-              '@[buildPath]',
-            ]);
-
-            expect(result.success, isTrue);
-            expect(captured, isNotEmpty);
-            // The positional args should have @[mode] and @[buildPath] resolved
-            final resolvedArgs = captured.first;
-            expect(resolvedArgs.positionalArgs, contains('PROD'));
-            expect(resolvedArgs.positionalArgs, contains('/home/user/build'));
-          } finally {
-            Directory.current = previousCwd;
-            if (tempRoot.existsSync()) {
-              await tempRoot.delete(recursive: true);
-            }
-          }
-        },
-      );
-
-      test(
-        'BB-RUN-52: @[name] resolves mode-specific defines with --modes '
-        '[2026-06-14]',
-        () async {
-          final tempRoot = await Directory.systemTemp.createTemp(
-            'bb_define_mode_',
+          final runner = ToolRunner(
+            tool: _singleExecuteTool,
+            output: output,
+            executors: {'execute': captureExecutor},
           );
-          final previousCwd = Directory.current.path;
-          final output = StringBuffer();
-          try {
-            final master = File('${tempRoot.path}/testtool_master.yaml');
-            master.writeAsStringSync('''
+
+          final result = await runner.run([
+            '-r',
+            ':execute',
+            'echo',
+            '@[mode]',
+            '@[buildPath]',
+          ]);
+
+          expect(result.success, isTrue);
+          expect(captured, isNotEmpty);
+          // The positional args should have @[mode] and @[buildPath] resolved
+          final resolvedArgs = captured.first;
+          expect(resolvedArgs.positionalArgs, contains('PROD'));
+          expect(resolvedArgs.positionalArgs, contains('/home/user/build'));
+        } finally {
+          Directory.current = previousCwd;
+          if (tempRoot.existsSync()) {
+            await tempRoot.delete(recursive: true);
+          }
+        }
+      });
+
+      test('BB-RUN-52: @[name] resolves mode-specific defines with --modes '
+          '[2026-06-14]', () async {
+        final tempRoot = await Directory.systemTemp.createTemp(
+          'bb_define_mode_',
+        );
+        final previousCwd = Directory.current.path;
+        final output = StringBuffer();
+        try {
+          final master = File('${tempRoot.path}/testtool_master.yaml');
+          master.writeAsStringSync('''
 testtool:
   defines:
     mode: PROD
@@ -1032,165 +1022,158 @@ testtool:
     mode: DEV
     debug: "true"
 ''');
-            final projectDir = Directory('${tempRoot.path}/my_project');
-            projectDir.createSync();
-            File('${projectDir.path}/pubspec.yaml').writeAsStringSync(
-              'name: my_project\nversion: 1.0.0\n',
-            );
+          final projectDir = Directory('${tempRoot.path}/my_project');
+          projectDir.createSync();
+          File(
+            '${projectDir.path}/pubspec.yaml',
+          ).writeAsStringSync('name: my_project\nversion: 1.0.0\n');
 
-            Directory.current = tempRoot.path;
+          Directory.current = tempRoot.path;
 
-            final captured = <CliArgs>[];
-            final captureExecutor = _CapturingExecutor(captured);
+          final captured = <CliArgs>[];
+          final captureExecutor = _CapturingExecutor(captured);
 
-            final runner = ToolRunner(
-              tool: _singleExecuteTool,
-              output: output,
-              executors: {'execute': captureExecutor},
-            );
-
-            final result = await runner.run([
-              '-r',
-              '--modes',
-              'DEV',
-              ':execute',
-              'echo',
-              '@[mode]',
-              '@[debug]',
-            ]);
-
-            expect(result.success, isTrue);
-            expect(captured, isNotEmpty);
-            final resolvedArgs = captured.first;
-            // DEV-defines should override default defines
-            expect(resolvedArgs.positionalArgs, contains('DEV'));
-            expect(resolvedArgs.positionalArgs, contains('true'));
-          } finally {
-            Directory.current = previousCwd;
-            if (tempRoot.existsSync()) {
-              await tempRoot.delete(recursive: true);
-            }
-          }
-        },
-      );
-
-      test(
-        'BB-RUN-53: project buildkit.yaml overrides master defines '
-        '[2026-06-14]',
-        () async {
-          final tempRoot = await Directory.systemTemp.createTemp(
-            'bb_define_project_',
+          final runner = ToolRunner(
+            tool: _singleExecuteTool,
+            output: output,
+            executors: {'execute': captureExecutor},
           );
-          final previousCwd = Directory.current.path;
-          final output = StringBuffer();
-          try {
-            final master = File('${tempRoot.path}/testtool_master.yaml');
-            master.writeAsStringSync('''
+
+          final result = await runner.run([
+            '-r',
+            '--modes',
+            'DEV',
+            ':execute',
+            'echo',
+            '@[mode]',
+            '@[debug]',
+          ]);
+
+          expect(result.success, isTrue);
+          expect(captured, isNotEmpty);
+          final resolvedArgs = captured.first;
+          // DEV-defines should override default defines
+          expect(resolvedArgs.positionalArgs, contains('DEV'));
+          expect(resolvedArgs.positionalArgs, contains('true'));
+        } finally {
+          Directory.current = previousCwd;
+          if (tempRoot.existsSync()) {
+            await tempRoot.delete(recursive: true);
+          }
+        }
+      });
+
+      test('BB-RUN-53: project buildkit.yaml overrides master defines '
+          '[2026-06-14]', () async {
+        final tempRoot = await Directory.systemTemp.createTemp(
+          'bb_define_project_',
+        );
+        final previousCwd = Directory.current.path;
+        final output = StringBuffer();
+        try {
+          final master = File('${tempRoot.path}/testtool_master.yaml');
+          master.writeAsStringSync('''
 testtool:
   defines:
     mode: PROD
     target: default
 ''');
-            final projectDir = Directory('${tempRoot.path}/my_project');
-            projectDir.createSync();
-            File('${projectDir.path}/pubspec.yaml').writeAsStringSync(
-              'name: my_project\nversion: 1.0.0\n',
-            );
-            // Project-level buildkit.yaml overrides 'target'
-            File('${projectDir.path}/buildkit.yaml').writeAsStringSync('''
+          final projectDir = Directory('${tempRoot.path}/my_project');
+          projectDir.createSync();
+          File(
+            '${projectDir.path}/pubspec.yaml',
+          ).writeAsStringSync('name: my_project\nversion: 1.0.0\n');
+          // Project-level buildkit.yaml overrides 'target'
+          File('${projectDir.path}/buildkit.yaml').writeAsStringSync('''
 defines:
   target: custom
 ''');
 
-            Directory.current = tempRoot.path;
+          Directory.current = tempRoot.path;
 
-            final captured = <CliArgs>[];
-            final captureExecutor = _CapturingExecutor(captured);
+          final captured = <CliArgs>[];
+          final captureExecutor = _CapturingExecutor(captured);
 
-            final runner = ToolRunner(
-              tool: _singleExecuteTool,
-              output: output,
-              executors: {'execute': captureExecutor},
-            );
-
-            final result = await runner.run([
-              '-r',
-              ':execute',
-              'echo',
-              '@[mode]',
-              '@[target]',
-            ]);
-
-            expect(result.success, isTrue);
-            expect(captured, isNotEmpty);
-            final resolvedArgs = captured.first;
-            // mode comes from master, target overridden by project
-            expect(resolvedArgs.positionalArgs, contains('PROD'));
-            expect(resolvedArgs.positionalArgs, contains('custom'));
-          } finally {
-            Directory.current = previousCwd;
-            if (tempRoot.existsSync()) {
-              await tempRoot.delete(recursive: true);
-            }
-          }
-        },
-      );
-
-      test(
-        'BB-RUN-54: unresolved @[name] placeholders are left as-is '
-        '[2026-06-14]',
-        () async {
-          final tempRoot = await Directory.systemTemp.createTemp(
-            'bb_define_unresolved_',
+          final runner = ToolRunner(
+            tool: _singleExecuteTool,
+            output: output,
+            executors: {'execute': captureExecutor},
           );
-          final previousCwd = Directory.current.path;
-          final output = StringBuffer();
-          try {
-            final master = File('${tempRoot.path}/testtool_master.yaml');
-            master.writeAsStringSync('''
+
+          final result = await runner.run([
+            '-r',
+            ':execute',
+            'echo',
+            '@[mode]',
+            '@[target]',
+          ]);
+
+          expect(result.success, isTrue);
+          expect(captured, isNotEmpty);
+          final resolvedArgs = captured.first;
+          // mode comes from master, target overridden by project
+          expect(resolvedArgs.positionalArgs, contains('PROD'));
+          expect(resolvedArgs.positionalArgs, contains('custom'));
+        } finally {
+          Directory.current = previousCwd;
+          if (tempRoot.existsSync()) {
+            await tempRoot.delete(recursive: true);
+          }
+        }
+      });
+
+      test('BB-RUN-54: unresolved @[name] placeholders are left as-is '
+          '[2026-06-14]', () async {
+        final tempRoot = await Directory.systemTemp.createTemp(
+          'bb_define_unresolved_',
+        );
+        final previousCwd = Directory.current.path;
+        final output = StringBuffer();
+        try {
+          final master = File('${tempRoot.path}/testtool_master.yaml');
+          master.writeAsStringSync('''
 testtool:
   defines:
     mode: PROD
 ''');
-            final projectDir = Directory('${tempRoot.path}/my_project');
-            projectDir.createSync();
-            File('${projectDir.path}/pubspec.yaml').writeAsStringSync(
-              'name: my_project\nversion: 1.0.0\n',
-            );
+          final projectDir = Directory('${tempRoot.path}/my_project');
+          projectDir.createSync();
+          File(
+            '${projectDir.path}/pubspec.yaml',
+          ).writeAsStringSync('name: my_project\nversion: 1.0.0\n');
 
-            Directory.current = tempRoot.path;
+          Directory.current = tempRoot.path;
 
-            final captured = <CliArgs>[];
-            final captureExecutor = _CapturingExecutor(captured);
+          final captured = <CliArgs>[];
+          final captureExecutor = _CapturingExecutor(captured);
 
-            final runner = ToolRunner(
-              tool: _singleExecuteTool,
-              output: output,
-              executors: {'execute': captureExecutor},
-            );
+          final runner = ToolRunner(
+            tool: _singleExecuteTool,
+            output: output,
+            executors: {'execute': captureExecutor},
+          );
 
-            final result = await runner.run([
-              '-r',
-              ':execute',
-              'echo',
-              '@[mode]',
-              '@[unknown]',
-            ]);
+          final result = await runner.run([
+            '-r',
+            ':execute',
+            'echo',
+            '@[mode]',
+            '@[unknown]',
+          ]);
 
-            expect(result.success, isTrue);
-            expect(captured, isNotEmpty);
-            final resolvedArgs = captured.first;
-            expect(resolvedArgs.positionalArgs, contains('PROD'));
-            // Unknown define stays as-is
-            expect(resolvedArgs.positionalArgs, contains('@[unknown]'));
-          } finally {
-            Directory.current = previousCwd;
-            if (tempRoot.existsSync()) {
-              await tempRoot.delete(recursive: true);
-            }
+          expect(result.success, isTrue);
+          expect(captured, isNotEmpty);
+          final resolvedArgs = captured.first;
+          expect(resolvedArgs.positionalArgs, contains('PROD'));
+          // Unknown define stays as-is
+          expect(resolvedArgs.positionalArgs, contains('@[unknown]'));
+        } finally {
+          Directory.current = previousCwd;
+          if (tempRoot.existsSync()) {
+            await tempRoot.delete(recursive: true);
           }
-        },
-      );
+        }
+      });
     });
   });
 

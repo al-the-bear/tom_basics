@@ -2,9 +2,20 @@
 
 This document describes the standard CLI patterns and workspace navigation options used by all Tom build tools.
 
+## Related Documentation
+
+- [Build Base User Guide](build_base_user_guide.md) — Comprehensive guide to implementing tools with `tom_build_base`
+- [Modes and Placeholders](modes_and_placeholders.md) — Mode system and placeholder resolution
+- [Tool Inheritance and Nesting](tool_inheritance_and_nesting.md) — Tool composition and wiring
+- [Multi-Workspace Pipelines, Macros, and Defines](multiws_pipelines_macros_defines.md) — Pipeline execution, runtime macros, persistent defines
+
 ## Overview
 
-Tom build tools share a consistent set of command-line options for workspace traversal. This is provided by the `workspace_mode.dart` module in `tom_build_base`.
+Tom build tools share a consistent set of command-line options for workspace traversal.
+
+**V1 tools** use the `workspace_mode.dart` module in `tom_build_base` with `ArgParser`, `addNavigationOptions()`, and `ProjectNavigator` directly.
+
+**V2 tools** use the `ToolRunner` framework which handles all navigation, help, version commands, and argument parsing automatically based on `ToolDefinition`, `CommandDefinition`, and `OptionDefinition` declarations. The V2 framework includes all the navigation options described below plus the `--modes`, `--nested`, and `--dump-definitions` options.
 
 ## Standard Commands
 
@@ -17,6 +28,41 @@ All Tom build tools support these command patterns:
 <tool> --help         # Show help
 <tool> -h             # Show help (short form)
 ```
+
+### Help Topics
+
+Multi-command tools that use a `<tool>_master.yaml` provide built-in help topics for key features. Topics are accessible via:
+
+```bash
+<tool> help <topic>   # Show detailed help for a topic
+```
+
+**Built-in help topics (provided by `tom_build_base`):**
+
+| Topic | Description |
+|-------|-------------|
+| `placeholders` | All placeholder types (`%{...}`, `@[...]`, `@{...}`, `${...}`, `$VAR`) with examples |
+| `defines` | Persistent key-value pairs in `<tool>_master.yaml`, `:define`, `:defines`, `:undefine` commands |
+| `macros` | Runtime command-line shortcuts stored in `<tool>_macros.yaml`, `@macro` invocation |
+| `pipelines` | Named multi-step workflows with `precore`/`core`/`postcore` phases, command prefixes |
+| `wiring` | Nested tool integration via `nested_tools:` in `<tool>_master.yaml` |
+
+**The `placeholders` topic** is available to ALL tools (single-command and multi-command). The remaining four topics (`defines`, `macros`, `pipelines`, `wiring`) are **only available to multi-command tools** that have a `<tool>_master.yaml` — they are auto-injected by `ToolRunner` at startup.
+
+**Tool-specific help topics:** Individual tools can register additional help topics beyond the built-in ones. These appear alongside the built-in topics in help output.
+
+The help output footer lists all available topics:
+
+```
+Help topics:          <tool> help <topic>
+  defines             Persistent key-value pairs for configuration placeholders
+  macros              Runtime command-line shortcuts
+  pipelines           Named multi-step build workflows
+  placeholders        Variable substitution in configuration and commands
+  wiring              Nested tool integration via declarative configuration
+```
+
+The `{TOOL}` placeholder in help topic content is automatically replaced with the current tool's name (e.g., `buildkit`, `testkit`).
 
 ### Version Command
 
@@ -105,6 +151,20 @@ gitstatus -T -i
 gitcommit -T -i -m "Update all"
 ```
 
+### Modes
+
+| Option | Abbr | Description |
+|--------|------|-------------|
+| `--modes=<mode>` | | Active modes for mode-specific defines (e.g., `DEV,CI`) |
+
+Modes activate mode-specific configuration sections. They affect define resolution, pipeline behavior, and any mode-prefixed YAML keys. See [Modes and Placeholders](modes_and_placeholders.md) for the full specification.
+
+```bash
+buildkit --modes=DEV :compiler     # Use DEV-prefixed defines/options
+buildkit --modes=CI,RELEASE :build # Multiple modes, applied left-to-right
+buildkit --modes= :compiler        # Explicitly disable all modes
+```
+
 ### Exclusion Patterns
 
 | Option | Abbr | Description |
@@ -124,6 +184,24 @@ astgen -R -x '**/test/**' -x '**/example/**'
 astgen --exclude-projects='zom_*,test_*'
 astgen --recursion-exclude='**/.git/**,**/node_modules/**'
 ```
+
+### V2 Framework Options
+
+These options are part of `commonOptions` in the V2 `ToolRunner` framework and are available to all V2 tools:
+
+| Option | Abbr | Description |
+|--------|------|-------------|
+| `--verbose` | `-v` | Enable verbose output |
+| `--dry-run` | `-n` | Show what would be done without executing |
+| `--test` | | Include test projects in traversal |
+| `--test-only` | | Process only test projects |
+| `--no-skip` | | Ignore skip markers (`tom_skip.yaml`, `<tool>_skip.yaml`) |
+| `--nested` | | Run in nested mode (skip traversal, single-project execution) |
+| `--dump-definitions` | | Dump complete tool definition as YAML |
+
+**`--nested`** is used by host tools when delegating to nested tools. It tells the tool to skip its own traversal and wiring, and execute directly in the current directory. End users typically don't use this flag directly.
+
+**`--dump-definitions`** serializes the tool's complete definition — all commands, options, nature requirements, and features — as YAML. This is used by host tools for auto-discovery during [nested tool wiring](tool_inheritance_and_nesting.md).
 
 ## Implementation Guide
 
@@ -391,15 +469,20 @@ reason: "Legacy project, not actively maintained"
 
 All these tools share identical navigation options:
 
-| Tool | Package | Purpose |
-|------|---------|---------|
-| `buildkit` | tom_build_kit | Pipeline orchestration |
-| `versioner` | tom_build_kit | Version file generation |
-| `compiler` | tom_build_kit | Cross-platform compilation |
-| `cleanup` | tom_build_kit | Clean generated files |
-| `runner` | tom_build_kit | Build_runner wrapper |
-| `bumpversion` | tom_build_kit | Bump pubspec versions |
-| `dependencies` | tom_build_kit | Dependency tree visualization |
-| `buildsorter` | tom_build_kit | Build order sorting |
-| `astgen` | tom_d4rt_astgen | AST serialization |
-| `d4rtgen` | tom_d4rt_generator | D4rt bridge generation |
+| Tool | Package | Purpose | V2 |
+|------|---------|---------|-----|
+| `buildkit` | tom_build_kit | Pipeline orchestration | Yes |
+| `versioner` | tom_build_kit | Version file generation | — |
+| `compiler` | tom_build_kit | Cross-platform compilation | — |
+| `cleanup` | tom_build_kit | Clean generated files | — |
+| `runner` | tom_build_kit | Build_runner wrapper | — |
+| `bumpversion` | tom_build_kit | Bump pubspec versions | — |
+| `dependencies` | tom_build_kit | Dependency tree visualization | — |
+| `buildsorter` | tom_build_kit | Build order sorting | — |
+| `testkit` | tom_test_kit | Test result tracking | Yes |
+| `issuekit` | tom_test_kit | Issue tracking | Yes |
+| `linkkit` | tom_test_kit | Link validation | Yes |
+| `astgen` | tom_d4rt_astgen | AST serialization | — |
+| `d4rtgen` | tom_d4rt_generator | D4rt bridge generation | — |
+
+Tools marked **V2** use the `ToolRunner` framework with `ToolDefinition`-based configuration, automatic help generation, and support for help topics, modes, macros, defines, and pipelines.

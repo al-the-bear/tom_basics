@@ -107,8 +107,9 @@ List<String> expandMacros(List<String> args, Map<String, String> macros) {
   // Build positional arg map — missing args become empty strings
   final positionalArgs = <int, String>{};
   for (var n = 1; n <= requiredArgs; n++) {
-    positionalArgs[n] =
-        (argStart + n - 1) < args.length ? args[argStart + n - 1] : '';
+    positionalArgs[n] = (argStart + n - 1) < args.length
+        ? args[argStart + n - 1]
+        : '';
   }
 
   // Get rest args

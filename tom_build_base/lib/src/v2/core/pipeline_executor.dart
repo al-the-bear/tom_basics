@@ -259,8 +259,8 @@ class ToolPipelineExecutor {
     // body format: first line is the shell command, remaining lines are stdin
     // content that will be piped to that command.
     final newlineIdx = body.indexOf('\n');
-    final rawCommand =
-        (newlineIdx == -1 ? body : body.substring(0, newlineIdx)).trim();
+    final rawCommand = (newlineIdx == -1 ? body : body.substring(0, newlineIdx))
+        .trim();
     final stdinContent = newlineIdx == -1 ? '' : body.substring(newlineIdx + 1);
 
     if (rawCommand.isEmpty) {

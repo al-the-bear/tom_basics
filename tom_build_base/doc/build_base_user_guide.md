@@ -1,10 +1,36 @@
 # Tom Build Base User Guide
 
-This guide explains how to use `tom_build_base` to create CLI tools that integrate with the `buildkit.yaml` and `build.yaml` configuration patterns used in Tom workspaces.
+This guide explains how to use `tom_build_base` to create CLI tools that integrate with Tom workspace configuration patterns.
+
+## Related Documentation
+
+- [CLI Tools Navigation](cli_tools_navigation.md) — Standard navigation options, help topics, execution modes
+- [Modes and Placeholders](modes_and_placeholders.md) — Mode system and all placeholder types
+- [Multi-Workspace Pipelines, Macros, and Defines](multiws_pipelines_macros_defines.md) — Pipeline execution, runtime macros, persistent defines
+- [Tool Inheritance and Nesting](tool_inheritance_and_nesting.md) — Tool composition and nested tool wiring
+
+---
 
 ## Overview
 
-`tom_build_base` provides shared infrastructure for Tom build tools:
+`tom_build_base` provides two API tiers:
+
+### V2 Framework (Recommended for New Tools)
+
+The declarative tool framework based on `ToolDefinition`, `CommandDefinition`, `OptionDefinition`, and `ToolRunner`. Features:
+
+- **Declarative tool definition** — Define tools, commands, and options as immutable data structures
+- **Automatic help generation** — `--help`, `help <command>`, `help <topic>` with consistent formatting
+- **Built-in traversal** — Project and git traversal handled by the framework
+- **Pipelines, macros, defines** — Multi-command tools get pipelines, runtime macros, and persistent defines automatically
+- **Nested tool wiring** — Declarative integration of external tool binaries
+- **Help topics** — Built-in topics (defines, macros, pipelines, placeholders, wiring) auto-injected for multi-command tools
+- **Folder natures** — Type-safe project classification (DartProject, GitRepo, FlutterProject, etc.)
+- **Console markdown** — Zone-based ANSI markdown rendering for all output
+
+### V1 API (Still Available)
+
+The imperative API for tools that manage their own argument parsing and traversal:
 
 - **Configuration loading** — `TomBuildConfig` for reading `buildkit.yaml` and `buildkit_master.yaml`
 - **Configuration merging** — `ConfigMerger` for combining workspace and project settings
@@ -25,6 +51,387 @@ dependencies:
 ```dart
 import 'package:tom_build_base/tom_build_base.dart';
 ```
+
+```yaml
+dependencies:
+  tom_build_base: ^2.5.0
+```
+
+```dart
+// V2 framework (recommended)
+import 'package:tom_build_base/tom_build_base_v2.dart';
+
+// V1 API + selected V2 classes
+import 'package:tom_build_base/tom_build_base.dart';
+```
+
+---
+
+## V2 Tool Framework
+
+The V2 framework lets you define tools declaratively. The framework handles argument parsing, help generation, traversal, mode/placeholder resolution, pipelines, macros, defines, and nested tool wiring.
+
+### Core Classes
+
+| Class | Purpose |
+|-------|---------|
+| `ToolDefinition` | Declares tool name, version, mode, commands, options, features |
+| `CommandDefinition` | Declares a command with options, nature requirements, aliases |
+| `OptionDefinition` | Declares a CLI option (flag, option, or multi-option) |
+| `ToolRunner` | Parses args, handles traversal, dispatches to executors |
+| `CommandExecutor` | Abstract class for command execution logic |
+| `CommandContext` | Context passed to executors (path, natures, traversal info) |
+| `HelpTopic` | Named help topic with summary and content |
+| `ToolResult` / `ItemResult` | Execution result containers |
+
+### Defining a Tool
+
+```dart
+import 'package:tom_build_base/tom_build_base_v2.dart';
+
+const myTool = ToolDefinition(
+  name: 'mytool',
+  description: 'My custom build tool',
+  version: '1.0.0',
+  mode: ToolMode.multiCommand,  // or singleCommand, hybrid
+  features: NavigationFeatures(
+    projectTraversal: true,
+    gitTraversal: false,
+    recursiveScan: true,
+    verbose: true,
+  ),
+  globalOptions: [
+    OptionDefinition.flag(
+      name: 'force',
+      abbr: 'f',
+      description: 'Force operation without confirmation',
+    ),
+  ],
+  commands: [
+    CommandDefinition(
+      name: 'build',
+      description: 'Build the project',
+      aliases: ['b'],
+      options: [
+        OptionDefinition.option(
+          name: 'target',
+          abbr: 't',
+          description: 'Build target platform',
+        ),
+      ],
+      requiredNatures: {DartProjectFolder},
+    ),
+    CommandDefinition(
+      name: 'clean',
+      description: 'Clean build artifacts',
+      aliases: ['c'],
+    ),
+  ],
+  helpTopics: [
+    HelpTopic(
+      name: 'config',
+      summary: 'Configuration file format',
+      content: 'Detailed help content here...',
+    ),
+  ],
+);
+```
+
+### Tool Modes
+
+| Mode | Description | Example |
+|------|-------------|---------|
+| `ToolMode.multiCommand` | Tool has named sub-commands (`:build`, `:clean`) | `buildkit`, `testkit` |
+| `ToolMode.singleCommand` | Tool has one implicit command | `astgen`, `d4rtgen` |
+| `ToolMode.hybrid` | Multi-command with a default single-command mode | |
+
+### Navigation Features
+
+`NavigationFeatures` controls which traversal capabilities are enabled:
+
+| Feature | Default | Description |
+|---------|---------|-------------|
+| `projectTraversal` | `true` | Project scanning and discovery |
+| `gitTraversal` | `false` | Git repository traversal (`-i`, `-o`, `-T`) |
+| `recursiveScan` | `true` | Recursive directory scanning (`-r`) |
+| `interactiveMode` | `false` | TUI/interactive mode support |
+| `dryRun` | `false` | Dry-run mode (`-n`) |
+| `jsonOutput` | `false` | JSON output mode |
+| `verbose` | `true` | Verbose output (`-v`) |
+
+Predefined configurations: `NavigationFeatures.all`, `NavigationFeatures.minimal`, `NavigationFeatures.projectTool`, `NavigationFeatures.gitTool`.
+
+### Defining Options
+
+```dart
+// Flag (boolean)
+OptionDefinition.flag(
+  name: 'verbose',
+  abbr: 'v',
+  description: 'Enable verbose output',
+  negatable: false,
+)
+
+// Option (single value)
+OptionDefinition.option(
+  name: 'config',
+  abbr: 'c',
+  description: 'Config file path',
+  valueName: 'path',
+  mandatory: false,
+)
+
+// Multi-option (repeated values)
+OptionDefinition.multi(
+  name: 'tags',
+  description: 'Tags to include',
+  valueName: 'tag',
+)
+```
+
+### Command Executors
+
+Implement `CommandExecutor` for each command:
+
+```dart
+class BuildExecutor extends CommandExecutor {
+  @override
+  Future<ItemResult> execute(CommandContext context, CliArgs args) async {
+    final target = args.extraOptions['target'] as String?;
+    
+    // Access project info via natures
+    if (context.isDartProject) {
+      final dart = context.getNature<DartProjectFolder>();
+      print('Building ${dart.projectName} v${dart.version}');
+    }
+    
+    // Do work...
+    return ItemResult.success(
+      path: context.path,
+      name: context.name,
+      message: 'Built successfully',
+    );
+  }
+}
+```
+
+**Built-in executor types:**
+
+| Executor | Description |
+|----------|-------------|
+| `CallbackExecutor` | Wraps `Future<ItemResult> Function(CommandContext, CliArgs)` |
+| `SyncExecutor` | Wraps synchronous `ItemResult Function(CommandContext, CliArgs)` |
+| `ShellExecutor` | Runs a shell command string |
+| `DartExecutor` | Runs a Dart function returning bool |
+| `ListExecutor` | No-op executor for list-only commands |
+
+### Running the Tool
+
+```dart
+void main(List<String> args) async {
+  final runner = ToolRunner(
+    tool: myTool,
+    executors: {
+      'build': BuildExecutor(),
+      'clean': CallbackExecutor(
+        onExecute: (context, args) async {
+          // clean logic
+          return ItemResult.success(path: context.path, name: context.name);
+        },
+      ),
+    },
+  );
+
+  final result = await runner.run(args);
+  exit(result.success ? 0 : 1);
+}
+```
+
+### ToolRunner Execution Flow
+
+`ToolRunner.run()` handles the complete lifecycle:
+
+1. **Macro expansion** — `@macro` references expanded from `<tool>_macros.yaml`
+2. **Argument parsing** — Via `CliArgParser` using the tool's option definitions
+3. **`--dump-definitions`** — If requested, serialize tool definition as YAML and exit
+4. **`--nested` mode** — If set, skip wiring and traversal, execute in current directory
+5. **Lazy wiring** — Wire nested tools from `defaultIncludes` + YAML `nested_tools:`
+6. **Help topic injection** — Auto-inject `masterYamlHelpTopics` for multi-command tools
+7. **Help/version** — Handle `--help`, `--version`, `help <command>`, `help <topic>`
+8. **Pipeline detection** — For multi-command tools, detect pipeline invocations
+9. **Command routing** — Route to appropriate `CommandExecutor`
+10. **Traversal** — Project or git traversal with nature detection
+11. **Placeholder resolution** — `%{...}` and `@[...]` resolved per folder during traversal
+
+### CommandContext
+
+Executors receive a `CommandContext` with:
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `path` | `String` | Absolute path to current project/folder |
+| `name` | `String` | Folder name |
+| `relativePath` | `String` | Relative to execution root |
+| `executionRoot` | `String` | Root of traversal |
+| `natures` | `List<RunFolder>` | Detected folder natures |
+| `traversal` | `BaseTraversalInfo?` | Traversal configuration |
+
+**Nature access methods:**
+
+```dart
+context.isDartProject;                   // Quick check
+context.isGitRepo;                       // Quick check
+context.hasNature<FlutterProjectFolder>(); // Generic check
+context.getNature<DartProjectFolder>();   // Get typed nature (throws if missing)
+context.tryGetNature<GitFolder>();        // Get typed nature (null if missing)
+```
+
+### Folder Natures
+
+Natures are auto-detected for each folder during traversal:
+
+| Nature | Detection | Key Properties |
+|--------|-----------|----------------|
+| `DartProjectFolder` | `pubspec.yaml` exists | `projectName`, `version`, `dependencies` |
+| `FlutterProjectFolder` | `pubspec.yaml` + Flutter SDK dep | `platforms`, `isPlugin` |
+| `DartConsoleFolder` | `pubspec.yaml` + `bin/` entries | `executables` |
+| `GitFolder` | `.git/` exists | `currentBranch`, `hasUncommittedChanges`, `remotes` |
+| `VsCodeExtensionFolder` | `package.json` with VS Code engine | `extensionName`, `displayName` |
+| `TypeScriptFolder` | `tsconfig.json` exists | `projectName`, `isNodeProject` |
+| `BuildkitFolder` | `buildkit.yaml` exists | `config`, `projectId` |
+| `BuildRunnerFolder` | `build.yaml` exists | `config` |
+| `TomBuildFolder` | Various Tom config files | `projectName`, `shortId` |
+
+### Common Options
+
+All V2 tools automatically include these options (from `commonOptions`):
+
+| Option | Abbr | Type | Description |
+|--------|------|------|-------------|
+| `--exclude` | `-x` | multi | Exclude patterns (path-based globs) |
+| `--test` | | flag | Include test projects |
+| `--test-only` | | flag | Process only test projects |
+| `--execution-root` | `-R` | option | Execution root path |
+| `--modes` | | multi | Active modes for mode-specific defines |
+| `--verbose` | `-v` | flag | Enable verbose output |
+| `--dry-run` | `-n` | flag | Show what would be done |
+| `--help` | `-h` | flag | Show help |
+| `--version` | | flag | Show version |
+| `--nested` | | flag | Run in nested mode (skip traversal) |
+| `--dump-definitions` | | flag | Dump tool definition as YAML |
+
+Tools with `projectTraversal` enabled also get `projectTraversalOptions` (scan, recursive, build-order, project, etc.). Tools with `gitTraversal` enabled get `gitTraversalOptions` (inner-first-git, outer-first-git, top-repo, modules, etc.).
+
+### Help Topics
+
+Help topics provide contextual documentation accessible via `<tool> help <topic>`.
+
+**Built-in topics (auto-injected for multi-command tools):**
+
+| Topic | Constant | Available To |
+|-------|----------|-------------|
+| `placeholders` | `placeholdersHelpTopic` | All tools |
+| `defines` | `definesHelpTopic` | Multi-command tools with `<tool>_master.yaml` |
+| `macros` | `macrosHelpTopic` | Multi-command tools with `<tool>_master.yaml` |
+| `pipelines` | `pipelinesHelpTopic` | Multi-command tools with `<tool>_master.yaml` |
+| `wiring` | `wiringHelpTopic` | Multi-command tools with `<tool>_master.yaml` |
+
+The `{TOOL}` placeholder in help topic content is automatically replaced with the current tool's name.
+
+**Custom topics:**
+
+```dart
+const myTool = ToolDefinition(
+  // ...
+  helpTopics: [
+    HelpTopic(
+      name: 'config',
+      summary: 'Configuration file format',
+      content: '''
+## {TOOL} Configuration
+
+{TOOL} reads configuration from `{TOOL}_master.yaml` and project `{TOOL}.yaml`.
+...
+''',
+    ),
+  ],
+);
+```
+
+### Tool Inheritance (copyWith)
+
+Create derived tools by copying and modifying an existing definition:
+
+```dart
+final superTool = buildkitTool.copyWith(
+  name: 'supertool',
+  version: '1.0.0',
+  commands: buildkitTool.commands
+      .without({'dcli', 'findproject'})           // remove
+      .replacing('runner', myCustomRunnerCommand)  // replace
+      .plus([d4rtgenCommand, astgenCommand]),       // add
+);
+```
+
+See [Tool Inheritance and Nesting](tool_inheritance_and_nesting.md) for the complete reference.
+
+### Nested Tool Wiring
+
+Host tools can embed external tool binaries as commands via declarative wiring:
+
+```dart
+const buildkitTool = ToolDefinition(
+  name: 'buildkit',
+  wiringFile: ToolDefinition.kAutoWiringFile,  // → buildkit_master.yaml
+  defaultIncludes: [
+    ToolWiringEntry(
+      binary: 'testkit',
+      mode: WiringMode.multiCommand,
+      commands: {'buildkittest': 'test', 'buildkitbaseline': 'baseline'},
+    ),
+    ToolWiringEntry(binary: 'astgen', mode: WiringMode.standalone),
+  ],
+  // ...
+);
+```
+
+YAML overrides in `<tool>_master.yaml`:
+
+```yaml
+nested_tools:
+  testkit:
+    binary: testkit
+    mode: multi_command
+    commands:
+      buildkittest: test
+      buildkitbaseline: baseline
+```
+
+See [Tool Inheritance and Nesting](tool_inheritance_and_nesting.md) for the complete wiring reference.
+
+### Console Markdown
+
+All V2 tools support console markdown for formatted output:
+
+```dart
+import 'package:tom_build_base/tom_build_base_v2.dart';
+
+void main(List<String> args) async {
+  await runWithConsoleMarkdown(() async {
+    final runner = ToolRunner(tool: myTool, executors: executors);
+    final result = await runner.run(args);
+    exit(result.success ? 0 : 1);
+  });
+}
+```
+
+This enables ANSI-colored formatting for headers (`## Title`), bold (`**text**`), inline code (`` `code` ``), and other markdown elements in all `print()` and `StringSink.writeln()` output within the zone.
+
+---
+
+## V1 API Reference
+
+The V1 API is still available and used by tools that manage their own argument parsing and traversal. New tools should prefer the V2 framework above.
 
 ---
 
@@ -575,6 +982,56 @@ See [example/tom_build_base_example.dart](../example/tom_build_base_example.dart
 ---
 
 ## API Quick Reference
+
+### V2 Framework
+
+| Class / Function | Module | Purpose |
+|------------------|--------|---------|
+| `ToolDefinition` | v2/core/tool_definition | Declarative tool definition with commands and options |
+| `CommandDefinition` | v2/core/command_definition | Command definition with options and nature requirements |
+| `OptionDefinition` | v2/core/option_definition | CLI option definition (flag, option, multi) |
+| `ToolRunner` | v2/core/tool_runner | Argument parsing, traversal, command dispatch |
+| `CommandExecutor` | v2/core/command_executor | Abstract command execution interface |
+| `CallbackExecutor` | v2/core/command_executor | Async callback-based executor |
+| `SyncExecutor` | v2/core/command_executor | Synchronous callback-based executor |
+| `ShellExecutor` | v2/core/command_executor | Shell command executor |
+| `CommandContext` | v2/traversal/command_context | Per-project execution context with natures |
+| `ToolResult` / `ItemResult` | v2/core/tool_runner | Execution result containers |
+| `HelpTopic` | v2/core/help_topic | Named help topic with summary and content |
+| `HelpGenerator` | v2/core/help_generator | Static help text generation methods |
+| `CliArgs` / `CliArgParser` | v2/core/cli_arg_parser | Parsed arguments and parser |
+| `ToolWiringEntry` | v2/core/tool_wiring_entry | Nested tool wiring configuration |
+| `WiringLoader` | v2/core/wiring_loader | Resolves nested tool wiring |
+| `NestedToolExecutor` | v2/core/nested_tool_executor | Executor that delegates to external binary |
+| `ToolDefinitionSerializer` | v2/core/tool_definition_serializer | YAML serialization for `--dump-definitions` |
+| `ToolPipelineExecutor` | v2/core/pipeline_executor | Pipeline step execution with placeholder resolution |
+| `ToolPipelineConfig` | v2/core/pipeline_config | Pipeline YAML parsing |
+| `expandMacros()` | v2/core/macro_expansion | `@macro` expansion with `$1`–`$9` and `$$` |
+| `CompletionGenerator` | v2/core/completion_generator | Shell completion generation (bash, zsh, fish) |
+| `NavigationFeatures` | v2/core/tool_definition | Feature flags for traversal capabilities |
+| `commonOptions` | v2/core/option_definition | Standard global options for all V2 tools |
+| `projectTraversalOptions` | v2/core/option_definition | Project traversal options |
+| `gitTraversalOptions` | v2/core/option_definition | Git traversal options |
+| `defaultHelpTopics` | v2/core/builtin_help_topics | Help topics for all tools (placeholders) |
+| `masterYamlHelpTopics` | v2/core/builtin_help_topics | Help topics for multi-command tools (defines, macros, pipelines, wiring) |
+
+### V2 Folder Natures
+
+| Class | Module | Detection |
+|-------|--------|-----------|
+| `FsFolder` | v2/folder/fs_folder | Base folder wrapper |
+| `RunFolder` | v2/folder/run_folder | Abstract nature base |
+| `DartProjectFolder` | v2/folder/natures | `pubspec.yaml` |
+| `FlutterProjectFolder` | v2/folder/natures | Flutter SDK dep |
+| `DartConsoleFolder` | v2/folder/natures | `bin/` entries |
+| `GitFolder` | v2/folder/natures | `.git/` directory |
+| `VsCodeExtensionFolder` | v2/folder/natures | VS Code `package.json` |
+| `TypeScriptFolder` | v2/folder/natures | `tsconfig.json` |
+| `BuildkitFolder` | v2/folder/natures | `buildkit.yaml` |
+| `BuildRunnerFolder` | v2/folder/natures | `build.yaml` |
+| `TomBuildFolder` | v2/folder/natures | Tom config files |
+
+### V1 API
 
 | Class / Function | Module | Purpose |
 |------------------|--------|---------|

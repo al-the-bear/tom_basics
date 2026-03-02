@@ -2,6 +2,15 @@
 
 This document specifies the mode support system and placeholder resolution for Tom workspace tools. It applies to all tools that use the `tom_build_base` infrastructure: `buildkit`, `testkit`, `issuekit`, `linkkit`, and others.
 
+## Related Documentation
+
+- [Build Base User Guide](build_base_user_guide.md) — Comprehensive guide to implementing tools
+- [CLI Tools Navigation](cli_tools_navigation.md) — Standard navigation options and help topics
+- [Multi-Workspace Pipelines, Macros, and Defines](multiws_pipelines_macros_defines.md) — Pipeline execution, runtime macros, persistent defines
+- [Tool Inheritance and Nesting](tool_inheritance_and_nesting.md) — Tool composition and wiring
+
+**Runtime help:** Run `<tool> help placeholders` for the complete, up-to-date placeholder reference. Run `<tool> help defines` for the define system reference.
+
 ---
 
 ## Terminology
@@ -16,14 +25,17 @@ This document specifies the mode support system and placeholder resolution for T
 
 ## Placeholder Types
 
-There are four distinct placeholder types, resolved at different times:
+There are five distinct placeholder types, resolved at different times:
 
 | Syntax | Name | Source | Resolution Time |
 |--------|------|--------|-----------------|
 | `@[...]` | **Define placeholders** | `{tool}_master.yaml` and `{tool}.yaml` `defines:` section | At YAML load time, before merge |
 | `@{...}` | **Tool placeholders** | Tool-level values (project path, tool version, etc.) | After mode processing, before commands |
+| `%{...}` | **Pipeline placeholders** | Pipeline execution context (folder, platform, etc.) | During pipeline step execution |
 | `${...}` | **Command placeholders** | Command-specific (file, target, etc.) | During command execution |
 | `$VAR` or `$[VAR]` | **Environment variables** | Shell environment | During command execution |
+
+**Resolution order:** `@[...]` → `@{...}` → `%{...}` (pipeline steps) → `${...}` → `$VAR`
 
 ### Define Placeholders (`@[...]`)
 
@@ -98,6 +110,42 @@ Command placeholders are resolved by specific commands during execution. Each co
 | `${current-arch}` | Current architecture |
 | `${current-platform}` | Current platform (Dart format) |
 | `${current-platform-vs}` | Current platform (VS Code format) |
+
+### Pipeline Placeholders (`%{...}`)
+
+Pipeline placeholders are resolved during pipeline step execution by the `ToolPipelineExecutor`. They provide context about the current execution environment and are available in **all pipeline command types**: `shell`, `shell-scan`, `stdin`, and `tool` prefixed commands.
+
+**Available pipeline placeholders:**
+
+| Placeholder | Description |
+|-------------|-------------|
+| `%{folder}` | Absolute path to the current folder being processed |
+| `%{folder.name}` | Name of the current folder |
+| `%{current-os}` | Current operating system |
+| `%{current-arch}` | Current architecture |
+| `%{current-platform}` | Current platform (Dart target format, e.g., `macos-arm64`) |
+| `%{current-platform-vs}` | Current platform (VS Code format, e.g., `darwin-arm64`) |
+
+**Example usage in pipeline steps:**
+
+```yaml
+buildkit:
+  pipelines:
+    build:
+      core:
+        - commands:
+            - "shell echo Building on %{current-platform}"
+            - "shell-scan echo Processing %{folder.name} at %{folder}"
+            - |
+              stdin dcli --stdin
+              print("Building in %{folder}");
+```
+
+**Notes:**
+- `%{...}` placeholders are distinct from `@[...]` define placeholders and `${...}` command placeholders
+- They are resolved by `ToolPipelineExecutor` before passing the command to the shell or tool
+- `@[...]` define placeholders are also resolved per folder during pipeline traversal
+- Run `<tool> help placeholders` for the complete, up-to-date reference
 
 ### Environment Variables (`$VAR` / `$[VAR]`)
 
@@ -715,8 +763,10 @@ Existing configurations continue to work unchanged. To adopt mode support:
 2. Resolve `@[...]` define placeholders (recursive, max depth 10)
 3. Resolve `@{...}` tool placeholders (once per project)
 4. Pass clean YAML to tool for tool-specific merge
-5. Command resolves `${...}` placeholders during execution
-6. Resolve `$VAR` / `$[VAR]` environment variables (when appropriate)
+5. Pipeline executor resolves `%{...}` placeholders during step execution (shell, shell-scan, stdin, tool)
+6. Pipeline executor also resolves `@[...]` defines per folder during traversal
+7. Command resolves `${...}` placeholders during execution
+8. Resolve `$VAR` / `$[VAR]` environment variables (when appropriate)
 
 ### Error Handling
 

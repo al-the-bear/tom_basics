@@ -827,20 +827,14 @@ void main() {
       parser = CliArgParser();
     });
 
-    test(
-      'BB-CLI-86: :command token after :macro is treated as positional arg, '
-      'not a new command [2026-05-30]',
-      () {
-        // Simulates: buildkit :macro vc=:v $1 :comp $2
-        // (with $1/$2 already substituted or literal)
-        final args = parser.parse([':macro', 'vc=:v', r'$1', ':comp', r'$2']);
-        expect(args.commands, equals(['macro']));
-        expect(
-          args.positionalArgs,
-          equals(['vc=:v', r'$1', ':comp', r'$2']),
-        );
-      },
-    );
+    test('BB-CLI-86: :command token after :macro is treated as positional arg, '
+        'not a new command [2026-05-30]', () {
+      // Simulates: buildkit :macro vc=:v $1 :comp $2
+      // (with $1/$2 already substituted or literal)
+      final args = parser.parse([':macro', 'vc=:v', r'$1', ':comp', r'$2']);
+      expect(args.commands, equals(['macro']));
+      expect(args.positionalArgs, equals(['vc=:v', r'$1', ':comp', r'$2']));
+    });
 
     test(
       'BB-CLI-87: :command token after :define is treated as positional arg, '
@@ -871,14 +865,11 @@ void main() {
       },
     );
 
-    test(
-      'BB-CLI-89: Parses --modes as global flag [2026-06-14]',
-      () {
-        final args = parser.parse(['--modes', 'DEV', ':simple']);
-        expect(args.modes, equals(['DEV']));
-        expect(args.commands, equals(['simple']));
-      },
-    );
+    test('BB-CLI-89: Parses --modes as global flag [2026-06-14]', () {
+      final args = parser.parse(['--modes', 'DEV', ':simple']);
+      expect(args.modes, equals(['DEV']));
+      expect(args.commands, equals(['simple']));
+    });
 
     test(
       'BB-CLI-90: Parses --modes with comma-separated values [2026-06-14]',
@@ -888,21 +879,15 @@ void main() {
       },
     );
 
-    test(
-      'BB-CLI-91: --modes after command is still global [2026-06-14]',
-      () {
-        final args = parser.parse([':simple', '--modes', 'PROD']);
-        expect(args.modes, equals(['PROD']));
-        expect(args.commands, equals(['simple']));
-      },
-    );
+    test('BB-CLI-91: --modes after command is still global [2026-06-14]', () {
+      final args = parser.parse([':simple', '--modes', 'PROD']);
+      expect(args.modes, equals(['PROD']));
+      expect(args.commands, equals(['simple']));
+    });
 
-    test(
-      'BB-CLI-92: modes defaults to empty list [2026-06-14]',
-      () {
-        final args = parser.parse([':simple']);
-        expect(args.modes, isEmpty);
-      },
-    );
+    test('BB-CLI-92: modes defaults to empty list [2026-06-14]', () {
+      final args = parser.parse([':simple']);
+      expect(args.modes, isEmpty);
+    });
   });
 }
