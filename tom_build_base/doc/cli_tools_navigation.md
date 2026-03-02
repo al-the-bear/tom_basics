@@ -13,9 +13,7 @@ This document describes the standard CLI patterns and workspace navigation optio
 
 Tom build tools share a consistent set of command-line options for workspace traversal.
 
-**V1 tools** use the `workspace_mode.dart` module in `tom_build_base` with `ArgParser`, `addNavigationOptions()`, and `ProjectNavigator` directly.
-
-**V2 tools** use the `ToolRunner` framework which handles all navigation, help, version commands, and argument parsing automatically based on `ToolDefinition`, `CommandDefinition`, and `OptionDefinition` declarations. The V2 framework includes all the navigation options described below plus the `--modes`, `--nested`, and `--dump-definitions` options.
+Tools use the `ToolRunner` framework which handles all navigation, help, version commands, and argument parsing automatically based on `ToolDefinition`, `CommandDefinition`, and `OptionDefinition` declarations. The framework includes all the navigation options described below plus the `--modes`, `--nested`, and `--dump-definitions` options.
 
 ## Standard Commands
 

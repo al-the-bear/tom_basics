@@ -41,6 +41,7 @@ export 'src/v2/traversal/build_base.dart';
 export 'src/v2/traversal/build_order.dart';
 export 'src/v2/traversal/repository_id_lookup.dart';
 export 'src/v2/traversal/anchor_walker.dart';
+export 'src/v2/traversal/workspace_scanner.dart';
 
 // Tool Framework (Phase 2)
 export 'src/v2/core/option_definition.dart';

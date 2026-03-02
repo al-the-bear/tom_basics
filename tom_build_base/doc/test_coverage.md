@@ -13,111 +13,36 @@ This document lists all testable features across `tom_build_base` and tracks tes
 
 | # | Feature Area | Tests | Status | Test File | Details |
 |---|-------------|-------|--------|-----------|---------|
-| 1 | [ConfigLoader — Config & Placeholders](#1-configloader--config--placeholders) | 11 | 11✅ | `config_loader_test.dart` | [→](#1-configloader--config--placeholders) |
-| 2 | [MiniTool Integration — End-to-End](#2-minitool-integration--end-to-end) | 16 | 16✅ | `minitool_integration_test.dart` | [→](#2-minitool-integration--end-to-end) |
-| 3 | [Command Prefix Matching](#3-command-prefix-matching) | 24 | 24✅ | `v2/command_prefix_test.dart` | [→](#3-command-prefix-matching) |
-| 4 | [Execute Placeholder Resolver](#4-execute-placeholder-resolver) | 55 | 55✅ | `v2/execute_placeholder_test.dart` | [→](#4-execute-placeholder-resolver) |
-| 5 | [Macro Expansion](#5-macro-expansion) | 24 | 24✅ | `v2/macro_expansion_test.dart` | [→](#5-macro-expansion) |
-| 6 | [CLI Argument Parser](#6-cli-argument-parser) | 96 | 96✅ | `v2/core/cli_arg_parser_test.dart` | [→](#6-cli-argument-parser) |
-| 7 | [CommandDefinition](#7-commanddefinition) | 15 | 15✅ | `v2/core/command_definition_test.dart` | [→](#7-commanddefinition) |
-| 8 | [Completion Generator](#8-completion-generator) | 30 | 30✅ | `v2/core/completion_generator_test.dart` | [→](#8-completion-generator) |
-| 9 | [Features — Modes, Defines, Macros, Pipelines](#9-features--modes-defines-macros-pipelines) | 32 | 32✅ | `v2/core/features_test.dart` | [→](#9-features--modes-defines-macros-pipelines) |
-| 10 | [Help Generator](#10-help-generator) | 33 | 33✅ | `v2/core/help_generator_test.dart` | [→](#10-help-generator) |
-| 11 | [OptionDefinition](#11-optiondefinition) | 28 | 28✅ | `v2/core/option_definition_test.dart` | [→](#11-optiondefinition) |
-| 12 | [ToolDefinition](#12-tooldefinition) | 55 | 55✅ | `v2/core/tool_definition_test.dart` | [→](#12-tooldefinition) |
-| 13 | [ToolDefinition Serializer](#13-tooldefinition-serializer) | 19 | 19✅ | `v2/core/tool_definition_serializer_test.dart` | [→](#13-tooldefinition-serializer) |
-| 14 | [Wiring Loader](#14-wiring-loader) | 17 | 17✅ | `v2/core/wiring_loader_test.dart` | [→](#14-wiring-loader) |
-| 15 | [Pipeline Config](#15-pipeline-config) | 9 | 9✅ | `v2/core/pipeline_config_test.dart` | [→](#15-pipeline-config) |
-| 16 | [Pipeline Executor](#16-pipeline-executor) | 4 | 4✅ | `v2/core/pipeline_executor_test.dart` | [→](#16-pipeline-executor) |
-| 17 | [ToolRunner](#17-toolrunner) | 42 | 42✅ | `v2/core/tool_runner_test.dart` | [→](#17-toolrunner) |
-| 18 | [ToolRunner — Nested Tools](#18-toolrunner--nested-tools) | 20 | 20✅ | `v2/core/tool_runner_nested_test.dart` | [→](#18-toolrunner--nested-tools) |
-| 19 | [Nested Tool Executor](#19-nested-tool-executor) | 14 | 14✅ | `v2/core/nested_tool_executor_test.dart` | [→](#19-nested-tool-executor) |
-| 20 | [Folder Scanner](#20-folder-scanner) | 17 | 17✅ | `v2/traversal/folder_scanner_test.dart` | [→](#20-folder-scanner) |
-| 21 | [Nature Detector](#21-nature-detector) | 38 | 38✅ | `v2/traversal/nature_detector_test.dart` | [→](#21-nature-detector) |
-| 22 | [Nature Filter](#22-nature-filter) | 20 | 20✅ | `v2/traversal/nature_filter_test.dart` | [→](#22-nature-filter) |
-| 23 | [Filter Pipeline](#23-filter-pipeline) | 40 | 40✅ | `v2/traversal/filter_pipeline_test.dart` | [→](#23-filter-pipeline) |
-| 24 | [Build Order](#24-build-order) | 12 | 12✅ | `v2/traversal/build_order_test.dart` | [→](#24-build-order) |
-| 25 | [Traversal Info](#25-traversal-info) | 22 | 22✅ | `v2/traversal/traversal_info_test.dart` | [→](#25-traversal-info) |
-| 26 | [Build Base Integration](#26-build-base-integration) | 22 | 22✅ | `v2/traversal/build_base_integration_test.dart` | [→](#26-build-base-integration) |
-| 27 | [Comprehensive Traversal](#27-comprehensive-traversal) | 51 | 51✅ | `v2/traversal/traversal_comprehensive_test.dart` | [→](#27-comprehensive-traversal) |
-| — | **Total** | **746** | **746✅** | | |
-
-> **Note:** The `debug_scanner_test.dart` file (1 test) is a debug/exploration test, not tracked here.
+| 1 | [Command Prefix Matching](#1-command-prefix-matching) | 24 | 24✅ | `v2/command_prefix_test.dart` | [→](#1-command-prefix-matching) |
+| 2 | [Execute Placeholder Resolver](#2-execute-placeholder-resolver) | 55 | 55✅ | `v2/execute_placeholder_test.dart` | [→](#2-execute-placeholder-resolver) |
+| 3 | [Macro Expansion](#3-macro-expansion) | 24 | 24✅ | `v2/macro_expansion_test.dart` | [→](#3-macro-expansion) |
+| 4 | [CLI Argument Parser](#4-cli-argument-parser) | 96 | 96✅ | `v2/core/cli_arg_parser_test.dart` | [→](#4-cli-argument-parser) |
+| 5 | [CommandDefinition](#5-commanddefinition) | 15 | 15✅ | `v2/core/command_definition_test.dart` | [→](#5-commanddefinition) |
+| 6 | [Completion Generator](#6-completion-generator) | 30 | 30✅ | `v2/core/completion_generator_test.dart` | [→](#6-completion-generator) |
+| 7 | [Features — Modes, Defines, Macros, Pipelines](#7-features--modes-defines-macros-pipelines) | 32 | 32✅ | `v2/core/features_test.dart` | [→](#7-features--modes-defines-macros-pipelines) |
+| 8 | [Help Generator](#8-help-generator) | 33 | 33✅ | `v2/core/help_generator_test.dart` | [→](#8-help-generator) |
+| 9 | [OptionDefinition](#9-optiondefinition) | 28 | 28✅ | `v2/core/option_definition_test.dart` | [→](#9-optiondefinition) |
+| 10 | [ToolDefinition](#10-tooldefinition) | 55 | 55✅ | `v2/core/tool_definition_test.dart` | [→](#10-tooldefinition) |
+| 11 | [ToolDefinition Serializer](#11-tooldefinition-serializer) | 19 | 19✅ | `v2/core/tool_definition_serializer_test.dart` | [→](#11-tooldefinition-serializer) |
+| 12 | [Wiring Loader](#12-wiring-loader) | 17 | 17✅ | `v2/core/wiring_loader_test.dart` | [→](#12-wiring-loader) |
+| 13 | [Pipeline Config](#13-pipeline-config) | 9 | 9✅ | `v2/core/pipeline_config_test.dart` | [→](#13-pipeline-config) |
+| 14 | [Pipeline Executor](#14-pipeline-executor) | 4 | 4✅ | `v2/core/pipeline_executor_test.dart` | [→](#14-pipeline-executor) |
+| 15 | [ToolRunner](#15-toolrunner) | 42 | 42✅ | `v2/core/tool_runner_test.dart` | [→](#15-toolrunner) |
+| 16 | [ToolRunner — Nested Tools](#16-toolrunner--nested-tools) | 20 | 20✅ | `v2/core/tool_runner_nested_test.dart` | [→](#16-toolrunner--nested-tools) |
+| 17 | [Nested Tool Executor](#17-nested-tool-executor) | 14 | 14✅ | `v2/core/nested_tool_executor_test.dart` | [→](#17-nested-tool-executor) |
+| 18 | [Folder Scanner](#18-folder-scanner) | 17 | 17✅ | `v2/traversal/folder_scanner_test.dart` | [→](#18-folder-scanner) |
+| 19 | [Nature Detector](#19-nature-detector) | 38 | 38✅ | `v2/traversal/nature_detector_test.dart` | [→](#19-nature-detector) |
+| 20 | [Nature Filter](#20-nature-filter) | 20 | 20✅ | `v2/traversal/nature_filter_test.dart` | [→](#20-nature-filter) |
+| 21 | [Filter Pipeline](#21-filter-pipeline) | 40 | 40✅ | `v2/traversal/filter_pipeline_test.dart` | [→](#21-filter-pipeline) |
+| 22 | [Build Order](#22-build-order) | 12 | 12✅ | `v2/traversal/build_order_test.dart` | [→](#22-build-order) |
+| 23 | [Traversal Info](#23-traversal-info) | 22 | 22✅ | `v2/traversal/traversal_info_test.dart` | [→](#23-traversal-info) |
+| 24 | [Build Base Integration](#24-build-base-integration) | 22 | 22✅ | `v2/traversal/build_base_integration_test.dart` | [→](#24-build-base-integration) |
+| 25 | [Comprehensive Traversal](#25-comprehensive-traversal) | 51 | 51✅ | `v2/traversal/traversal_comprehensive_test.dart` | [→](#25-comprehensive-traversal) |
+| — | **Total** | **718** | **718✅** | | |
 
 ---
 
-## 1. ConfigLoader — Config & Placeholders
-
-**Test file:** `test/config_loader_test.dart`
-
-Tests for `ConfigLoader` and the `resolvePlaceholders` function — loading master/project config files, mode-prefixed key processing, and placeholder resolution.
-
-| ID | Feature | Status | Description |
-|----|---------|--------|-------------|
-| CL_LDM01 | Load master and project config files | ✅ | ConfigLoader reads and merges master + project YAML. |
-| CL_MOD01 | Mode-prefixed key processing | ✅ | Keys like `DEV:` are processed based on active modes. |
-| CL_DEF01 | Define placeholder resolution | ✅ | `@[key]` placeholders resolve from defines. |
-| CL_TLP01 | Tool placeholder resolution | ✅ | `@{key}` placeholders resolve from tool config. |
-| CL_SKP01 | `tom_skip.yaml` skips directory | ✅ | `shouldSkipDirectory` detects workspace-wide skip file. |
-| CL_SKP02 | Tool-specific skip file | ✅ | `shouldSkipDirectory` detects `{tool}_skip.yaml`. |
-| RP_ALB01 | `@[...]` placeholder resolution | ✅ | `resolvePlaceholders` handles define brackets. |
-| RP_ACB01 | `@{...}` placeholder resolution | ✅ | `resolvePlaceholders` handles tool braces. |
-| RP_REC01 | Recursive resolution | ✅ | Placeholders referencing other placeholders resolve recursively. |
-| RP_UNR01 | Unresolved placeholders remain | ✅ | Unknown placeholders stay as-is. |
-| RP_ENV01 | Environment variable resolution | ✅ | `$VAR` resolved when `resolveEnvVars` enabled. |
-
----
-
-## 2. MiniTool Integration — End-to-End
-
-**Test file:** `test/minitool_integration_test.dart`
-
-End-to-end integration test simulating a complete multi-command tool to verify modes, placeholders, skip files, and config inheritance.
-
-### Mode Processing
-
-| ID | Feature | Status | Description |
-|----|---------|--------|-------------|
-| MT_MOD01 | Base config used when no modes active | ✅ | Verify default config applied without `--modes`. |
-| MT_MOD02 | DEV mode overrides base config | ✅ | Verify DEV-specific values applied. |
-| MT_MOD03 | Multiple modes merge in order | ✅ | Verify mode values merge correctly. |
-| MT_MOD04 | CI mode as feature flag | ✅ | Verify CI mode enables features. |
-
-### Placeholder Resolution
-
-| ID | Feature | Status | Description |
-|----|---------|--------|-------------|
-| MT_PLH01 | `@[...]` define placeholders at load time | ✅ | Define placeholders resolved during config loading. |
-| MT_PLH02 | `@{...}` tool placeholders after mode processing | ✅ | Tool placeholders resolved after modes applied. |
-| MT_PLH03 | Recursive resolution (max depth 10) | ✅ | Nested placeholders resolve up to 10 levels deep. |
-| MT_PLH04 | Unresolved placeholders unchanged | ✅ | Unknown references left as-is. |
-| MT_PLH05 | `$VAR` env var resolution | ✅ | Environment variables resolved when enabled. |
-| MT_PLH06 | `$[VAR]` syntax for adjacent text | ✅ | Bracket syntax for env vars in adjacent text. |
-
-### Skip Files
-
-| ID | Feature | Status | Description |
-|----|---------|--------|-------------|
-| MT_SKP01 | `tom_skip.yaml` skips for ALL tools | ✅ | Workspace-wide skip file applied. |
-| MT_SKP02 | `{basename}_skip.yaml` for specific tool | ✅ | Tool-specific skip file applied. |
-| MT_SKP03 | Skip reason readable from YAML | ✅ | Reason field accessible in skip file. |
-| MT_SKP04 | Empty skip file is sufficient | ✅ | Empty file triggers skip. |
-
-### Standalone Tool Configuration
-
-| ID | Feature | Status | Description |
-|----|---------|--------|-------------|
-| MT_INH01 | Standalone tool inherits parent config | ✅ | Tool config inheritance verified. |
-
-### Resolution Order
-
-| ID | Feature | Status | Description |
-|----|---------|--------|-------------|
-| MT_ORD01 | Resolution follows 6-step flow | ✅ | Full config resolution pipeline verified. |
-
----
-
-## 3. Command Prefix Matching
+## 1. Command Prefix Matching
 
 **Test file:** `test/v2/command_prefix_test.dart`
 
@@ -135,7 +60,7 @@ Tests for `ToolDefinition.findCommand` prefix matching logic.
 
 ---
 
-## 4. Execute Placeholder Resolver
+## 2. Execute Placeholder Resolver
 
 **Test file:** `test/v2/execute_placeholder_test.dart`
 
@@ -194,7 +119,7 @@ Comprehensive tests for `ExecutePlaceholderResolver` — 55 tests covering all p
 
 ---
 
-## 5. Macro Expansion
+## 3. Macro Expansion
 
 **Test file:** `test/v2/macro_expansion_test.dart`
 
@@ -218,7 +143,7 @@ Tests for `MacroExpander` — positional placeholders ($1–$9), rest placeholde
 
 ---
 
-## 6. CLI Argument Parser
+## 4. CLI Argument Parser
 
 **Test file:** `test/v2/core/cli_arg_parser_test.dart`
 
@@ -243,7 +168,7 @@ Exhaustive tests for `CliArgs` — 96 tests covering option parsing, command ext
 
 ---
 
-## 7. CommandDefinition
+## 5. CommandDefinition
 
 **Test file:** `test/v2/core/command_definition_test.dart`
 
@@ -259,7 +184,7 @@ Exhaustive tests for `CliArgs` — 96 tests covering option parsing, command ext
 
 ---
 
-## 8. Completion Generator
+## 6. Completion Generator
 
 **Test file:** `test/v2/core/completion_generator_test.dart`
 
@@ -271,7 +196,7 @@ Exhaustive tests for `CliArgs` — 96 tests covering option parsing, command ext
 
 ---
 
-## 9. Features — Modes, Defines, Macros, Pipelines
+## 7. Features — Modes, Defines, Macros, Pipelines
 
 **Test file:** `test/v2/core/features_test.dart`
 
@@ -330,7 +255,7 @@ Tests for the recently implemented features: modes, persistent defines, runtime 
 
 ---
 
-## 10. Help Generator
+## 8. Help Generator
 
 **Test file:** `test/v2/core/help_generator_test.dart`
 
@@ -342,7 +267,7 @@ Tests for the recently implemented features: modes, persistent defines, runtime 
 
 ---
 
-## 11. OptionDefinition
+## 9. OptionDefinition
 
 **Test file:** `test/v2/core/option_definition_test.dart`
 
@@ -357,7 +282,7 @@ Tests for the recently implemented features: modes, persistent defines, runtime 
 
 ---
 
-## 12. ToolDefinition
+## 10. ToolDefinition
 
 **Test file:** `test/v2/core/tool_definition_test.dart`
 
@@ -373,7 +298,7 @@ Tests for the recently implemented features: modes, persistent defines, runtime 
 
 ---
 
-## 13. ToolDefinition Serializer
+## 11. ToolDefinition Serializer
 
 **Test file:** `test/v2/core/tool_definition_serializer_test.dart`
 
@@ -386,7 +311,7 @@ Tests for the recently implemented features: modes, persistent defines, runtime 
 
 ---
 
-## 14. Wiring Loader
+## 12. Wiring Loader
 
 **Test file:** `test/v2/core/wiring_loader_test.dart`
 
@@ -399,7 +324,7 @@ Tests for the recently implemented features: modes, persistent defines, runtime 
 
 ---
 
-## 15. Pipeline Config
+## 13. Pipeline Config
 
 **Test file:** `test/v2/core/pipeline_config_test.dart`
 
@@ -411,7 +336,7 @@ Tests for the recently implemented features: modes, persistent defines, runtime 
 
 ---
 
-## 16. Pipeline Executor
+## 14. Pipeline Executor
 
 **Test file:** `test/v2/core/pipeline_executor_test.dart`
 
@@ -424,7 +349,7 @@ Tests for the recently implemented features: modes, persistent defines, runtime 
 
 ---
 
-## 17. ToolRunner
+## 15. ToolRunner
 
 **Test file:** `test/v2/core/tool_runner_test.dart`
 
@@ -440,7 +365,7 @@ Tests for the recently implemented features: modes, persistent defines, runtime 
 
 ---
 
-## 18. ToolRunner — Nested Tools
+## 16. ToolRunner — Nested Tools
 
 **Test file:** `test/v2/core/tool_runner_nested_test.dart`
 
@@ -453,7 +378,7 @@ Tests for the recently implemented features: modes, persistent defines, runtime 
 
 ---
 
-## 19. Nested Tool Executor
+## 17. Nested Tool Executor
 
 **Test file:** `test/v2/core/nested_tool_executor_test.dart`
 
@@ -466,7 +391,7 @@ Tests for the recently implemented features: modes, persistent defines, runtime 
 
 ---
 
-## 20. Folder Scanner
+## 18. Folder Scanner
 
 **Test file:** `test/v2/traversal/folder_scanner_test.dart`
 
@@ -480,7 +405,7 @@ Tests for the recently implemented features: modes, persistent defines, runtime 
 
 ---
 
-## 21. Nature Detector
+## 19. Nature Detector
 
 **Test file:** `test/v2/traversal/nature_detector_test.dart`
 
@@ -496,7 +421,7 @@ Tests for the recently implemented features: modes, persistent defines, runtime 
 
 ---
 
-## 22. Nature Filter
+## 20. Nature Filter
 
 **Test file:** `test/v2/traversal/nature_filter_test.dart`
 
@@ -509,7 +434,7 @@ Tests for the recently implemented features: modes, persistent defines, runtime 
 
 ---
 
-## 23. Filter Pipeline
+## 21. Filter Pipeline
 
 **Test file:** `test/v2/traversal/filter_pipeline_test.dart`
 
@@ -523,7 +448,7 @@ Tests for the recently implemented features: modes, persistent defines, runtime 
 
 ---
 
-## 24. Build Order
+## 22. Build Order
 
 **Test file:** `test/v2/traversal/build_order_test.dart`
 
@@ -535,7 +460,7 @@ Tests for the recently implemented features: modes, persistent defines, runtime 
 
 ---
 
-## 25. Traversal Info
+## 23. Traversal Info
 
 **Test file:** `test/v2/traversal/traversal_info_test.dart`
 
@@ -548,7 +473,7 @@ Tests for the recently implemented features: modes, persistent defines, runtime 
 
 ---
 
-## 26. Build Base Integration
+## 24. Build Base Integration
 
 **Test file:** `test/v2/traversal/build_base_integration_test.dart`
 
@@ -563,7 +488,7 @@ Full integration test using filesystem fixtures — end-to-end workspace scannin
 
 ---
 
-## 27. Comprehensive Traversal
+## 25. Comprehensive Traversal
 
 **Test file:** `test/v2/traversal/traversal_comprehensive_test.dart`
 
@@ -592,4 +517,4 @@ The current test suite is comprehensive. Areas where additional tests could be v
 | `--dump-definitions` output format | Tested in ToolRunner | Validate complete YAML structure | Low |
 | ConfigLoader with nested `@{...}` in `@[...]` | ✅ Recursive test exists | Additional nesting depth scenarios | Low |
 
-Overall coverage assessment: **Excellent — 746 tests covering all V1 and V2 features.**
+Overall coverage assessment: **Excellent — 718 tests covering all features.**

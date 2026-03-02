@@ -1,3 +1,22 @@
+## 2.6.1
+
+- **Fix:** Added missing `WorkspaceScanner` export to both barrel files (`tom_build_base.dart` and `tom_build_base_v2.dart`)
+
+## 2.6.0
+
+### Breaking Changes
+
+- **Removed V1 API** — The following V1 classes, functions, and files have been removed:
+  - `ConfigLoader`, `LoadedConfig`, `PlaceholderDefinition`, `PlaceholderContext`, `resolvePlaceholders()` (config_loader.dart)
+  - `ConfigMerger` (config_merger.dart)
+  - `ProcessingResult` — V1 version removed (processing_result.dart); V2 `ToolResult`/`ItemResult` remains
+  - `isPathContained()`, `validatePathContainment()` (path_utils.dart)
+  - `isBuildYamlBuilderDefinition()`, `hasBuildYamlConsumerConfig()`, `isBuildYamlBuilderEnabled()`, `getBuildYamlBuilderOptions()` (build_yaml_utils.dart)
+  - `showVersions()`, `ShowVersionsResult`, `ShowVersionsOptions`, `readPubspecVersion()` (show_versions.dart)
+  - `bin/show_versions.dart` CLI tool
+- **Unified barrel** — `tom_build_base.dart` now exports the full API (framework + utility classes). The `tom_build_base_v2.dart` barrel is still available for backwards compatibility.
+- **Retained utility classes** — `TomBuildConfig`, `hasTomBuildConfig()`, `ProcessRunner`, `ToolLogger`, `yamlToMap()`, `yamlListToList()`, `toStringList()` remain available.
+
 ## 2.5.16
 
 ### Added
