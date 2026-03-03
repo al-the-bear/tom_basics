@@ -50,7 +50,12 @@ class FolderScanner {
 
   /// Scan for folders starting from [root].
   ///
-  /// [recursive] - If true, descend into subdirectories.
+  /// The scanner always descends into non-project directories (containers)
+  /// to find projects — that is the purpose of scanning.
+  ///
+  /// [recursive] - Controls whether to descend into **project** directories
+  ///   (those containing `pubspec.yaml`) to find nested projects within them.
+  ///   When false, project directories are included but not entered.
   /// [recursionExclude] - Patterns to skip during recursive descent.
   Future<List<FsFolder>> scan(
     String root, {
@@ -105,7 +110,14 @@ class FolderScanner {
     // No skip marker — add this directory
     results.add(FsFolder(path: dir.path));
 
-    if (!recursive) return;
+    // Recursion semantics:
+    // - Non-project directories (containers) are ALWAYS traversed to find
+    //   projects. That is the purpose of --scan.
+    // - Project directories (identified by pubspec.yaml) are only recursed
+    //   into when `recursive` is true. This controls whether nested projects
+    //   inside a project are discovered.
+    final isProjectDir = File(p.join(dir.path, 'pubspec.yaml')).existsSync();
+    if (!recursive && isProjectDir) return;
 
     // Check if this directory has {toolBasename}.yaml with recursive: false
     if (_hasToolConfigRecursiveFalse(dir.path)) return;

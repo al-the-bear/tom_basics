@@ -162,7 +162,11 @@ class CliArgs {
   /// Convert to ProjectTraversalInfo.
   ///
   /// Applies defaults cascade: CLI > [configDefaults] > hardcoded defaults.
-  /// Hardcoded defaults are `scan: '.'`, `recursive: true`.
+  /// Hardcoded defaults are `scan: '.'`, `recursive: false`.
+  ///
+  /// **Note:** `recursive` controls whether to descend into **project**
+  /// directories (those containing `pubspec.yaml`) to find nested projects.
+  /// Non-project (container) directories are always traversed regardless.
   ///
   /// Requires [executionRoot] to be provided if not set in args.
   /// [configDefaults] is optional config from buildkit_master.yaml navigation section.
@@ -178,8 +182,8 @@ class CliArgs {
         : (configDefaults?.scan ?? scan ?? '.');
 
     // Resolve recursive: CLI > config > default false
-    // Default is --not-recursive (scan single dir, not recursively)
-    // -r explicitly enables recursion
+    // Default is --not-recursive (don't recurse into project folders)
+    // -r explicitly enables recursion into project folders
     final bool effectiveRecursive;
     if (notRecursive) {
       effectiveRecursive = false;

@@ -1,3 +1,14 @@
+## 2.6.6
+
+### Fixed
+
+- **FolderScanner recursive semantics** — The `recursive` flag now correctly controls recursion **inside project directories** only. Non-project (container) directories are always traversed to find projects, which is the fundamental purpose of scanning. Previously, `recursive: false` (the default) stopped all descent after the scan root, meaning nested projects inside container directories were never found.
+
+### Documentation
+
+- Corrected `FolderScanner.scan()` doc to explain that `recursive` controls descent into project folders (containing `pubspec.yaml`), not overall directory traversal.
+- Corrected `CliArgs.toProjectTraversalInfo()` doc: hardcoded default is `recursive: false`, and clarified that non-project directories are always traversed regardless of the flag.
+
 ## 2.6.5
 
 ### Fixed
