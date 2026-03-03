@@ -1,3 +1,21 @@
+## 2.6.4
+
+### Fixed
+
+- **Nature parsing in tool wiring** — `ToolDefinitionSerializer.fromYamlMap()` now correctly parses `works_with_natures` and `required_natures` fields from `--dump-definitions` YAML output. Previously, these fields were only serialized (via `toYaml()`) but not parsed when deserializing, causing nested tool commands to fail with "has no nature configuration" errors during wiring.
+
+### Added
+
+- **Private helpers** — Added `_stringToType()` to convert nature type names ("DartProjectFolder", "FsFolder", etc.) back to `Type` objects, and `_parseNaturesList()` to parse YAML lists to `Set<Type>`.
+
+## 2.6.3
+
+- **`versionString` support** — Added optional `versionString` field to `ToolDefinition` for custom version display format. When set, `--version` will output this string instead of the default "name version" format.
+
+## 2.6.2
+
+- **Build fixes** — Minor fixes for tool compilation.
+
 ## 2.6.1
 
 - **Fix:** Added missing `WorkspaceScanner` export to both barrel files (`tom_build_base.dart` and `tom_build_base_v2.dart`)

@@ -286,6 +286,9 @@ class WiringLoader {
         CommandDefinition(
           name: hostName,
           description: '${dumpResult.description} (via ${wiring.binary})',
+          options: dumpResult.globalOptions,
+          worksWithNatures: dumpResult.worksWithNatures,
+          requiredNatures: dumpResult.requiredNatures,
         ),
       );
 

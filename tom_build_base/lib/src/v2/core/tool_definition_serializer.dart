@@ -1,3 +1,6 @@
+import '../folder/fs_folder.dart';
+import '../folder/natures/dart_project_folder.dart';
+import '../folder/natures/git_folder.dart';
 import 'command_definition.dart';
 import 'option_definition.dart';
 import 'tool_definition.dart';
@@ -125,6 +128,10 @@ class ToolDefinitionSerializer {
       }
     }
 
+    // Parse natures
+    final worksWithNatures = _parseNaturesList(map['works_with_natures']);
+    final requiredNatures = _parseNaturesList(map['required_natures']);
+
     // Parse commands
     final commandsMap = map['commands'];
     final commands = <CommandDefinition>[];
@@ -147,6 +154,8 @@ class ToolDefinitionSerializer {
       features: features,
       globalOptions: globalOptions,
       commands: commands,
+      worksWithNatures: worksWithNatures,
+      requiredNatures: requiredNatures.isEmpty ? null : requiredNatures,
     );
   }
 
@@ -332,6 +341,33 @@ class ToolDefinitionSerializer {
   }
 
   static String _typeToString(Type type) => type.toString();
+
+  /// Parse a string name to a Type for natures.
+  static Type? _stringToType(String name) {
+    switch (name) {
+      case 'FsFolder':
+        return FsFolder;
+      case 'DartProjectFolder':
+        return DartProjectFolder;
+      case 'FlutterProjectFolder':
+        return FlutterProjectFolder;
+      case 'GitFolder':
+        return GitFolder;
+      default:
+        return null;
+    }
+  }
+
+  /// Parse a list of nature type names to a `Set<Type>`.
+  static Set<Type> _parseNaturesList(dynamic list) {
+    if (list is! List) return {};
+    final result = <Type>{};
+    for (final item in list) {
+      final type = _stringToType(item.toString());
+      if (type != null) result.add(type);
+    }
+    return result;
+  }
 
   /// Escape a string for YAML output.
   ///
