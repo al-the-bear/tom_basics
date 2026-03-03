@@ -177,20 +177,16 @@ class ProcessRunner {
     ToolLogger.logCommand(executable, arguments,
         workingDirectory: workingDirectory);
 
-    // Start the process
+    // Start the process with inherited stdio for true streaming
+    // This connects child's stdin/stdout/stderr directly to parent's
     final process = await Process.start(
       executable,
       arguments,
       workingDirectory: workingDirectory,
       environment: environment,
       runInShell: runInShell,
+      mode: ProcessStartMode.inheritStdio,
     );
-
-    // Stream output
-    await Future.wait([
-      process.stdout.forEach((data) => stdout.add(data)),
-      process.stderr.forEach((data) => stderr.add(data)),
-    ]);
 
     return process.exitCode;
   }
