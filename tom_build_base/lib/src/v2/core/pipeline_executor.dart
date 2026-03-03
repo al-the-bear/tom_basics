@@ -485,6 +485,15 @@ class ToolPipelineExecutor {
     return Process.run('/bin/bash', ['-lc', command], workingDirectory: dir);
   }
 
+  /// Directories that should never be treated as nested workspaces.
+  /// Covers test fixtures, build outputs, and generated directories.
+  static const _nestedWsSkipNames = {
+    'test',
+    'build',
+    'node_modules',
+    'example',
+  };
+
   List<String> _discoverNestedWorkspaces({
     required String rootDir,
     required String masterFileName,
@@ -498,7 +507,10 @@ class ToolPipelineExecutor {
         for (final entity in dir.listSync(followLinks: false)) {
           if (entity is! Directory) continue;
           final name = p.basename(entity.path);
-          if (name.startsWith('.')) continue;
+          if (name.startsWith('.') ||
+              _nestedWsSkipNames.contains(name)) {
+            continue;
+          }
 
           final master = File(p.join(entity.path, masterFileName));
           if (master.existsSync()) {

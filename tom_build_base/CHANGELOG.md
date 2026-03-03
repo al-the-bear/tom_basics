@@ -1,3 +1,9 @@
+## 2.6.5
+
+### Fixed
+
+- **Pipeline nested workspace discovery** — `_discoverNestedWorkspaces` now skips `test/`, `build/`, `node_modules/`, and `example/` directories when searching for nested workspaces to delegate pipeline execution to. Previously, `buildkit_master.yaml` files inside test fixtures (e.g., `test/fixtures/`) were incorrectly treated as real nested workspaces, causing pipeline delegation failures.
+
 ## 2.6.4
 
 ### Fixed
