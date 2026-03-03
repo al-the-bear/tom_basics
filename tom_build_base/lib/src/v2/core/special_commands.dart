@@ -70,13 +70,19 @@ SpecialCommandResult handleSpecialCommands(
   final first = args.first.toLowerCase();
 
   // Version command
-  if (first == 'version' || first == '--version' || first == '-v') {
+  if (first == 'version' ||
+      first == '--version' ||
+      first == '-version' ||
+      first == '-v') {
     printer(versionGenerator(tool));
     return SpecialCommandResult.handled;
   }
 
   // Help command
-  if (first == 'help' || first == '--help' || first == '-h') {
+  if (first == 'help' ||
+      first == '--help' ||
+      first == '-help' ||
+      first == '-h') {
     if (args.length > 1 && first == 'help') {
       // Command-specific help: help :command or help command or help topic
       final target = args[1];

@@ -180,15 +180,32 @@ class ToolRunner {
     return stdout;
   }
 
+  /// Normalize legacy/alternative flag forms before parsing.
+  ///
+  /// Converts:
+  /// - `-version` → `--version` (single-dash long form)
+  /// - `-help` → `--help` (single-dash long form)
+  static List<String> _normalizeArgs(List<String> args) {
+    if (args.isEmpty) return args;
+    return args.map((arg) {
+      if (arg == '-version') return '--version';
+      if (arg == '-help') return '--help';
+      return arg;
+    }).toList();
+  }
+
   /// Run the tool with command-line arguments.
   Future<ToolResult> run(List<String> args) async {
     // Expand macros before parsing (loads persisted macros if needed)
     _loadPersistedMacros();
     final expandedArgs = expandMacros(args, _runtimeMacros);
 
+    // Normalize legacy flags before parsing.
+    final normalizedArgs = _normalizeArgs(expandedArgs);
+
     // Parse arguments
     final parser = CliArgParser(toolDefinition: tool);
-    final cliArgs = parser.parse(expandedArgs);
+    final cliArgs = parser.parse(normalizedArgs);
 
     // --dump-definitions: serialize tool definition and exit immediately.
     // Intercepted before any wiring or traversal.
