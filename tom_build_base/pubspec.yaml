@@ -1,6 +1,6 @@
 name: tom_build_base
 description: Unified CLI framework for workspace traversal, tool definition, pipeline execution, and build configuration.
-version: 2.6.9
+version: 2.6.10
 repository: https://github.com/al-the-bear/tom_basics
 homepage: https://github.com/al-the-bear/tom_basics/tree/main/tom_build_base
 topics:

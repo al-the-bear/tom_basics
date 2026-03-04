@@ -404,6 +404,13 @@ class ToolPipelineExecutor {
       if (cliArgs.scan != null) 'scan': cliArgs.scan!,
       if (cliArgs.recursive) 'recursive': 'true',
       if (cliArgs.notRecursive) 'not-recursive': 'true',
+      if (cliArgs.projectPatterns.isNotEmpty)
+        'project': cliArgs.projectPatterns.join(','),
+      if (cliArgs.excludePatterns.isNotEmpty)
+        'exclude': cliArgs.excludePatterns.join(','),
+      if (cliArgs.excludeProjects.isNotEmpty)
+        'exclude-projects': cliArgs.excludeProjects.join(','),
+      if (cliArgs.modes.isNotEmpty) 'modes': cliArgs.modes.join(','),
     };
     return map;
   }
