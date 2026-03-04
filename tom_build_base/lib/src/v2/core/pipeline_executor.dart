@@ -245,14 +245,9 @@ class ToolPipelineExecutor {
     }
     if (dryRun) return true;
 
-    final result = await _runShellProcess(command, workspaceDir);
-    if (result.stdout.toString().trim().isNotEmpty) {
-      output.writeln(result.stdout.toString().trimRight());
-    }
-    if (result.stderr.toString().trim().isNotEmpty) {
-      output.writeln(result.stderr.toString().trimRight());
-    }
-    return result.exitCode == 0;
+    // Use streaming for live output
+    final exitCode = await _runShellStreaming(command, workspaceDir);
+    return exitCode == 0;
   }
 
   Future<bool> _runStdin(String body, String workspaceDir, bool dryRun) async {
@@ -356,14 +351,9 @@ class ToolPipelineExecutor {
         }
         if (cliArgs.dryRun) return true;
 
-        final proc = await _runShellProcess(resolved, context.path);
-        if (proc.stdout.toString().trim().isNotEmpty) {
-          output.writeln(proc.stdout.toString().trimRight());
-        }
-        if (proc.stderr.toString().trim().isNotEmpty) {
-          output.writeln(proc.stderr.toString().trimRight());
-        }
-        return proc.exitCode == 0;
+        // Use streaming for live output
+        final exitCode = await _runShellStreaming(resolved, context.path);
+        return exitCode == 0;
       },
       verbose: verbose,
     );
@@ -401,14 +391,9 @@ class ToolPipelineExecutor {
     }
     if (cliArgs.dryRun) return true;
 
-    final result = await runBinary(tool.name, argv, workspaceDir);
-    if (result.stdout.toString().trim().isNotEmpty) {
-      output.writeln(result.stdout.toString().trimRight());
-    }
-    if (result.stderr.toString().trim().isNotEmpty) {
-      output.writeln(result.stderr.toString().trimRight());
-    }
-    return result.exitCode == 0;
+    // Use streaming to show output as it happens
+    final exitCode = await runBinaryStreaming(tool.name, argv, workspaceDir);
+    return exitCode == 0;
   }
 
   Map<String, String> _invocationOptions(CliArgs cliArgs) {
@@ -478,11 +463,27 @@ class ToolPipelineExecutor {
     }).toList();
   }
 
-  Future<ProcessResult> _runShellProcess(String command, String dir) {
+  /// Run a shell command with streaming output directly to stdout/stderr.
+  ///
+  /// Uses [ProcessStartMode.inheritStdio] to connect the child process's
+  /// stdin/stdout/stderr directly to the parent's.
+  Future<int> _runShellStreaming(String command, String dir) async {
+    final String executable;
+    final List<String> args;
     if (Platform.isWindows) {
-      return Process.run('cmd', ['/c', command], workingDirectory: dir);
+      executable = 'cmd';
+      args = ['/c', command];
+    } else {
+      executable = '/bin/bash';
+      args = ['-lc', command];
     }
-    return Process.run('/bin/bash', ['-lc', command], workingDirectory: dir);
+    final process = await Process.start(
+      executable,
+      args,
+      workingDirectory: dir,
+      mode: ProcessStartMode.inheritStdio,
+    );
+    return process.exitCode;
   }
 
   /// Directories that should never be treated as nested workspaces.

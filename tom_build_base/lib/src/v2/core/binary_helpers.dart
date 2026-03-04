@@ -64,3 +64,30 @@ Future<ProcessResult> runBinary(
     runInShell: Platform.isWindows,
   );
 }
+
+/// Run a binary with streaming output directly to stdout/stderr.
+///
+/// Uses [ProcessStartMode.inheritStdio] to connect the child process's
+/// stdin/stdout/stderr directly to the parent's, ensuring output appears
+/// immediately without buffering.
+///
+/// Returns the exit code.
+///
+/// ```dart
+/// final exitCode = await runBinaryStreaming('buildkit', [':pubupdate'], '.');
+/// ```
+Future<int> runBinaryStreaming(
+  String binary,
+  List<String> args,
+  String workingDirectory,
+) async {
+  final resolved = resolveBinary(binary);
+  final process = await Process.start(
+    resolved,
+    args,
+    workingDirectory: workingDirectory,
+    runInShell: Platform.isWindows,
+    mode: ProcessStartMode.inheritStdio,
+  );
+  return process.exitCode;
+}
