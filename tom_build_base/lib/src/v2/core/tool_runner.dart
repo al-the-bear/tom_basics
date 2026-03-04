@@ -542,6 +542,11 @@ class ToolRunner {
           }
         }
 
+        // Show progress for folder being processed.
+        if (verbose) {
+          output.writeln('>>> ${context.relativePath}');
+        }
+
         // Resolve %{...} placeholders in CLI args per folder.
         // Uses skipUnknown: true so command-specific placeholders (e.g.,
         // compiler's ${file}) are left for the executor's own resolver.
