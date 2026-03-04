@@ -17,6 +17,10 @@ import 'tool_definition_serializer.dart';
 import 'command_executor.dart';
 import 'wiring_loader.dart';
 import '../execute_placeholder.dart';
+import '../folder/fs_folder.dart';
+import '../folder/natures/dart_project_folder.dart';
+import '../folder/run_folder.dart';
+import '../traversal/command_context.dart';
 import '../traversal/traversal_info.dart';
 import '../traversal/build_base.dart';
 import '../traversal/filter_pipeline.dart';
@@ -319,16 +323,7 @@ class ToolRunner {
         return const ToolResult.failure('No command specified');
       }
 
-      // Run each command in sequence
-      final results = <ItemResult>[];
-      for (final cmdName in cliArgs.commands) {
-        final result = await _runCommand(cmdName, cliArgs);
-        results.addAll(result.itemResults);
-        if (!result.success) {
-          return result; // Stop on first failure
-        }
-      }
-      return ToolResult.fromItems(results);
+      return _runMultiCommandFolderByFolder(cliArgs);
     }
 
     // Single command mode - run default executor
@@ -338,6 +333,204 @@ class ToolRunner {
     }
 
     return _runWithTraversal(executor, null, cliArgs);
+  }
+
+  /// Run multi-command tools folder-by-folder in a single traversal.
+  ///
+  /// For each matching folder, all commands are executed in the order given.
+  /// If commands are not traversal-compatible, falls back to legacy
+  /// command-by-command execution.
+  Future<ToolResult> _runMultiCommandFolderByFolder(CliArgs cliArgs) async {
+    final resolved = <({CommandDefinition cmd, CommandExecutor executor})>[];
+    for (final cmdName in cliArgs.commands) {
+      final cmd = _effectiveTool.findCommand(cmdName);
+      if (cmd == null) {
+        // Keep existing error semantics via single-command path.
+        return _runCommand(cmdName, cliArgs);
+      }
+      final executor = _findExecutor(cmd.name);
+      if (executor == null) {
+        return ToolResult.failure('No executor for command: ${cmd.name}');
+      }
+      resolved.add((cmd: cmd, executor: executor));
+    }
+
+    // If any command is non-traversal, preserve legacy behavior.
+    if (resolved.any((entry) => !entry.cmd.requiresTraversal)) {
+      final results = <ItemResult>[];
+      for (final entry in resolved) {
+        final result = await _runWithTraversal(entry.executor, entry.cmd, cliArgs);
+        results.addAll(result.itemResults);
+        if (!result.success) return result;
+      }
+      return ToolResult.fromItems(results);
+    }
+
+    // Multi-command folder-first traversal currently supports project traversal.
+    // If git traversal is requested/required by any command, keep legacy behavior
+    // until mixed traversal policies are unified.
+    final needsGitTraversal = resolved.any(
+      (entry) =>
+          entry.cmd.requiresGitTraversal ||
+          (cliArgs.gitModeExplicitlySet && entry.cmd.supportsGitTraversal),
+    );
+    if (needsGitTraversal) {
+      final results = <ItemResult>[];
+      for (final entry in resolved) {
+        final result = await _runWithTraversal(entry.executor, entry.cmd, cliArgs);
+        results.addAll(result.itemResults);
+        if (!result.success) return result;
+      }
+      return ToolResult.fromItems(results);
+    }
+
+    final String executionRoot;
+    if (cliArgs.root != null) {
+      executionRoot = cliArgs.root!;
+    } else {
+      executionRoot = findWorkspaceRoot(Directory.current.path);
+    }
+
+    final configDefaults = _loadTraversalDefaults(executionRoot);
+    final traversalInfo = cliArgs.toProjectTraversalInfo(
+      executionRoot: executionRoot,
+      configDefaults: configDefaults,
+    );
+
+    final masterDefines = _loadMasterDefines(cliArgs.modes);
+    final results = <ItemResult>[];
+
+    await BuildBase.traverse(
+      info: traversalInfo,
+      verbose: verbose,
+      worksWithNatures: const {FsFolder},
+      run: (context) async {
+        final runnable = <({
+          CommandDefinition cmd,
+          CommandExecutor executor,
+          CliArgs resolvedArgs,
+        })>[];
+
+        // Resolve args once per folder.
+        final placeholderCtx = ExecutePlaceholderContext.fromCommandContext(
+          context,
+          executionRoot,
+        );
+        final placeholderResolvedArgs = cliArgs.withResolvedStrings(
+          (s) => ExecutePlaceholderResolver.resolveCommand(
+            s,
+            placeholderCtx,
+            skipUnknown: true,
+          ),
+        );
+        final projectDefines = _loadProjectDefines(
+          context.fsFolder.path,
+          masterDefines,
+          cliArgs.modes,
+        );
+        final resolvedArgs = placeholderResolvedArgs.withResolvedStrings(
+          (s) => _resolveDefineString(s, projectDefines),
+        );
+
+        for (final entry in resolved) {
+          if (!_contextMatchesCommandNatures(context, entry.cmd)) {
+            continue;
+          }
+          if (!_contextPassesPerCommandFilters(
+            context,
+            traversalInfo,
+            cliArgs,
+            entry.cmd,
+          )) {
+            continue;
+          }
+          runnable.add((
+            cmd: entry.cmd,
+            executor: entry.executor,
+            resolvedArgs: resolvedArgs,
+          ));
+        }
+
+        if (runnable.isEmpty) return true;
+
+        if (verbose) {
+          output.writeln('>>> ${context.relativePath}');
+        }
+
+        for (final runEntry in runnable) {
+          final result = await runEntry.executor.execute(
+            context,
+            runEntry.resolvedArgs,
+          );
+          results.add(result);
+          if (!result.success) {
+            // Stop remaining commands for this folder, continue traversal.
+            break;
+          }
+        }
+        return true;
+      },
+    );
+
+    return ToolResult.fromItems(results);
+  }
+
+  bool _contextPassesPerCommandFilters(
+    CommandContext context,
+    BaseTraversalInfo traversalInfo,
+    CliArgs cliArgs,
+    CommandDefinition cmd,
+  ) {
+    if (traversalInfo is! ProjectTraversalInfo) return true;
+    final cmdArgs = cliArgs.commandArgs[cmd.name];
+    if (cmdArgs == null) return true;
+
+    if (cmdArgs.projectPatterns.isNotEmpty) {
+      final filter = FilterPipeline();
+      final matches = filter.matchesProjectPattern(
+        context.fsFolder,
+        cmdArgs.projectPatterns,
+        executionRoot: traversalInfo.executionRoot,
+      );
+      if (!matches) return false;
+    }
+
+    if (cmdArgs.excludePatterns.isNotEmpty) {
+      final filter = FilterPipeline();
+      final excluded = filter.matchesProjectPattern(
+        context.fsFolder,
+        cmdArgs.excludePatterns,
+        executionRoot: traversalInfo.executionRoot,
+      );
+      if (excluded) return false;
+    }
+
+    return true;
+  }
+
+  bool _contextMatchesCommandNatures(
+    CommandContext context,
+    CommandDefinition cmd,
+  ) {
+    final reqNatures = cmd.requiredNatures;
+    final workNatures = cmd.worksWithNatures;
+    final hasRequired = reqNatures != null && reqNatures.isNotEmpty;
+    final hasWorksWith = workNatures.isNotEmpty;
+    if (!hasRequired && !hasWorksWith) return false;
+
+    if (hasRequired) {
+      return reqNatures.every((type) => _matchesNature(context.natures, type));
+    }
+
+    return workNatures.any((type) => _matchesNature(context.natures, type));
+  }
+
+  bool _matchesNature(List<RunFolder> natures, Type type) {
+    if (type == FsFolder) return true;
+    if (type == DartProjectFolder) {
+      return natures.any((n) => n is DartProjectFolder);
+    }
+    return natures.any((n) => n.runtimeType == type);
   }
 
   Future<ToolResult?> _tryRunPipelineInvocation(CliArgs cliArgs) async {
