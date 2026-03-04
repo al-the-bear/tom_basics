@@ -360,6 +360,73 @@ void main() {
         },
       );
 
+      test(
+        'BB-RUN-55: Multi-command traversal runs folder-by-folder '
+        '[2026-03-04]',
+        () async {
+          final tempRoot = await Directory.systemTemp.createTemp('bb_order_');
+          final previousCwd = Directory.current.path;
+          try {
+            final projectA = Directory('${tempRoot.path}/a_proj')..createSync();
+            File(
+              '${projectA.path}/pubspec.yaml',
+            ).writeAsStringSync(
+              'name: a_proj\nversion: 1.0.0\nenvironment:\n  sdk: ^3.0.0\n',
+            );
+
+            final projectB = Directory('${tempRoot.path}/b_proj')..createSync();
+            File(
+              '${projectB.path}/pubspec.yaml',
+            ).writeAsStringSync(
+              'name: b_proj\nversion: 1.0.0\nenvironment:\n  sdk: ^3.0.0\n',
+            );
+
+            final orderLog = <String>[];
+            final runner = ToolRunner(
+              tool: _twoTraversalCommandsTool,
+              verbose: false,
+              executors: {
+                'first': _OrderTrackingExecutor('first', orderLog),
+                'second': _OrderTrackingExecutor('second', orderLog),
+              },
+            );
+
+            Directory.current = tempRoot.path;
+
+            final result = await runner.run([
+              '-r',
+              '--root',
+              tempRoot.path,
+              '--scan',
+              '.',
+              ':first',
+              ':second',
+            ]);
+
+            expect(result.success, isTrue);
+            expect(orderLog.length, equals(4));
+
+            for (var i = 0; i < orderLog.length; i += 2) {
+              final first = orderLog[i].split('|');
+              final second = orderLog[i + 1].split('|');
+              expect(first[0], equals(second[0]));
+              expect(first[1], equals('first'));
+              expect(second[1], equals('second'));
+            }
+
+            final folders = orderLog
+                .map((entry) => entry.split('|').first)
+                .toSet();
+            expect(folders.length, equals(2));
+          } finally {
+            Directory.current = previousCwd;
+            if (tempRoot.existsSync()) {
+              await tempRoot.delete(recursive: true);
+            }
+          }
+        },
+      );
+
       test('BB-RUN-40: help runs env checks and prints setup instructions '
           '[2026-02-28]', () async {
         final tempRoot = await Directory.systemTemp.createTemp(
@@ -1217,6 +1284,19 @@ class _CapturingExecutor extends CommandExecutor {
   }
 }
 
+class _OrderTrackingExecutor extends CommandExecutor {
+  final String commandName;
+  final List<String> orderLog;
+
+  _OrderTrackingExecutor(this.commandName, this.orderLog);
+
+  @override
+  Future<ItemResult> execute(CommandContext context, CliArgs args) async {
+    orderLog.add('${context.name}|$commandName');
+    return ItemResult.success(path: context.path, name: context.name);
+  }
+}
+
 /// Multi-command execute tool for testing define resolution.
 const _singleExecuteTool = ToolDefinition(
   name: 'testtool',
@@ -1228,6 +1308,30 @@ const _singleExecuteTool = ToolDefinition(
     CommandDefinition(
       name: 'execute',
       description: 'Execute command',
+      requiresTraversal: true,
+      supportsProjectTraversal: true,
+      worksWithNatures: {DartProjectFolder},
+    ),
+  ],
+);
+
+const _twoTraversalCommandsTool = ToolDefinition(
+  name: 'ordertool',
+  description: 'Test tool for traversal order',
+  version: '1.0.0',
+  mode: ToolMode.multiCommand,
+  features: NavigationFeatures.projectTool,
+  commands: [
+    CommandDefinition(
+      name: 'first',
+      description: 'First command',
+      requiresTraversal: true,
+      supportsProjectTraversal: true,
+      worksWithNatures: {DartProjectFolder},
+    ),
+    CommandDefinition(
+      name: 'second',
+      description: 'Second command',
       requiresTraversal: true,
       supportsProjectTraversal: true,
       worksWithNatures: {DartProjectFolder},
