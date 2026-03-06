@@ -220,12 +220,14 @@ class ToolRunner {
     }
 
     final doctorRequested = _isDoctorRequested(cliArgs);
+    final bypassRequiredEnvironmentChecks =
+        !doctorRequested && _isRequiredEnvironmentCheckBypassed();
     final shouldValidateEnvironment =
         doctorRequested ||
         cliArgs.help ||
         (!cliArgs.version && !cliArgs.positionalArgs.contains('version'));
 
-    if (shouldValidateEnvironment) {
+    if (shouldValidateEnvironment && !bypassRequiredEnvironmentChecks) {
       final checks = _runRequiredEnvironmentChecks();
       if (checks.hasIssues) {
         _printRequirementIssues(checks);
@@ -1674,6 +1676,16 @@ Options:
       return true;
     }
     return false;
+  }
+
+  bool _isRequiredEnvironmentCheckBypassed() {
+    final raw = Platform.environment['TOM_BOOTSTRAP_ALLOW_MISSING_SETUP'];
+    if (raw == null) return false;
+    final normalized = raw.trim().toLowerCase();
+    return normalized == '1' ||
+        normalized == 'true' ||
+        normalized == 'yes' ||
+        normalized == 'on';
   }
 
   void _printRequirementIssues(_RequirementCheckResult result) {
