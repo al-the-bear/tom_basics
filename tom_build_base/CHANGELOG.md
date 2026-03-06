@@ -1,3 +1,9 @@
+## 2.6.12
+
+### Fixed
+
+- **Bootstrap environment bypass** — `TOM_BOOTSTRAP_ALLOW_MISSING_SETUP=1` environment variable now correctly bypasses `required-environment` checks in `ToolRunner.run()`. This allows `bootstrap_binaries.sh` to run the versioner step even when optional binaries (astgen, reflector) are not yet installed. The `:doctor` command always runs full checks regardless of the bypass.
+
 ## 2.6.6
 
 ### Fixed
