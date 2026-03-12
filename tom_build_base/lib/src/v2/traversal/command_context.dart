@@ -36,8 +36,10 @@ class CommandContext {
   /// Folder name.
   String get name => fsFolder.name;
 
-  /// Relative path from execution root.
-  String get relativePath => p.relative(path, from: executionRoot);
+  /// Relative path from execution root (always uses forward slashes for
+  /// consistent display across platforms).
+  String get relativePath =>
+      p.relative(path, from: executionRoot).replaceAll(r'\', '/');
 
   /// Check if folder has a specific nature.
   bool hasNature<T extends RunFolder>() => natures.whereType<T>().isNotEmpty;

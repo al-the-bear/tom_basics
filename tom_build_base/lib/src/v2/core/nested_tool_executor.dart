@@ -59,17 +59,24 @@ class NestedToolExecutor extends CommandExecutor {
 
     final stdout = result.stdout.toString().trim();
     final stderr = result.stderr.toString().trim();
+    final failed = result.exitCode != 0;
+    final combined = '${stdout.toLowerCase()}\n${stderr.toLowerCase()}';
+    final hasSignalWords = combined.contains('error') ||
+        combined.contains('warn') ||
+        combined.contains('fail');
 
-    if (stdout.isNotEmpty) {
-      // ignore: avoid_print
-      print(stdout);
-    }
-    if (stderr.isNotEmpty) {
-      // ignore: avoid_print
-      print(stderr);
+    if (args.verbose || failed || hasSignalWords) {
+      if (stdout.isNotEmpty) {
+        // ignore: avoid_print
+        print(stdout);
+      }
+      if (stderr.isNotEmpty) {
+        // ignore: avoid_print
+        print(stderr);
+      }
     }
 
-    if (result.exitCode == 0) {
+    if (!failed) {
       return ItemResult.success(path: context.path, name: context.name);
     } else {
       final resolved = resolveBinary(binary);
