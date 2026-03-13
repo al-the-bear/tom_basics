@@ -53,6 +53,9 @@ class WorkspaceNavigationArgs {
   /// Sort projects in dependency build order.
   final bool buildOrder;
 
+  /// Exclude `dev_dependencies` from build-order sorting.
+  final bool excludeDev;
+
   /// Specific project(s) to run on.
   final String? project;
 
@@ -114,6 +117,7 @@ class WorkspaceNavigationArgs {
     this.recursive = false,
     this.recursiveExplicitlySet = false,
     this.buildOrder = false,
+    this.excludeDev = false,
     this.project,
     this.root,
     this.bareRoot = false,
@@ -171,6 +175,7 @@ class WorkspaceNavigationArgs {
       recursive: effectiveRecursive,
       recursiveExplicitlySet: recursiveExplicitlySet,
       buildOrder: needsScanDefault || buildOrder,
+      excludeDev: excludeDev,
       project: project,
       root: root,
       bareRoot: bareRoot,
@@ -193,6 +198,7 @@ class WorkspaceNavigationArgs {
     bool? recursive,
     bool? recursiveExplicitlySet,
     bool? buildOrder,
+    bool? excludeDev,
     String? project,
     String? root,
     bool? bareRoot,
@@ -213,6 +219,7 @@ class WorkspaceNavigationArgs {
       recursiveExplicitlySet:
           recursiveExplicitlySet ?? this.recursiveExplicitlySet,
       buildOrder: buildOrder ?? this.buildOrder,
+      excludeDev: excludeDev ?? this.excludeDev,
       project: project ?? this.project,
       root: root ?? this.root,
       bareRoot: bareRoot ?? this.bareRoot,
@@ -258,6 +265,9 @@ class WorkspaceNavigationArgs {
     if (buildOrder && !suppress.contains('b')) {
       args.add('--build-order');
     }
+    if (excludeDev) {
+      args.add('--exclude-dev');
+    }
     if (project != null && !suppress.contains('p')) {
       args.addAll(['--project', project!]);
     }
@@ -302,7 +312,8 @@ class WorkspaceNavigationArgs {
 /// Add standard navigation options to an [ArgParser].
 ///
 /// Adds: `-s`, `-r`, `-b`, `-p`, `-R`, `-w`, `-i`, `-o`, `-T`, `-x`,
-/// `--exclude-projects`, `--recursion-exclude`, `-m`, `--no-skip`, `--modes`.
+/// `--exclude-projects`, `--recursion-exclude`, `--exclude-dev`,
+/// `-m`, `--no-skip`, `--modes`.
 void addNavigationOptions(ArgParser parser) {
   parser.addOption('scan', abbr: 's', help: 'Scan directory for projects');
   parser.addFlag(
@@ -320,6 +331,11 @@ void addNavigationOptions(ArgParser parser) {
     help:
         'Sort projects in dependency build order '
         '(use --no-build-order to disable)',
+  );
+  parser.addFlag(
+    'exclude-dev',
+    negatable: false,
+    help: 'Exclude dev_dependencies from build-order sorting',
   );
   parser.addOption(
     'project',
@@ -386,8 +402,7 @@ void addNavigationOptions(ArgParser parser) {
     'modes',
     help:
         'Active modes for config processing '
-        '(comma-separated, e.g. DEV,CI). '
-        'Overrides tom_workspace.yaml default.',
+        '(comma-separated, e.g. DEV,CI).',
   );
 }
 
@@ -483,6 +498,7 @@ WorkspaceNavigationArgs parseNavigationArgs(
     recursive: results['recursive'] as bool? ?? false,
     recursiveExplicitlySet: recursiveExplicitlySet,
     buildOrder: results['build-order'] as bool? ?? false,
+    excludeDev: results['exclude-dev'] as bool? ?? false,
     project: results['project'] as String?,
     root: root,
     bareRoot: bareRoot,

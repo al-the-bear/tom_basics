@@ -5,9 +5,6 @@ import 'package:path/path.dart' as p;
 /// Filename for the workspace-level buildkit configuration.
 const kBuildkitMasterYaml = 'buildkit_master.yaml';
 
-/// Filename for the Tom workspace configuration.
-const kTomWorkspaceYaml = 'tom_workspace.yaml';
-
 /// Filename for the VS Code workspace file.
 const kTomCodeWorkspace = 'tom.code-workspace';
 
@@ -37,7 +34,7 @@ const kAlwaysSkipDirectories = <String>{
 
 /// Find the workspace root by traversing upwards looking for workspace markers.
 ///
-/// Returns the directory containing `buildkit_master.yaml`, `tom_workspace.yaml`,
+/// Returns the directory containing `buildkit_master.yaml`
 /// or `tom.code-workspace`, or [startPath] if none is found.
 String findWorkspaceRoot(String startPath) {
   var current = p.normalize(p.absolute(startPath));
@@ -45,7 +42,6 @@ String findWorkspaceRoot(String startPath) {
 
   while (current != root) {
     if (File(p.join(current, kBuildkitMasterYaml)).existsSync() ||
-        File(p.join(current, kTomWorkspaceYaml)).existsSync() ||
         File(p.join(current, kTomCodeWorkspace)).existsSync()) {
       return current;
     }
@@ -69,7 +65,7 @@ bool isWorkspaceBoundary(String dirPath) {
 /// - Skips hidden directories (names starting with `.`)
 /// - Skips known non-project directories (build, node_modules, etc.)
 /// - Skips `zom_*` test folders (unless [includeTestProjects] is true)
-/// - Stops at workspace boundaries (`buildkit_master.yaml`, `tom_workspace.yaml`)
+/// - Stops at workspace boundaries (`buildkit_master.yaml`)
 /// - Respects skip markers (`tom_skip.yaml`, `buildkit_skip.yaml`)
 ///
 /// When [recursive] is false, only checks immediate subdirectories and the
@@ -141,8 +137,7 @@ void _scanRecursive(
 
   // Stop at workspace boundaries (sub-workspaces should be processed separately)
   if (!isRoot) {
-    if (File(p.join(dir.path, kBuildkitMasterYaml)).existsSync() ||
-        File(p.join(dir.path, kTomWorkspaceYaml)).existsSync()) {
+    if (File(p.join(dir.path, kBuildkitMasterYaml)).existsSync()) {
       if (verbose) {
         stderr.writeln('Skipping subworkspace: $name');
       }

@@ -147,7 +147,11 @@ abstract class BuildBase {
             .map((f) => f.path)
             .toList();
         final globalOrder =
-            BuildOrderComputer.computeBuildOrder(allDartPaths) ?? [];
+            BuildOrderComputer.computeBuildOrder(
+              allDartPaths,
+              includeDev: pi.includeDevDependencies,
+            ) ??
+            [];
         ordered = sorter.sortByBuildOrder(contexts, (c) => c.path, globalOrder);
       default:
         ordered = contexts;

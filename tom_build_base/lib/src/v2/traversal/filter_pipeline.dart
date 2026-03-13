@@ -3,6 +3,7 @@ import 'package:path/path.dart' as p;
 
 import '../folder/fs_folder.dart';
 import '../folder/natures/buildkit_folder.dart';
+import '../folder/natures/dart_project_folder.dart';
 import '../folder/natures/git_folder.dart';
 import 'traversal_info.dart';
 import 'repository_id_lookup.dart';
@@ -81,12 +82,20 @@ class FilterPipeline {
 
     // 2. Module filter (--modules, -m)
     if (info.modules.isNotEmpty) {
-      result = _applyModulesFilter(result, info.modules);
+      result = _applyModulesFilter(
+        result,
+        info.modules,
+        executionRoot: info.executionRoot,
+      );
     }
 
     // 3. Skip modules filter (--skip-modules)
     if (info.skipModules.isNotEmpty) {
-      result = _applySkipModulesFilter(result, info.skipModules);
+      result = _applySkipModulesFilter(
+        result,
+        info.skipModules,
+        executionRoot: info.executionRoot,
+      );
     }
 
     // 4. Test project filter
@@ -235,6 +244,15 @@ class FilterPipeline {
   /// Check if folder has a matching project name in tom_project.yaml or buildkit.yaml.
   bool _matchesProjectName(FsFolder folder, List<String> patterns) {
     for (final nature in folder.natures) {
+      // Check DartProjectFolder (pubspec.yaml name)
+      if (nature is DartProjectFolder && nature.projectName.isNotEmpty) {
+        final name = nature.projectName.toLowerCase();
+        for (final pattern in patterns) {
+          if (name == pattern.toLowerCase()) {
+            return true;
+          }
+        }
+      }
       // Check TomBuildFolder (tom_project.yaml)
       if (nature is TomBuildFolder && nature.projectName != null) {
         final name = nature.projectName!.toLowerCase();
@@ -264,10 +282,14 @@ class FilterPipeline {
   List<FsFolder> _applyModulesFilter(
     List<FsFolder> folders,
     List<String> modules,
+    {required String executionRoot}
   ) {
     // Resolve IDs to names
     final resolvedModules = modules
-        .map(RepositoryIdLookup.resolveToName)
+        .map((x) => RepositoryIdLookup.resolveToName(
+              x,
+              executionRoot: executionRoot,
+            ))
         .toList();
 
     return folders.where((f) {
@@ -299,10 +321,14 @@ class FilterPipeline {
   List<FsFolder> _applySkipModulesFilter(
     List<FsFolder> folders,
     List<String> skipModules,
+    {required String executionRoot}
   ) {
     // Resolve IDs to names
     final resolvedModules = skipModules
-        .map(RepositoryIdLookup.resolveToName)
+        .map((x) => RepositoryIdLookup.resolveToName(
+              x,
+              executionRoot: executionRoot,
+            ))
         .toList();
 
     return folders.where((f) {

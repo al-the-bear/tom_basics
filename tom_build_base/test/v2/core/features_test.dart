@@ -514,7 +514,7 @@ testtool:
       executable: true
       core:
         - commands:
-            - "shell echo hello"
+          - "print hello"
 ''');
 
         final config = ToolPipelineConfigLoader.load(
@@ -552,13 +552,13 @@ testtool:
       executable: true
       precore:
         - commands:
-            - "shell echo precore"
+            - "print precore"
       core:
         - commands:
-            - "shell echo core"
+            - "print core"
       postcore:
         - commands:
-            - "shell echo postcore"
+            - "print postcore"
 ''');
 
           final config = ToolPipelineConfigLoader.load(
@@ -584,13 +584,13 @@ testtool:
       'BB-PIP-03: PipelineCommandPrefixParser parses shell prefix [2026-06-15]',
       () {
         final result = PipelineCommandPrefixParser.parse(
-          'shell echo hello',
+          'shell pwd',
           toolPrefix: 'testtool',
         );
 
         expect(result, isNotNull);
         expect(result!.prefix, equals(PipelineCommandPrefix.shell));
-        expect(result.body, equals('echo hello'));
+        expect(result.body, equals('pwd'));
       },
     );
 
@@ -633,6 +633,20 @@ testtool:
         expect(result, isNotNull);
         expect(result!.prefix, equals(PipelineCommandPrefix.stdin));
         expect(result.body, equals('cat > output.txt'));
+      },
+    );
+
+    test(
+      'BB-PIP-09: PipelineCommandPrefixParser parses print prefix [2026-03-11]',
+      () {
+        final result = PipelineCommandPrefixParser.parse(
+          'print build finished',
+          toolPrefix: 'testtool',
+        );
+
+        expect(result, isNotNull);
+        expect(result!.prefix, equals(PipelineCommandPrefix.print));
+        expect(result.body, equals('build finished'));
       },
     );
 

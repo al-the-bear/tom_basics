@@ -159,6 +159,10 @@ const List<OptionDefinition> projectTraversalOptions = [
     description: 'Sort by dependency order (default)',
   ),
   OptionDefinition.flag(
+    name: 'exclude-dev',
+    description: 'Exclude dev_dependencies from build-order sorting',
+  ),
+  OptionDefinition.flag(
     name: 'no-skip',
     description: 'Ignore skip markers (tom_skip.yaml, *_skip.yaml)',
   ),

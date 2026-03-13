@@ -53,9 +53,9 @@ buildkit:
 # project/buildkit.yaml
 compiler:
   compiles:
-    - commandline:
-        - mkdir -p @[binaryPath]/${target-platform-vs}
-        - dart compile exe ${file} -o @[binaryPath]/${target-platform-vs}/${file.name}
+    - pipeline:
+        - shell mkdir -p @[binaryPath]/${target-platform-vs}
+        - shell dart compile exe ${file} -o @[binaryPath]/${target-platform-vs}/${file.name}
 ```
 
 **Notes:**
@@ -70,9 +70,9 @@ Tool placeholders are defined by the tool itself and resolved after mode process
 # project/buildkit.yaml
 compiler:
   compiles:
-    - commandline:
-        - echo "Building in @{project-path}"
-        - echo "Tool version: @{tool-version}"
+    - pipeline:
+        - shell echo "Building in @{project-path}"
+        - shell echo "Tool version: @{tool-version}"
 ```
 
 **Example tool placeholders:**
@@ -134,7 +134,7 @@ buildkit:
     build:
       core:
         - commands:
-            - "shell echo Building on %{current-platform}"
+            - "print Building on %{current-platform}"
             - "shell-scan echo Processing %{folder.name} at %{folder}"
             - |
               stdin dcli --stdin
@@ -159,9 +159,9 @@ Environment variables from the shell environment. Two syntaxes are supported:
 ```yaml
 compiler:
   compiles:
-    - commandline:
-        - mkdir -p $HOME/.tom/bin      # $HOME followed by /
-        - echo $[USER]_backup          # $[USER] allows _backup suffix
+    - pipeline:
+        - shell mkdir -p $HOME/.tom/bin      # $HOME followed by /
+        - shell echo $[USER]_backup          # $[USER] allows _backup suffix
 ```
 
 ---
@@ -380,9 +380,9 @@ compiler:
 # project/buildkit.yaml
 compiler:
   compiles:
-    - commandline:
-        - mkdir -p @[binaryPath]/${target-platform-vs}
-        - dart compile exe ${file} -o @[binaryPath]/${target-platform-vs}/${file.name}
+    - pipeline:
+        - shell mkdir -p @[binaryPath]/${target-platform-vs}
+        - shell dart compile exe ${file} -o @[binaryPath]/${target-platform-vs}/${file.name}
       files:
         - bin/my_tool.dart
       platforms: [darwin-arm64, linux-x64, linux-arm64]

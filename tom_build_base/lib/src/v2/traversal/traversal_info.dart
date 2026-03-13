@@ -61,6 +61,11 @@ class ProjectTraversalInfo extends BaseTraversalInfo {
   /// Sort by dependency order (based on pubspec.yaml dependencies).
   final bool buildOrder;
 
+  /// Include `dev_dependencies` when computing dependency build order.
+  ///
+  /// Enabled by default. Use `--exclude-dev` to opt out.
+  final bool includeDevDependencies;
+
   /// When true, ignore workspace boundaries and *_skip.yaml markers.
   /// Activated by `--no-skip`.
   final bool ignoreSkipMarkers;
@@ -76,6 +81,7 @@ class ProjectTraversalInfo extends BaseTraversalInfo {
     this.projectPatterns = const [],
     this.excludeProjects = const [],
     this.buildOrder = true,
+    this.includeDevDependencies = true,
     this.ignoreSkipMarkers = false,
   });
 
@@ -91,6 +97,7 @@ class ProjectTraversalInfo extends BaseTraversalInfo {
     List<String>? projectPatterns,
     List<String>? excludeProjects,
     bool? buildOrder,
+    bool? includeDevDependencies,
     bool? ignoreSkipMarkers,
   }) {
     return ProjectTraversalInfo(
@@ -104,6 +111,8 @@ class ProjectTraversalInfo extends BaseTraversalInfo {
       projectPatterns: projectPatterns ?? this.projectPatterns,
       excludeProjects: excludeProjects ?? this.excludeProjects,
       buildOrder: buildOrder ?? this.buildOrder,
+      includeDevDependencies:
+          includeDevDependencies ?? this.includeDevDependencies,
       ignoreSkipMarkers: ignoreSkipMarkers ?? this.ignoreSkipMarkers,
     );
   }

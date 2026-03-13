@@ -156,8 +156,7 @@ class FolderScanner {
   /// - null if no skip marker found
   _SkipType? _getSkipMarker(String dirPath) {
     // Workspace boundaries — separate workspaces, stop descending
-    if (File(p.join(dirPath, '${toolBasename}_master.yaml')).existsSync() ||
-        File(p.join(dirPath, 'tom_workspace.yaml')).existsSync()) {
+    if (File(p.join(dirPath, '${toolBasename}_master.yaml')).existsSync()) {
       return _SkipType.workspaceBoundary;
     }
     // Global skip file — blocks all tools

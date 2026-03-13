@@ -6,7 +6,6 @@ import 'package:path/path.dart' as p;
 ///
 /// An **anchor** is a directory that marks a workspace or repository root:
 /// - `.git` directory or file (git repo or submodule)
-/// - `tom_workspace.yaml` (Tom workspace root)
 /// - `buildkit_master.yaml` (buildkit workspace root)
 ///
 /// This is useful for finding the appropriate workspace root when a command
@@ -32,7 +31,6 @@ class AnchorWalker {
   /// Default anchor markers checked for every directory.
   static const defaultMarkers = [
     '.git', // Git repository or submodule
-    'tom_workspace.yaml', // Tom workspace root
     'buildkit_master.yaml', // Buildkit workspace root
   ];
 

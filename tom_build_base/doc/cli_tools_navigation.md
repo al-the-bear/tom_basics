@@ -112,7 +112,8 @@ astgen -i                    # Inner-first git mode
 |--------|------|-------------|
 | `--scan=<path>` | `-s` | Scan directory for projects |
 | `--recursive` | `-r` | Scan directories recursively |
-| `--build-order` | `-b` | Sort projects in dependency build order |
+| `--build-order` | `-b` | Sort projects in dependency build order (includes `dev_dependencies` by default) |
+| `--exclude-dev` | | Exclude `dev_dependencies` from build-order sorting |
 | `--project=<pattern>` | `-p` | Project(s) to run (comma-separated, globs supported) |
 
 ### Workspace Root
@@ -121,7 +122,7 @@ astgen -i                    # Inner-first git mode
 |--------|------|-------------|
 | `--root` | `-R` | Bare: auto-detect workspace root |
 | `--root=<path>` | `-R` | Use specified path as workspace root |
-| `--workspace-recursion` | `-w` | Shell out to sub-workspaces instead of skipping |
+| `--workspace-recursion` | `-w` | Shell out to sub-workspaces for mixed command+pipeline invocations (pipeline-only invocations recurse by default) |
 
 **Workspace detection** looks for these files (in order):
 - `buildkit_master.yaml`

@@ -19,13 +19,13 @@ void main() {
 
     test('BB-PLC-2: parses shell prefix', () {
       final parsed = PipelineCommandPrefixParser.parse(
-        'shell echo hello',
+        'shell pwd',
         toolPrefix: 'buildkit',
       );
 
       expect(parsed, isNotNull);
       expect(parsed!.prefix, PipelineCommandPrefix.shell);
-      expect(parsed.body, 'echo hello');
+      expect(parsed.body, 'pwd');
     });
 
     test('BB-PLC-3: parses shell-scan prefix', () {
@@ -46,6 +46,17 @@ void main() {
       );
 
       expect(parsed, isNull);
+    });
+
+    test('BB-PLC-10: parses print prefix', () {
+      final parsed = PipelineCommandPrefixParser.parse(
+        'print hello world',
+        toolPrefix: 'buildkit',
+      );
+
+      expect(parsed, isNotNull);
+      expect(parsed!.prefix, PipelineCommandPrefix.print);
+      expect(parsed.body, 'hello world');
     });
   });
 
@@ -138,7 +149,7 @@ required-environment:
       executable: true
       core:
         - commands:
-            - shell echo setup
+            - print setup
             - shell-scan dart pub get
             - buildkit :versioner --project tom_build_base
 ''');
@@ -155,7 +166,7 @@ required-environment:
         expect(setup.core.first.commands, hasLength(3));
         expect(
           setup.core.first.commands[0].prefix,
-          PipelineCommandPrefix.shell,
+          PipelineCommandPrefix.print,
         );
         expect(
           setup.core.first.commands[1].prefix,
@@ -208,7 +219,7 @@ buildkit:
       executable: true
       core:
         - commands:
-            - shell echo ci
+            - print ci
 ''');
 
       final loaded = ToolPipelineConfigLoader.load(
@@ -220,7 +231,7 @@ buildkit:
       expect(loaded!.pipelines.containsKey('ci'), isTrue);
       expect(
         loaded.pipelines['ci']!.core.first.commands.first.prefix,
-        PipelineCommandPrefix.shell,
+        PipelineCommandPrefix.print,
       );
     });
   });

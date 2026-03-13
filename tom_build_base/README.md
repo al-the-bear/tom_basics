@@ -10,9 +10,11 @@ This package provides the foundation that Tom CLI build tools (like `buildkit`, 
 - **Automatic help generation** — `--help`, `help <command>`, `help <topic>` with consistent formatting
 - **Built-in traversal** — Project and git traversal with folder nature detection
 - **Pipelines, macros, defines** — Multi-command tools get pipelines, runtime macros, and persistent defines automatically
+- **Pipeline print prefix** — `print <message>` emits one resolved message without shell execution noise
 - **Nested tool wiring** — Declarative integration of external tool binaries
 - **Configuration loading** — `TomBuildConfig` for reading `buildkit.yaml` and `buildkit_master.yaml`
 - **YAML utilities** — `yamlToMap()`, `yamlListToList()`, `toStringList()` for converting YAML nodes
+- **Cross-platform symlink API** — `MkLinkExecutor` and dcli-backed `createSymLink()` integration for tool commands
 
 ## Installation
 
@@ -79,6 +81,16 @@ mytool:                       # tool-specific workspace defaults
 mytool:
   verbose: true               # overrides workspace default
 ```
+
+## Pipeline Prefixes
+
+Pipeline commands support these execution prefixes:
+
+- `shell <cmd>` — execute a shell command
+- `shell-scan <cmd>` — execute once per traversed project
+- `stdin <cmd>` — execute with multiline stdin content
+- `print <msg>` — print exactly once after placeholder resolution
+- `{TOOL} <cmd>` — delegate to tool command execution
 
 ## Documentation
 

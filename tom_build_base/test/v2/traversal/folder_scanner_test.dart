@@ -197,23 +197,6 @@ void main() {
       file.writeAsStringSync(content);
     }
 
-    test('BB-V2-SCN-WS-1: stops at nested workspace (tom_workspace.yaml)', () async {
-      createDir('project');
-      createFile('project/pubspec.yaml');
-      createDir('nested_workspace/project');
-      createFile('nested_workspace/tom_workspace.yaml');
-      createFile('nested_workspace/project/pubspec.yaml');
-
-      final scanner = FolderScanner();
-      final results = await scanner.scan(tempPath, recursive: true);
-
-      final paths = results.map((f) => p.basename(f.path)).toList();
-
-      expect(paths, contains('project'));
-      expect(paths, isNot(contains('nested_workspace')),
-          reason: 'Nested workspace should be skipped');
-    });
-
     test('BB-V2-SCN-WS-2: stops at tool master config (buildkit_master.yaml)', () async {
       createDir('project');
       createFile('project/pubspec.yaml');

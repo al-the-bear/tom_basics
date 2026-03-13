@@ -89,6 +89,7 @@ class CliArgs {
 
   // Build options
   final bool buildOrder;
+  final bool excludeDev;
   final bool workspaceRecursion;
 
   // Common options
@@ -138,6 +139,7 @@ class CliArgs {
     this.outerFirstGit = false,
     this.topRepo = false,
     this.buildOrder = true,
+    this.excludeDev = false,
     this.workspaceRecursion = false,
     this.verbose = false,
     this.dryRun = false,
@@ -217,6 +219,7 @@ class CliArgs {
       recursionExclude: mergedRecursionExclude,
       projectPatterns: projectPatterns,
       buildOrder: buildOrder,
+      includeDevDependencies: !excludeDev,
       includeTestProjects: includeTestProjects,
       testProjectsOnly: testProjectsOnly,
       ignoreSkipMarkers: noSkip,
@@ -591,6 +594,9 @@ class CliArgParser {
       case 'b':
         state.buildOrder = true;
         break;
+      case 'exclude-dev':
+        state.excludeDev = true;
+        break;
       case 'workspace-recursion':
         state.workspaceRecursion = true;
         break;
@@ -668,6 +674,7 @@ class CliArgParser {
       'not-recursive',
       'root', 'R',
       'build-order', 'b',
+      'exclude-dev',
       'workspace-recursion',
       'inner-first-git', 'i',
       'outer-first-git', 'o',
@@ -889,6 +896,7 @@ class _ParseState {
   bool outerFirstGit = false;
   bool topRepo = false;
   bool buildOrder = true;
+  bool excludeDev = false;
   bool workspaceRecursion = false;
   bool verbose = false;
   bool dryRun = false;
@@ -930,6 +938,7 @@ class _ParseState {
       outerFirstGit: outerFirstGit,
       topRepo: topRepo,
       buildOrder: buildOrder,
+      excludeDev: excludeDev,
       workspaceRecursion: workspaceRecursion,
       verbose: verbose,
       dryRun: dryRun,

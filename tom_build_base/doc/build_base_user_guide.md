@@ -305,7 +305,7 @@ All tools automatically include these options (from `commonOptions`):
 | `--nested` | | flag | Run in nested mode (skip traversal) |
 | `--dump-definitions` | | flag | Dump tool definition as YAML |
 
-Tools with `projectTraversal` enabled also get `projectTraversalOptions` (scan, recursive, build-order, project, etc.). Tools with `gitTraversal` enabled get `gitTraversalOptions` (inner-first-git, outer-first-git, top-repo, modules, etc.).
+Tools with `projectTraversal` enabled also get `projectTraversalOptions` (scan, recursive, build-order, exclude-dev, project, etc.). `--build-order` includes `dev_dependencies` by default; use `--exclude-dev` to opt out. Tools with `gitTraversal` enabled get `gitTraversalOptions` (inner-first-git, outer-first-git, top-repo, modules, etc.).
 
 ### Help Topics
 

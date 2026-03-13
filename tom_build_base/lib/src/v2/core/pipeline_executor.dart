@@ -32,6 +32,19 @@ class PipelineOptionResolver {
     if (cliArgs.excludeProjects.isNotEmpty) return true;
     return false;
   }
+
+  static bool shouldDelegateToNestedWorkspaces(
+    CliArgs cliArgs, {
+    required bool pipelineOnlyInvocation,
+  }) {
+    if (hasDisqualifyingTraversalOptions(cliArgs)) {
+      return false;
+    }
+    if (cliArgs.workspaceRecursion) {
+      return true;
+    }
+    return pipelineOnlyInvocation;
+  }
 }
 
 class ToolPipelineExecutor {
@@ -68,6 +81,15 @@ class ToolPipelineExecutor {
       masterFileName: '${tool.name}_master.yaml',
     );
     if (nestedWorkspaces.isEmpty) return true;
+
+    final shouldDelegate =
+        PipelineOptionResolver.shouldDelegateToNestedWorkspaces(
+          cliArgs,
+          pipelineOnlyInvocation: cliArgs.commands.isEmpty,
+        );
+    if (!shouldDelegate) {
+      return true;
+    }
 
     final disqualified =
         PipelineOptionResolver.hasDisqualifyingTraversalOptions(cliArgs);
@@ -203,6 +225,8 @@ class ToolPipelineExecutor {
         return _runShellScan(command.body, workspaceDir, cliArgs);
       case PipelineCommandPrefix.stdin:
         return _runStdin(command.body, workspaceDir, cliArgs.dryRun);
+      case PipelineCommandPrefix.print:
+        return _runPrint(command.body, workspaceDir);
       case PipelineCommandPrefix.tool:
         return _runToolCommand(
           command.body,
@@ -396,6 +420,17 @@ class ToolPipelineExecutor {
     return exitCode == 0;
   }
 
+  Future<bool> _runPrint(String body, String workspaceDir) async {
+    final ctx = _workspacePlaceholderContext(workspaceDir);
+    final message = ExecutePlaceholderResolver.resolveCommand(
+      body,
+      ctx,
+      skipUnknown: true,
+    );
+    output.writeln(message);
+    return true;
+  }
+
   Map<String, String> _invocationOptions(CliArgs cliArgs) {
     final map = <String, String>{
       if (cliArgs.verbose) 'verbose': 'true',
@@ -515,8 +550,7 @@ class ToolPipelineExecutor {
         for (final entity in dir.listSync(followLinks: false)) {
           if (entity is! Directory) continue;
           final name = p.basename(entity.path);
-          if (name.startsWith('.') ||
-              _nestedWsSkipNames.contains(name)) {
+          if (name.startsWith('.') || _nestedWsSkipNames.contains(name)) {
             continue;
           }
 

@@ -1,3 +1,55 @@
+## 2.6.21
+
+### Fixed
+
+- **Nested mode executes per-project logic** — `_runNestedMode` and `_runNestedCommand` now create a `CommandContext` from CWD and call `execute()` instead of the no-op `executeWithoutTraversal()`. This fixes nested tools (e.g., d4rtgen called via buildkit) silently doing nothing.
+
+## 2.6.20
+
+### Fixed
+
+- **Cross-platform path display** — `CommandContext.relativePath` now always uses forward slashes, preventing backslash stripping by console markdown on Windows.
+
+## 2.6.19
+
+### Added
+
+- **`ItemResult.commandName`** — Optional field to track which command produced each result (e.g., `'runner'`, `'compiler'`). Populated by `ToolRunner` when executing command chains.
+
+### Changed
+
+- **Compact tool output** — `ToolRunner` now always prints one-line-per-command status (`  -> :cmd message`) instead of verbose multi-line output. Project headers (`>>> path`) are always shown.
+- **Nested tool output buffering** — `NestedToolExecutor` buffers subprocess stdout/stderr and only displays on error, signal words, or `--verbose` mode.
+
+## 2.6.18
+
+### Changed
+
+- **Project-name alias matching** — Project resolution and filtering now treat `pubspec.yaml` `name` as a first-class project-name alias alongside `tom_project.yaml` and `buildkit.yaml` metadata.
+- **Workspace boundary markers** — `tom_workspace.yaml` is no longer used as a workspace boundary marker; workspace boundary detection now relies on `buildkit_master.yaml`.
+
+## 2.6.14
+
+### Added
+
+- **`print` pipeline prefix** — Added a dedicated `print <message>` command prefix for pipelines to emit resolved messages without shell invocation.
+- **Mklink executor API** — Added dcli-backed symlink execution support (`MkLinkExecutor`) for reusable cross-platform link creation in tool implementations.
+
+### Changed
+
+- **Pipeline help examples** — Updated built-in help topic examples to use `print` for message output instead of shell-based echo commands.
+
+## 2.6.13
+
+### Changed
+
+- **Repository ID lookup source** — `RepositoryIdLookup` now reads `repository_id` and `name` from `tom_repository.yaml` files in the workspace instead of using a hardcoded ID map.
+- **Module filter resolution** — `--modules` and `--skip-modules` resolution now uses workspace metadata (`tom_repository.yaml`) via execution-root-aware lookup.
+
+### Added
+
+- **Lookup cache controls** — Added `RepositoryIdLookup.clearCache()` for test/runtime cache invalidation when repository metadata changes.
+
 ## 2.6.12
 
 ### Fixed

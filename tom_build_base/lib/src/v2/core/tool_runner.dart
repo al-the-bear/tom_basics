@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:yaml/yaml.dart';
@@ -86,6 +87,9 @@ class ItemResult {
   /// Item name.
   final String name;
 
+  /// The command that produced this result (e.g. 'runner', 'compiler').
+  final String? commandName;
+
   /// Whether processing succeeded.
   final bool success;
 
@@ -98,6 +102,7 @@ class ItemResult {
   const ItemResult({
     required this.path,
     required this.name,
+    this.commandName,
     this.success = true,
     this.message,
     this.error,
@@ -106,6 +111,7 @@ class ItemResult {
   const ItemResult.success({
     required this.path,
     required this.name,
+    this.commandName,
     this.message,
   }) : success = true,
        error = null;
@@ -113,6 +119,7 @@ class ItemResult {
   const ItemResult.failure({
     required this.path,
     required this.name,
+    this.commandName,
     required this.error,
   }) : success = false,
        message = null;
@@ -198,11 +205,92 @@ class ToolRunner {
     }).toList();
   }
 
+  static String _formatMs(Duration d) => '${d.inMilliseconds}ms';
+
+  String _formatCommandStatus(ItemResult result) {
+    if (result.success) {
+      final message = result.message?.trim();
+      if (message != null && message.isNotEmpty) return message;
+      return 'ok';
+    }
+
+    final error = result.error?.trim();
+    if (error != null && error.isNotEmpty) {
+      return 'ERROR: $error';
+    }
+    return 'ERROR: failed';
+  }
+
+  Future<ItemResult> _executeItemGuarded({
+    required CommandContext context,
+    required String commandName,
+    required Future<ItemResult> Function() action,
+  }) async {
+    final completer = Completer<ItemResult>();
+
+    runZonedGuarded(() async {
+      try {
+        final result = await action();
+        if (!completer.isCompleted) {
+          completer.complete(result);
+        }
+      } catch (error, stackTrace) {
+        if (!completer.isCompleted) {
+          completer.complete(
+            ItemResult.failure(
+              path: context.path,
+              name: context.name,
+              error: 'Unhandled exception in :$commandName: $error',
+            ),
+          );
+        }
+        if (verbose) {
+          output.writeln('     STACK: $stackTrace');
+        }
+      }
+    }, (error, stackTrace) {
+      if (!completer.isCompleted) {
+        completer.complete(
+          ItemResult.failure(
+            path: context.path,
+            name: context.name,
+            error: 'Unhandled zone error in :$commandName: $error',
+          ),
+        );
+      }
+      if (verbose) {
+        output.writeln('     STACK: $stackTrace');
+      }
+    });
+
+    return completer.future;
+  }
+
+  void _printStartupTiming(String label, Duration phase, Duration total) {
+    output.writeln(
+      '[startup] $label: +${_formatMs(phase)} (total ${_formatMs(total)})',
+    );
+  }
+
   /// Run the tool with command-line arguments.
   Future<ToolResult> run(List<String> args) async {
+    final startupWatch = Stopwatch()..start();
+    var lastCheckpoint = Duration.zero;
+
+    Duration checkpoint() {
+      final now = startupWatch.elapsed;
+      lastCheckpoint = now;
+      return now;
+    }
+
+    Duration phaseSinceLast() {
+      return startupWatch.elapsed - lastCheckpoint;
+    }
+
     // Expand macros before parsing (loads persisted macros if needed)
     _loadPersistedMacros();
     final expandedArgs = expandMacros(args, _runtimeMacros);
+    final expandedAt = checkpoint();
 
     // Normalize legacy flags before parsing.
     final normalizedArgs = _normalizeArgs(expandedArgs);
@@ -210,6 +298,16 @@ class ToolRunner {
     // Parse arguments
     final parser = CliArgParser(toolDefinition: tool);
     final cliArgs = parser.parse(normalizedArgs);
+    final parsedAt = checkpoint();
+
+    if (cliArgs.verbose) {
+      _printStartupTiming('Load macros + expand args', expandedAt, expandedAt);
+      _printStartupTiming(
+        'Normalize + parse args',
+        parsedAt - expandedAt,
+        parsedAt,
+      );
+    }
 
     // --dump-definitions: serialize tool definition and exit immediately.
     // Intercepted before any wiring or traversal.
@@ -222,13 +320,22 @@ class ToolRunner {
     final doctorRequested = _isDoctorRequested(cliArgs);
     final bypassRequiredEnvironmentChecks =
         !doctorRequested && _isRequiredEnvironmentCheckBypassed();
-    final shouldValidateEnvironment =
-        doctorRequested ||
-        cliArgs.help ||
-        (!cliArgs.version && !cliArgs.positionalArgs.contains('version'));
+    final shouldValidateEnvironment = doctorRequested;
+
+    if (cliArgs.verbose) {
+      output.writeln(
+        '[startup] Required-environment checks: '
+        '${shouldValidateEnvironment && !bypassRequiredEnvironmentChecks ? 'enabled' : 'skipped'}',
+      );
+    }
 
     if (shouldValidateEnvironment && !bypassRequiredEnvironmentChecks) {
       final checks = _runRequiredEnvironmentChecks();
+      if (cliArgs.verbose) {
+        final phase = phaseSinceLast();
+        final total = checkpoint();
+        _printStartupTiming('Run required-environment checks', phase, total);
+      }
       if (checks.hasIssues) {
         _printRequirementIssues(checks);
       }
@@ -246,12 +353,22 @@ class ToolRunner {
 
     // --nested: skip wiring, skip traversal, run single-project in cwd.
     if (cliArgs.nested) {
+      if (cliArgs.verbose) {
+        final phase = phaseSinceLast();
+        final total = checkpoint();
+        _printStartupTiming('Enter nested mode', phase, total);
+      }
       return _runNestedMode(cliArgs);
     }
 
     // Lazy wiring: merge code + YAML defaults, query only needed tools.
     if (tool.hasWiring) {
       final wiringOk = await _lazyWireNestedTools(cliArgs);
+      if (cliArgs.verbose) {
+        final phase = phaseSinceLast();
+        final total = checkpoint();
+        _printStartupTiming('Lazy nested-tool wiring', phase, total);
+      }
       if (!wiringOk) {
         return const ToolResult.failure('Missing nested tool binaries');
       }
@@ -260,6 +377,11 @@ class ToolRunner {
     // Auto-inject master YAML help topics for multiCommand tools.
     if (_effectiveTool.mode == ToolMode.multiCommand) {
       _injectMasterYamlHelpTopics();
+      if (cliArgs.verbose) {
+        final phase = phaseSinceLast();
+        final total = checkpoint();
+        _printStartupTiming('Inject help topics', phase, total);
+      }
     }
 
     // Handle help (uses _effectiveTool which now includes wired commands)
@@ -361,7 +483,11 @@ class ToolRunner {
     if (resolved.any((entry) => !entry.cmd.requiresTraversal)) {
       final results = <ItemResult>[];
       for (final entry in resolved) {
-        final result = await _runWithTraversal(entry.executor, entry.cmd, cliArgs);
+        final result = await _runWithTraversal(
+          entry.executor,
+          entry.cmd,
+          cliArgs,
+        );
         results.addAll(result.itemResults);
         if (!result.success) return result;
       }
@@ -379,7 +505,11 @@ class ToolRunner {
     if (needsGitTraversal) {
       final results = <ItemResult>[];
       for (final entry in resolved) {
-        final result = await _runWithTraversal(entry.executor, entry.cmd, cliArgs);
+        final result = await _runWithTraversal(
+          entry.executor,
+          entry.cmd,
+          cliArgs,
+        );
         results.addAll(result.itemResults);
         if (!result.success) return result;
       }
@@ -407,11 +537,14 @@ class ToolRunner {
       verbose: verbose,
       worksWithNatures: const {FsFolder},
       run: (context) async {
-        final runnable = <({
-          CommandDefinition cmd,
-          CommandExecutor executor,
-          CliArgs resolvedArgs,
-        })>[];
+        final runnable =
+            <
+              ({
+                CommandDefinition cmd,
+                CommandExecutor executor,
+                CliArgs resolvedArgs,
+              })
+            >[];
 
         // Resolve args once per folder.
         final placeholderCtx = ExecutePlaceholderContext.fromCommandContext(
@@ -455,17 +588,30 @@ class ToolRunner {
 
         if (runnable.isEmpty) return true;
 
-        if (verbose) {
-          output.writeln('>>> ${context.relativePath}');
-        }
+        output.writeln('>>> ${context.relativePath}');
 
         for (final runEntry in runnable) {
-          final result = await runEntry.executor.execute(
-            context,
-            runEntry.resolvedArgs,
+          final result = await _executeItemGuarded(
+            context: context,
+            commandName: runEntry.cmd.name,
+            action: () => runEntry.executor.execute(context, runEntry.resolvedArgs),
           );
-          results.add(result);
-          if (!result.success) {
+          // Tag result with the command that produced it.
+          final tagged = ItemResult(
+            path: result.path,
+            name: result.name,
+            commandName: runEntry.cmd.name,
+            success: result.success,
+            message: result.message,
+            error: result.error,
+          );
+          results.add(tagged);
+
+          output.writeln(
+            '  -> :${runEntry.cmd.name} ${_formatCommandStatus(tagged)}',
+          );
+
+          if (!tagged.success) {
             // Stop remaining commands for this folder, continue traversal.
             break;
           }
@@ -769,7 +915,11 @@ class ToolRunner {
           (s) => _resolveDefineString(s, projectDefines),
         );
 
-        final result = await executor.execute(context, resolvedArgs);
+        final result = await _executeItemGuarded(
+          context: context,
+          commandName: cmd?.name ?? 'default',
+          action: () => executor.execute(context, resolvedArgs),
+        );
         results.add(result);
         return true; // Continue to next
       },
@@ -816,12 +966,12 @@ class ToolRunner {
       return _runNestedCommand(cliArgs.commands.first, cliArgs);
     }
 
-    // Single command: run default executor directly
+    // Single command: run default executor in cwd
     final executor = executors['default'];
     if (executor == null) {
       return const ToolResult.failure('No default executor configured');
     }
-    return executor.executeWithoutTraversal(cliArgs);
+    return _executeNestedInCwd(executor, cliArgs);
   }
 
   /// Run a single command in nested mode (no traversal).
@@ -835,7 +985,28 @@ class ToolRunner {
     if (executor == null) {
       return ToolResult.failure('No executor for command: ${cmd.name}');
     }
-    return executor.executeWithoutTraversal(cliArgs);
+    return _executeNestedInCwd(executor, cliArgs);
+  }
+
+  /// Execute a command executor in nested mode using CWD as context.
+  ///
+  /// Creates a [CommandContext] from the current working directory and
+  /// calls [CommandExecutor.execute] so per-project logic runs correctly.
+  /// Falls back to [CommandExecutor.executeWithoutTraversal] only if the
+  /// executor overrides it (i.e., returns non-success when execute is not
+  /// appropriate).
+  Future<ToolResult> _executeNestedInCwd(
+    CommandExecutor executor,
+    CliArgs cliArgs,
+  ) async {
+    final cwd = Directory.current.path;
+    final context = CommandContext(
+      fsFolder: FsFolder(path: cwd),
+      natures: const [],
+      executionRoot: cwd,
+    );
+    final result = await executor.execute(context, cliArgs);
+    return ToolResult.fromItems([result]);
   }
 
   /// Lazy wire nested tools into the effective tool definition.
@@ -1702,7 +1873,7 @@ Options:
       }
     }
     final setupInstructions = result.setupInstructions?.trim();
-    if (result.hasIssues &&
+    if (result.hasErrors &&
         setupInstructions != null &&
         setupInstructions.isNotEmpty) {
       output.writeln('Setup instructions:');
@@ -1846,7 +2017,28 @@ Options:
   String _resolveEnvVars(String input) {
     return input.replaceAllMapped(RegExp(r'\$\[?(\w+)\]?'), (m) {
       final name = m.group(1)!;
-      return Platform.environment[name] ?? m.group(0)!;
+      final directValue = Platform.environment[name];
+      if (directValue != null && directValue.isNotEmpty) {
+        return directValue;
+      }
+
+      if (Platform.isWindows && name.toUpperCase() == 'HOME') {
+        final userProfile = Platform.environment['USERPROFILE'];
+        if (userProfile != null && userProfile.isNotEmpty) {
+          return userProfile;
+        }
+
+        final homeDrive = Platform.environment['HOMEDRIVE'];
+        final homePath = Platform.environment['HOMEPATH'];
+        if (homeDrive != null &&
+            homeDrive.isNotEmpty &&
+            homePath != null &&
+            homePath.isNotEmpty) {
+          return '$homeDrive$homePath';
+        }
+      }
+
+      return m.group(0)!;
     });
   }
 

@@ -499,14 +499,14 @@ const _pipelinesContent = r'''
           output: build/
         precore:                  # setup/validation steps
           - commands:
-              - "shell echo Starting..."
+              - "print Starting..."
         core:                     # main steps
           - commands:
               - "shell dart pub get"
               - "{TOOL} :build"
         postcore:                 # cleanup/reporting steps
           - commands:
-              - "shell echo Done."
+              - "print Done."
 
   <cyan>Phases</cyan>
 
@@ -525,6 +525,7 @@ const _pipelinesContent = r'''
     shell-scan <cmd>     Run in each scanned project folder
     {TOOL} <cmd>         Run a {TOOL} command (e.g. "{TOOL} :build")
     stdin <cmd>          Run with multi-line stdin input
+    print <msg>          Print resolved text once
 
   All command types support standard %{...} placeholders.
   Run `{TOOL} help placeholders` for the complete reference.
@@ -533,7 +534,7 @@ const _pipelinesContent = r'''
 
     - commands:
         - "shell dart pub get"
-        - "shell echo Building on %{current-platform}"
+      - "print Building on %{current-platform}"
 
   <cyan>Tool commands:</cyan>
 

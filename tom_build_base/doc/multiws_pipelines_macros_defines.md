@@ -87,7 +87,7 @@ buildkit:
       runAfter: build
       precore:
         - commands:
-            - shell echo "Preparing deployment..."
+            - print "Preparing deployment..."
       core:
         - commands:
             - shell rsync -av build/ server:/app/
@@ -160,7 +160,7 @@ Each command string in a pipeline starts with a prefix that determines how it is
 ```yaml
 - commands:
     - "shell dart pub get"
-    - "shell echo Building on %{current-platform}"
+    - "print Building on %{current-platform}"
 ```
 
 **Shell-scan commands** (run once per scanned project):
@@ -201,7 +201,9 @@ Command-level options always win. Invocation options override pipeline-level opt
 
 Multi-workspace traversal applies **only** to pipeline execution. Direct commands always run in the current workspace only.
 
-When a pipeline is invoked with `-w` / `--workspace-recursion`, `tom_build_base` shells out to each sub-workspace that contains its own `<tool>_master.yaml`.
+When only pipelines are invoked, `tom_build_base` shells out to each sub-workspace that contains its own `<tool>_master.yaml` by default.
+
+For mixed command+pipeline invocations, cross-workspace delegation requires `-w` / `--workspace-recursion`.
 
 **Disqualifying options** prevent multi-workspace traversal:
 

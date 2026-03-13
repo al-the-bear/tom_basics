@@ -29,6 +29,7 @@ void main() {
         expect(args.outerFirstGit, isFalse);
         expect(args.topRepo, isFalse);
         expect(args.buildOrder, isTrue);
+        expect(args.excludeDev, isFalse);
         expect(args.workspaceRecursion, isFalse);
         expect(args.verbose, isFalse);
         expect(args.dryRun, isFalse);
@@ -110,6 +111,17 @@ void main() {
           expect(info.executionRoot, equals('/workspace'));
           expect(info.projectPatterns, equals(['tom_*']));
           expect(info.excludeProjects, equals(['tom_test_*']));
+          expect(info.includeDevDependencies, isTrue);
+        },
+      );
+
+      test(
+        'BB-CLI-8b: --exclude-dev disables dev dependency ordering [2026-03-11]',
+        () {
+          const args = CliArgs(excludeDev: true);
+
+          final info = args.toProjectTraversalInfo(executionRoot: '/workspace');
+          expect(info.includeDevDependencies, isFalse);
         },
       );
 
@@ -312,6 +324,11 @@ void main() {
       test('BB-CLI-32: Parses --build-order [2026-02-12]', () {
         final args = parser.parse(['--build-order']);
         expect(args.buildOrder, isTrue);
+      });
+
+      test('BB-CLI-32b: Parses --exclude-dev [2026-03-11]', () {
+        final args = parser.parse(['--exclude-dev']);
+        expect(args.excludeDev, isTrue);
       });
     });
 

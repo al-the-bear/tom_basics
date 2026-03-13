@@ -360,75 +360,68 @@ void main() {
         },
       );
 
-      test(
-        'BB-RUN-55: Multi-command traversal runs folder-by-folder '
-        '[2026-03-04]',
-        () async {
-          final tempRoot = await Directory.systemTemp.createTemp('bb_order_');
-          final previousCwd = Directory.current.path;
-          try {
-            final projectA = Directory('${tempRoot.path}/a_proj')..createSync();
-            File(
-              '${projectA.path}/pubspec.yaml',
-            ).writeAsStringSync(
-              'name: a_proj\nversion: 1.0.0\nenvironment:\n  sdk: ^3.0.0\n',
-            );
+      test('BB-RUN-55: Multi-command traversal runs folder-by-folder '
+          '[2026-03-04]', () async {
+        final tempRoot = await Directory.systemTemp.createTemp('bb_order_');
+        final previousCwd = Directory.current.path;
+        try {
+          final projectA = Directory('${tempRoot.path}/a_proj')..createSync();
+          File('${projectA.path}/pubspec.yaml').writeAsStringSync(
+            'name: a_proj\nversion: 1.0.0\nenvironment:\n  sdk: ^3.0.0\n',
+          );
 
-            final projectB = Directory('${tempRoot.path}/b_proj')..createSync();
-            File(
-              '${projectB.path}/pubspec.yaml',
-            ).writeAsStringSync(
-              'name: b_proj\nversion: 1.0.0\nenvironment:\n  sdk: ^3.0.0\n',
-            );
+          final projectB = Directory('${tempRoot.path}/b_proj')..createSync();
+          File('${projectB.path}/pubspec.yaml').writeAsStringSync(
+            'name: b_proj\nversion: 1.0.0\nenvironment:\n  sdk: ^3.0.0\n',
+          );
 
-            final orderLog = <String>[];
-            final runner = ToolRunner(
-              tool: _twoTraversalCommandsTool,
-              verbose: false,
-              executors: {
-                'first': _OrderTrackingExecutor('first', orderLog),
-                'second': _OrderTrackingExecutor('second', orderLog),
-              },
-            );
+          final orderLog = <String>[];
+          final runner = ToolRunner(
+            tool: _twoTraversalCommandsTool,
+            verbose: false,
+            executors: {
+              'first': _OrderTrackingExecutor('first', orderLog),
+              'second': _OrderTrackingExecutor('second', orderLog),
+            },
+          );
 
-            Directory.current = tempRoot.path;
+          Directory.current = tempRoot.path;
 
-            final result = await runner.run([
-              '-r',
-              '--root',
-              tempRoot.path,
-              '--scan',
-              '.',
-              ':first',
-              ':second',
-            ]);
+          final result = await runner.run([
+            '-r',
+            '--root',
+            tempRoot.path,
+            '--scan',
+            '.',
+            ':first',
+            ':second',
+          ]);
 
-            expect(result.success, isTrue);
-            expect(orderLog.length, equals(4));
+          expect(result.success, isTrue);
+          expect(orderLog.length, equals(4));
 
-            for (var i = 0; i < orderLog.length; i += 2) {
-              final first = orderLog[i].split('|');
-              final second = orderLog[i + 1].split('|');
-              expect(first[0], equals(second[0]));
-              expect(first[1], equals('first'));
-              expect(second[1], equals('second'));
-            }
-
-            final folders = orderLog
-                .map((entry) => entry.split('|').first)
-                .toSet();
-            expect(folders.length, equals(2));
-          } finally {
-            Directory.current = previousCwd;
-            if (tempRoot.existsSync()) {
-              await tempRoot.delete(recursive: true);
-            }
+          for (var i = 0; i < orderLog.length; i += 2) {
+            final first = orderLog[i].split('|');
+            final second = orderLog[i + 1].split('|');
+            expect(first[0], equals(second[0]));
+            expect(first[1], equals('first'));
+            expect(second[1], equals('second'));
           }
-        },
-      );
 
-      test('BB-RUN-40: help runs env checks and prints setup instructions '
-          '[2026-02-28]', () async {
+          final folders = orderLog
+              .map((entry) => entry.split('|').first)
+              .toSet();
+          expect(folders.length, equals(2));
+        } finally {
+          Directory.current = previousCwd;
+          if (tempRoot.existsSync()) {
+            await tempRoot.delete(recursive: true);
+          }
+        }
+      });
+
+      test('BB-RUN-40: help skips env checks for fast startup '
+          '[2026-03-11]', () async {
         final tempRoot = await Directory.systemTemp.createTemp(
           'bb_help_checks_',
         );
@@ -452,10 +445,12 @@ required-environment:
           final result = await runner.run(['--help']);
 
           expect(result.success, isTrue);
-          expect(output.toString(), contains('Environment warnings:'));
-          expect(output.toString(), contains('Missing TESTTOOL_REQUIRED'));
-          expect(output.toString(), contains('Setup instructions:'));
-          expect(output.toString(), contains('Please run "testtool setup".'));
+          expect(output.toString(), isNot(contains('Environment warnings:')));
+          expect(
+            output.toString(),
+            isNot(contains('Missing TESTTOOL_REQUIRED')),
+          );
+          expect(output.toString(), contains('**Usage**'));
         } finally {
           Directory.current = previousCwd;
           if (tempRoot.existsSync()) {
@@ -464,8 +459,26 @@ required-environment:
         }
       });
 
-      test('BB-RUN-45: run failure prints setup instructions on env errors '
-          '[2026-02-28]', () async {
+      test('BB-RUN-40b: --verbose prints startup timing lines '
+          '[2026-03-11]', () async {
+        final output = StringBuffer();
+        final runner = ToolRunner(tool: testTool, output: output);
+
+        final result = await runner.run(['--help', '--verbose']);
+
+        expect(result.success, isTrue);
+        expect(
+          output.toString(),
+          contains('[startup] Load macros + expand args:'),
+        );
+        expect(
+          output.toString(),
+          contains('[startup] Normalize + parse args:'),
+        );
+      });
+
+      test('BB-RUN-45: non-doctor run skips required-environment checks '
+          '[2026-03-11]', () async {
         final tempRoot = await Directory.systemTemp.createTemp(
           'bb_run_checks_',
         );
@@ -490,16 +503,13 @@ required-environment:
 
           expect(result.success, isFalse);
           expect(
-            result.errorMessage,
-            contains('Installation requirements not met'),
+            output.toString(),
+            isNot(contains('Installation requirements not met')),
           );
           expect(
             output.toString(),
-            contains('Installation requirements not met:'),
+            isNot(contains('Missing TESTTOOL_REQUIRED_RUN')),
           );
-          expect(output.toString(), contains('Missing TESTTOOL_REQUIRED_RUN'));
-          expect(output.toString(), contains('Setup instructions:'));
-          expect(output.toString(), contains('Please run "testtool setup".'));
         } finally {
           Directory.current = previousCwd;
           if (tempRoot.existsSync()) {
@@ -538,8 +548,7 @@ required-environment:
             output.toString(),
             contains('Missing TESTTOOL_REQUIRED_DOCTOR'),
           );
-          expect(output.toString(), contains('Setup instructions:'));
-          expect(output.toString(), contains('Please run "testtool setup".'));
+          expect(output.toString(), isNot(contains('Setup instructions:')));
           expect(output.toString(), contains('Doctor check passed.'));
         } finally {
           Directory.current = previousCwd;
@@ -561,7 +570,7 @@ required-environment:
       executable: true
       core:
         - commands:
-            - shell echo ci
+          - print ci
 ''');
 
         final previousCwd = Directory.current.path;
@@ -573,7 +582,7 @@ required-environment:
           final result = await runner.run(['--dry-run', 'ci']);
 
           expect(result.success, isTrue);
-          expect(output.toString(), contains('[PIPELINE:shell] echo ci'));
+          expect(output.toString(), contains('ci'));
         } finally {
           Directory.current = previousCwd;
           if (tempRoot.existsSync()) {

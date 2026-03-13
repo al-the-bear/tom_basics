@@ -7,6 +7,7 @@
 library;
 
 import 'dart:io';
+import 'dart:convert';
 
 /// Global verbose flag accessor.
 ///
@@ -56,8 +57,11 @@ class ToolLogger {
   /// Log the command being executed (only in verbose mode).
   ///
   /// Formats the command as: `$ command arg1 arg2 ...`
-  static void logCommand(String executable, List<String> args,
-      {String? workingDirectory}) {
+  static void logCommand(
+    String executable,
+    List<String> args, {
+    String? workingDirectory,
+  }) {
     if (_verbose) {
       final cmdStr = [executable, ...args].join(' ');
       if (workingDirectory != null) {
@@ -107,8 +111,11 @@ class ProcessRunner {
     bool runInShell = false,
   }) async {
     // Log command if verbose
-    ToolLogger.logCommand(executable, arguments,
-        workingDirectory: workingDirectory);
+    ToolLogger.logCommand(
+      executable,
+      arguments,
+      workingDirectory: workingDirectory,
+    );
 
     // Run the process
     final result = await Process.run(
@@ -174,11 +181,32 @@ class ProcessRunner {
     bool runInShell = false,
   }) async {
     // Log command if verbose
-    ToolLogger.logCommand(executable, arguments,
-        workingDirectory: workingDirectory);
+    ToolLogger.logCommand(
+      executable,
+      arguments,
+      workingDirectory: workingDirectory,
+    );
 
-    // Start the process with inherited stdio for true streaming
-    // This connects child's stdin/stdout/stderr directly to parent's
+    if (Platform.isWindows) {
+      final process = await Process.start(
+        executable,
+        arguments,
+        workingDirectory: workingDirectory,
+        environment: environment,
+        runInShell: runInShell,
+      );
+
+      process.stdout
+          .transform(utf8.decoder)
+          .listen(stdout.write, onError: (_) {});
+      process.stderr
+          .transform(utf8.decoder)
+          .listen(stderr.write, onError: (_) {});
+
+      return process.exitCode;
+    }
+
+    // Non-Windows: inherit stdio directly
     final process = await Process.start(
       executable,
       arguments,

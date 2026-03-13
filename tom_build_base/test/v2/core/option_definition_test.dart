@@ -268,6 +268,7 @@ void main() {
         expect(names, contains('project'));
         expect(names, contains('exclude-projects'));
         expect(names, contains('build-order'));
+        expect(names, contains('exclude-dev'));
         expect(names, contains('no-skip'));
       },
     );
