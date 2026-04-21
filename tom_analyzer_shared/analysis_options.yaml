@@ -1,0 +1,19 @@
+# Shared analysis options for tom_analyzer_shared.
+#
+# Uses the Dart-recommended lint set with a few relaxations that are
+# common across the Tom framework (library doc comments appear on
+# single-line barrel files).
+
+include: package:lints/recommended.yaml
+
+analyzer:
+  errors:
+    # Summary generation inherently depends on analyzer internals
+    # (BundleWriter, PackageBundleBuilder, PackageBundleReader,
+    # AnalysisContextCollectionImpl). There is no public replacement,
+    # so silence the implementation-imports warning for this package.
+    implementation_imports: ignore
+
+linter:
+  rules:
+    dangling_library_doc_comments: false

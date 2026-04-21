@@ -1,0 +1,4 @@
+project_id: AS
+name: analyzer shared
+description: >-
+  Shared analyzer-summary caching infrastructure for Tom code generators.
