@@ -157,6 +157,77 @@ c
     });
   });
 
+  group('flatten (display form)', () {
+    test('returns marker-free text unchanged', () {
+      const plain = 'Just prose.\n\nNo markers here.';
+      expect(merge.flatten(plain), plain);
+    });
+
+    test('strips the marker comment lines, keeping a managed region body', () {
+      const current = '''
+Intro line.
+
+<!--\$insert:tom.managed.overview-->
+generated prose
+<!--\$end-insert-->
+
+Outro line.''';
+
+      expect(merge.flatten(current), '''
+Intro line.
+
+generated prose
+
+Outro line.''');
+    });
+
+    test('keeps an override region body without its markers', () {
+      const current = '''
+<!--\$insert:tom.override.body-->
+author prose
+<!--\$end-insert-->''';
+
+      expect(merge.flatten(current), 'author prose');
+    });
+
+    test('override wins: a managed region is dropped when overridden', () {
+      const current = '''
+<!--\$insert:tom.managed.overview-->
+generated prose
+<!--\$end-insert-->
+<!--\$insert:tom.override.overview-->
+author prose
+<!--\$end-insert-->''';
+
+      final result = merge.flatten(current);
+      expect(result, isNot(contains('generated prose')));
+      expect(result, contains('author prose'));
+    });
+
+    test('preserves free text before and after a region, in order', () {
+      const current = '''
+Lead-in I wrote.
+
+<!--\$insert:tom.managed.overview-->
+managed body
+<!--\$end-insert-->
+
+Tail I appended.''';
+
+      final result = merge.flatten(current);
+      expect(result.indexOf('Lead-in I wrote.'),
+          lessThan(result.indexOf('managed body')));
+      expect(result.indexOf('managed body'),
+          lessThan(result.indexOf('Tail I appended.')));
+      expect(result, isNot(contains(r'$insert')));
+    });
+
+    test('throws FormatException on a malformed document', () {
+      const current = '<!--\$insert:tom.managed.overview-->\nno end';
+      expect(() => merge.flatten(current), throwsA(isA<FormatException>()));
+    });
+  });
+
   group('malformed input', () {
     test('throws FormatException on an unclosed marker', () {
       const current = '<!--\$insert:tom.managed.overview-->\nno end';
