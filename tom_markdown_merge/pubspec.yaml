@@ -1,0 +1,27 @@
+name: tom_markdown_merge
+description: >-
+  Non-destructive Markdown region merge (managed / override / preserved
+  free-text) built on tom_doc_specs' insert-marker engine. Lets a generator
+  refresh designated regions of a Markdown file without clobbering
+  hand-authored prose.
+version: 1.0.0
+publish_to: none
+repository: https://github.com/al-the-bear/tom_basics
+homepage: https://github.com/al-the-bear/tom_basics/tree/main/tom_markdown_merge
+topics:
+  - markdown
+  - merge
+  - codegen
+
+environment:
+  sdk: ^3.10.4
+
+dependencies:
+  # The insert-marker engine (InsertMarkerParser/Processor) lives here; it
+  # transitively brings tom_doc_scanner. Both are analyzer-free path deps.
+  tom_doc_specs:
+    path: ../../ai_build/tom_doc_specs
+
+dev_dependencies:
+  lints: ^6.0.0
+  test: ^1.25.6
