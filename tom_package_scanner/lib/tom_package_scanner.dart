@@ -11,4 +11,5 @@ library;
 export 'src/component_status.dart';
 export 'src/license_classifier.dart';
 export 'src/package_info.dart';
+export 'src/package_metrics.dart';
 export 'src/package_scanner.dart';

@@ -1,4 +1,5 @@
 import 'component_status.dart';
+import 'package_metrics.dart';
 
 /// Everything the website needs to know about one Dart package discovered in a
 /// framework repo.
@@ -14,6 +15,7 @@ class PackageInfo {
     required this.status,
     required this.statusReason,
     required this.hasProjectYaml,
+    this.metrics = const PackageMetrics(),
     this.version,
     this.description,
     this.publishTo,
@@ -43,6 +45,9 @@ class PackageInfo {
 
   /// Whether the package carries a `tom_project.yaml`.
   final bool hasProjectYaml;
+
+  /// Display metrics measured from the package's `lib/` and `test/` (§4.2.2).
+  final PackageMetrics metrics;
 
   /// `version:` from `pubspec.yaml`, if any.
   final String? version;

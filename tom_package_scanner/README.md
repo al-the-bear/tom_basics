@@ -62,6 +62,23 @@ absent it classifies the package's `LICENSE` / `license.md` body via
 of truth, re-exported by the website's `tool/seed/license_classifier.dart`).
 Unrecognised or absent licenses yield `null`.
 
+## Display metrics
+
+`PackageInfo.metrics` carries three **statically-measured** display metrics
+(spec §4.2.2) — the scanner runs no `dart test` and makes no process calls, so
+all three are counted directly off the source tree:
+
+| Metric | Definition |
+|---|---|
+| `loc` | non-blank, non-`//`-comment Dart lines in `lib/`, excluding generated files (`*.g.dart`, `*.freezed.dart`, `*.options.dart`). This is the **same** count the `works` >`locThreshold` rule uses, so the status ladder and the displayed LOC never disagree. |
+| `tests` | count of `test(` / `testWidgets(` invocations under `test/` (lines that are full-line comments are ignored). A static approximation of the test-case count. |
+| `testLoc` | non-blank, non-comment Dart lines in `test/`, counted exactly like `loc` (generated files excluded) for a like-for-like comparison. |
+
+These are display-only and never feed status, **except** `loc`, which also
+drives the >200-line rule above. `gen_modules` writes them per component plus a
+summed module-level rollup; `gen_status_report` surfaces them as the LOC / Tests
+/ Test LOC columns.
+
 ## Tolerating a missing `tom_project.yaml`
 
 Eight Dart packages in the included repos have no `tom_project.yaml`. The

@@ -6,6 +6,7 @@ import 'package:tom_build_base/tom_build_base.dart';
 import 'component_status.dart';
 import 'license_classifier.dart';
 import 'package_info.dart';
+import 'package_metrics.dart';
 
 /// Scans a framework repo's direct-child Dart packages and derives each
 /// package's publication status, license, version and links.
@@ -87,11 +88,16 @@ class PackageScanner {
     final publishTo = pubspec['publish_to'] as String?;
     final license = _resolveLicense(dir, tom);
 
+    // Measure once; `loc` is reused by the status ladder so the >200-rule and
+    // the displayed metric never disagree (spec §4.2.1 / §4.2.2).
+    final metrics = _measure(dir);
+
     final status = _deriveStatus(
       dir,
       dart: dart,
       tom: tom,
       repoIsPublic: repoIsPublic,
+      libLoc: metrics.loc,
     );
 
     return PackageInfo(
@@ -102,6 +108,7 @@ class PackageScanner {
       status: status.status,
       statusReason: status.reason,
       hasProjectYaml: tom != null,
+      metrics: metrics,
       version: version,
       description: pubspec['description'] as String?,
       publishTo: publishTo,
@@ -119,6 +126,7 @@ class PackageScanner {
     required DartProjectFolder? dart,
     required TomBuildFolder? tom,
     required bool repoIsPublic,
+    required int libLoc,
   }) {
     if (_hasReleaseMarker(dir, tom)) {
       return (status: ComponentStatus.released, reason: 'release marker');
@@ -129,7 +137,7 @@ class PackageScanner {
         reason: 'public repo; pub version ${dart!.version}',
       );
     }
-    final loc = _libLoc(dir);
+    final loc = libLoc;
     if (loc > locThreshold) {
       return (status: ComponentStatus.works, reason: 'lib/ $loc LOC');
     }
@@ -175,14 +183,55 @@ class PackageScanner {
     return links;
   }
 
-  /// Count real Dart lines in `lib/` — non-blank, non-full-line-comment lines —
-  /// excluding generated files (`*.g.dart`, `*.freezed.dart`, `*.options.dart`).
-  int _libLoc(String dir) {
-    final lib = Directory(p.join(dir, 'lib'));
-    if (!lib.existsSync()) return 0;
+  /// Matches a `test(` / `testWidgets(` invocation (whole word, optional space).
+  static final _testCall = RegExp(r'\b(test|testWidgets)\s*\(');
 
+  /// Measure the §4.2.2 display metrics: `loc` (real `lib/` Dart lines), `tests`
+  /// (count of `test(` / `testWidgets(` calls in `test/`) and `testLoc` (real
+  /// `test/` Dart lines). All static — no `dart test`, no process calls.
+  PackageMetrics _measure(String dir) => PackageMetrics(
+        loc: _codeLines(p.join(dir, 'lib')),
+        tests: _testCount(p.join(dir, 'test')),
+        testLoc: _codeLines(p.join(dir, 'test')),
+      );
+
+  /// Count real Dart lines under [dirPath] — non-blank, non-full-line-comment
+  /// lines — excluding generated files (`*.g.dart`, `*.freezed.dart`,
+  /// `*.options.dart`). Used for both `lib/` (`loc`, incl. the >200-rule) and
+  /// `test/` (`testLoc`).
+  int _codeLines(String dirPath) {
     var total = 0;
-    for (final entity in lib.listSync(recursive: true)) {
+    for (final file in _dartFiles(dirPath)) {
+      for (final raw in file.readAsStringSync().split('\n')) {
+        final line = raw.trim();
+        if (line.isEmpty || line.startsWith('//')) continue;
+        total++;
+      }
+    }
+    return total;
+  }
+
+  /// Count `test(` / `testWidgets(` invocations under [dirPath], ignoring
+  /// full-line comments. A static approximation of the test-case count (§4.2.2);
+  /// the scanner runs no `dart test`.
+  int _testCount(String dirPath) {
+    var count = 0;
+    for (final file in _dartFiles(dirPath)) {
+      for (final raw in file.readAsStringSync().split('\n')) {
+        final line = raw.trim();
+        if (line.isEmpty || line.startsWith('//')) continue;
+        count += _testCall.allMatches(line).length;
+      }
+    }
+    return count;
+  }
+
+  /// Non-generated `.dart` files under [dirPath] (recursive); empty when the
+  /// directory is absent.
+  Iterable<File> _dartFiles(String dirPath) sync* {
+    final dir = Directory(dirPath);
+    if (!dir.existsSync()) return;
+    for (final entity in dir.listSync(recursive: true)) {
       if (entity is! File) continue;
       final name = p.basename(entity.path);
       if (!name.endsWith('.dart')) continue;
@@ -191,19 +240,7 @@ class PackageScanner {
           name.endsWith('.options.dart')) {
         continue;
       }
-      total += _countCode(entity.readAsStringSync());
+      yield entity;
     }
-    return total;
-  }
-
-  int _countCode(String source) {
-    var count = 0;
-    for (final raw in source.split('\n')) {
-      final line = raw.trim();
-      if (line.isEmpty) continue;
-      if (line.startsWith('//')) continue;
-      count++;
-    }
-    return count;
   }
 }

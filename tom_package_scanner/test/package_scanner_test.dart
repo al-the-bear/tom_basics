@@ -200,6 +200,88 @@ void main() {
     });
   });
 
+  group('metrics (§4.2.2)', () {
+    test('loc counts non-blank lib/ lines and matches the >200-rule count', () {
+      package('basics', 'tom_metrics', files: {
+        'lib/tom_metrics.dart': dartLines(250),
+      }, pubspec: 'name: tom_metrics\nversion: 0.1.0\npublish_to: none\n');
+
+      final info = scanner().scanRepo('basics', repoIsPublic: true).single;
+      // Same count the status ladder used (250 LOC ⇒ works).
+      expect(info.metrics.loc, 250);
+      expect(info.status, ComponentStatus.works);
+    });
+
+    test('loc excludes generated files (*.g.dart, *.freezed.dart)', () {
+      package('basics', 'tom_gen', files: {
+        'lib/tom_gen.dart': dartLines(30),
+        'lib/tom_gen.g.dart': dartLines(900),
+        'lib/model.freezed.dart': dartLines(500),
+        'lib/config.options.dart': dartLines(400),
+      }, pubspec: 'name: tom_gen\nversion: 0.1.0\npublish_to: none\n');
+
+      final info = scanner().scanRepo('basics', repoIsPublic: true).single;
+      expect(info.metrics.loc, 30); // generated lines ignored
+    });
+
+    test('tests counts test() and testWidgets() invocations', () {
+      package('basics', 'tom_tested', files: {
+        'lib/tom_tested.dart': dartLines(250),
+        'test/a_test.dart': '''
+import 'package:test/test.dart';
+void main() {
+  group('g', () {
+    test('one', () {});
+    test('two', () {});
+  });
+  testWidgets('three', (t) async {});
+}
+''',
+      }, pubspec: 'name: tom_tested\nversion: 0.1.0\npublish_to: none\n');
+
+      final info = scanner().scanRepo('basics', repoIsPublic: true).single;
+      expect(info.metrics.tests, 3); // 2 test() + 1 testWidgets(), not group()
+    });
+
+    test('tests ignores test( in comments', () {
+      package('basics', 'tom_commented', files: {
+        'lib/tom_commented.dart': dartLines(250),
+        'test/a_test.dart': '''
+import 'package:test/test.dart';
+void main() {
+  // test('disabled', () {});
+  test('real', () {});
+}
+''',
+      }, pubspec: 'name: tom_commented\nversion: 0.1.0\npublish_to: none\n');
+
+      final info = scanner().scanRepo('basics', repoIsPublic: true).single;
+      expect(info.metrics.tests, 1);
+    });
+
+    test('testLoc counts non-blank test/ lines, generated excluded', () {
+      package('basics', 'tom_testloc', files: {
+        'lib/tom_testloc.dart': dartLines(250),
+        'test/a_test.dart': dartLines(40),
+        'test/mock.g.dart': dartLines(600),
+      }, pubspec: 'name: tom_testloc\nversion: 0.1.0\npublish_to: none\n');
+
+      final info = scanner().scanRepo('basics', repoIsPublic: true).single;
+      expect(info.metrics.testLoc, 40); // generated mock not counted
+    });
+
+    test('a stub with no test/ reports zero tests and testLoc', () {
+      package('basics', 'tom_stub', files: {
+        'lib/tom_stub.dart': dartLines(10),
+      }, pubspec: 'name: tom_stub\nversion: 0.0.1\npublish_to: none\n');
+
+      final info = scanner().scanRepo('basics', repoIsPublic: true).single;
+      expect(info.metrics.loc, 10);
+      expect(info.metrics.tests, 0);
+      expect(info.metrics.testLoc, 0);
+    });
+  });
+
   group('discovery', () {
     test('returns packages sorted by folder name', () {
       package('basics', 'tom_zebra',
