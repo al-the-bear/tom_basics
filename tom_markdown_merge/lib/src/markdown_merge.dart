@@ -64,6 +64,52 @@ class MarkdownMerge {
     return processor.process(current, replacements);
   }
 
+  /// Returns [markdown] in its **display form**: every insert-marker comment
+  /// line (`<!--$insert:…-->` / `<!--$end-insert-->`) is removed so only the
+  /// live region content and surrounding free text remain — suitable for
+  /// rendering to a reader who should never see the markers.
+  ///
+  /// This is the read-side companion to [merge]: [merge] keeps the markers so
+  /// the file can be re-merged on the next run; [flatten] strips them so the
+  /// content can be rendered.
+  ///
+  /// Region semantics are honoured (spec §6.2): where both a managed and an
+  /// override region exist for the same key, the **override wins** — the
+  /// managed region's content is dropped, so superseded prose is never shown.
+  /// Override regions, lone managed regions, foreign `$insert:` regions and all
+  /// free text contribute their content verbatim, in document order.
+  ///
+  /// Throws [FormatException] (from the underlying parser) if the document has
+  /// malformed markers (nested or unclosed).
+  String flatten(String markdown) {
+    final markers = InsertMarkerParser().parse(markdown);
+    if (markers.isEmpty) return markdown;
+
+    final overridden = _keysFor(markers, overridePrefix);
+    final lines = markdown.split('\n');
+    final keep = List<bool>.filled(lines.length, true);
+
+    for (final marker in markers) {
+      // Drop the two marker comment lines (1-based → 0-based).
+      keep[marker.startLine - 1] = false;
+      keep[marker.endLine - 1] = false;
+
+      // A managed region superseded by an override for the same key shows no
+      // content — drop the lines between its markers (exclusive of both).
+      final managedKey = _suffix(marker.variable, managedPrefix);
+      if (managedKey != null && overridden.contains(managedKey)) {
+        for (var i = marker.startLine; i < marker.endLine - 1; i++) {
+          keep[i] = false;
+        }
+      }
+    }
+
+    return [
+      for (var i = 0; i < lines.length; i++)
+        if (keep[i]) lines[i],
+    ].join('\n');
+  }
+
   /// The logical keys of every managed region in [markdown].
   Set<String> managedKeys(String markdown) =>
       _keysFor(InsertMarkerParser().parse(markdown), managedPrefix);
