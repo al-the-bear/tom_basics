@@ -2,3 +2,4 @@ project_id: BSC
 name: basics
 description: >-
   Core utilities library.
+license: BSD-3-Clause

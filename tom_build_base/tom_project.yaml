@@ -2,3 +2,4 @@ project_id: BB
 name: build base
 description: >-
   Build tool base library.
+license: BSD-3-Clause

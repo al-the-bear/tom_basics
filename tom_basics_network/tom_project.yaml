@@ -2,3 +2,4 @@ project_id: BSCN
 name: basics-network
 description: >-
   Network utilities.
+license: BSD-3-Clause

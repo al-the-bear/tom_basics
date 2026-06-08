@@ -2,3 +2,4 @@ project_id: CRPT
 name: crypto
 description: >-
   Cryptography library.
+license: BSD-3-Clause

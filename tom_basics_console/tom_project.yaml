@@ -2,3 +2,4 @@ project_id: BSCC
 name: basics-console
 description: >-
   Console/CLI utilities.
+license: BSD-3-Clause
