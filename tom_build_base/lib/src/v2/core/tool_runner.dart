@@ -78,6 +78,59 @@ class ToolResult {
       itemResults: items,
     );
   }
+
+  /// Render a consolidated end-of-run summary block shared by every
+  /// `tom_build_base`-based tool, so outcomes read uniformly after a long run.
+  ///
+  /// The block contains, in order:
+  /// 1. a **Skipped** section listing items that were deliberately skipped
+  ///    (configured/conditional skips — see [ItemResult.skipped]);
+  /// 2. either an **Errors** section naming every failed item (with a
+  ///    `N error(s) in M project(s).` tally) or, when nothing failed, the
+  ///    single line `Done. No errors.`.
+  ///
+  /// Returns an empty string when no items were processed (e.g. `--version`,
+  /// `--help`, or a single-shot command that does no traversal), so callers
+  /// can print it unconditionally without adding a spurious footer. The
+  /// returned string has no leading or trailing newline; the caller frames it.
+  String renderRunSummary() {
+    if (itemResults.isEmpty) return '';
+
+    final failures = itemResults.where((i) => !i.success).toList();
+    final skips = itemResults.where((i) => i.success && i.skipped).toList();
+
+    String describe(ItemResult item, String detail) {
+      final cmd = item.commandName != null ? ' :${item.commandName}' : '';
+      return '  ${item.name}$cmd — $detail';
+    }
+
+    final lines = <String>[];
+
+    if (skips.isNotEmpty) {
+      lines.add('=== Skipped ===');
+      for (final item in skips) {
+        lines.add(describe(item, item.message ?? 'skipped'));
+      }
+      final skippedProjects = skips.map((s) => s.name).toSet().length;
+      lines.add('$skippedProjects project(s) skipped.');
+      lines.add('');
+    }
+
+    if (failures.isNotEmpty) {
+      lines.add('=== Errors ===');
+      for (final item in failures) {
+        lines.add(describe(item, item.error ?? 'unknown error'));
+      }
+      final failedProjects = failures.map((f) => f.name).toSet().length;
+      lines.add(
+        '${failures.length} error(s) in $failedProjects project(s).',
+      );
+    } else {
+      lines.add('Done. No errors.');
+    }
+
+    return lines.join('\n');
+  }
 }
 
 /// Result for a single processed item (folder/project).
@@ -94,6 +147,12 @@ class ItemResult {
   /// Whether processing succeeded.
   final bool success;
 
+  /// Whether the item was deliberately skipped (a configured/conditional
+  /// skip — not a failure). Skipped items are still [success] so they never
+  /// affect the exit code, but the end-of-run summary lists them separately
+  /// from items that did real work. See [ToolResult.renderRunSummary].
+  final bool skipped;
+
   /// Result message.
   final String? message;
 
@@ -105,6 +164,7 @@ class ItemResult {
     required this.name,
     this.commandName,
     this.success = true,
+    this.skipped = false,
     this.message,
     this.error,
   });
@@ -115,6 +175,20 @@ class ItemResult {
     this.commandName,
     this.message,
   }) : success = true,
+       skipped = false,
+       error = null;
+
+  /// A deliberately skipped item — a configured or conditional skip, reported
+  /// as a (non-failing) success so it does not affect the exit code, but
+  /// surfaced in the end-of-run summary's skipped section. [message] should
+  /// explain why the item was skipped.
+  const ItemResult.skipped({
+    required this.path,
+    required this.name,
+    this.commandName,
+    this.message,
+  }) : success = true,
+       skipped = true,
        error = null;
 
   const ItemResult.failure({
@@ -123,6 +197,7 @@ class ItemResult {
     this.commandName,
     required this.error,
   }) : success = false,
+       skipped = false,
        message = null;
 }
 
@@ -607,6 +682,7 @@ class ToolRunner {
             name: result.name,
             commandName: runEntry.cmd.name,
             success: result.success,
+            skipped: result.skipped,
             message: result.message,
             error: result.error,
           );

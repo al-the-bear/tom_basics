@@ -1,3 +1,9 @@
+## 2.6.25
+
+### Added
+
+- **Shared end-of-run summary block for every `tom_build_base` tool** — `ToolResult.renderRunSummary()` produces a single, consistent errors/skips report so outcomes are easy to read after a long run, instead of each tool re-implementing its own footer. The block lists a `=== Skipped ===` section (deliberately skipped items) above either a `=== Errors ===` section naming every failed item with an `N error(s) in M project(s).` tally, or the clean `Done. No errors.` footer when nothing failed. It returns an empty string when no items were processed (e.g. `--version`/`--help`/single-shot commands), so callers can print it unconditionally without a spurious footer. New `ItemResult.skipped(...)` constructor + `ItemResult.skipped` flag distinguish a configured/conditional skip (a non-failing success that never affects the exit code) from real work; the runner preserves the flag when tagging results. Covered by regression tests `SUMM01`–`SUMM13`.
+
 ## 2.6.24
 
 ### Fixed
