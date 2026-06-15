@@ -907,4 +907,87 @@ void main() {
       expect(args.modes, isEmpty);
     });
   });
+
+  group('command option vs global flag collision', () {
+    ToolDefinition buildVersionerLikeTool() => ToolDefinition(
+      name: 'test-tool',
+      description: 'Tool whose command declares a value option colliding '
+          'with the global --version flag',
+      version: '1.0',
+      mode: ToolMode.multiCommand,
+      commands: [
+        CommandDefinition(
+          name: 'versioner',
+          description: 'Versioner command',
+          options: [
+            OptionDefinition.option(
+              name: 'version',
+              description: 'Override version string',
+            ),
+          ],
+        ),
+      ],
+    );
+
+    test(
+      'BB-CLI-93: per-command --version with a value routes to the command, '
+      'not the global version flag [2026-06-14]',
+      () {
+        // Regression for VER_OVR01: `buildkit :versioner --version 9.9.9` was
+        // hijacked by the global --version print-version flag, dropping 9.9.9
+        // and skipping the command entirely.
+        final toolParser = CliArgParser(toolDefinition: buildVersionerLikeTool());
+        final args = toolParser.parse([':versioner', '--version', '9.9.9']);
+
+        expect(args.commands, equals(['versioner']));
+        expect(
+          args.version,
+          isFalse,
+          reason: 'global version flag must NOT be set when --version carries '
+              'a value for a command that declares it',
+        );
+        expect(
+          args.commandArgs['versioner']!.options['version'],
+          equals('9.9.9'),
+          reason: 'the value 9.9.9 must reach the command option',
+        );
+      },
+    );
+
+    test(
+      'BB-CLI-94: bare per-command --version (no value) still sets the global '
+      'version flag [2026-06-14]',
+      () {
+        // A bare --version with no value preserves the print-version behavior.
+        final toolParser = CliArgParser(toolDefinition: buildVersionerLikeTool());
+        final args = toolParser.parse([':versioner', '--version']);
+
+        expect(
+          args.version,
+          isTrue,
+          reason: 'bare --version (no value) falls through to the global flag',
+        );
+        expect(
+          args.commandArgs['versioner']!.options['version'],
+          isNull,
+          reason: 'no value means the command option is not populated',
+        );
+      },
+    );
+
+    test(
+      'BB-CLI-95: per-command --version=value (eq form) routes to the command '
+      '[2026-06-14]',
+      () {
+        final toolParser = CliArgParser(toolDefinition: buildVersionerLikeTool());
+        final args = toolParser.parse([':versioner', '--version=2.0.0']);
+
+        expect(args.version, isFalse);
+        expect(
+          args.commandArgs['versioner']!.options['version'],
+          equals('2.0.0'),
+        );
+      },
+    );
+  });
 }

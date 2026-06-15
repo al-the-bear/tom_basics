@@ -1,0 +1,88 @@
+# =============================================================================
+# ZOM TEST FLUTTER - PROJECT CONFIGURATION
+# =============================================================================
+# Test project for validating tom_master.yaml generation with Flutter app structure.
+# Tests: Flutter-specific actions, mobile platforms, assets
+
+name: test-flutter
+short-id: ZTF
+
+type: flutter_app
+description: Test Flutter app for validating workspace analyzer features
+
+# Feature overrides
+features:
+  has-reflection: false
+  has-build-runner: true
+  has-tests: true
+  has-assets: true
+  has-localization: true
+  publishable: false
+
+# Action overrides for Flutter
+actions:
+  build:
+    default:
+      pre-commands:
+        - flutter pub get
+      commands:
+        - flutter analyze lib test
+        - dart run build_runner build --delete-conflicting-outputs
+      post-commands:
+        - echo "Flutter build complete"
+  test:
+    default:
+      commands:
+        - flutter test
+        - flutter test --coverage
+  run:
+    default:
+      commands:
+        - flutter run
+
+# Mode definitions for Flutter
+environment-mode-definitions:
+  local:
+    description: Local Flutter development
+    flavor: development
+    variables:
+      API_URL: "http://localhost:8080"
+  prod:
+    description: Production Flutter build
+    flavor: production
+    variables:
+      API_URL: "https://api.example.com"
+
+execution-mode-definitions:
+  local:
+    description: Run on local device/emulator
+    device: auto
+  web:
+    description: Run on web
+    device: chrome
+  mobile:
+    description: Run on mobile device
+    device: mobile
+
+deployment-mode-definitions:
+  none:
+    description: No deployment
+  firebase:
+    description: Firebase App Distribution
+    project-id: zom-test-flutter
+    groups: [testers]
+
+# Mobile platforms specific configuration
+mobile-platforms:
+  android:
+    package-name: com.example.zom_test_flutter
+    min-sdk: 21
+  ios:
+    bundle-id: com.example.zomTestFlutter
+    min-ios: 12.0
+
+# Custom tags
+flutter-app: true
+flutter-settings:
+  use-material3: true
+  theme-mode: system

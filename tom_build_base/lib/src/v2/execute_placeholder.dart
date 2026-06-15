@@ -104,7 +104,13 @@ class ExecutePlaceholderContext {
   String get folderName => folder.name;
 
   /// Folder path relative to root.
-  String get folderRelative => p.relative(folder.path, from: rootPath);
+  ///
+  /// Normalized to forward slashes so placeholder expansion is identical across
+  /// platforms (matching [CommandContext.relativePath]); otherwise the same
+  /// `%{folder.relative}` would yield backslashes on Windows and break command
+  /// strings and golden comparisons.
+  String get folderRelative =>
+      p.relative(folder.path, from: rootPath).replaceAll(r'\', '/');
 
   /// List of detected natures for the folder.
   List<dynamic> get natures => folder.natures;

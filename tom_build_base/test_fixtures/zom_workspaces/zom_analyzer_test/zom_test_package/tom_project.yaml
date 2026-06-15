@@ -1,0 +1,90 @@
+# =============================================================================
+# ZOM TEST PACKAGE - PROJECT CONFIGURATION
+# =============================================================================
+# Test project for validating tom_master.yaml generation with full structure.
+# Tests: Actions, mode-definitions, cross-compilation
+
+name: test-pkg
+short-id: ZTP
+
+type: dart_package
+description: Test package for validating workspace analyzer features
+
+# Build dependencies
+build-after:
+  - tom_core
+
+# Feature overrides
+features:
+  has-reflection: true
+  has-build-runner: false
+  has-tests: true
+  has-examples: true
+  publishable: false
+
+# Action overrides - should appear in project section
+actions:
+  build:
+    default:
+      pre-commands:
+        - echo "Pre-build step"
+      commands:
+        - dart analyze lib test
+        - dart test
+      post-commands:
+        - echo "Post-build step"
+  custom-test-action:
+    default:
+      commands:
+        - echo "Custom test action"
+        - dart test --coverage
+
+# Action mode definitions - project-specific action configuration
+action-mode-definitions:
+  default:
+    environment: local
+    execution: local
+  build:
+    environment: local
+    execution: local
+  test:
+    environment: local
+
+# Mode type definition overrides - should appear as <mode-type>-mode-definitions
+environment-mode-definitions:
+  local:
+    description: Local development for test package
+    working-dir: ./zom_test_package
+    variables:
+      TEST_MODE: "true"
+      DEBUG: "true"
+  prod:
+    description: Production mode for test package
+    variables:
+      TEST_MODE: "false"
+      DEBUG: "false"
+
+execution-mode-definitions:
+  local:
+    description: Local execution mode
+    run-command: dart run
+  docker:
+    description: Docker execution mode
+    image: zom-test-package:latest
+
+# Cross-compilation settings
+cross-compilation:
+  all-targets:
+    - linux-x64
+    - darwin-arm64
+  build-on:
+    linux-x64:
+      targets: [linux-x64]
+    darwin-arm64:
+      targets: [darwin-arm64]
+
+# Custom tags
+test-project-setting: true
+test-config:
+  validation-level: full
+  coverage-threshold: 80

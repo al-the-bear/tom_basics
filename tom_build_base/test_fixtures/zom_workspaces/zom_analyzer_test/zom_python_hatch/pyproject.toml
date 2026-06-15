@@ -1,0 +1,15 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "zom-python-hatch"
+version = "0.1.0"
+description = "Test project for workspace analyzer Hatch detection"
+requires-python = ">=3.10"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/zom_python_hatch"]
+
+[tool.hatch.envs.default]
+dependencies = ["pytest"]

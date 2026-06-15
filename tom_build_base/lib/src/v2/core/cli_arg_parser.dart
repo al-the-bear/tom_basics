@@ -523,6 +523,17 @@ class CliArgParser {
         if (value != null) cmdState.excludePatterns.addAll(_splitValue(value));
         return;
       }
+      // A value-bearing option explicitly declared by the current command takes
+      // precedence over a colliding global navigation flag of the same name.
+      // This lets a command define e.g. `--version <v>` (a version override)
+      // without it being hijacked by the global `--version` print-version flag:
+      // `buildkit :versioner --version 9.9.9` routes 9.9.9 to the command, while
+      // a bare `buildkit :versioner --version` (no value) still prints the tool
+      // version via the global handling below.
+      if (value != null && _commandDeclaresValueOption(state.currentCommand!, name)) {
+        cmdState.options[name] = value;
+        return;
+      }
       // Global navigation/feature flags remain global even when placed after
       // a command name, so `buildkit :cmd --dry-run` works the same as
       // `buildkit --dry-run :cmd`.
@@ -693,6 +704,28 @@ class CliArgParser {
       'config',
     };
     return globalFlags.contains(name);
+  }
+
+  /// Whether [command] explicitly declares an option named (or abbreviated)
+  /// [name] that expects a value (i.e. is not a bare flag).
+  ///
+  /// Used to let a command's own value-bearing option win over a colliding
+  /// global navigation flag of the same name (e.g. versioner's `--version`
+  /// override vs the global `--version` print-version flag).
+  bool _commandDeclaresValueOption(String command, String name) {
+    final def = toolDefinition;
+    if (def == null) return false;
+    for (final cmd in def.commands) {
+      if (cmd.name != command) continue;
+      for (final opt in cmd.options) {
+        if ((opt.name == name || opt.abbr == name) &&
+            opt.type != OptionType.flag) {
+          return true;
+        }
+      }
+      break;
+    }
+    return false;
   }
 
   bool _optionExpectsValue(String name) {

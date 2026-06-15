@@ -131,11 +131,14 @@ void main() {
         },
       );
 
-      // relativePath should be relative to executionRoot, not scan
+      // relativePath should be relative to executionRoot, not scan, and is
+      // normalized to forward slashes for cross-platform consistency (see
+      // CommandContext.relativePath), so compare against the posix form rather
+      // than p.join (which would use a backslash on Windows).
       if (relativePaths.containsKey('module_one')) {
         expect(
           relativePaths['module_one'],
-          equals(p.join('xternal', 'module_one')),
+          equals(p.posix.join('xternal', 'module_one')),
           reason:
               'relativePath should be relative to executionRoot (workspace root)',
         );

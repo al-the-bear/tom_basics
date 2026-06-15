@@ -1250,6 +1250,68 @@ testtool:
           }
         }
       });
+
+      test('BB-RUN-56: --help hides macro/define appendix when master yaml '
+          'is missing [2026-06-14]', () async {
+        // In an ineligible context (no <tool>_master.yaml in the workspace),
+        // the macro/define/pipeline help appendix must not be shown — those
+        // features are unavailable, so advertising them is misleading.
+        final tempRoot = await Directory.systemTemp.createTemp(
+          'bb_help_no_master_',
+        );
+        final previousCwd = Directory.current.path;
+        final output = StringBuffer();
+        try {
+          Directory.current = tempRoot.path;
+          final runner = ToolRunner(tool: testTool, output: output);
+
+          final result = await runner.run(['--help']);
+          expect(result.success, isTrue);
+
+          final help = output.toString();
+          expect(help, isNot(contains('Runtime Macros')));
+          expect(help, isNot(contains('Persistent Defines')));
+          // Gated commands must not leak into the listing either.
+          expect(help, isNot(contains(':macro')));
+          expect(help, isNot(contains(':define')));
+        } finally {
+          Directory.current = previousCwd;
+          if (tempRoot.existsSync()) {
+            await tempRoot.delete(recursive: true);
+          }
+        }
+      });
+
+      test('BB-RUN-57: --help shows macro/define appendix when master yaml '
+          'is present [2026-06-14]', () async {
+        // In an eligible context (a <tool>_master.yaml exists in the
+        // workspace), the appendix advertising macros/defines/pipelines is
+        // shown so the user can discover those features.
+        final tempRoot = await Directory.systemTemp.createTemp(
+          'bb_help_with_master_',
+        );
+        final previousCwd = Directory.current.path;
+        final output = StringBuffer();
+        try {
+          File('${tempRoot.path}/testtool_master.yaml').writeAsStringSync(
+            'testtool:\n  defines:\n    mode: PROD\n',
+          );
+          Directory.current = tempRoot.path;
+          final runner = ToolRunner(tool: testTool, output: output);
+
+          final result = await runner.run(['--help']);
+          expect(result.success, isTrue);
+
+          final help = output.toString();
+          expect(help, contains('Runtime Macros'));
+          expect(help, contains('Persistent Defines'));
+        } finally {
+          Directory.current = previousCwd;
+          if (tempRoot.existsSync()) {
+            await tempRoot.delete(recursive: true);
+          }
+        }
+      });
     });
   });
 

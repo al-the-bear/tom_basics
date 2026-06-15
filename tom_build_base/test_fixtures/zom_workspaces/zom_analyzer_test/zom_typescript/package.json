@@ -1,0 +1,17 @@
+{
+  "name": "zom-typescript",
+  "version": "1.0.0",
+  "description": "Test project for workspace analyzer TypeScript support",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^18.0.0",
+    "typescript": "^5.0.0"
+  }
+}

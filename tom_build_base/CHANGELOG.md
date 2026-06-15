@@ -1,3 +1,16 @@
+## 2.6.23
+
+### Fixed
+
+- **Per-command value options no longer shadowed by colliding global flags** — a command that declares its own value-bearing option (e.g. versioner's `--version <v>` override) now receives the value when invoked as `buildkit :versioner --version 9.9.9`, instead of the token being captured by the global `--version` print-version flag. A bare `--version` (no value) still prints the tool version. Covered by regression tests `BB-CLI-93`–`BB-CLI-95`.
+
+## 2.6.22
+
+### Fixed
+
+- **`--help` no longer advertises macros/defines/pipelines in an ineligible context** — the runtime macro / persistent define help appendix is now gated on `_isMacroDefineFeatureEligible()` (a `<tool>_master.yaml` exists in the workspace), matching the gating already applied to the commands themselves. Previously the appendix was shown whenever the tool was `multiCommand`, even with no master yaml present, misleading users about unavailable features.
+- **`--project <absolute path>` now matches the target project on every platform** — `FilterPipeline` project matching previously only recognised path patterns containing `/`, and never compared a folder's full path. A `--project` argument given as an absolute filesystem path (e.g. `versioner --project C:\repo\_build` on Windows, or any absolute POSIX path) therefore matched zero projects. Project/path matching is now separator-agnostic (`/` and `\` are equivalent) and absolute paths are compared against each folder's own path (case-insensitively on Windows). Covered by regression tests `BB-FLT-41`–`BB-FLT-44`.
+
 ## 2.6.21
 
 ### Fixed

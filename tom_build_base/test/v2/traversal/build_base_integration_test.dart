@@ -4,29 +4,32 @@ import 'package:test/test.dart';
 import 'package:path/path.dart' as p;
 import 'package:tom_build_base/tom_build_base_v2.dart';
 
+import '../../fixtures/zom_fixture.dart';
+
 /// Integration tests for BuildBase traversal.
 ///
-/// These tests use the actual zom_workspaces test projects to verify
-/// that traversal, filtering, and nature detection work correctly.
+/// These tests use the checked-in zom_analyzer_test fixture projects (copied to
+/// a throwaway temp dir per run) to verify that traversal, filtering, and
+/// nature detection work correctly. The git-traversal tests use the real
+/// enclosing multi-repo workspace, resolved via [workspaceRootDir].
 void main() {
-  // Get the workspace root (tom2 directory)
+  // The enclosing multi-repo workspace root (for GitTraversal tests, which
+  // expect nested submodules to be discovered under it).
   late String workspaceRoot;
   late String zomTestRoot;
 
-  setUpAll(() {
-    // Navigate from tom_build_base to workspace root
-    final currentDir = Directory.current.path;
-    // tom_build_base is in xternal/tom_module_basics/tom_build_base
-    // We need to get to the workspace root (tom2)
-    workspaceRoot = p.normalize(p.join(currentDir, '..', '..', '..'));
-    zomTestRoot = p.join(workspaceRoot, 'zom_workspaces', 'zom_analyzer_test');
+  setUpAll(() async {
+    // Resolve the package root from the package config (cwd-independent) before
+    // any path helper reads it; the process cwd is shared across concurrently
+    // running suites and is mutated by other tests.
+    await resolvePackageRoot();
+    workspaceRoot = workspaceRootDir();
+    // Copy the checked-in zom fixture into a throwaway temp dir for this run.
+    zomTestRoot = installZomFixture();
+  });
 
-    // Verify test projects exist
-    final testDir = Directory(zomTestRoot);
-    if (!testDir.existsSync()) {
-      fail('Test projects not found at $zomTestRoot. '
-          'Current directory: $currentDir');
-    }
+  tearDownAll(() {
+    removeZomFixture(zomTestRoot);
   });
 
   group('BuildBase.traverse with ProjectTraversalInfo', () {
@@ -301,40 +304,49 @@ void main() {
     });
 
     test('BB-INT-10: IncludeTestProjects includes BOTH regular and test projects [2026-02-12]', () async {
-      // Scan the workspace root to find both regular projects and test projects
-      final info = ProjectTraversalInfo(
-        executionRoot: workspaceRoot,
-        scan: workspaceRoot,
-        recursive: true,
-        includeTestProjects: true, // --test: include test projects IN ADDITION to regular
-      );
+      // Build an isolated workspace containing a regular package plus the zom
+      // fixture, then scan it. This keeps the test hermetic instead of relying
+      // on whatever projects happen to live in the real workspace root.
+      final mixedRoot = installMixedWorkspace();
+      try {
+        final info = ProjectTraversalInfo(
+          executionRoot: mixedRoot,
+          scan: mixedRoot,
+          recursive: true,
+          includeTestProjects: true, // --test: include test projects IN ADDITION to regular
+        );
 
-      final foundProjects = <String>[];
+        final foundProjects = <String>[];
 
-      await BuildBase.traverse(
-        info: info,
-        requiredNatures: {DartProjectFolder},
-        run: (ctx) async {
-          foundProjects.add(ctx.name);
-          return true;
-        },
-      );
+        await BuildBase.traverse(
+          info: info,
+          requiredNatures: {DartProjectFolder},
+          run: (ctx) async {
+            foundProjects.add(ctx.name);
+            return true;
+          },
+        );
 
-      // Should find regular projects (non-zom_*)
-      final regularProjects = foundProjects.where((n) => !n.startsWith('zom_')).toList();
-      expect(regularProjects, isNotEmpty,
-          reason: '--test should include regular (non-zom_*) projects');
+        // Should find regular projects (non-zom_*)
+        final regularProjects =
+            foundProjects.where((n) => !n.startsWith('zom_')).toList();
+        expect(regularProjects, isNotEmpty,
+            reason: '--test should include regular (non-zom_*) projects');
 
-      // Should ALSO find test projects (zom_*)
-      final testProjects = foundProjects.where((n) => n.startsWith('zom_')).toList();
-      expect(testProjects, isNotEmpty,
-          reason: '--test should also include zom_* test projects');
+        // Should ALSO find test projects (zom_*)
+        final testProjects =
+            foundProjects.where((n) => n.startsWith('zom_')).toList();
+        expect(testProjects, isNotEmpty,
+            reason: '--test should also include zom_* test projects');
 
-      // Verify we found specific projects from each category
-      expect(regularProjects.any((n) => n.contains('tom_')), isTrue,
-          reason: '--test should find regular tom_* projects');
-      expect(testProjects, contains('zom_test_flutter'),
-          reason: '--test should include zom_test_flutter');
+        // Verify we found specific projects from each category
+        expect(regularProjects.any((n) => n.contains('tom_')), isTrue,
+            reason: '--test should find regular tom_* projects');
+        expect(testProjects, contains('zom_test_flutter'),
+            reason: '--test should include zom_test_flutter');
+      } finally {
+        removeWorkspace(mixedRoot);
+      }
     });
   });
 

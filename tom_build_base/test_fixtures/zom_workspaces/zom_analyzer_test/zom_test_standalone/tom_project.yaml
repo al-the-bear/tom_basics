@@ -1,0 +1,84 @@
+# =============================================================================
+# ZOM TEST STANDALONE - PROJECT CONFIGURATION
+# =============================================================================
+# Test project for validating tom_master.yaml generation with CLI app structure.
+# Tests: Executables, compile action, cross-compilation
+
+name: test-cli
+short-id: ZTC
+
+type: dart_console
+description: Test standalone CLI app for validating workspace analyzer features
+
+# Build dependencies
+build-after:
+  - zom_test_package
+
+# Feature overrides
+features:
+  has-reflection: false
+  has-build-runner: false
+  has-tests: true
+  has-executable: true
+  publishable: false
+
+# Executable definitions
+executables:
+  - source: bin/main.dart
+    output: zom_test_standalone
+  - source: bin/helper.dart
+    output: zom_helper
+
+# Action overrides
+actions:
+  build:
+    default:
+      commands:
+        - dart analyze lib bin test
+        - dart test
+  compile:
+    default:
+      commands:
+        - dart compile exe bin/main.dart -o bin/zom_test_standalone
+      output: bin/
+  run:
+    default:
+      commands:
+        - dart run bin/main.dart
+
+# Cross-compilation for CLI tool
+cross-compilation:
+  all-targets:
+    - darwin-x64
+    - darwin-arm64
+    - linux-x64
+    - linux-arm64
+    - win32-x64
+  build-on:
+    darwin-arm64:
+      targets: [darwin-arm64, darwin-x64]
+    linux-x64:
+      targets: [linux-x64, linux-arm64]
+    win32-x64:
+      targets: [win32-x64]
+  output-dir: bin/${target}/
+
+# Mode definitions for CLI
+execution-mode-definitions:
+  local:
+    description: Run CLI locally
+    args: []
+  docker:
+    description: Run CLI in Docker
+    image: zom-standalone:latest
+    mount-workspace: true
+
+deployment-mode-definitions:
+  none:
+    description: No deployment for CLI tools
+
+# Custom tags
+cli-tool: true
+standalone-settings:
+  output-format: binary
+  strip-debug-info: true

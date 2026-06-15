@@ -1,0 +1,7 @@
+# Test artifacts and hermetic fixtures must not ship in the published package.
+# The fixtures are deliberately-incomplete projects used only by the local test
+# suite (copied to a temp dir per run); test_results.json is a transient
+# testkit artifact.
+test_fixtures/
+test_results.json
+last_testrun.json

@@ -1,0 +1,12 @@
+{
+  "name": "zom-javascript",
+  "version": "1.0.0",
+  "description": "Test project for workspace analyzer JavaScript support",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT"
+}

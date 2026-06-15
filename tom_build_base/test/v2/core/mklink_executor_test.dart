@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 import 'package:tom_build_base/tom_build_base_v2.dart';
 
@@ -22,8 +23,9 @@ void main() {
     });
 
     test('creates symbolic link with target and link positional args', () async {
-      final target = File('${tempDir.path}/target.txt')..writeAsStringSync('x');
-      final linkPath = '${tempDir.path}/alias.txt';
+      final target = File(p.join(tempDir.path, 'target.txt'))
+        ..writeAsStringSync('x');
+      final linkPath = p.join(tempDir.path, 'alias.txt');
 
       final result = await executor.executeWithoutTraversal(
         CliArgs(positionalArgs: [target.path, linkPath]),
@@ -42,8 +44,9 @@ void main() {
     });
 
     test('replaces existing destination when --force is set', () async {
-      final target = File('${tempDir.path}/target.txt')..writeAsStringSync('x');
-      final linkPath = '${tempDir.path}/alias.txt';
+      final target = File(p.join(tempDir.path, 'target.txt'))
+        ..writeAsStringSync('x');
+      final linkPath = p.join(tempDir.path, 'alias.txt');
       File(linkPath).writeAsStringSync('old-content');
 
       final result = await executor.executeWithoutTraversal(
@@ -63,8 +66,9 @@ void main() {
     });
 
     test('fails when destination exists and --force is not set', () async {
-      final target = File('${tempDir.path}/target.txt')..writeAsStringSync('x');
-      final linkPath = '${tempDir.path}/alias.txt';
+      final target = File(p.join(tempDir.path, 'target.txt'))
+        ..writeAsStringSync('x');
+      final linkPath = p.join(tempDir.path, 'alias.txt');
       File(linkPath).writeAsStringSync('old-content');
 
       final result = await executor.executeWithoutTraversal(
@@ -78,8 +82,9 @@ void main() {
 }
 
 bool _probeSymlinkSupport(String rootPath) {
-  final target = File('$rootPath/probe_target.txt')..writeAsStringSync('x');
-  final link = Link('$rootPath/probe_link.txt');
+  final target = File(p.join(rootPath, 'probe_target.txt'))
+    ..writeAsStringSync('x');
+  final link = Link(p.join(rootPath, 'probe_link.txt'));
 
   try {
     link.createSync(target.path);

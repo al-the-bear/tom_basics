@@ -1,0 +1,9 @@
+# Default test configuration for tom_build_base.
+#
+# Run suites sequentially. Many tests (tool_runner, features, traversal)
+# `chdir` into a throwaway temp workspace, but `Directory.current` is a
+# process-global property shared across the isolates package:test spawns per
+# suite. Running suites in parallel therefore lets one suite's cwd change leak
+# into another mid-run, which intermittently breaks master-yaml resolution
+# (e.g. BB-RUN-43). Serializing suites removes that whole class of flake.
+concurrency: 1

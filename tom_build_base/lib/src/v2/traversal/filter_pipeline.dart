@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:glob/glob.dart';
 import 'package:path/path.dart' as p;
 
@@ -34,6 +36,7 @@ class FilterPipeline {
                 _matchesProjectId(f, info.projectPatterns) ||
                 _matchesProjectName(f, info.projectPatterns) ||
                 _matchesNamePattern(f.name, info.projectPatterns) ||
+                _matchesFullPath(f.path, info.projectPatterns) ||
                 _matchesRelativePath(
                   p.relative(f.path, from: info.executionRoot),
                   info.projectPatterns,
@@ -52,6 +55,7 @@ class FilterPipeline {
                 !_matchesProjectId(f, info.excludeProjects) &&
                 !_matchesProjectName(f, info.excludeProjects) &&
                 !_matchesNamePattern(f.name, info.excludeProjects) &&
+                !_matchesFullPath(f.path, info.excludeProjects) &&
                 !_matchesRelativePath(
                   p.relative(f.path, from: info.executionRoot),
                   info.excludeProjects,
@@ -157,7 +161,10 @@ class FilterPipeline {
         _matchesNamePattern(folder.name, patterns)) {
       return true;
     }
-    // Try path-based matching for patterns containing '/'
+    // Absolute path patterns (e.g. `versioner --project <abs path>`): compare
+    // the folder's own path, separator-agnostically.
+    if (_matchesFullPath(folder.path, patterns)) return true;
+    // Try path-based matching for relative patterns containing a separator.
     if (executionRoot != null) {
       final relativePath = p.relative(folder.path, from: executionRoot);
       if (_matchesRelativePath(relativePath, patterns)) return true;
@@ -168,23 +175,60 @@ class FilterPipeline {
   /// Whether a pattern is path-based (contains directory separators).
   ///
   /// Path patterns like `core/*`, `devops/**`, `**/tom_core_*` must be
-  /// matched against relative paths, not just the folder basename.
-  static bool _isPathPattern(String pattern) => pattern.contains('/');
+  /// matched against relative paths, not just the folder basename. Both POSIX
+  /// (`/`) and Windows (`\`) separators are recognised so that absolute paths
+  /// passed on Windows (e.g. `C:\repo\_build`) are still treated as paths.
+  static bool _isPathPattern(String pattern) =>
+      pattern.contains('/') || pattern.contains(r'\');
+
+  /// Normalise a path to use forward slashes and drop a trailing separator,
+  /// so comparisons are independent of the platform's separator style.
+  static String _normalizeSeparators(String path) {
+    var result = path.replaceAll(r'\', '/');
+    if (result.length > 1 && result.endsWith('/')) {
+      result = result.substring(0, result.length - 1);
+    }
+    return result;
+  }
+
+  /// Platform-aware path equality (case-insensitive on Windows).
+  static bool _pathEquals(String a, String b) =>
+      Platform.isWindows ? a.toLowerCase() == b.toLowerCase() : a == b;
+
+  /// Match a folder's full path against any pattern interpreted as a complete
+  /// filesystem path (typically an absolute `--project` argument).
+  ///
+  /// The comparison is separator-agnostic: both the pattern and the folder
+  /// path are normalised to forward slashes first, so a Windows backslash path
+  /// and a POSIX-style path both resolve to the same folder.
+  bool _matchesFullPath(String folderPath, List<String> patterns) {
+    final normalizedFolder = _normalizeSeparators(folderPath);
+    for (final pattern in patterns) {
+      if (!_isPathPattern(pattern)) continue;
+      if (_pathEquals(normalizedFolder, _normalizeSeparators(pattern))) {
+        return true;
+      }
+    }
+    return false;
+  }
 
   /// Match a relative path against path-based patterns.
   ///
-  /// Only considers patterns that contain '/' (directory separators).
-  /// Uses [Glob] matching for pattern evaluation.
+  /// Only considers patterns that contain a directory separator. Both the path
+  /// and the pattern are normalised to forward slashes before [Glob] matching,
+  /// so Windows backslash separators behave the same as POSIX ones.
   bool _matchesRelativePath(String relativePath, List<String> patterns) {
+    final normalizedPath = _normalizeSeparators(relativePath);
     for (final pattern in patterns) {
       if (!_isPathPattern(pattern)) continue;
+      final normalizedPattern = _normalizeSeparators(pattern);
       try {
-        final glob = Glob(pattern);
-        if (glob.matches(relativePath)) return true;
+        final glob = Glob(normalizedPattern);
+        if (glob.matches(normalizedPath)) return true;
       } catch (_) {
         // Invalid glob — try simple string prefix match as fallback
-        final barePattern = pattern.replaceAll('*', '');
-        if (barePattern.isNotEmpty && relativePath.startsWith(barePattern)) {
+        final barePattern = normalizedPattern.replaceAll('*', '');
+        if (barePattern.isNotEmpty && normalizedPath.startsWith(barePattern)) {
           return true;
         }
       }
@@ -399,8 +443,8 @@ class FolderSorter {
   List<T> sortByInnerFirst<T>(List<T> folders, String Function(T) getPath) {
     final sorted = List<T>.from(folders);
     sorted.sort((a, b) {
-      final depthA = getPath(a).split(p.separator).length;
-      final depthB = getPath(b).split(p.separator).length;
+      final depthA = _pathDepth(getPath(a));
+      final depthB = _pathDepth(getPath(b));
       return depthB.compareTo(depthA); // Deeper first
     });
     return sorted;
@@ -412,10 +456,21 @@ class FolderSorter {
   List<T> sortByOuterFirst<T>(List<T> folders, String Function(T) getPath) {
     final sorted = List<T>.from(folders);
     sorted.sort((a, b) {
-      final depthA = getPath(a).split(p.separator).length;
-      final depthB = getPath(b).split(p.separator).length;
+      final depthA = _pathDepth(getPath(a));
+      final depthB = _pathDepth(getPath(b));
       return depthA.compareTo(depthB); // Shallower first
     });
     return sorted;
   }
+
+  /// Counts the nesting depth of a path, independent of the host platform's
+  /// path separator.
+  ///
+  /// Why: ordering must be correct for both POSIX (`/a/b`) and Windows
+  /// (`C:\a\b`) style paths regardless of where the tool runs. Splitting on
+  /// only [p.separator] would yield depth 1 for foreign-separator paths on
+  /// Windows, collapsing the ordering. Empty segments (leading separators,
+  /// doubled separators) are ignored so equivalent paths compare equally.
+  static int _pathDepth(String path) =>
+      path.split(RegExp(r'[/\\]')).where((s) => s.isNotEmpty).length;
 }

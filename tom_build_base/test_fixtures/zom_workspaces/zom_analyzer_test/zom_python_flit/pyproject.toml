@@ -1,0 +1,13 @@
+[build-system]
+requires = ["flit_core>=3.2"]
+build-backend = "flit_core.buildapi"
+
+[project]
+name = "zom-python-flit"
+version = "0.1.0"
+description = "Test project for workspace analyzer Flit detection"
+requires-python = ">=3.10"
+
+[tool.flit.metadata]
+module = "zom_python_flit"
+author = "Test Author"

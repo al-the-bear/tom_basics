@@ -1,0 +1,19 @@
+{
+  "name": "zom-node-cli",
+  "version": "1.0.0",
+  "description": "Test project for workspace analyzer Node CLI detection",
+  "main": "dist/index.js",
+  "type": "module",
+  "bin": {
+    "zom-cli": "./dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/cli.js"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "@types/node": "^20.0.0"
+  },
+  "license": "MIT"
+}

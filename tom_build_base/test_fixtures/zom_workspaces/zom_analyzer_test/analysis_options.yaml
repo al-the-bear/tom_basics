@@ -1,0 +1,3 @@
+# Shared analysis options for zom_analyzer_test projects
+# Include root workspace analysis options
+include: ../../analysis_options.yaml

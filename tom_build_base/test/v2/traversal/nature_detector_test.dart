@@ -4,21 +4,26 @@ import 'package:test/test.dart';
 import 'package:path/path.dart' as p;
 import 'package:tom_build_base/tom_build_base_v2.dart';
 
-/// Tests for NatureDetector using real test projects.
+import '../../fixtures/zom_fixture.dart';
+
+/// Tests for NatureDetector using the zom_analyzer_test fixture projects.
 void main() {
+  // The package root is itself a git repo, used by the GitFolder tests.
   late String workspaceRoot;
   late String zomTestRoot;
   late NatureDetector detector;
 
-  setUpAll(() {
-    final currentDir = Directory.current.path;
-    workspaceRoot = p.normalize(p.join(currentDir, '..', '..', '..'));
-    zomTestRoot = p.join(workspaceRoot, 'zom_workspaces', 'zom_analyzer_test');
+  setUpAll(() async {
+    // Resolve the package root (cwd-independent) before any path helper reads
+    // it; the process cwd is shared across concurrently running suites.
+    await resolvePackageRoot();
+    workspaceRoot = nearestGitRoot();
+    // Copy the checked-in zom fixture into a throwaway temp dir for this run.
+    zomTestRoot = installZomFixture();
+  });
 
-    final testDir = Directory(zomTestRoot);
-    if (!testDir.existsSync()) {
-      fail('Test projects not found at $zomTestRoot');
-    }
+  tearDownAll(() {
+    removeZomFixture(zomTestRoot);
   });
 
   setUp(() {

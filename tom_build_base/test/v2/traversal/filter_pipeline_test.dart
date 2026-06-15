@@ -4,33 +4,39 @@ import 'package:test/test.dart';
 import 'package:path/path.dart' as p;
 import 'package:tom_build_base/tom_build_base_v2.dart';
 
-/// Tests for FilterPipeline using real test projects.
+import '../../fixtures/zom_fixture.dart';
+
+/// Tests for FilterPipeline using the zom_analyzer_test fixture projects.
 void main() {
+  // A real git working tree enclosing this package (for git-filter tests,
+  // whose module assertions match the enclosing repo's folder structure).
   late String workspaceRoot;
   late String zomTestRoot;
   late FilterPipeline filter;
   late List<FsFolder> allFolders;
 
   setUpAll(() async {
-    final currentDir = Directory.current.path;
-    workspaceRoot = p.normalize(p.join(currentDir, '..', '..', '..'));
-    zomTestRoot = p.join(workspaceRoot, 'zom_workspaces', 'zom_analyzer_test');
-
-    final testDir = Directory(zomTestRoot);
-    if (!testDir.existsSync()) {
-      fail('Test projects not found at $zomTestRoot');
-    }
+    // Resolve the package root (cwd-independent) before any path helper reads
+    // it; the process cwd is shared across concurrently running suites.
+    await resolvePackageRoot();
+    workspaceRoot = workspaceRootDir();
+    // Copy the checked-in zom fixture into a throwaway temp dir for this run.
+    zomTestRoot = installZomFixture();
 
     // Scan all folders to use in filter tests
     final scanner = FolderScanner();
     allFolders = await scanner.scan(zomTestRoot, recursive: true);
-    
+
     // Detect natures for each folder
     final detector = NatureDetector();
     for (final folder in allFolders) {
       final natures = detector.detectNatures(folder);
       folder.natures.addAll(natures);
     }
+  });
+
+  tearDownAll(() {
+    removeZomFixture(zomTestRoot);
   });
 
   setUp(() {
@@ -167,6 +173,91 @@ void main() {
         expect(names, contains('zom_test_flutter'));
         expect(names, contains('zom_test_standalone'));
         expect(names, contains('zom_test_package'));
+      });
+    });
+
+    group('Absolute path patterns (--project <abs path>)', () {
+      // Regression: tools such as `versioner --project <abs>` pass an absolute
+      // filesystem path. It must match the project folder on every platform,
+      // regardless of whether the path uses `/` or `\` separators. The Windows
+      // failure mode was that a backslash absolute path was not recognised as a
+      // path pattern at all (`pattern.contains('/')` is false), so it matched
+      // zero projects.
+      late FsFolder flutterFolder;
+
+      setUp(() {
+        flutterFolder =
+            allFolders.firstWhere((f) => f.name == 'zom_test_flutter');
+      });
+
+      test('BB-FLT-41: native absolute path matches the project [2026-06-14]',
+          () {
+        final info = ProjectTraversalInfo(
+          executionRoot: zomTestRoot,
+          projectPatterns: [flutterFolder.path], // native separators
+          includeTestProjects: true,
+        );
+
+        final filtered = filter.applyProjectFilters(allFolders, info);
+
+        expect(filtered.map((f) => f.name), contains('zom_test_flutter'));
+        expect(filtered.length, equals(1),
+            reason: 'An absolute path should select exactly that project');
+      });
+
+      test(
+          'BB-FLT-42: forward-slash absolute path matches the project '
+          '[2026-06-14]', () {
+        final forwardSlash = flutterFolder.path.replaceAll(r'\', '/');
+        final info = ProjectTraversalInfo(
+          executionRoot: zomTestRoot,
+          projectPatterns: [forwardSlash],
+          includeTestProjects: true,
+        );
+
+        final filtered = filter.applyProjectFilters(allFolders, info);
+
+        expect(filtered.map((f) => f.name), contains('zom_test_flutter'));
+      });
+
+      test(
+          'BB-FLT-43: backslash absolute path matches the project '
+          '[2026-06-14]', () {
+        final backslash = flutterFolder.path.replaceAll('/', r'\');
+        final info = ProjectTraversalInfo(
+          executionRoot: zomTestRoot,
+          projectPatterns: [backslash],
+          includeTestProjects: true,
+        );
+
+        final filtered = filter.applyProjectFilters(allFolders, info);
+
+        expect(filtered.map((f) => f.name), contains('zom_test_flutter'),
+            reason: 'A backslash absolute path must still match the folder');
+      });
+
+      test('BB-FLT-44: matchesProjectPattern accepts an absolute path '
+          '[2026-06-14]', () {
+        expect(
+          filter.matchesProjectPattern(
+            flutterFolder,
+            [flutterFolder.path],
+            executionRoot: zomTestRoot,
+          ),
+          isTrue,
+        );
+        // Separator-flipped variant must also match.
+        final flipped = flutterFolder.path.contains(r'\')
+            ? flutterFolder.path.replaceAll(r'\', '/')
+            : flutterFolder.path.replaceAll('/', r'\');
+        expect(
+          filter.matchesProjectPattern(
+            flutterFolder,
+            [flipped],
+            executionRoot: zomTestRoot,
+          ),
+          isTrue,
+        );
       });
     });
 
@@ -484,12 +575,21 @@ void main() {
     });
 
     test('BB-FLT-22: Scans only root when recursive is false [2026-02-12]', () async {
-      final scanner = FolderScanner();
-      final folders = await scanner.scan(zomTestRoot, recursive: false);
+      // The scanner enters container directories but stops at project
+      // directories, so a project root with a nested project yields just the
+      // root when recursive is false. (The zom fixture root is a *container*,
+      // which the scanner always descends into, so it is unsuitable here.)
+      final nestedRoot = installNestedProjectFixture();
+      try {
+        final scanner = FolderScanner();
+        final folders = await scanner.scan(nestedRoot, recursive: false);
 
-      // Should only find the root folder
-      expect(folders.length, equals(1));
-      expect(folders.first.path, equals(zomTestRoot));
+        // Should only find the root folder
+        expect(folders.length, equals(1));
+        expect(folders.first.path, equals(nestedRoot));
+      } finally {
+        removeWorkspace(nestedRoot);
+      }
     });
 
     test('BB-FLT-23: Respects recursionExclude patterns [2026-02-12]', () async {
@@ -610,32 +710,59 @@ void main() {
   });
 
   group('RepositoryIdLookup', () {
+    // Controlled workspace with tom_repository.yaml markers (BSC/D4/CRPT), so
+    // resolution does not depend on whatever metadata exists at the current
+    // working directory.
+    late String repoIdRoot;
+
+    setUp(() {
+      repoIdRoot = installRepoIdFixture();
+      RepositoryIdLookup.clearCache(executionRoot: repoIdRoot);
+    });
+
+    tearDown(() {
+      RepositoryIdLookup.clearCache(executionRoot: repoIdRoot);
+      removeWorkspace(repoIdRoot);
+    });
+
     test('BB-FLT-37: Resolves known repository ID to name [2026-02-14]', () {
-      expect(
-          RepositoryIdLookup.resolveToName('BSC'), equals('tom_module_basics'));
-      expect(RepositoryIdLookup.resolveToName('D4'), equals('tom_module_d4rt'));
-      expect(RepositoryIdLookup.resolveToName('CRPT'),
+      expect(RepositoryIdLookup.resolveToName('BSC', executionRoot: repoIdRoot),
+          equals('tom_module_basics'));
+      expect(RepositoryIdLookup.resolveToName('D4', executionRoot: repoIdRoot),
+          equals('tom_module_d4rt'));
+      expect(RepositoryIdLookup.resolveToName('CRPT', executionRoot: repoIdRoot),
           equals('tom_module_crypto'));
     });
 
     test('BB-FLT-38: Repository ID resolution is case-insensitive [2026-02-14]', () {
-      expect(
-          RepositoryIdLookup.resolveToName('bsc'), equals('tom_module_basics'));
-      expect(
-          RepositoryIdLookup.resolveToName('Bsc'), equals('tom_module_basics'));
+      expect(RepositoryIdLookup.resolveToName('bsc', executionRoot: repoIdRoot),
+          equals('tom_module_basics'));
+      expect(RepositoryIdLookup.resolveToName('Bsc', executionRoot: repoIdRoot),
+          equals('tom_module_basics'));
     });
 
     test('BB-FLT-39: Unknown ID returns unchanged [2026-02-14]', () {
-      expect(RepositoryIdLookup.resolveToName('unknown'), equals('unknown'));
-      expect(RepositoryIdLookup.resolveToName('tom_module_basics'),
+      expect(
+          RepositoryIdLookup.resolveToName('unknown', executionRoot: repoIdRoot),
+          equals('unknown'));
+      expect(
+          RepositoryIdLookup.resolveToName('tom_module_basics',
+              executionRoot: repoIdRoot),
           equals('tom_module_basics'));
     });
 
     test('BB-FLT-40: isRepositoryId identifies known IDs [2026-02-14]', () {
-      expect(RepositoryIdLookup.isRepositoryId('BSC'), isTrue);
-      expect(RepositoryIdLookup.isRepositoryId('bsc'), isTrue); // case-insensitive
-      expect(RepositoryIdLookup.isRepositoryId('unknown'), isFalse);
-      expect(RepositoryIdLookup.isRepositoryId('tom_module_basics'), isFalse);
+      expect(RepositoryIdLookup.isRepositoryId('BSC', executionRoot: repoIdRoot),
+          isTrue);
+      expect(RepositoryIdLookup.isRepositoryId('bsc', executionRoot: repoIdRoot),
+          isTrue); // case-insensitive
+      expect(
+          RepositoryIdLookup.isRepositoryId('unknown', executionRoot: repoIdRoot),
+          isFalse);
+      expect(
+          RepositoryIdLookup.isRepositoryId('tom_module_basics',
+              executionRoot: repoIdRoot),
+          isFalse);
     });
   });
 }

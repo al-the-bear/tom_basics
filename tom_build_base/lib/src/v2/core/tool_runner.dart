@@ -966,12 +966,13 @@ class ToolRunner {
       return _runNestedCommand(cliArgs.commands.first, cliArgs);
     }
 
-    // Single command: run default executor in cwd
+    // Single command: nested mode skips traversal, so run the default
+    // executor's non-traversal entry point.
     final executor = executors['default'];
     if (executor == null) {
       return const ToolResult.failure('No default executor configured');
     }
-    return _executeNestedInCwd(executor, cliArgs);
+    return executor.executeWithoutTraversal(cliArgs);
   }
 
   /// Run a single command in nested mode (no traversal).
@@ -985,16 +986,24 @@ class ToolRunner {
     if (executor == null) {
       return ToolResult.failure('No executor for command: ${cmd.name}');
     }
+    // Nested mode means the host tool has already traversed and invoked us per
+    // project. Commands that don't require traversal run via
+    // executeWithoutTraversal — consistent with the non-nested path (see the
+    // `!cmd.requiresTraversal` branch in the main run flow). Only commands that
+    // genuinely require per-folder logic fall through to a cwd-scoped execute.
+    if (!cmd.requiresTraversal) {
+      return executor.executeWithoutTraversal(cliArgs);
+    }
     return _executeNestedInCwd(executor, cliArgs);
   }
 
-  /// Execute a command executor in nested mode using CWD as context.
+  /// Execute a command executor against the current working directory (no
+  /// traversal).
   ///
-  /// Creates a [CommandContext] from the current working directory and
-  /// calls [CommandExecutor.execute] so per-project logic runs correctly.
-  /// Falls back to [CommandExecutor.executeWithoutTraversal] only if the
-  /// executor overrides it (i.e., returns non-success when execute is not
-  /// appropriate).
+  /// Used for nested commands that require traversal: the host tool has already
+  /// traversed to the project directory, so this runs the executor's per-folder
+  /// [CommandExecutor.execute] logic once, with a [CommandContext] built from
+  /// the current working directory.
   Future<ToolResult> _executeNestedInCwd(
     CommandExecutor executor,
     CliArgs cliArgs,
@@ -1218,6 +1227,10 @@ Options:
 
   String? _builtInMacroDefineHelpAppendix() {
     if (_effectiveTool.mode != ToolMode.multiCommand) return null;
+    // Only advertise macros/defines/pipelines when the tool is in an eligible
+    // context (a `<tool>_master.yaml` exists in the workspace). Without it
+    // these features are unavailable, so listing them in --help is misleading.
+    if (!_isMacroDefineFeatureEligible()) return null;
     return '''<magenta>**Runtime Macros**</magenta>
   :macro <name>=<value>      Add runtime macro
   :macros                    List runtime macros

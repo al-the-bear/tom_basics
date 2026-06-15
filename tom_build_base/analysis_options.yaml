@@ -13,6 +13,14 @@
 
 include: package:lints/recommended.yaml
 
+analyzer:
+  exclude:
+    # Hermetic test fixtures (copied to a temp dir per run). These projects
+    # contain deliberately-incomplete code (missing package sources, broken
+    # imports) so they exercise the traversal/nature tooling; they are not part
+    # of this package and must not be analyzed.
+    - test_fixtures/**
+
 linter:
   rules:
     dangling_library_doc_comments: false

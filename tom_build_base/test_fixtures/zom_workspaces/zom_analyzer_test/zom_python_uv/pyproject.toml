@@ -1,0 +1,14 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "zom-python-uv"
+version = "0.1.0"
+description = "Test project for workspace analyzer uv detection"
+requires-python = ">=3.10"
+
+[tool.uv]
+dev-dependencies = [
+    "pytest>=7.0.0",
+]
