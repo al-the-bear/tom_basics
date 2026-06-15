@@ -29,6 +29,7 @@ library;
 
 // ── Utility classes (config loading, process execution, YAML) ──────────
 export 'src/build_config.dart';
+export 'src/console_encoding.dart';
 export 'src/tool_logging.dart';
 export 'src/yaml_utils.dart';
 

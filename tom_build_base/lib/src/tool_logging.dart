@@ -9,6 +9,8 @@ library;
 import 'dart:io';
 import 'dart:convert';
 
+import 'console_encoding.dart';
+
 /// Global verbose flag accessor.
 ///
 /// Set via [ToolLogger.verbose] or checked via [ToolLogger.isVerbose].
@@ -117,19 +119,24 @@ class ProcessRunner {
       workingDirectory: workingDirectory,
     );
 
-    // Run the process
+    // Run the process. Capture raw bytes (stdoutEncoding/stderrEncoding null)
+    // and decode as UTF-8 ourselves so non-ASCII tool output (e.g. `dart
+    // compile` diagnostics) is not mangled by the host's ANSI code page on
+    // Windows. See [decodeProcessOutput].
     final result = await Process.run(
       executable,
       arguments,
       workingDirectory: workingDirectory,
       environment: environment,
       runInShell: runInShell,
+      stdoutEncoding: null,
+      stderrEncoding: null,
     );
 
     return ProcessRunResult(
       exitCode: result.exitCode,
-      stdout: result.stdout.toString(),
-      stderr: result.stderr.toString(),
+      stdout: decodeProcessOutput(result.stdout),
+      stderr: decodeProcessOutput(result.stderr),
     );
   }
 
@@ -154,18 +161,21 @@ class ProcessRunner {
       }
     }
 
-    // Run the process
+    // Run the process. Capture raw bytes and decode as UTF-8 ourselves (see
+    // [run]) so non-ASCII output survives the host's ANSI code page on Windows.
     final result = await Process.run(
       executable,
       args,
       workingDirectory: workingDirectory,
       environment: environment,
+      stdoutEncoding: null,
+      stderrEncoding: null,
     );
 
     return ProcessRunResult(
       exitCode: result.exitCode,
-      stdout: result.stdout.toString(),
-      stderr: result.stderr.toString(),
+      stdout: decodeProcessOutput(result.stdout),
+      stderr: decodeProcessOutput(result.stderr),
     );
   }
 
@@ -196,11 +206,13 @@ class ProcessRunner {
         runInShell: runInShell,
       );
 
+      // Tolerate malformed bytes so a single non-UTF-8 chunk does not abort
+      // the rest of the stream (a strict decoder throws, dropping output).
       process.stdout
-          .transform(utf8.decoder)
+          .transform(const Utf8Decoder(allowMalformed: true))
           .listen(stdout.write, onError: (_) {});
       process.stderr
-          .transform(utf8.decoder)
+          .transform(const Utf8Decoder(allowMalformed: true))
           .listen(stderr.write, onError: (_) {});
 
       return process.exitCode;

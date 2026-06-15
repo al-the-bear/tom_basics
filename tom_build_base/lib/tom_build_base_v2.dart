@@ -26,6 +26,9 @@
 /// }
 /// ```
 
+// Console / process I/O encoding guard
+export 'src/console_encoding.dart';
+
 // Folder types
 export 'src/v2/folder/fs_folder.dart';
 export 'src/v2/folder/run_folder.dart';

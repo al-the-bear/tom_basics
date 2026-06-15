@@ -324,8 +324,10 @@ class ToolPipelineExecutor {
     }
     await process.stdin.close();
 
-    final stdoutFuture = process.stdout.transform(utf8.decoder).join();
-    final stderrFuture = process.stderr.transform(utf8.decoder).join();
+    final stdoutFuture =
+        process.stdout.transform(const Utf8Decoder(allowMalformed: true)).join();
+    final stderrFuture =
+        process.stderr.transform(const Utf8Decoder(allowMalformed: true)).join();
     final exitCode = await process.exitCode;
     final out = await stdoutFuture;
     final err = await stderrFuture;

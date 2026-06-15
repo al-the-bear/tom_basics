@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:yaml/yaml.dart';
 
+import '../../console_encoding.dart';
 import 'cli_arg_parser.dart';
 import 'command_definition.dart';
 import 'console_markdown_zone.dart';
@@ -274,6 +275,10 @@ class ToolRunner {
 
   /// Run the tool with command-line arguments.
   Future<ToolResult> run(List<String> args) async {
+    // Ensure non-ASCII tool/subprocess output renders correctly on Windows
+    // (UTF-8 console + sinks). No-op on other platforms; idempotent.
+    enableUtf8Console();
+
     final startupWatch = Stopwatch()..start();
     var lastCheckpoint = Duration.zero;
 

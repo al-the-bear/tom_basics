@@ -1,3 +1,9 @@
+## 2.6.24
+
+### Fixed
+
+- **Non-ASCII tool/subprocess output now renders correctly on Windows** — added a UTF-8 console + process-output guard (`console_encoding.dart`). `ProcessRunner.run`/`runShell` and the shell executor now capture raw bytes and decode them as UTF-8 (`decodeProcessOutput`, tolerating malformed sequences) instead of relying on the host's ANSI code page, which previously turned UTF-8 diagnostics such as `dart compile`'s "für" into double-mojibake ("fÃƒÂ¼r"). `ToolRunner.run` calls `enableUtf8Console()` at startup, which switches the Windows console code pages to UTF-8 (`CP_UTF8`, the `chcp 65001` equivalent via kernel32) and routes the `stdout`/`stderr` sinks through UTF-8. No-op on non-Windows hosts and idempotent. Streaming decoders now tolerate malformed bytes so a single bad chunk no longer aborts the rest of the stream. Covered by regression tests `ENC01`–`ENC09`.
+
 ## 2.6.23
 
 ### Fixed

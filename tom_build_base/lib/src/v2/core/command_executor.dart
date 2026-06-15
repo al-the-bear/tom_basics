@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import '../../console_encoding.dart';
 import 'cli_arg_parser.dart';
 import 'tool_runner.dart';
 import '../traversal/command_context.dart';
@@ -106,24 +107,28 @@ class ShellExecutor extends CommandExecutor {
   Future<ItemResult> execute(CommandContext context, CliArgs args) async {
     try {
       final dir = workingDirectory ?? context.path;
+      // Capture raw bytes and decode as UTF-8 ourselves so non-ASCII output is
+      // not mangled by the host's locale code page. See [decodeProcessOutput].
       final result = await Process.run(
         'sh',
         ['-c', shellCommand],
         workingDirectory: dir,
+        stdoutEncoding: null,
+        stderrEncoding: null,
       );
 
       if (result.exitCode != 0) {
         return ItemResult.failure(
           path: context.path,
           name: context.name,
-          error: result.stderr.toString(),
+          error: decodeProcessOutput(result.stderr),
         );
       }
 
       return ItemResult.success(
         path: context.path,
         name: context.name,
-        message: printOutput ? result.stdout.toString() : null,
+        message: printOutput ? decodeProcessOutput(result.stdout) : null,
       );
     } catch (e) {
       return ItemResult.failure(
