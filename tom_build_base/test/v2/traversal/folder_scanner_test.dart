@@ -172,6 +172,120 @@ void main() {
     });
   });
 
+  group('BB-V2-SCN-REC: FolderScanner Project Recursion [2026-06-15]', () {
+    // These tests pin the recursion contract that keeps `:compiler` (and every
+    // other scanning tool) from building a project's test/example *fixture*
+    // projects by default.
+    //
+    // Contract: the scanner ALWAYS descends through non-project container
+    // directories to find projects, but only descends INTO a project directory
+    // (one containing pubspec.yaml) when `recursive: true`. Tools default to
+    // `recursive: false` (see ProjectTraversalInfo.recursive and the CLI
+    // `--not-recursive` default), so a fixture project nested under a real
+    // project's `test/` or `example/` is reached ONLY with `-r`/`--recursive`.
+    //
+    // Real-world case: tom_build_kit/test/fixtures/build_project/_build is a
+    // (deliberately broken) fixture project that must not be compiled by a
+    // default workspace build — only by an explicit recursive test run.
+    late Directory tempDir;
+    late String tempPath;
+
+    setUp(() {
+      tempDir = Directory.systemTemp.createTempSync('folder_scanner_rec_test_');
+      tempPath = tempDir.path;
+    });
+
+    tearDown(() {
+      if (tempDir.existsSync()) {
+        tempDir.deleteSync(recursive: true);
+      }
+    });
+
+    void createFile(String relativePath, [String content = '']) {
+      final file = File(p.join(tempPath, relativePath));
+      file.parent.createSync(recursive: true);
+      file.writeAsStringSync(content);
+    }
+
+    // A real project that nests fixture projects under test/ and example/,
+    // mirroring tom_build_kit's layout.
+    void createProjectWithNestedFixtures() {
+      createFile('tool_project/pubspec.yaml', 'name: tool_project\n');
+      createFile(
+        'tool_project/test/fixtures/build_project/_build/pubspec.yaml',
+        'name: _build\n',
+      );
+      createFile(
+        'tool_project/example/demo/pubspec.yaml',
+        'name: demo\n',
+      );
+    }
+
+    test(
+      'BB-V2-SCN-REC-1: non-recursive scan skips a project\'s test/example '
+      'fixture projects',
+      () async {
+        createProjectWithNestedFixtures();
+
+        final scanner = FolderScanner();
+        final results = await scanner.scan(tempPath); // recursive: false default
+
+        final names = results.map((f) => p.basename(f.path)).toList();
+
+        expect(names, contains('tool_project'),
+            reason: 'the real project itself is always discovered');
+        expect(names, isNot(contains('_build')),
+            reason:
+                'a fixture project under test/ must NOT be entered by default; '
+                'this is what keeps `:compiler` from building test fixtures');
+        expect(names, isNot(contains('demo')),
+            reason: 'a fixture project under example/ must NOT be entered by '
+                'default');
+        expect(names, isNot(contains('test')),
+            reason: 'the scanner stops at the project boundary and never even '
+                'descends into the project\'s test/ container');
+      },
+    );
+
+    test(
+      'BB-V2-SCN-REC-2: recursive (-r) is the only way to descend into a '
+      'project\'s nested fixture projects',
+      () async {
+        createProjectWithNestedFixtures();
+
+        final scanner = FolderScanner();
+        final results = await scanner.scan(tempPath, recursive: true);
+
+        final names = results.map((f) => p.basename(f.path)).toList();
+
+        expect(names, contains('tool_project'));
+        expect(names, contains('_build'),
+            reason: '`-r` descends into the project and finds nested fixtures');
+        expect(names, contains('demo'),
+            reason: '`-r` also reaches example/ fixture projects');
+      },
+    );
+
+    test(
+      'BB-V2-SCN-REC-3: container directories above a project are always '
+      'traversed regardless of recursion',
+      () async {
+        // A top-level container (no pubspec.yaml) holding a project — this is
+        // the normal workspace shape and must always be discovered.
+        createFile('container/app/pubspec.yaml', 'name: app\n');
+
+        final scanner = FolderScanner();
+        final nonRecursive = await scanner.scan(tempPath);
+        final names = nonRecursive.map((f) => p.basename(f.path)).toList();
+
+        expect(names, contains('app'),
+            reason: 'scanning descends through plain containers to find '
+                'projects even when non-recursive — only project boundaries '
+                'gate recursion');
+      },
+    );
+  });
+
   group('BB-V2-SCN-WS: FolderScanner Workspace Boundaries [2026-02-14]', () {
     late Directory tempDir;
     late String tempPath;

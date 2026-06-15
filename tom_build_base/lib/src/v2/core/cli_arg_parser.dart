@@ -11,7 +11,11 @@ class TraversalDefaults {
   /// Starting scan path (default: '.').
   final String? scan;
 
-  /// Whether to scan recursively (default: true).
+  /// Whether to descend into **project** directories to find nested projects.
+  ///
+  /// Null means "unset" (fall back to the effective default, which is `false` /
+  /// `--not-recursive`). Recursing into a project — e.g. to reach its `test/`
+  /// or `example/` fixture projects — requires `-r`/`--recursive`.
   final bool? recursive;
 
   /// Exclude patterns for paths.
