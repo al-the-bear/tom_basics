@@ -191,19 +191,24 @@ list — all derived from the definition, none of it hand-written.
 | Example | What it shows |
 | --- | --- |
 | [`example/tom_build_base_example.dart`](example/tom_build_base_example.dart) | A two-command (`hello`, `list`) `ToolRunner` tool |
+| [`tom_build_base_introduction_sample`](../tom_basics_samples/tom_build_base_introduction_sample/) | A simple single-command build tool, built from one `ToolDefinition` and run over a fixture workspace — the introductory article. |
+| [`tom_build_base_advanced_sample`](../tom_basics_samples/tom_build_base_advanced_sample/) | A nestable, multi-command tool: per-command options, audit/exit codes, sequencing and nested invocation — the advanced article. |
+| [`tom_build_base_advanced_analyzer_sample`](../tom_basics_samples/tom_build_base_advanced_analyzer_sample/) | A nestable single-command tool whose traversal feeds an analyzer-summary cache (`tom_analyzer_shared`) — the caching article. |
 
-Run it with:
+Run the local example with:
 
 ```sh
 dart run example/tom_build_base_example.dart --help
 dart run example/tom_build_base_example.dart :list
 ```
 
-> Worked samples — `tom_build_base_sample` (the tool-authoring walkthrough) and
-> `tom_build_base_advanced_analyzer_sample` (traversal feeding an analyzer
-> cache) — are planned under `../tom_basics_samples/`; until they land, the
-> usage sections below and the [`doc/`](#further-documentation) guides are the
-> reference.
+For full worked tutorials, start with the
+[`tom_build_base_introduction_sample`](../tom_basics_samples/tom_build_base_introduction_sample/)
+and progress through the
+[advanced](../tom_basics_samples/tom_build_base_advanced_sample/) and
+[analyzer-caching](../tom_basics_samples/tom_build_base_advanced_analyzer_sample/)
+samples; the usage sections below and the
+[`doc/`](#further-documentation) guides are the inline reference.
 
 ---
 

@@ -167,7 +167,7 @@ run it with `dart run example/tom_basics_example.dart`.
 | Sample | Demonstrates |
 | ------ | ------------ |
 | [`example/tom_basics_example.dart`](example/tom_basics_example.dart) | The 12-line quick start above: logger + tracked exception. |
-| [`tom_basics_sample`](../tom_basics_samples/tom_basics_sample/) | The full exception-handling-with-UUID-tracking model, end to end, with the logger and platform seam. *(article-grade sample; lands with the samples build-out)* |
+| [`tom_basics_sample`](../tom_basics_samples/tom_basics_sample/) | The full exception-handling-with-UUID-tracking model, end to end, with the logger and platform seam. *(article-grade sample, seven runnable examples)* |
 
 ---
 

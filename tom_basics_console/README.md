@@ -143,7 +143,7 @@ themselves never appear.)
 | Sample | Demonstrates |
 | ------ | ------------ |
 | [`example/tom_basics_console_example.dart`](example/tom_basics_console_example.dart) | The quick start above: detection + styled output. |
-| [`tom_basics_console_sample`](../tom_basics_samples/tom_basics_console_sample/) | Platform detection, console output, and the HTTP client together. *(article-grade sample; lands with the samples build-out)* |
+| [`tom_basics_console_sample`](../tom_basics_samples/tom_basics_console_sample/) | Platform detection, console output, and the HTTP client together. *(article-grade sample, six runnable examples)* |
 
 ---
 

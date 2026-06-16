@@ -133,6 +133,7 @@ This mirrors the runnable [`example/tom_chattools_example.dart`](example/tom_cha
 
 | Example | What it shows |
 | ------- | ------------- |
+| [`tom_chattools_sample`](../tom_basics_samples/tom_chattools_sample/) | The unified chat API as an article: the `ChatApi` contract driven against an in-memory mock transport (no live tokens), covering send/receive/filtering/streaming — seven runnable, CI-safe examples. |
 | [`example/tom_chattools_example.dart`](example/tom_chattools_example.dart) | Connect, send, and pull replies from Telegram |
 | [Quick start](#quick-start) | Same flow, annotated |
 | [Streaming updates](#streaming-updates) | The `onMessage` live stream |

@@ -172,16 +172,18 @@ throwing variant.
 | Example | What it shows |
 | --- | --- |
 | [`example/tom_basics_network_example.dart`](example/tom_basics_network_example.dart) | The default and a custom retry schedule, printed |
+| [`tom_basics_network_sample`](../tom_basics_samples/tom_basics_network_sample/) | The full retry-with-backoff and server-discovery surface, end to end. *(article-grade sample, seven runnable examples, runs offline)* |
 
-Run it with:
+Run the local example with:
 
 ```sh
 dart run example/tom_basics_network_example.dart
 ```
 
-> A runnable `tom_basics_network_sample` covering the full retry and discovery
-> surface is planned under `../tom_basics_samples/`; until it lands, the usage
-> sections below are the worked reference.
+For the full worked tour — retry, exhaustion, the retryable set, the default
+backoff schedule, server discovery and subnet arithmetic — see the
+[`tom_basics_network_sample`](../tom_basics_samples/tom_basics_network_sample/);
+the usage sections below are the inline reference.
 
 ---
 

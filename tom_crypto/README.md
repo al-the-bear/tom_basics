@@ -155,6 +155,7 @@ needs nothing but the values you already stored.
 
 | Example | What it shows |
 | ------- | ------------- |
+| [`tom_crypto_sample`](../tom_basics_samples/tom_crypto_sample/) | The full article-grade walkthrough — password hashing, JWT issue/verify/encrypt, and RSA encryption/signing/keygen — as seven runnable, offline examples with inline expected output. |
 | [Quick start](#quick-start) | Hash and verify a password |
 | [Password hashing](#password-hashing) | Storage format and cost tuning |
 | [JWT tokens](#jwt-tokens) | Issue, encrypt, parse, and read claims |
@@ -162,9 +163,9 @@ needs nothing but the values you already stored.
 | [Digital signatures](#digital-signatures) | Sign data and verify integrity |
 | [Working with PEM keys](#working-with-pem-keys) | Parse and encode PEM |
 
-> A runnable `example/` program is tracked as a follow-up in the cli_tools
-> quest; for now the snippets below are each self-contained and copy-paste
-> runnable.
+> For a self-contained runnable project, see the
+> [`tom_crypto_sample`](../tom_basics_samples/tom_crypto_sample/); the snippets
+> below are each copy-paste runnable too.
 
 ---
 
@@ -405,4 +406,5 @@ BSD-3-Clause as in [LICENSE](LICENSE).
 
 Stable (`1.0.1`). Public API covers password hashing, JWT issuance/parsing, RSA
 encryption/signatures, and RSA key management. `dart analyze` is clean. A
-runnable `example/` program is tracked as a follow-up in the cli_tools quest.
+runnable, article-grade project lives in the
+[`tom_crypto_sample`](../tom_basics_samples/tom_crypto_sample/).

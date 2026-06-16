@@ -144,13 +144,16 @@ null-aware `result?.…` is the intended usage.
 
 ## Example projects
 
-> This package is consumed *inside* code-generator CLIs rather than run
-> standalone, so it ships no `example/` program. A worked
-> `tom_build_base_advanced_analyzer_sample` — a small traversal-driven tool
-> that calls `runSummaryCacheStage` per project and reports cache hits — is
-> planned under `../tom_basics_samples/`. Until it lands, the
-> [usage](#usage) sections below and the consumers named under
-> [ecosystem](#ecosystem) are the reference.
+This package is consumed *inside* code-generator CLIs rather than run
+standalone, so it ships no `example/` program. The worked sample lives in the
+samples folder:
+
+| Sample | Demonstrates |
+| ------ | ------------ |
+| [`tom_build_base_advanced_analyzer_sample`](../tom_basics_samples/tom_build_base_advanced_analyzer_sample/) | A small nestable, traversal-driven tool that exercises the cacheability rule, dependency resolution and the on-disk summary cache per project, then reports the cold→warm cache-hit payoff — end to end and offline. |
+
+The [usage](#usage) sections below and the consumers named under
+[ecosystem](#ecosystem) are the inline reference.
 
 ---
 
