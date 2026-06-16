@@ -1,0 +1,13 @@
+name: tom_basics_samples
+description: >-
+  Aggregator and index for the tom_ai/basics runnable sample projects. Each
+  sample is a self-contained package in this folder; run_all_examples.dart runs
+  them all as a cross-package smoke test.
+version: 1.0.0
+publish_to: none
+
+environment:
+  sdk: ^3.10.4
+
+dev_dependencies:
+  lints: ^6.0.0

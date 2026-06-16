@@ -1,0 +1,5 @@
+# Shared analyzer settings for the tom_basics_samples sample projects.
+# Each sample package includes this file with:
+#   include: ../analysis_options.yaml
+# which in turn extends the tom_ai/basics shared options.
+include: ../analysis_options.yaml
