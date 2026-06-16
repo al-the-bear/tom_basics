@@ -39,7 +39,7 @@ top-to-bottom — the first match wins:
 
 | Status | Condition | Reason string |
 |---|---|---|
-| `released` | `tom_project.yaml` `release.state: released`, **or** a `RELEASED.md` in the package dir | `release marker` |
+| `released` | `tom_project.yaml` `release.state: released`, **or** a `release.md` in the package dir | `release marker` |
 | `published` | `repoIsPublic` **and** the package is publishable (`publish_to` ≠ `none` and a version is set) | `public repo; pub version X` |
 | `works` | real `lib/` code — non-blank, non-comment LOC **above** `locThreshold` | `lib/ NNN LOC` |
 | `not_started` | path missing, no `lib/`, or a `lib/` stub at/below the threshold | `no lib/` / `stub (NN LOC ≤ 200)` |

@@ -14,7 +14,7 @@ enum ComponentStatus {
   published('published'),
 
   /// Carries an explicit release marker — a `tom_project.yaml`
-  /// `release.state: released`, or a `RELEASED.md` in the package dir.
+  /// `release.state: released`, or a `release.md` in the package dir.
   released('released');
 
   const ComponentStatus(this.yamlValue);

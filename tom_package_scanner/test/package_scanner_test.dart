@@ -49,6 +49,36 @@ void main() {
   String dartLines(int n) =>
       List.generate(n, (i) => 'final x$i = $i;').join('\n');
 
+  String tsLines(int n) =>
+      List.generate(n, (i) => 'const x$i = $i;').join('\n');
+
+  /// Scaffold a TypeScript package `<root>/<prefix>/<repo>/<pkg>/` — discovered
+  /// via `package.json` + `tsconfig.json` rather than a `pubspec.yaml`. A
+  /// minimal `tsconfig.json` is auto-added; [packageJson] defaults to a bare
+  /// `{ "name", "version" }`.
+  void tsPackage(
+    String repo,
+    String pkg, {
+    required Map<String, String> files,
+    String? packageJson,
+  }) {
+    final dir = Directory(
+        p.joinAll([root.path, ...p.posix.split(_prefix), repo, pkg]));
+    dir.createSync(recursive: true);
+    final all = {
+      'tsconfig.json': '{ "compilerOptions": {} }\n',
+      if (!files.containsKey('package.json'))
+        'package.json':
+            packageJson ?? '{ "name": "$pkg", "version": "0.0.1" }\n',
+      ...files,
+    };
+    all.forEach((rel, content) {
+      final f = File(p.join(dir.path, rel));
+      f.parent.createSync(recursive: true);
+      f.writeAsStringSync(content);
+    });
+  }
+
   group('status derivation', () {
     test('a small lib/ is not_started (stub)', () {
       package('basics', 'tom_stub', files: {
@@ -120,10 +150,10 @@ void main() {
       expect(info.statusReason, 'release marker');
     });
 
-    test('a RELEASED.md marker also yields released', () {
+    test('a release.md marker also yields released', () {
       package('core', 'tom_marked', files: {
         'lib/tom_marked.dart': dartLines(5),
-        'RELEASED.md': '# Released 1.0.0\n',
+        'release.md': '# Released 1.0.0\n',
       }, pubspec: 'name: tom_marked\nversion: 1.0.0\npublish_to: none\n');
 
       final info = scanner().scanRepo('core', repoIsPublic: true).single;
@@ -311,6 +341,171 @@ void main() {
 
       final packages = scanner().scanRepo('basics', repoIsPublic: true);
       expect(packages.map((p) => p.dirName), ['tom_real']);
+    });
+
+    test('a package.json without tsconfig.json is not a package', () {
+      // npm metadata alone (no TS config, no pubspec) is not a scannable dir.
+      final dir = Directory(p.joinAll(
+          [root.path, ...p.posix.split(_prefix), 'vscode', 'tom_loose']))
+        ..createSync(recursive: true);
+      File(p.join(dir.path, 'package.json'))
+          .writeAsStringSync('{ "name": "x" }\n');
+
+      expect(scanner().scanRepo('vscode', repoIsPublic: true), isEmpty);
+    });
+  });
+
+  group('typescript projects', () {
+    test('discovers a package.json + tsconfig.json folder (no pubspec)', () {
+      tsPackage('vscode', 'tom_ext', files: {
+        'src/extension.ts': tsLines(5),
+      });
+
+      final info = scanner().scanRepo('vscode', repoIsPublic: true).single;
+      expect(info.dirName, 'tom_ext');
+      expect(info.name, 'tom_ext');
+      // TypeScript is never a pub package.
+      expect(info.publishTo, isNull);
+    });
+
+    test('name, version, description and license come from package.json', () {
+      tsPackage('vscode', 'tom_ext', files: {
+        'src/extension.ts': tsLines(5),
+      }, packageJson: '{ "name": "@tom/ext", "version": "1.4.2", '
+          '"description": "The Tom VS Code extension.", "license": "MIT" }\n');
+
+      final info = scanner().scanRepo('vscode', repoIsPublic: true).single;
+      expect(info.version, '1.4.2');
+      expect(info.description, 'The Tom VS Code extension.');
+      expect(info.license, 'MIT');
+      // The folder name is the stable identifier, not the npm package name.
+      expect(info.name, 'tom_ext');
+    });
+
+    test('a curated tom_project.yaml license wins over package.json', () {
+      tsPackage('vscode', 'tom_ext', files: {
+        'src/extension.ts': tsLines(5),
+        'tom_project.yaml': 'name: tom_ext\nlicense: Apache-2.0\n',
+      }, packageJson: '{ "name": "tom_ext", "license": "MIT" }\n');
+
+      final info = scanner().scanRepo('vscode', repoIsPublic: true).single;
+      expect(info.license, 'Apache-2.0');
+      expect(info.hasProjectYaml, isTrue);
+    });
+
+    test('real src/ above the threshold is works (never published)', () {
+      tsPackage('vscode', 'tom_ext', files: {
+        'src/extension.ts': tsLines(250),
+      });
+
+      final info = scanner().scanRepo('vscode', repoIsPublic: true).single;
+      expect(info.status, ComponentStatus.works);
+      expect(info.statusReason, 'src/ 250 LOC');
+      expect(info.metrics.loc, 250);
+    });
+
+    test('a small src/ is not_started (stub) with the src/ reason', () {
+      tsPackage('vscode', 'tom_stub', files: {
+        'src/extension.ts': tsLines(10),
+      });
+
+      final info = scanner().scanRepo('vscode', repoIsPublic: true).single;
+      expect(info.status, ComponentStatus.notStarted);
+      expect(info.statusReason, contains('stub'));
+    });
+
+    test('no src/ is not_started with the "no src/" reason', () {
+      tsPackage('vscode', 'tom_empty', files: const {});
+
+      final info = scanner().scanRepo('vscode', repoIsPublic: true).single;
+      expect(info.status, ComponentStatus.notStarted);
+      expect(info.statusReason, 'no src/');
+    });
+
+    test('a release.md marker yields released', () {
+      tsPackage('vscode', 'tom_done', files: {
+        'src/extension.ts': tsLines(5),
+        'release.md': '# Released 1.0.0\n',
+      });
+
+      final info = scanner().scanRepo('vscode', repoIsPublic: true).single;
+      expect(info.status, ComponentStatus.released);
+    });
+
+    test('loc excludes *.d.ts and src/ test files; tests come from them', () {
+      tsPackage('vscode', 'tom_ext', files: {
+        'src/extension.ts': tsLines(40),
+        'src/types.d.ts': tsLines(900),
+        'src/extension.test.ts': '''
+import { test } from 'vitest';
+test('one', () => {});
+test('two', () => {});
+it('three', () => {});
+''',
+      });
+
+      final info = scanner().scanRepo('vscode', repoIsPublic: true).single;
+      expect(info.metrics.loc, 40); // declarations and test file excluded
+      expect(info.metrics.tests, 3); // 2 test() + 1 it()
+      expect(info.metrics.testLoc, greaterThan(0));
+    });
+
+    test('tests and testLoc also come from a sibling test/ dir', () {
+      tsPackage('vscode', 'tom_ext', files: {
+        'src/extension.ts': tsLines(250),
+        'test/extension.spec.ts': '''
+import { it } from 'vitest';
+// it('disabled', () => {});
+it('real', () => {});
+''',
+      });
+
+      final info = scanner().scanRepo('vscode', repoIsPublic: true).single;
+      expect(info.metrics.tests, 1); // commented it() ignored
+      expect(info.metrics.testLoc, greaterThan(0));
+    });
+
+    test('links read repository (object form) and homepage from package.json',
+        () {
+      tsPackage('vscode', 'tom_ext', files: {
+        'src/extension.ts': tsLines(5),
+      }, packageJson: '''
+{
+  "name": "tom_ext",
+  "repository": { "type": "git", "url": "https://github.com/al-the-bear/vscode" },
+  "homepage": "https://enterprise-flutter.dev"
+}
+''');
+
+      final info = scanner().scanRepo('vscode', repoIsPublic: true).single;
+      expect(info.links['repository'], 'https://github.com/al-the-bear/vscode');
+      expect(info.links['homepage'], 'https://enterprise-flutter.dev');
+    });
+
+    test('links read a bare repository string', () {
+      tsPackage('vscode', 'tom_ext', files: {
+        'src/extension.ts': tsLines(5),
+      }, packageJson: '{ "name": "tom_ext", '
+          '"repository": "https://github.com/al-the-bear/vscode" }\n');
+
+      final info = scanner().scanRepo('vscode', repoIsPublic: true).single;
+      expect(info.links['repository'], 'https://github.com/al-the-bear/vscode');
+    });
+
+    test('Dart and TypeScript packages coexist in one repo', () {
+      package('vscode', 'tom_bridge', files: {
+        'lib/tom_bridge.dart': dartLines(250),
+      }, pubspec: 'name: tom_bridge\nversion: 0.1.0\npublish_to: none\n');
+      tsPackage('vscode', 'tom_ext', files: {
+        'src/extension.ts': tsLines(250),
+      });
+
+      final packages = scanner().scanRepo('vscode', repoIsPublic: true);
+      expect(packages.map((p) => p.dirName), ['tom_bridge', 'tom_ext']);
+      final bridge = packages.firstWhere((p) => p.dirName == 'tom_bridge');
+      final ext = packages.firstWhere((p) => p.dirName == 'tom_ext');
+      expect(bridge.statusReason, 'lib/ 250 LOC');
+      expect(ext.statusReason, 'src/ 250 LOC');
     });
   });
 }

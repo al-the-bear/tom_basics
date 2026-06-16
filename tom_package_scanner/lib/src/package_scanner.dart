@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
@@ -8,7 +9,8 @@ import 'license_classifier.dart';
 import 'package_info.dart';
 import 'package_metrics.dart';
 
-/// Scans a framework repo's direct-child Dart packages and derives each
+/// Scans a framework repo's direct-child packages — **Dart** (`pubspec.yaml`)
+/// and **TypeScript** (`package.json` + `tsconfig.json`) — and derives each
 /// package's publication status, license, version and links.
 ///
 /// Built on `tom_build_base`'s [NatureDetector] for Dart-package /
@@ -20,9 +22,18 @@ import 'package_metrics.dart';
 /// unit-testable against fixture trees.
 ///
 /// Package discovery is **one level deep**: the direct child folders of a repo
-/// that carry a `pubspec.yaml`, matching the convention established by the
-/// license audit. Packages without a `tom_project.yaml` are tolerated — their
-/// record is synthesised from `pubspec.yaml` and the `LICENSE` body alone.
+/// that are either a Dart package (`pubspec.yaml`) or a TypeScript package
+/// (`package.json` **and** `tsconfig.json`), matching the convention
+/// established by the license audit. Packages without a `tom_project.yaml` are
+/// tolerated — their record is synthesised from `pubspec.yaml` / `package.json`
+/// and the `LICENSE` body alone.
+///
+/// TypeScript packages never carry a pub version and are not pub-publishable,
+/// so they never reach the `published` rung of the status ladder; they top out
+/// at `released` (a `release.md` / `tom_project.yaml` marker) and otherwise
+/// rank by `src/` LOC. They also have no API surface — the website's
+/// doc-indexer gates that on a Dart `lib/<name>.dart`, so no extra signalling
+/// is needed here.
 class PackageScanner {
   PackageScanner({
     required this.sourceRoot,
@@ -49,12 +60,16 @@ class PackageScanner {
     'LICENSE.txt',
     'license.md',
   ];
-  static const _releaseMarker = 'RELEASED.md';
+  /// A `release.md` in the package dir marks the package as released. The file
+  /// doubles as a documentation file (the release notes added when the project
+  /// is released), so the website surfaces it alongside the authored guides.
+  static const _releaseMarker = 'release.md';
 
   final NatureDetector _natures = NatureDetector();
 
-  /// Scan every direct-child Dart package of [repo] (a submodule path under
-  /// [pathPrefix]). [repoIsPublic] feeds the `published` branch.
+  /// Scan every direct-child package of [repo] (a submodule path under
+  /// [pathPrefix]) — Dart and TypeScript alike. [repoIsPublic] feeds the
+  /// `published` branch (Dart only).
   ///
   /// Returns the packages sorted by [PackageInfo.dirName] for stable,
   /// diff-friendly output. An absent repo dir yields an empty list.
@@ -65,7 +80,7 @@ class PackageScanner {
     final packages = <PackageInfo>[];
     for (final entity in repoDir.listSync()) {
       if (entity is! Directory) continue;
-      if (!File(p.join(entity.path, 'pubspec.yaml')).existsSync()) continue;
+      if (!_isPackageDir(entity.path)) continue;
       packages.add(_describe(repo, entity.path, repoIsPublic: repoIsPublic));
     }
     packages.sort((a, b) => a.dirName.compareTo(b.dirName));
@@ -76,8 +91,30 @@ class PackageScanner {
   String _repoPath(String repo) =>
       p.joinAll([sourceRoot, ...p.posix.split(pathPrefix), repo]);
 
-  /// Build a [PackageInfo] for one package directory.
-  PackageInfo _describe(String repo, String dir, {required bool repoIsPublic}) {
+  /// Whether [dir] is a scannable package: a Dart package (`pubspec.yaml`) or a
+  /// TypeScript package (`package.json` **and** `tsconfig.json`).
+  bool _isPackageDir(String dir) =>
+      _isDartPackageDir(dir) ||
+      (File(p.join(dir, 'package.json')).existsSync() &&
+          File(p.join(dir, 'tsconfig.json')).existsSync());
+
+  /// Whether [dir] carries a `pubspec.yaml` (a Dart package). A package with
+  /// both `pubspec.yaml` and `package.json` is described as Dart.
+  bool _isDartPackageDir(String dir) =>
+      File(p.join(dir, 'pubspec.yaml')).existsSync();
+
+  /// Build a [PackageInfo] for one package directory, dispatching on language.
+  PackageInfo _describe(String repo, String dir, {required bool repoIsPublic}) =>
+      _isDartPackageDir(dir)
+          ? _describeDart(repo, dir, repoIsPublic: repoIsPublic)
+          : _describeTypeScript(repo, dir, repoIsPublic: repoIsPublic);
+
+  /// Build a [PackageInfo] for a Dart package.
+  PackageInfo _describeDart(
+    String repo,
+    String dir, {
+    required bool repoIsPublic,
+  }) {
     final natures = _natures.detectNatures(FsFolder(path: dir));
     final dart = natures.whereType<DartProjectFolder>().firstOrNull;
     final tom = natures.whereType<TomBuildFolder>().firstOrNull;
@@ -94,10 +131,11 @@ class PackageScanner {
 
     final status = _deriveStatus(
       dir,
-      dart: dart,
-      tom: tom,
+      isPublishable: dart?.isPublishable ?? false,
+      publishVersion: dart?.version,
       repoIsPublic: repoIsPublic,
-      libLoc: metrics.loc,
+      sourceLoc: metrics.loc,
+      tom: tom,
     );
 
     return PackageInfo(
@@ -117,39 +155,97 @@ class PackageScanner {
     );
   }
 
+  /// Build a [PackageInfo] for a TypeScript package.
+  ///
+  /// TypeScript packages are not pub packages: [PackageInfo.publishTo] is
+  /// always `null`, and the status ladder skips the `published` rung (they top
+  /// out at `released`/`works`). The name is the directory name (npm package
+  /// names can be scoped/aliased; the folder is the stable identifier the rest
+  /// of the catalog keys on). Metrics come from `src/`/`test/` `.ts` files.
+  PackageInfo _describeTypeScript(
+    String repo,
+    String dir, {
+    required bool repoIsPublic,
+  }) {
+    final natures = _natures.detectNatures(FsFolder(path: dir));
+    final tom = natures.whereType<TomBuildFolder>().firstOrNull;
+
+    final dirName = p.basename(dir);
+    final pkg = _readPackageJson(dir);
+    final version = pkg['version'] as String?;
+    final license = _resolveLicense(dir, tom) ?? pkg['license'] as String?;
+
+    final metrics = _measureTypeScript(dir);
+
+    final status = _deriveStatus(
+      dir,
+      isPublishable: false,
+      publishVersion: null,
+      repoIsPublic: repoIsPublic,
+      sourceLoc: metrics.loc,
+      tom: tom,
+      sourceDirName: 'src',
+    );
+
+    return PackageInfo(
+      repo: repo,
+      dirName: dirName,
+      sourcePath: p.posix.joinAll([pathPrefix, repo, dirName]),
+      name: dirName,
+      status: status.status,
+      statusReason: status.reason,
+      hasProjectYaml: tom != null,
+      metrics: metrics,
+      version: version,
+      description: pkg['description'] as String?,
+      publishTo: null,
+      license: license,
+      links: _linksFromPackageJson(pkg),
+    );
+  }
+
   /// Derive a package's [ComponentStatus] and a human-readable reason.
   ///
-  /// Ladder (spec §4.2.1): release marker → public + publishable → real `lib/`
-  /// → stub.
+  /// Ladder (spec §4.2.1): release marker → public + publishable → real source
+  /// → stub. [isPublishable]/[publishVersion] drive the `published` rung
+  /// (TypeScript passes `false`/`null`, so it never reaches it). [sourceDirName]
+  /// is the production-source folder name (`lib` for Dart, `src` for
+  /// TypeScript) used in the reason text and the stub/no-source check.
   ({ComponentStatus status, String reason}) _deriveStatus(
     String dir, {
-    required DartProjectFolder? dart,
-    required TomBuildFolder? tom,
+    required bool isPublishable,
+    required String? publishVersion,
     required bool repoIsPublic,
-    required int libLoc,
+    required int sourceLoc,
+    required TomBuildFolder? tom,
+    String sourceDirName = 'lib',
   }) {
     if (_hasReleaseMarker(dir, tom)) {
       return (status: ComponentStatus.released, reason: 'release marker');
     }
-    if (repoIsPublic && (dart?.isPublishable ?? false)) {
+    if (repoIsPublic && isPublishable) {
       return (
         status: ComponentStatus.published,
-        reason: 'public repo; pub version ${dart!.version}',
+        reason: 'public repo; pub version $publishVersion',
       );
     }
-    final loc = libLoc;
-    if (loc > locThreshold) {
-      return (status: ComponentStatus.works, reason: 'lib/ $loc LOC');
+    if (sourceLoc > locThreshold) {
+      return (
+        status: ComponentStatus.works,
+        reason: '$sourceDirName/ $sourceLoc LOC',
+      );
     }
-    final hasLib = Directory(p.join(dir, 'lib')).existsSync();
+    final hasSource = Directory(p.join(dir, sourceDirName)).existsSync();
     return (
       status: ComponentStatus.notStarted,
-      reason: hasLib ? 'stub ($loc LOC ≤ $locThreshold)' : 'no lib/',
+      reason: hasSource
+          ? 'stub ($sourceLoc LOC ≤ $locThreshold)'
+          : 'no $sourceDirName/',
     );
   }
 
   /// A package is released when its `tom_project.yaml` declares
-  /// `release.state: released`, or when a `RELEASED.md` sits in its dir.
+  /// `release.state: released`, or when a `release.md` sits in its dir.
   bool _hasReleaseMarker(String dir, TomBuildFolder? tom) {
     if (File(p.join(dir, _releaseMarker)).existsSync()) return true;
     final release = tom?.config['release'];
@@ -183,8 +279,43 @@ class PackageScanner {
     return links;
   }
 
+  /// Parse `package.json` into a map, or an empty map when absent/malformed.
+  Map<String, dynamic> _readPackageJson(String dir) {
+    final file = File(p.join(dir, 'package.json'));
+    if (!file.existsSync()) return const {};
+    try {
+      final decoded = jsonDecode(file.readAsStringSync());
+      return decoded is Map<String, dynamic> ? decoded : const {};
+    } on FormatException {
+      return const {};
+    }
+  }
+
+  /// Extract `repository`/`homepage` links from a parsed `package.json`. npm's
+  /// `repository` may be a bare URL string or a `{ "type", "url" }` object, so
+  /// both shapes resolve to a `repository` link.
+  Map<String, String> _linksFromPackageJson(Map<String, dynamic> pkg) {
+    final links = <String, String>{};
+    final repository = pkg['repository'];
+    if (repository is String && repository.trim().isNotEmpty) {
+      links['repository'] = repository.trim();
+    } else if (repository is Map && repository['url'] is String) {
+      final url = (repository['url'] as String).trim();
+      if (url.isNotEmpty) links['repository'] = url;
+    }
+    final homepage = pkg['homepage'];
+    if (homepage is String && homepage.trim().isNotEmpty) {
+      links['homepage'] = homepage.trim();
+    }
+    return links;
+  }
+
   /// Matches a `test(` / `testWidgets(` invocation (whole word, optional space).
   static final _testCall = RegExp(r'\b(test|testWidgets)\s*\(');
+
+  /// Matches a `test(` / `it(` invocation in TypeScript test files (Jest/Mocha
+  /// style), the TypeScript analogue of [_testCall].
+  static final _tsTestCall = RegExp(r'\b(test|it)\s*\(');
 
   /// Measure the §4.2.2 display metrics: `loc` (real `lib/` Dart lines), `tests`
   /// (count of `test(` / `testWidgets(` calls in `test/`) and `testLoc` (real
@@ -195,33 +326,23 @@ class PackageScanner {
         testLoc: _codeLines(p.join(dir, 'test')),
       );
 
-  /// Count real Dart lines under [dirPath] — non-blank, non-full-line-comment
-  /// lines — excluding generated files (`*.g.dart`, `*.freezed.dart`,
-  /// `*.options.dart`). Used for both `lib/` (`loc`, incl. the >200-rule) and
-  /// `test/` (`testLoc`).
+  /// Count real Dart lines under [dirPath], excluding generated files. Used for
+  /// both `lib/` (`loc`, incl. the >200-rule) and `test/` (`testLoc`).
   int _codeLines(String dirPath) {
     var total = 0;
     for (final file in _dartFiles(dirPath)) {
-      for (final raw in file.readAsStringSync().split('\n')) {
-        final line = raw.trim();
-        if (line.isEmpty || line.startsWith('//')) continue;
-        total++;
-      }
+      total += _realLines(file);
     }
     return total;
   }
 
-  /// Count `test(` / `testWidgets(` invocations under [dirPath], ignoring
-  /// full-line comments. A static approximation of the test-case count (§4.2.2);
-  /// the scanner runs no `dart test`.
+  /// Count `test(` / `testWidgets(` invocations under [dirPath]. A static
+  /// approximation of the test-case count (§4.2.2); the scanner runs no
+  /// `dart test`.
   int _testCount(String dirPath) {
     var count = 0;
     for (final file in _dartFiles(dirPath)) {
-      for (final raw in file.readAsStringSync().split('\n')) {
-        final line = raw.trim();
-        if (line.isEmpty || line.startsWith('//')) continue;
-        count += _testCall.allMatches(line).length;
-      }
+      count += _countCalls(file, _testCall);
     }
     return count;
   }
@@ -242,5 +363,73 @@ class PackageScanner {
       }
       yield entity;
     }
+  }
+
+  /// Measure the §4.2.2 metrics for a TypeScript package. `loc` counts the
+  /// production `src/` `.ts` (excluding `*.d.ts` declarations and `*.test.ts` /
+  /// `*.spec.ts` test files); `tests`/`testLoc` come from those test files plus
+  /// any sibling `test/` dir. The `loc` total feeds the status ladder, so the
+  /// >200-rule sees production code only.
+  PackageMetrics _measureTypeScript(String dir) {
+    var loc = 0;
+    var tests = 0;
+    var testLoc = 0;
+    for (final file in _tsFiles(p.join(dir, 'src'))) {
+      if (_isTsTestFile(file)) {
+        testLoc += _realLines(file);
+        tests += _countCalls(file, _tsTestCall);
+      } else {
+        loc += _realLines(file);
+      }
+    }
+    for (final file in _tsFiles(p.join(dir, 'test'))) {
+      testLoc += _realLines(file);
+      tests += _countCalls(file, _tsTestCall);
+    }
+    return PackageMetrics(loc: loc, tests: tests, testLoc: testLoc);
+  }
+
+  /// Non-declaration `.ts` files under [dirPath] (recursive); empty when the
+  /// directory is absent. `*.d.ts` declaration files are skipped — they are
+  /// generated/type-only, not source LOC.
+  Iterable<File> _tsFiles(String dirPath) sync* {
+    final dir = Directory(dirPath);
+    if (!dir.existsSync()) return;
+    for (final entity in dir.listSync(recursive: true)) {
+      if (entity is! File) continue;
+      final name = p.basename(entity.path);
+      if (!name.endsWith('.ts') || name.endsWith('.d.ts')) continue;
+      yield entity;
+    }
+  }
+
+  /// Whether [file] is a TypeScript test file (`*.test.ts` / `*.spec.ts`).
+  bool _isTsTestFile(File file) {
+    final name = p.basename(file.path);
+    return name.endsWith('.test.ts') || name.endsWith('.spec.ts');
+  }
+
+  /// Count real (non-blank, non-full-line-comment) lines in [file]. Shared by
+  /// the Dart and TypeScript LOC counters.
+  int _realLines(File file) {
+    var total = 0;
+    for (final raw in file.readAsStringSync().split('\n')) {
+      final line = raw.trim();
+      if (line.isEmpty || line.startsWith('//')) continue;
+      total++;
+    }
+    return total;
+  }
+
+  /// Count [pattern] matches in [file], ignoring blank and full-line-comment
+  /// lines. Shared by the Dart and TypeScript test-call counters.
+  int _countCalls(File file, RegExp pattern) {
+    var count = 0;
+    for (final raw in file.readAsStringSync().split('\n')) {
+      final line = raw.trim();
+      if (line.isEmpty || line.startsWith('//')) continue;
+      count += pattern.allMatches(line).length;
+    }
+    return count;
   }
 }
