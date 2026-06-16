@@ -25,7 +25,7 @@ module it teaches; follow the **Pairs with** link for that module's full manual.
 | 1 | [`tom_basics_sample`](tom_basics_sample/) | Exception handling + UUID tracking, end to end. | [`tom_basics`](../tom_basics/) | Ready |
 | 2 | [`tom_basics_console_sample`](tom_basics_console_sample/) | Platform detection, console output, HTTP client. | [`tom_basics_console`](../tom_basics_console/) | Ready |
 | 3 | [`tom_basics_network_sample`](tom_basics_network_sample/) | HTTP retry with backoff + local server discovery (runs offline). | [`tom_basics_network`](../tom_basics_network/) | Ready |
-| 4 | [`tom_build_base_introduction_sample`](tom_build_base_introduction_sample/) | A simple single-command build tool on `tom_build_base`. | [`tom_build_base`](../tom_build_base/) | Pending |
+| 4 | [`tom_build_base_introduction_sample`](tom_build_base_introduction_sample/) | A simple single-command build tool on `tom_build_base`. | [`tom_build_base`](../tom_build_base/) | Ready |
 | 5 | [`tom_build_base_advanced_sample`](tom_build_base_advanced_sample/) | A nestable, multi-command build tool with options and pipelines. | [`tom_build_base`](../tom_build_base/) | Pending |
 | 6 | [`tom_build_base_advanced_analyzer_sample`](tom_build_base_advanced_analyzer_sample/) | Analyzer-summary caching with `tom_analyzer_shared` in a generator-style command. | [`tom_analyzer_shared`](../tom_analyzer_shared/) | Pending |
 | 7 | [`tom_chattools_sample`](tom_chattools_sample/) | The unified chat API against a mock transport (no live tokens). | [`tom_chattools`](../tom_chattools/) | Pending |
