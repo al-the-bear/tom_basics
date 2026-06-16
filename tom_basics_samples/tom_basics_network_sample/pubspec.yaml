@@ -1,0 +1,21 @@
+name: tom_basics_network_sample
+description: >-
+  Runnable, article-grade sample for tom_basics_network: HTTP retry with
+  exponential backoff and local server discovery. Every example stands up a
+  tiny in-process HTTP server so the whole set runs offline.
+version: 1.0.0
+publish_to: none
+
+environment:
+  sdk: ^3.10.4
+
+dependencies:
+  tom_basics_network:
+    path: ../../tom_basics_network
+  # withRetry() wraps any Future, but the natural thing to retry is an HTTP
+  # call — we use the same package:http Client the module is built on so the
+  # examples mirror real call sites.
+  http: ^1.2.0
+
+dev_dependencies:
+  lints: ^6.0.0
