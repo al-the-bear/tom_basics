@@ -22,7 +22,7 @@ module it teaches; follow the **Pairs with** link for that module's full manual.
 
 | # | Sample | Demonstrates | Pairs with | Status |
 | - | ------ | ------------ | ---------- | ------ |
-| 1 | [`tom_basics_sample`](tom_basics_sample/) | Exception handling + UUID tracking, end to end. | [`tom_basics`](../tom_basics/) | Pending |
+| 1 | [`tom_basics_sample`](tom_basics_sample/) | Exception handling + UUID tracking, end to end. | [`tom_basics`](../tom_basics/) | Ready |
 | 2 | [`tom_basics_console_sample`](tom_basics_console_sample/) | Platform detection, console output, HTTP client. | [`tom_basics_console`](../tom_basics_console/) | Pending |
 | 3 | [`tom_basics_network_sample`](tom_basics_network_sample/) | HTTP retry with backoff + local server discovery (runs offline). | [`tom_basics_network`](../tom_basics_network/) | Pending |
 | 4 | [`tom_build_base_introduction_sample`](tom_build_base_introduction_sample/) | A simple single-command build tool on `tom_build_base`. | [`tom_build_base`](../tom_build_base/) | Pending |

@@ -1,0 +1,16 @@
+name: tom_basics_sample
+description: >-
+  Runnable, article-grade sample for tom_basics: exception handling and UUID
+  tracking end to end, plus structured logging with bitwise log levels.
+version: 1.0.0
+publish_to: none
+
+environment:
+  sdk: ^3.10.0
+
+dependencies:
+  tom_basics:
+    path: ../../tom_basics
+
+dev_dependencies:
+  lints: ^6.0.0
