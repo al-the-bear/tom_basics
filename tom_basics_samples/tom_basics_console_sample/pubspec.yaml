@@ -1,0 +1,20 @@
+name: tom_basics_console_sample
+description: >-
+  Runnable, article-grade sample for tom_basics_console: standalone platform
+  detection, Markdown-to-ANSI console output, the IO HTTP client (run against a
+  local server so it works offline), and styled logging through the seam.
+version: 1.0.0
+publish_to: none
+
+environment:
+  sdk: ^3.10.4
+
+dependencies:
+  tom_basics_console:
+    path: ../../tom_basics_console
+  # The Markdown-to-ANSI vocabulary that TomStandalonePlatformUtils.out uses
+  # internally — imported here only to show the rendering transform explicitly.
+  console_markdown: ^0.0.3
+
+dev_dependencies:
+  lints: ^6.0.0
