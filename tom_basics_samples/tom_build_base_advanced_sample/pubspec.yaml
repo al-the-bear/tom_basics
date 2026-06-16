@@ -1,0 +1,19 @@
+name: tom_build_base_advanced_sample
+description: >-
+  Runnable, article-grade advanced tour of tom_build_base: a multi-command,
+  nestable build tool (relkit) with per-command options, command sequencing
+  (pipelines), and --nested single-project invocation, run against a fixture
+  workspace tree built in a temp directory so it runs offline and hermetically.
+version: 1.0.0
+publish_to: none
+
+environment:
+  sdk: ^3.10.4
+
+dependencies:
+  tom_build_base:
+    path: ../../tom_build_base
+  yaml: ^3.1.2
+
+dev_dependencies:
+  lints: ^6.0.0
