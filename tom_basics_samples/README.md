@@ -29,7 +29,7 @@ module it teaches; follow the **Pairs with** link for that module's full manual.
 | 5 | [`tom_build_base_advanced_sample`](tom_build_base_advanced_sample/) | A nestable, multi-command build tool with options and pipelines. | [`tom_build_base`](../tom_build_base/) | Ready |
 | 6 | [`tom_build_base_advanced_analyzer_sample`](tom_build_base_advanced_analyzer_sample/) | Analyzer-summary caching with `tom_analyzer_shared` in a generator-style command. | [`tom_analyzer_shared`](../tom_analyzer_shared/) | Ready |
 | 7 | [`tom_chattools_sample`](tom_chattools_sample/) | The unified chat API against a mock transport (no live tokens). | [`tom_chattools`](../tom_chattools/) | Ready |
-| 8 | [`tom_crypto_sample`](tom_crypto_sample/) | JWT issue/verify, password hash/verify, RSA round trips. | [`tom_crypto`](../tom_crypto/) | Pending |
+| 8 | [`tom_crypto_sample`](tom_crypto_sample/) | JWT issue/verify, password hash/verify, RSA round trips. | [`tom_crypto`](../tom_crypto/) | Ready |
 
 > **Forward references.** This index is the scaffold that the sample build-out
 > registers into. Until a sample's own project lands, its link above is a forward
