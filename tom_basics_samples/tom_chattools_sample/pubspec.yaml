@@ -1,0 +1,17 @@
+name: tom_chattools_sample
+description: >-
+  Runnable, article-grade sample for tom_chattools: a unified chat API exercised
+  against an in-memory MockChatApi transport (no live tokens, no network), so the
+  whole send/receive abstraction runs offline and in CI.
+version: 1.0.0
+publish_to: none
+
+environment:
+  sdk: ^3.10.4
+
+dependencies:
+  tom_chattools:
+    path: ../../tom_chattools
+
+dev_dependencies:
+  lints: ^6.0.0

@@ -1,0 +1,25 @@
+name: tom_crypto_sample
+description: >-
+  Runnable, article-grade sample for tom_crypto: password hashing with Argon2,
+  JWT issue/verify with an encrypted payload section, and RSA encrypt/decrypt,
+  sign/verify, and key-generation round trips — every example deterministic and
+  offline so the whole set runs in CI.
+version: 1.0.0
+publish_to: none
+
+environment:
+  sdk: ^3.10.4
+
+dependencies:
+  tom_crypto:
+    path: ../../tom_crypto
+  # Imported directly to build a JWT signing configuration (JWTAlgorithm,
+  # SecretKey) and to name the verify exception (JWTException). tom_crypto uses
+  # these types in its public API but does not re-export the package.
+  dart_jsonwebtoken: ^3.1.1
+  # Imported directly for the RSA key types (RSAPublicKey / RSAPrivateKey) that
+  # tom_crypto's functions take and return.
+  pointycastle: ^3.9.1
+
+dev_dependencies:
+  lints: ^6.0.0

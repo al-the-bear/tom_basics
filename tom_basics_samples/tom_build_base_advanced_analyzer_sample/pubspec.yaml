@@ -1,0 +1,21 @@
+name: tom_build_base_advanced_analyzer_sample
+description: >-
+  Runnable, article-grade sample combining tom_build_base traversal with
+  tom_analyzer_shared summary caching: a nestable single-command build tool
+  (sumkit) that reports analyzer-summary cache coverage per Dart project and
+  demonstrates the cold->warm caching payoff, hermetically and offline.
+version: 1.0.0
+publish_to: none
+
+environment:
+  sdk: ^3.10.4
+
+dependencies:
+  tom_build_base:
+    path: ../../tom_build_base
+  tom_analyzer_shared:
+    path: ../../tom_analyzer_shared
+  path: ^1.9.0
+
+dev_dependencies:
+  lints: ^6.0.0

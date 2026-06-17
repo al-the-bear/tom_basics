@@ -1,5 +1,7 @@
 name: tom_tools
-description: A sample command-line application.
+description: >-
+  Small command-line tools for the Tom framework. Currently an RSA keypair
+  generator that prints PEM PKCS#1 public and private keys, built on tom_crypto.
 version: 1.0.1
 publish_to: none
 

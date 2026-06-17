@@ -1,0 +1,18 @@
+name: tom_build_base_introduction_sample
+description: >-
+  Runnable, article-grade introduction to tom_build_base: a simple
+  single-command build tool (projreport) declared as a ToolDefinition, run by a
+  ToolRunner across a fixture workspace built in a temp directory so it runs
+  offline and hermetically.
+version: 1.0.0
+publish_to: none
+
+environment:
+  sdk: ^3.10.4
+
+dependencies:
+  tom_build_base:
+    path: ../../tom_build_base
+
+dev_dependencies:
+  lints: ^6.0.0
