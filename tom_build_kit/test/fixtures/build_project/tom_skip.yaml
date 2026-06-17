@@ -1,0 +1,22 @@
+# Skip marker — excludes this directory (and everything below it) from every
+# Tom CLI recursive scan (buildkit, testkit, issuekit, …).
+#
+# `build_project/_build` is a CHECKED-IN TEST FIXTURE, not a real workspace
+# project. The buildkit integration tests copy it to `<workspaceRoot>/_build`
+# at runtime (see test/helpers/test_workspace.dart → provisionBuildProject) and
+# run the tools against that provisioned copy. The fixture itself must never be
+# treated as a buildable project by a real workspace-wide run: its pubspec has
+# `../tom/devops/...` path dependencies that only resolve in the fictional build
+# layout, and its `buildkit.yaml` declares seven pseudo-binaries (deploy,
+# doc_scanner, docspecs, md2latex, md2pdf, ws_analyzer, ws_prepper) that cannot
+# AOT-compile here. Without this marker, `buildkit -r :compiler` descends into
+# the fixture and emits spurious "Compilation failed" lines.
+#
+# The sibling fixtures (compile_fail/, versioner/, exclusion/, pipeline/) are
+# already skipped because each carries a `buildkit_master.yaml` (treated as a
+# nested-subworkspace boundary). `build_project/` had no such boundary, so it
+# was the one fixture a recursive scan still entered — this marker closes that
+# gap. The marker sits at the `build_project/` container level, so it is NOT
+# copied into the provisioned `_build` (which is copied from `build_project/_build`)
+# and therefore does not affect the tests, which scan the provisioned copy at the
+# real workspace root.

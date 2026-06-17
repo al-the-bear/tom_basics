@@ -1,0 +1,8 @@
+# Default test configuration for tom_build_kit.
+# Use expanded reporter so per-test verbose output (TestLogger) is visible.
+reporter: expanded
+
+# Run tests sequentially — integration tests modify the same workspace files
+# (buildkit_master.yaml, version.versioner.dart, etc.) so parallel execution causes
+# revertAll() calls from one test file to interfere with another.
+concurrency: 1

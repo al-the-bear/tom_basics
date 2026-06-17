@@ -1,0 +1,16 @@
+# Test fixture: Minimal buildkit_master.yaml for versioner tests.
+#
+# Targets only tom_build_kit itself via its project-level buildkit.yaml.
+# Navigation is restricted to prevent scanning the whole workspace.
+
+navigation:
+  exclude:
+    - 'xternal_apps/**'
+    - 'cloud/**'
+    - 'sqm/**'
+    - 'uam/**'
+    - 'ai_build/**'
+    - 'zom_workspaces/**'
+
+versioner:
+  variable-prefix: testDefault

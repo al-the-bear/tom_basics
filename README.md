@@ -7,7 +7,8 @@
 A small family of focused, dependency-light Dart packages that every other
 Tom component builds on: exception handling with traceable IDs, platform and
 console utilities, networking, the unified **CLI / build framework**
-(`tom_build_base`), cryptography, a unified messaging API, and a handful of
+(`tom_build_base`) and the **`buildkit` build orchestrator** that runs on it
+(`tom_build_kit`), cryptography, a unified messaging API, and a handful of
 documentation / workspace tools.
 
 **This document is the map.** It orients you to the whole `tom_ai/basics`
@@ -38,6 +39,9 @@ and is the gentlest on-ramp into the ecosystem. From there, the
 - **Build your own CLI tools in minutes** — declare a tool, its commands and
   options once and get argument parsing, help, workspace traversal, pipelines
   and config for free (`tom_build_base`).
+- **Drive the whole workspace from one command** — `buildkit` runs cleanup,
+  versioning, compile, dependency resolution, publishing and git workflows as
+  composable pipelines across every package (`tom_build_kit`).
 - **Secure your data** — issue and verify JWTs, hash and check passwords, and
   do RSA round trips.
 - **Send a message anywhere** — one chat API over Telegram, WhatsApp, Signal
@@ -55,8 +59,10 @@ component tables so the inventory makes sense:
 - **Core utilities** — the universally-imported primitives: error model,
   platform/console helpers, networking. Almost everything depends on these.
 - **Build framework** — `tom_build_base` is the shared engine behind every Tom
-  CLI tool (`buildkit`, `testkit`, `issuekit`, …); `tom_analyzer_shared` is the
-  analyzer-summary cache that code generators sit on.
+  CLI tool (`buildkit`, `testkit`, `issuekit`, …); `tom_build_kit` is the
+  `buildkit` orchestrator built on it — the one package here that ships
+  binaries; `tom_analyzer_shared` is the analyzer-summary cache that code
+  generators sit on.
 - **Crypto** — security primitives, isolated so non-security code never pulls
   in the crypto dependency tree.
 - **Messaging** — a transport-agnostic chat abstraction.
@@ -87,10 +93,10 @@ component tables so the inventory makes sense:
 
 ## Components
 
-Every package appears in exactly one row below, linked to its own README.
-There are no standalone binaries in this repository — each package is a library
-(`tom_build_base` and `tom_tools` ship their executables through the consuming
-CLI tools, not from here), so the **Binary** column is `—` throughout.
+Every package appears in exactly one row below, linked to its own README. Only
+`tom_build_kit` ships standalone binaries (`buildkit`, `findproject`); the rest
+are libraries (`tom_build_base` and `tom_tools` ship their executables through
+the consuming CLI tools, not from here), so their **Binary** column is `—`.
 
 ### Core utilities
 
@@ -105,6 +111,7 @@ CLI tools, not from here), so the **Binary** column is `—` throughout.
 | Package | What it is | Binary |
 | ------- | ---------- | ------ |
 | [`tom_build_base`](tom_build_base/) | Unified CLI framework: workspace traversal, tool definition, pipeline execution, build configuration. | — |
+| [`tom_build_kit`](tom_build_kit/) | Build orchestration with pipelines — cleanup, versioning, compile, dependencies, publish and git workflows. | `buildkit`, `findproject` |
 | [`tom_analyzer_shared`](tom_analyzer_shared/) | Shared analyzer-summary caching reused by Tom code generators (reflection, d4rt bridges). | — |
 
 ### Crypto
@@ -193,6 +200,9 @@ In-package guides beyond the package READMEs:
 | Topic | Document |
 | ----- | -------- |
 | CLI framework — user guide | [`tom_build_base/doc/build_base_user_guide.md`](tom_build_base/doc/build_base_user_guide.md) |
+| buildkit — user guide | [`tom_build_kit/doc/buildkit_user_guide.md`](tom_build_kit/doc/buildkit_user_guide.md) |
+| buildkit — tools user guide | [`tom_build_kit/doc/tools_user_guide.md`](tom_build_kit/doc/tools_user_guide.md) |
+| buildkit — git guide mode | [`tom_build_kit/doc/git_guide_mode.md`](tom_build_kit/doc/git_guide_mode.md) |
 | CLI tools — navigation model | [`tom_build_base/doc/cli_tools_navigation.md`](tom_build_base/doc/cli_tools_navigation.md) |
 | Modes and placeholders | [`tom_build_base/doc/modes_and_placeholders.md`](tom_build_base/doc/modes_and_placeholders.md) |
 | Multi-workspace pipelines, macros, defines | [`tom_build_base/doc/multiws_pipelines_macros_defines.md`](tom_build_base/doc/multiws_pipelines_macros_defines.md) |
@@ -216,6 +226,8 @@ tom_ai/basics/
 │
 ├── tom_build_base/           # unified CLI / build framework
 │   └── doc/                  # framework user guides
+├── tom_build_kit/            # buildkit orchestrator + pipelines (ships buildkit, findproject)
+│   └── doc/                  # buildkit + tools guides
 ├── tom_analyzer_shared/      # analyzer-summary caching for code generators
 │
 ├── tom_crypto/               # JWT, password hashing, RSA

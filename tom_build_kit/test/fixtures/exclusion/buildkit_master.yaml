@@ -1,0 +1,20 @@
+# Test fixture: buildkit_master.yaml for project exclusion tests.
+#
+# Uses --scan to discover multiple projects so we can test:
+# - --exclude-projects with basename patterns
+# - --exclude-projects with path patterns
+# - tom_build_skip.yaml marker file exclusion
+#
+# Targets projects in core/ and devops/ which are in the main repo.
+
+navigation:
+  exclude:
+    - 'xternal_apps/**'
+    - 'cloud/**'
+    - 'sqm/**'
+    - 'uam/**'
+    - 'ai_build/**'
+    - 'zom_workspaces/**'
+
+versioner:
+  variable-prefix: testDefault

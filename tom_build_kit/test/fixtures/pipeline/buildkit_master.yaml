@@ -1,0 +1,61 @@
+# Pipeline test fixture for BuildKit integration tests
+#
+# Defines test pipelines for verifying pipeline orchestration,
+# shell command execution, and build step sequencing.
+#
+# NOTE: Built-in tool commands (versioner, cleanup, etc.) in pipeline steps
+# do not receive the project path from buildkit's --project flag.
+# Use shell commands or direct :command syntax for project-specific tests.
+
+navigation:
+  exclude:
+    - 'xternal_apps/**'
+    - 'cloud/**'
+    - 'sqm/**'
+    - 'uam/**'
+    - 'ai_build/**'
+    - 'zom_workspaces/**'
+  exclude-projects: []
+
+versioner:
+  variable-prefix: testDefault
+
+buildkit:
+  pipelines:
+    test-simple:
+      executable: true
+      core:
+        - commands:
+            - shell echo "step-1-hello"
+            - shell echo "step-2-world"
+
+    test-shell:
+      executable: true
+      core:
+        - commands:
+            - shell echo "hello from test pipeline"
+
+    test-internal:
+      executable: false
+      core:
+        - commands:
+            - shell echo "internal only"
+
+    test-multiline-shell:
+      executable: true
+      core:
+        - commands:
+            - |
+              shell
+              echo "multi-line-1"
+              echo "multi-line-2"
+              echo "multi-line-3"
+
+    test-stdin:
+      executable: true
+      core:
+        - commands:
+            - |
+              stdin cat
+              Hello stdin world
+              line two

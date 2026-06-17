@@ -1,0 +1,4 @@
+project_id: BLD
+name: build
+description: >-
+  Build workspace entrypoint

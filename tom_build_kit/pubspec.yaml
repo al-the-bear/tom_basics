@@ -1,0 +1,27 @@
+name: tom_build_kit
+description: Build orchestration tool with pipelines that integrates Tom build tools.
+version: 1.7.1
+publish_to: none
+
+environment:
+  sdk: ^3.10.4
+
+dependencies:
+  args: ^2.7.0
+  dcli: ^8.4.2
+  glob: ^2.1.3
+  meta: ^1.16.0
+  path: ^1.9.0
+  yaml: ^3.1.2
+  yaml_edit: ^2.2.1
+  console_markdown: ^0.0.3
+  tom_build_base: ^2.6.25
+
+dev_dependencies:
+  build_runner: ^2.4.15
+  lints: ^6.0.0
+  test: ^1.25.6
+
+executables:
+  buildkit:
+  findproject:

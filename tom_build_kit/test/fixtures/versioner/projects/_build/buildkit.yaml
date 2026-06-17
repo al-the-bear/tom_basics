@@ -1,0 +1,10 @@
+# Test fixture: _build/buildkit.yaml for versioner tests.
+#
+# This config is copied over the workspace _build/buildkit.yaml during tests.
+# The variable-prefix: tomTools setting is expected by VER_GEN01.
+
+versioner:
+  variable-prefix: tomTools
+
+cleanup:
+  - '**/version.versioner.dart'

@@ -1,0 +1,55 @@
+# Tom Build Kit configuration
+
+versioner:
+  variable-prefix: buildkit
+
+# Compiler tool configuration
+compiler:
+  # Opt out of being compiled by a running buildkit: buildkit.exe (and the
+  # `bk` hardlink) cannot be overwritten while this very process holds the
+  # file lock on Windows (the "self-overwrite file lock"). buildkit is built
+  # by the bootstrap script instead, so a buildkit-driven `:compiler` run
+  # reports this project as a configured skip rather than a failure.
+  # See tool_run_analysis.md §b.5 / §b.7.
+  skip-compile-with-buildkit: true
+  compiles:
+    # macOS ARM64 - compile for self + all Linux targets
+    - pipeline:
+        - shell mkdir -p $TOM_BINARY_PATH/%{target-platform-vs}
+        - shell dart compile exe %{file} --target-os=%{dart-target-os} --target-arch=%{dart-target-arch} -o $TOM_BINARY_PATH/%{target-platform-vs}/%{file.name}
+      files:
+        - bin/buildkit.dart
+        - bin/findproject.dart
+      targets: [darwin-arm64, linux-x64, linux-arm64, linux-armhf]
+      platforms: [darwin-arm64]
+    
+    # Unix-like platforms - compile for self only
+    - pipeline:
+        - shell mkdir -p $TOM_BINARY_PATH/%{target-platform-vs}
+        - shell dart compile exe %{file} --target-os=%{dart-target-os} --target-arch=%{dart-target-arch} -o $TOM_BINARY_PATH/%{target-platform-vs}/%{file.name}
+      files:
+        - bin/buildkit.dart
+        - bin/findproject.dart
+      platforms: [darwin-x64, linux-*]
+
+    # Windows - compile for self only
+    - pipeline:
+        - shell dart compile exe %{file} --target-os=%{dart-target-os} --target-arch=%{dart-target-arch} -o $TOM_BINARY_PATH/win32-x64/%{file.name}.exe
+      files:
+        - bin/buildkit.dart
+        - bin/findproject.dart
+      platforms: [win32-*]
+
+  postcompile:
+    # Make binaries executable on Unix-like systems
+    - pipeline:
+        - shell chmod -R +x $TOM_BINARY_PATH/%{current-platform-vs}/
+      platforms: [macos, linux]
+    
+    # Create bk symlink for buildkit
+    - pipeline:
+        - shell ln -sf $TOM_BINARY_PATH/%{current-platform-vs}/buildkit $TOM_BINARY_PATH/%{current-platform-vs}/bk
+      platforms: [macos, linux]
+    - pipeline:
+        - shell powershell -Command "New-Item -ItemType HardLink -Force -Path '$TOM_BINARY_PATH/%{current-platform-vs}/bk.exe' -Target '$TOM_BINARY_PATH/%{current-platform-vs}/buildkit.exe'"
+      platforms: [win32-*]

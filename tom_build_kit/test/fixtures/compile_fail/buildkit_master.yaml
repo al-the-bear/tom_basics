@@ -1,0 +1,15 @@
+# Test fixture: buildkit_master.yaml for compiler failure exit-code tests.
+#
+# Targets the provisioned `_build` project, whose overlaid buildkit.yaml
+# (projects/_build/buildkit.yaml) defines a compile section that always
+# fails. Used to prove `:compiler` exits non-zero and names the failing
+# project when a compilation fails.
+
+navigation:
+  exclude:
+    - 'xternal_apps/**'
+    - 'cloud/**'
+    - 'sqm/**'
+    - 'uam/**'
+    - 'ai_build/**'
+    - 'zom_workspaces/**'

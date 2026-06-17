@@ -1,0 +1,14 @@
+# Test fixture: _build compiler config that always fails to compile.
+#
+# The single compile section runs `shell exit 1`, which the pipeline-prefix
+# parser routes through the shell (`cmd /c exit 1` / `sh -c 'exit 1'`),
+# producing a non-zero exit on every platform. No `platforms:` filter is set
+# so the section runs everywhere; no `targets:` means it compiles for the
+# current platform only.
+
+compiler:
+  compiles:
+    - commandline:
+        - shell exit 1
+      files:
+        - bin/deploy.dart

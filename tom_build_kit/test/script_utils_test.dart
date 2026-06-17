@@ -1,0 +1,230 @@
+/// Unit and integration tests for multi-line scripts and stdin piping.
+///
+/// Tests both the parsing utilities in script_utils.dart and the
+/// end-to-end pipeline execution of multi-line shell scripts and
+/// stdin-piped commands.
+///
+/// Test IDs: SCR_PRS01, SCR_PRS02, SCR_PRS03, SCR_PRS04, SCR_PRS05,
+///           SCR_PRS06, SCR_MLN01, SCR_MLN02, SCR_STD01, SCR_STD02,
+///           SCR_DRY01, SCR_DRY02
+@TestOn('!browser')
+@Timeout(Duration(seconds: 120))
+library;
+
+import 'dart:io';
+
+import 'package:path/path.dart' as p;
+import 'package:test/test.dart';
+import 'package:tom_build_kit/src/script_utils.dart';
+
+import 'helpers/test_workspace.dart';
+
+void main() {
+  // ═══════════════════════════════════════════════════════════════════════
+  // Unit Tests — script_utils parsing functions
+  // ═══════════════════════════════════════════════════════════════════════
+
+  group('script_utils parsing', () {
+    test('isMultiLineShellScript detects shell\\n prefix', () {
+      // SCR_PRS01: Multi-line shell script detection
+      expect(isMultiLineShellScript('shell\necho "hello"'), isTrue);
+      expect(isMultiLineShellScript('shell\nline1\nline2\nline3'), isTrue);
+      expect(isMultiLineShellScript('  shell\necho "hello"  '), isTrue);
+    });
+
+    test('isMultiLineShellScript rejects non-multiline', () {
+      // SCR_PRS02: Single-line shell is NOT multi-line
+      expect(isMultiLineShellScript('shell echo "hello"'), isFalse);
+      expect(isMultiLineShellScript('versioner --list'), isFalse);
+      expect(isMultiLineShellScript(''), isFalse);
+    });
+
+    test('extractScriptBody extracts content after shell\\n', () {
+      // SCR_PRS03: Script body extraction
+      expect(
+        extractScriptBody('shell\necho "hello"\necho "world"'),
+        equals('echo "hello"\necho "world"'),
+      );
+      expect(
+        extractScriptBody('shell\nline1'),
+        equals('line1'),
+      );
+    });
+
+    test('isStdinCommand detects stdin prefix with newline', () {
+      // SCR_PRS04: Stdin command detection
+      expect(isStdinCommand('stdin cat\nhello'), isTrue);
+      expect(isStdinCommand('stdin dcli\nimport "dart:io";'), isTrue);
+      expect(isStdinCommand('  stdin cat\nhello  '), isTrue);
+    });
+
+    test('isStdinCommand rejects invalid formats', () {
+      // SCR_PRS05: Invalid stdin commands
+      expect(isStdinCommand('stdin cat'), isFalse); // no newline
+      expect(isStdinCommand('shell echo'), isFalse); // wrong prefix
+      expect(isStdinCommand(''), isFalse);
+    });
+
+    test('parseStdinCommand extracts command and content', () {
+      // SCR_PRS06: Stdin parsing
+      final result = parseStdinCommand('stdin cat\nhello\nworld');
+      expect(result, isNotNull);
+      expect(result!.command, equals('cat'));
+      expect(result.stdinContent, equals('hello\nworld'));
+
+      // With extra flags
+      final result2 = parseStdinCommand('stdin dcli --verbose\nDart code');
+      expect(result2, isNotNull);
+      expect(result2!.command, equals('dcli --verbose'));
+      expect(result2.stdinContent, equals('Dart code'));
+
+      // Invalid: no content
+      expect(parseStdinCommand('stdin cat'), isNull);
+
+      // Invalid: empty command
+      expect(parseStdinCommand('stdin \nhello'), isNull);
+    });
+  });
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // Integration Tests — pipeline execution of multi-line commands
+  // ═══════════════════════════════════════════════════════════════════════
+
+  group('multi-line pipeline execution', () {
+    late TestWorkspace ws;
+    late TestLogger log;
+
+    setUpAll(() async {
+      ws = TestWorkspace();
+      print('');
+      print('╔══════════════════════════════════════════════════════╗');
+      print('║       Multi-Line Script Integration Tests            ║');
+      print('╚══════════════════════════════════════════════════════╝');
+      print('Workspace root:  ${ws.workspaceRoot}');
+      print('Buildkit root:   ${ws.buildkitRoot}');
+      await ws.requireCleanWorkspace();
+      await ws.saveHeadRefs();
+    });
+
+    setUp(() async {
+      log = TestLogger(ws);
+      await ws.installFixture('pipeline');
+    });
+
+    tearDown(() async {
+      log.finish();
+      await ws.revertAll();
+    });
+
+    tearDownAll(() async {
+      print('');
+      print('  ── Multi-Line Script Tests: Tear-down ──');
+      await ws.verifyHeadRefs();
+      // Symmetric with requireCleanWorkspace's deprovision at suite start:
+      // remove the test-provisioned `_build` so the tree is clean post-run.
+      await ws.deprovisionBuildProject();
+      print('  ── Multi-Line Script Tests: Complete ──');
+    });
+
+    test('multi-line shell script executes all lines', () async {
+      log.start('SCR_MLN01',
+          'multi-line shell script executes all lines');
+      final result = await ws.runPipeline('test-multiline-shell', []);
+      log.capture('buildkit test-multiline-shell', result);
+
+      final stdout = result.stdout as String;
+      expect(result.exitCode, equals(0),
+          reason: 'Pipeline should succeed');
+      expect(stdout, contains('multi-line-1'));
+      expect(stdout, contains('multi-line-2'));
+      expect(stdout, contains('multi-line-3'));
+      log.expectation('all three echo lines present', true);
+    });
+
+    test('multi-line shell script in verbose mode', () async {
+      log.start('SCR_MLN02',
+          'multi-line shell script verbose output');
+      // Global flags must come BEFORE the pipeline name
+      final binPath = p.join(ws.buildkitRoot, 'bin', 'buildkit.dart');
+      final result = await Process.run(
+        'dart',
+        ['run', binPath, '--verbose', 'test-multiline-shell'],
+        workingDirectory: ws.workspaceRoot,
+      );
+      log.capture('buildkit --verbose test-multiline-shell', result);
+
+      final stdout = result.stdout as String;
+      expect(result.exitCode, equals(0));
+      expect(stdout, contains('Multi-line shell script'));
+      log.expectation('verbose mentions multi-line script', true);
+    });
+
+    test('stdin piping sends content to command', () async {
+      log.start('SCR_STD01',
+          'stdin piping sends content to command');
+      final result = await ws.runPipeline('test-stdin', []);
+      log.capture('buildkit test-stdin', result);
+
+      final stdout = result.stdout as String;
+      expect(result.exitCode, equals(0),
+          reason: 'Pipeline should succeed');
+      expect(stdout, contains('stdin-line-1'));
+      expect(stdout, contains('stdin-line-2'));
+      log.expectation('stdin content appears in output', true);
+    });
+
+    test('stdin piping in verbose mode', () async {
+      log.start('SCR_STD02',
+          'stdin piping verbose output');
+      final binPath = p.join(ws.buildkitRoot, 'bin', 'buildkit.dart');
+      final result = await Process.run(
+        'dart',
+        ['run', binPath, '--verbose', 'test-stdin'],
+        workingDirectory: ws.workspaceRoot,
+      );
+      log.capture('buildkit --verbose test-stdin', result);
+
+      final stdout = result.stdout as String;
+      expect(result.exitCode, equals(0));
+      expect(stdout, contains('Piping stdin to'));
+      log.expectation('verbose mentions stdin piping', true);
+    });
+
+    test('multi-line shell dry-run shows preview', () async {
+      log.start('SCR_DRY01',
+          'multi-line shell dry-run shows preview');
+      final binPath = p.join(ws.buildkitRoot, 'bin', 'buildkit.dart');
+      final result = await Process.run(
+        'dart',
+        ['run', binPath, '--dry-run', 'test-multiline-shell'],
+        workingDirectory: ws.workspaceRoot,
+      );
+      log.capture('buildkit --dry-run test-multiline-shell', result);
+
+      final stdout = result.stdout as String;
+      expect(result.exitCode, equals(0));
+      expect(stdout, contains('[DRY RUN]'));
+      // In dry-run, the command text appears inside the DRY RUN message
+      expect(stdout, contains('Would execute'));
+      log.expectation('dry-run preview shown', true);
+    });
+
+    test('stdin dry-run shows preview', () async {
+      log.start('SCR_DRY02',
+          'stdin dry-run shows preview');
+      final binPath = p.join(ws.buildkitRoot, 'bin', 'buildkit.dart');
+      final result = await Process.run(
+        'dart',
+        ['run', binPath, '--dry-run', 'test-stdin'],
+        workingDirectory: ws.workspaceRoot,
+      );
+      log.capture('buildkit --dry-run test-stdin', result);
+
+      final stdout = result.stdout as String;
+      expect(result.exitCode, equals(0));
+      expect(stdout, contains('[DRY RUN]'));
+      expect(stdout, contains('stdin'));
+      log.expectation('stdin dry-run preview shown', true);
+    });
+  });
+}
