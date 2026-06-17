@@ -12,7 +12,19 @@ function Write-Warn($msg) {
   Write-Host "[warn] $msg" -ForegroundColor Yellow
 }
 
-function Ask-YesNo($prompt) {
+# Ask-YesNo <prompt> [default]
+#
+# Prompts interactively when stdin is a console. When stdin is redirected (e.g.
+# run over SSH with no interactive console, as the fleet build does) it does not
+# block: it applies $default ('y' or 'n', default 'n') and reports the
+# auto-decision. This keeps a non-interactive build from hanging — Read-Host on
+# a redirected/EOF stdin would otherwise loop forever returning empty.
+function Ask-YesNo($prompt, $default = 'n') {
+  if ([Console]::IsInputRedirected) {
+    $auto = $default -match '^(?i)y'
+    Write-Host "$prompt [y/n]: $(if ($auto) { 'y' } else { 'n' })  (auto: non-interactive default)"
+    return [bool]$auto
+  }
   while ($true) {
     $r = Read-Host "$prompt [y/n]"
     if ($r -match '^(?i)y(es)?$') { return $true }
@@ -63,8 +75,12 @@ $pathChanged = $false
 
 if (-not (Test-Path $tacLink)) {
   Write-Warn "No $tacLink symlink exists."
-  $target = Read-Host "Enter workspace directory for $tacLink [$workspaceHint]"
-  if (-not $target) { $target = $workspaceHint }
+  if ([Console]::IsInputRedirected) {
+    $target = $workspaceHint
+  } else {
+    $target = Read-Host "Enter workspace directory for $tacLink [$workspaceHint]"
+    if (-not $target) { $target = $workspaceHint }
+  }
   New-Item -ItemType SymbolicLink -Path $tacLink -Target $target | Out-Null
   Write-Host "Created symlink: $tacLink -> $target"
 }
@@ -72,7 +88,7 @@ if (-not (Test-Path $tacLink)) {
 $tomBinaries = Join-Path $tacLink 'tom_binaries'
 if (-not (Test-Path $tomBinaries)) {
   Write-Warn "No tom_binaries directory found in $tacLink"
-  if (Ask-YesNo "Clone tom_binaries into $tomBinaries?") {
+  if (Ask-YesNo "Clone tom_binaries into $tomBinaries?" 'y') {
     & $systemGit clone https://github.com/al-the-bear/tom_binaries.git $tomBinaries
     if ($LASTEXITCODE -ne 0) { throw 'git clone of tom_binaries failed.' }
   } else {
@@ -84,7 +100,9 @@ $defaultTomBinaryPath = Join-Path $tomBinaries 'tom'
 $tomBinaryPath = $env:TOM_BINARY_PATH
 if (-not $tomBinaryPath) {
   Write-Warn 'TOM_BINARY_PATH is not defined.'
-  if (Ask-YesNo "Set TOM_BINARY_PATH to $defaultTomBinaryPath for current user?") {
+  # Auto-no when non-interactive: don't silently setx the user environment. The
+  # fleet build always passes TOM_BINARY_PATH, so this branch isn't reached there.
+  if (Ask-YesNo "Set TOM_BINARY_PATH to $defaultTomBinaryPath for current user?" 'n') {
     setx TOM_BINARY_PATH "$defaultTomBinaryPath" | Out-Null
     $env:TOM_BINARY_PATH = $defaultTomBinaryPath
     $tomBinaryPath = $defaultTomBinaryPath
@@ -98,7 +116,8 @@ if (-not $tomBinaryPath) {
 $platformDir = Join-Path $tomBinaryPath $Platform
 if (-not (Test-Path $platformDir)) {
   Write-Warn "Missing platform directory: $platformDir"
-  if (Ask-YesNo "Create $platformDir?") {
+  # Required output dir → auto-yes when non-interactive.
+  if (Ask-YesNo "Create $platformDir?" 'y') {
     New-Item -ItemType Directory -Path $platformDir -Force | Out-Null
   } else {
     throw 'Aborted: platform output directory is required.'
@@ -109,7 +128,9 @@ $userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
 if (-not $userPath) { $userPath = '' }
 if ($userPath -notlike "*$platformDir*") {
   Write-Warn "$platformDir is not in user PATH"
-  if (Ask-YesNo "Add $platformDir to user PATH?") {
+  # Optional convenience: the build addresses binaries by absolute path via
+  # TOM_BINARY_PATH, so PATH is not needed. Auto-no when non-interactive.
+  if (Ask-YesNo "Add $platformDir to user PATH?" 'n') {
     $newPath = if ($userPath) { "$userPath;$platformDir" } else { $platformDir }
     setx PATH "$newPath" | Out-Null
     $env:Path = "$env:Path;$platformDir"

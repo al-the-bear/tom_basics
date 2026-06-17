@@ -28,11 +28,32 @@ warn() {
     echo "⚠️  $1"
 }
 
+# ask_yes_no <prompt> [default]
+#
+# Prompts interactively when stdin is a terminal. When stdin is NOT a terminal
+# (e.g. run over SSH with no controlling tty, as the fleet build does) it does
+# not block: it applies <default> and reports the auto-decision. <default> is
+# "y" or "n" (defaults to "n" when omitted). This is what keeps a non-interactive
+# build from hanging — the previous `while read` loop spun forever on EOF because
+# an empty response matched neither branch.
 ask_yes_no() {
     local prompt="$1"
+    local default="${2:-n}"
     local response
+
+    # Non-interactive: no tty on stdin → don't read, use the caller's default.
+    if [[ ! -t 0 ]]; then
+        case "$default" in
+            y|yes) echo "$prompt [y/n]: y  (auto: non-interactive default)"; return 0 ;;
+            *)     echo "$prompt [y/n]: n  (auto: non-interactive default)"; return 1 ;;
+        esac
+    fi
+
     while true; do
-        read -r -p "$prompt [y/n]: " response
+        # read returns non-zero on EOF; fall back to the default rather than spin.
+        if ! read -r -p "$prompt [y/n]: " response; then
+            case "$default" in y|yes) return 0 ;; *) return 1 ;; esac
+        fi
         # Use tr for lowercase — compatible with macOS default Bash 3.2
         case "$(printf '%s' "$response" | tr '[:upper:]' '[:lower:]')" in
             y|yes) return 0 ;;
@@ -99,7 +120,12 @@ WORKSPACE_HINT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 
 if [[ ! -e "$TAC_LINK" ]]; then
     warn "No $TAC_LINK symlink exists."
-    read -r -p "Enter workspace directory for $TAC_LINK [$WORKSPACE_HINT]: " TAC_TARGET
+    TAC_TARGET=""
+    # Only prompt when interactive; non-interactively accept the workspace hint
+    # (and never let read's EOF non-zero status trip `set -e`).
+    if [[ -t 0 ]]; then
+        read -r -p "Enter workspace directory for $TAC_LINK [$WORKSPACE_HINT]: " TAC_TARGET || true
+    fi
     TAC_TARGET="${TAC_TARGET:-$WORKSPACE_HINT}"
     ln -s "$TAC_TARGET" "$TAC_LINK"
     echo "Created symlink: $TAC_LINK -> $TAC_TARGET"
@@ -107,7 +133,8 @@ fi
 
 if [[ ! -d "$TAC_LINK/tom_binaries" ]]; then
     warn "No tom_binaries directory found in $TAC_LINK"
-    if ask_yes_no "Clone tom_binaries into $TAC_LINK/tom_binaries?"; then
+    # Required for the build → auto-yes when non-interactive.
+    if ask_yes_no "Clone tom_binaries into $TAC_LINK/tom_binaries?" y; then
         "$SYSTEM_GIT" clone https://github.com/al-the-bear/tom_binaries.git "$TAC_LINK/tom_binaries"
     else
         echo "Aborted: tom_binaries repository is required."
@@ -119,7 +146,10 @@ DEFAULT_TOM_BINARY_PATH="$TAC_LINK/tom_binaries/tom"
 if [[ -z "${TOM_BINARY_PATH:-}" ]]; then
     warn "TOM_BINARY_PATH is not defined."
     RC_FILE="$(detect_rc_file)"
-    if ask_yes_no "Add TOM_BINARY_PATH=$DEFAULT_TOM_BINARY_PATH to $RC_FILE?"; then
+    # Auto-no when non-interactive: don't silently edit a host's rc file. The
+    # fleet build always exports TOM_BINARY_PATH, so this branch isn't reached
+    # there; an interactive user is still offered the convenience.
+    if ask_yes_no "Add TOM_BINARY_PATH=$DEFAULT_TOM_BINARY_PATH to $RC_FILE?" n; then
         append_if_missing "$RC_FILE" "export TOM_BINARY_PATH=$DEFAULT_TOM_BINARY_PATH"
         export TOM_BINARY_PATH="$DEFAULT_TOM_BINARY_PATH"
         CHANGED_ENV=1
@@ -134,7 +164,8 @@ fi
 EXPECTED_PLATFORM_DIR="$TOM_BINARY_PATH/$PLATFORM"
 if [[ ! -d "$EXPECTED_PLATFORM_DIR" ]]; then
     warn "Missing platform directory: $EXPECTED_PLATFORM_DIR"
-    if ask_yes_no "Create $EXPECTED_PLATFORM_DIR?"; then
+    # Required output dir → auto-yes when non-interactive.
+    if ask_yes_no "Create $EXPECTED_PLATFORM_DIR?" y; then
         mkdir -p "$EXPECTED_PLATFORM_DIR"
     else
         echo "Aborted: platform output directory is required."
@@ -145,7 +176,10 @@ fi
 if [[ ":$PATH:" != *":$EXPECTED_PLATFORM_DIR:"* ]]; then
     warn "$EXPECTED_PLATFORM_DIR is not in PATH"
     RC_FILE="$(detect_rc_file)"
-    if ask_yes_no "Add $EXPECTED_PLATFORM_DIR to PATH in $RC_FILE?"; then
+    # Optional convenience: the build addresses binaries by absolute path via
+    # TOM_BINARY_PATH, so PATH is not needed for it to succeed. Auto-no when
+    # non-interactive — skip the rc edit rather than hang on the prompt.
+    if ask_yes_no "Add $EXPECTED_PLATFORM_DIR to PATH in $RC_FILE?" n; then
         append_if_missing "$RC_FILE" "export PATH=\"\$PATH:$EXPECTED_PLATFORM_DIR\""
         export PATH="$PATH:$EXPECTED_PLATFORM_DIR"
         CHANGED_PATH=1
