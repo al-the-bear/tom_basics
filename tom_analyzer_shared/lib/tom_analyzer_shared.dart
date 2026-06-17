@@ -11,10 +11,14 @@
 ///   summaries in topological order.
 /// - [runSummaryCacheStage] / [SummaryCacheResult] — a reusable
 ///   orchestration entry-point for CLIs and builders.
+/// - [resolveDartSdkPath] — robust Dart SDK location for AOT-compiled tools
+///   (where executable-relative SDK detection fails).
 ///
 /// See the package README for motivation and examples.
 library;
 
+export 'src/sdk/dart_sdk_locator.dart'
+    show resolveDartSdkPath, looksLikeDartSdk;
 export 'src/summary/dependency_resolver.dart';
 export 'src/summary/package_dependency.dart';
 export 'src/summary/summary_cache_manager.dart';

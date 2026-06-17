@@ -16,6 +16,7 @@ import 'package:analyzer/src/summary2/package_bundle_format.dart';
 import 'package:path/path.dart' as p;
 import 'package:yaml/yaml.dart';
 
+import '../sdk/dart_sdk_locator.dart';
 import 'dependency_resolver.dart';
 import 'package_dependency.dart';
 import 'summary_cache_manager.dart';
@@ -165,7 +166,13 @@ class SummaryGenerator {
       return false;
     }
 
-    final sdkPath = p.dirname(p.dirname(Platform.resolvedExecutable));
+    // Locate the SDK robustly. `buildSdkSummary` reads
+    // `lib/_internal/allowed_experiments.json` from this directory; deriving it
+    // from `Platform.resolvedExecutable` only works under `dart run`, not for an
+    // AOT-compiled tool (where the executable is the tool itself). Fall back to
+    // the executable-relative path so behaviour under `dart run` is unchanged.
+    final sdkPath = resolveDartSdkPath() ??
+        p.dirname(p.dirname(Platform.resolvedExecutable));
     stdout.writeln('  Generating SDK summary (Dart ${cacheManager.dartSdkVersion})...');
 
     // Check for Flutter embedder (sky_engine provides dart:ui)
