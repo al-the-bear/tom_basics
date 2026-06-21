@@ -5,7 +5,7 @@
 - Added `ToolCacheLocator` — resolves a shared **Tom tool-cache directory**
   reused across projects and tools, so the same hosted-package summary is
   generated once and shared everywhere. Resolution order:
-  1. the `TOM_BUILD_CACHE` environment variable (explicit override),
+  1. the `TOM_TOOL_CACHE` environment variable (explicit override),
   2. an existing `.tom/tom_tool_cache` directory in any ancestor of the start
      directory (repo-local shared cache),
   3. a `tom_tool_cache` sub-directory of the platform's default Dart tool

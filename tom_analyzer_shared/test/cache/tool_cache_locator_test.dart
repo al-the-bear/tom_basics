@@ -6,7 +6,7 @@ import 'package:tom_analyzer_shared/tom_analyzer_shared.dart';
 
 void main() {
   group('ToolCacheLocator.resolve', () {
-    test('branch 1: honours TOM_BUILD_CACHE env override verbatim', () {
+    test('branch 1: honours TOM_TOOL_CACHE env override verbatim', () {
       final override = Directory.systemTemp.createTempSync('tcl_env_');
       addTearDown(() => override.deleteSync(recursive: true));
 

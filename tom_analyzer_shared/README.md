@@ -236,7 +236,7 @@ hosted-package summary is generated once and reused by every project and tool on
 the machine. `ToolCacheLocator.resolve` picks the root — the first branch that
 applies wins:
 
-1. **`TOM_BUILD_CACHE` environment variable** — set it to point the cache at a
+1. **`TOM_TOOL_CACHE` environment variable** — set it to point the cache at a
    fast disk, a shared CI cache, or a RAM-backed directory.
 2. **An ancestor `.tom/tom_tool_cache` directory** — a workspace opts into a
    repo-local shared cache simply by creating that directory; the search walks
@@ -250,7 +250,7 @@ final root = ToolCacheLocator.resolve(startDirectory: projectRoot);
 // e.g. /home/me/.config/dart/tom_tool_cache  (branch 3)
 
 // Override the resolution explicitly:
-//   TOM_BUILD_CACHE=/fast/disk/cache  → branch 1
+//   TOM_TOOL_CACHE=/fast/disk/cache  → branch 1
 //   mkdir -p <repo>/.tom/tom_tool_cache → branch 2
 ```
 
@@ -337,7 +337,7 @@ package:tom_analyzer_shared/tom_analyzer_shared.dart   (single entry point)
         │        getCachePath / getSdkSummaryPath / getStats / clearCache
         │
         └── ToolCacheLocator  ── resolves <tool-cache> root
-                 TOM_BUILD_CACHE → ancestor .tom/tom_tool_cache → Dart tool dir
+                 TOM_TOOL_CACHE → ancestor .tom/tom_tool_cache → Dart tool dir
 ```
 
 | Type | Role |

@@ -20,7 +20,7 @@ import 'package:path/path.dart' as p;
 ///
 /// The first branch that applies wins:
 ///
-/// 1. **`TOM_BUILD_CACHE` environment variable.** When set to a non-empty
+/// 1. **`TOM_TOOL_CACHE` environment variable.** When set to a non-empty
 ///    value it is used verbatim (normalised to an absolute path). This is the
 ///    explicit override — point it at a fast disk, a shared CI cache, or a
 ///    RAM-backed directory.
@@ -38,7 +38,7 @@ import 'package:path/path.dart' as p;
 /// first time they write to it.
 abstract final class ToolCacheLocator {
   /// Environment variable that overrides the tool-cache location (branch 1).
-  static const String envVariable = 'TOM_BUILD_CACHE';
+  static const String envVariable = 'TOM_TOOL_CACHE';
 
   /// Directory name used both for the ancestor marker (`.tom/<name>`, branch 2)
   /// and the Dart-tool-directory fallback sub-directory (branch 3).
