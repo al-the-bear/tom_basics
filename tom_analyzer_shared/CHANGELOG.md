@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.3.0
+
+- Added `ToolCacheLocator` — resolves a shared **Tom tool-cache directory**
+  reused across projects and tools, so the same hosted-package summary is
+  generated once and shared everywhere. Resolution order:
+  1. the `TOM_BUILD_CACHE` environment variable (explicit override),
+  2. an existing `.tom/tom_tool_cache` directory in any ancestor of the start
+     directory (repo-local shared cache),
+  3. a `tom_tool_cache` sub-directory of the platform's default Dart tool
+     directory (`%APPDATA%\dart`, `~/Library/Application Support/dart`, or
+     `$XDG_CONFIG_HOME`/`~/.config/dart`).
+  `resolve()` only reads the filesystem; the directory is created lazily on
+  first write.
+- `SummaryCacheManager` now stores summaries in the shared tool cache's
+  `analyzer-cache/` sub-directory (resolved by `ToolCacheLocator` from the
+  workspace root) instead of a fixed `<workspace>/.tom/analyzer-cache`.
+  Consumers calling `runSummaryCacheStage()` get the shared cache
+  automatically. A new `cacheDirectory` constructor argument overrides the
+  resolution (used by tests and callers that manage their own layout); a new
+  `environment` argument overrides the process environment consulted by the
+  locator.
+
 ## 0.2.0
 
 - Added `resolveDartSdkPath()` and `looksLikeDartSdk()` — a robust runtime

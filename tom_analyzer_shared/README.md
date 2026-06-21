@@ -48,11 +48,16 @@ pubspec.lock ──▶ DependencyResolver ──▶ which deps are cacheable?
                  SummaryGenerator ──▶ build SDK summary, then each package
                                           │  summary in topological order
                                           ▼
-                 SummaryCacheManager ──▶ <workspace>/.tom/analyzer-cache/
+                 SummaryCacheManager ──▶ <tool-cache>/analyzer-cache/
                                           │  {package}@{version}.sum
                                           ▼
             SummaryCacheResult { summaryPaths, sdkSummaryPath } ──▶ analyzer
 ```
+
+The `<tool-cache>` root is the **shared Tom tool-cache directory** resolved by
+`ToolCacheLocator` (see [The shared tool cache](#the-shared-tool-cache)), so the
+same hosted-package summary is generated once and reused across every project
+and tool on the machine.
 
 The whole pipeline is wrapped by one function — `runSummaryCacheStage` — that a
 CLI tool calls once and then feeds the result straight into its analysis
@@ -74,7 +79,7 @@ every run. This is the single rule encoded in `PackageDependency.isCacheable`.
 
 ```yaml
 dependencies:
-  tom_analyzer_shared: ^0.1.0
+  tom_analyzer_shared: ^0.3.0
 ```
 
 Or from the command line:
@@ -109,6 +114,7 @@ runs on desktop, server, and CLI hosts.
 | `SummaryGenerationResult` | class | Counts of generated / skipped / failed + per-package errors |
 | `SummaryCacheManager` | class | Reads/writes `.sum` files; cache paths, stats, cleanup |
 | `CacheStats` | class | Cache directory size and file count |
+| `ToolCacheLocator` | class | Resolves the shared Tom tool-cache root (env → ancestor → Dart tool dir) |
 
 ---
 
@@ -134,7 +140,8 @@ Future<void> analyse(String projectRoot) async {
 ```
 
 `runSummaryCacheStage` resolves dependencies from `pubspec.lock`, builds any
-summaries not already in `<projectRoot>/.tom/analyzer-cache/`, and returns a
+summaries not already in the shared tool cache's `analyzer-cache/` sub-directory
+(see [The shared tool cache](#the-shared-tool-cache)), and returns a
 `SummaryCacheResult`. On the first run it generates the cache; on later runs it
 finds everything present and returns immediately. It returns `null` when no
 dependencies could be resolved or no summaries are available, so the
@@ -175,8 +182,8 @@ final result = await runSummaryCacheStage(
 );
 ```
 
-- `rebuildCache` clears `<root>/.tom/analyzer-cache/` before generating — use it
-  when a summary may be stale (e.g. after an SDK upgrade).
+- `rebuildCache` clears the `analyzer-cache/` sub-directory before generating —
+  use it when a summary may be stale (e.g. after an SDK upgrade).
 - `showCacheStatus` prints a per-package CACHED/MISSING report and returns
   `null` without doing heavy work — the implementation behind a `--cache-status`
   flag.
@@ -222,22 +229,56 @@ print(deps.hosted.map((d) => d.name));  // hosted only
 print(deps.findByName('flutter')?.cacheKey);
 ```
 
+### The shared tool cache
+
+Summaries live in a **shared Tom tool-cache directory** so the same
+hosted-package summary is generated once and reused by every project and tool on
+the machine. `ToolCacheLocator.resolve` picks the root — the first branch that
+applies wins:
+
+1. **`TOM_BUILD_CACHE` environment variable** — set it to point the cache at a
+   fast disk, a shared CI cache, or a RAM-backed directory.
+2. **An ancestor `.tom/tom_tool_cache` directory** — a workspace opts into a
+   repo-local shared cache simply by creating that directory; the search walks
+   up from the start directory.
+3. **`<dart-tool-dir>/tom_tool_cache`** — the machine-global fallback under the
+   platform's default Dart tool directory (`%APPDATA%\dart`,
+   `~/Library/Application Support/dart`, or `$XDG_CONFIG_HOME`/`~/.config/dart`).
+
+```dart
+final root = ToolCacheLocator.resolve(startDirectory: projectRoot);
+// e.g. /home/me/.config/dart/tom_tool_cache  (branch 3)
+
+// Override the resolution explicitly:
+//   TOM_BUILD_CACHE=/fast/disk/cache  → branch 1
+//   mkdir -p <repo>/.tom/tom_tool_cache → branch 2
+```
+
+`resolve` only reads the filesystem; the directory is created lazily the first
+time a summary is written. Each artefact kind uses a named sub-directory of the
+root (analyzer summaries use `analyzer-cache/`) so different kinds never collide.
+
 ### The cache directory
 
-`SummaryCacheManager` owns `<workspace>/.tom/analyzer-cache/` and the file
-naming. You construct it with the workspace root and ask it for paths or status
-— it never guesses a layout the analyzer can't find:
+`SummaryCacheManager` owns the `analyzer-cache/` sub-directory of that shared
+tool cache and the file naming. You construct it with the workspace root (which
+seeds the `ToolCacheLocator` ancestor search) and ask it for paths or status —
+it never guesses a layout the analyzer can't find:
 
 ```dart
 final cache = SummaryCacheManager(projectRoot);
 
-print(cache.cacheDirectory);                       // …/.tom/analyzer-cache
+print(cache.cacheDirectory);                       // <tool-cache>/analyzer-cache
 print(cache.getCachePath('provider', '6.1.2'));    // …/provider@6.1.2.sum
 print(cache.getSdkSummaryPath());                  // …/sdk@<dart-version>.sum
 
 final stats = await cache.getStats();              // CacheStats
 print('${stats.summaryCount} files, ${stats.totalSizeMB.toStringAsFixed(1)} MB');
 ```
+
+Pass `cacheDirectory:` to bypass the shared-cache resolution entirely (tests and
+callers that manage their own layout), or `environment:` to override the
+process environment the locator consults.
 
 It also offers `hasSummary`, `findMissingSummaries`, `loadSummary`,
 `clearCache`, `cleanOutdated`, and `cleanUnusedSummaries` for tools that manage
@@ -292,8 +333,11 @@ package:tom_analyzer_shared/tom_analyzer_shared.dart   (single entry point)
         ├── SummaryGenerator  ── generateSdkSummary / generateMissingSummaries
         │        topological order ──▶ SummaryGenerationResult
         │
-        └── SummaryCacheManager  ── <workspace>/.tom/analyzer-cache/
-                 getCachePath / getSdkSummaryPath / getStats / clearCache
+        ├── SummaryCacheManager  ── <tool-cache>/analyzer-cache/
+        │        getCachePath / getSdkSummaryPath / getStats / clearCache
+        │
+        └── ToolCacheLocator  ── resolves <tool-cache> root
+                 TOM_BUILD_CACHE → ancestor .tom/tom_tool_cache → Dart tool dir
 ```
 
 | Type | Role |
@@ -307,6 +351,7 @@ package:tom_analyzer_shared/tom_analyzer_shared.dart   (single entry point)
 | `SummaryGenerationResult` | generated / skipped / failed counts + error map |
 | `SummaryCacheManager` | The `.sum` cache directory: paths, stats, cleanup |
 | `CacheStats` | Cache file count and total size |
+| `ToolCacheLocator` | Resolves the shared Tom tool-cache root for all artefacts |
 
 The cache is keyed purely by package name and version, so it is safe to share
 across tools and across runs: two generators pointed at the same workspace reuse
@@ -348,7 +393,7 @@ Sibling foundation packages:
 
 ## Status
 
-- **Version:** 0.1.0
+- **Version:** 0.3.0
 - **Tests:** a `test/summary/` suite covering dependency resolution, the cache
   manager, summary generation, and an end-to-end integration test
   (`dart test` / `testkit :test`).

@@ -9,12 +9,19 @@ import 'package:analyzer/src/summary/package_bundle_reader.dart';
 import 'package:analyzer/src/summary2/package_bundle_format.dart';
 import 'package:path/path.dart' as p;
 
+import '../cache/tool_cache_locator.dart';
 import 'package_dependency.dart';
+
+/// Sub-directory of the shared tool cache that holds analyzer summaries.
+const String _analyzerCacheSubDir = 'analyzer-cache';
 
 /// Manages the analyzer summary cache for a workspace.
 ///
-/// Summaries are stored in `<workspace>/.tom/analyzer-cache/` with filenames
-/// in the format `{package}@{version}.sum`.
+/// Summaries are stored in `<tool-cache>/analyzer-cache/` with filenames in the
+/// format `{package}@{version}.sum`, where `<tool-cache>` is the shared Tom
+/// tool-cache directory resolved by [ToolCacheLocator] (so the same hosted
+/// package summary is reused across projects and tools). Pass an explicit
+/// [cacheDirectory] to override that resolution.
 ///
 /// ## Usage
 ///
@@ -34,6 +41,9 @@ import 'package_dependency.dart';
 /// ```
 class SummaryCacheManager {
   /// The workspace root directory.
+  ///
+  /// Used as the starting point for the [ToolCacheLocator] ancestor search
+  /// when [cacheDirectory] is not given explicitly.
   final String workspaceRoot;
 
   /// The directory where summaries are cached.
@@ -45,14 +55,29 @@ class SummaryCacheManager {
   /// Creates a cache manager for the given workspace.
   ///
   /// The [workspaceRoot] should be the directory containing the project's
-  /// pubspec.yaml (or the overall workspace root).
+  /// pubspec.yaml (or the overall workspace root). It seeds the
+  /// [ToolCacheLocator] ancestor search that picks the shared cache location.
   ///
   /// The [dartSdkVersion] is used to invalidate caches when the SDK changes.
+  ///
+  /// Provide [cacheDirectory] to bypass shared-cache resolution entirely and
+  /// store summaries in a fixed directory — used by tests to stay hermetic and
+  /// by callers that manage their own cache layout. [environment] overrides the
+  /// process environment consulted by [ToolCacheLocator] (primarily for tests).
   SummaryCacheManager(
     this.workspaceRoot, {
     String? dartSdkVersion,
+    String? cacheDirectory,
+    Map<String, String>? environment,
   }) : dartSdkVersion = dartSdkVersion ?? _getDartSdkVersion() {
-    cacheDirectory = p.join(workspaceRoot, '.tom', 'analyzer-cache');
+    this.cacheDirectory = cacheDirectory ??
+        p.join(
+          ToolCacheLocator.resolve(
+            startDirectory: workspaceRoot,
+            environment: environment,
+          ),
+          _analyzerCacheSubDir,
+        );
   }
 
   /// Gets the Dart SDK version from Platform.version.

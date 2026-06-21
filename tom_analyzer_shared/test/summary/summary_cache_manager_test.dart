@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 import 'package:tom_analyzer_shared/tom_analyzer_shared.dart';
 
@@ -13,6 +14,9 @@ void main() {
     cacheManager = SummaryCacheManager(
       tempDir.path,
       dartSdkVersion: '3.10.4',
+      // Pin the cache into the temp dir so the suite stays hermetic and does
+      // not resolve to (or pollute) the real shared tool cache.
+      cacheDirectory: p.join(tempDir.path, '.tom', 'analyzer-cache'),
     );
   });
 

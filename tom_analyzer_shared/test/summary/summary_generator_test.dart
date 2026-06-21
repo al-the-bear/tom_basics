@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 import 'package:tom_analyzer_shared/tom_analyzer_shared.dart';
 
@@ -15,6 +16,8 @@ void main() {
     cacheManager = SummaryCacheManager(
       tempDir.path,
       dartSdkVersion: '3.10.4',
+      // Hermetic: keep the cache inside the temp dir.
+      cacheDirectory: p.join(tempDir.path, '.tom', 'analyzer-cache'),
     );
     dependencyResolver = DependencyResolver();
     generator = SummaryGenerator(

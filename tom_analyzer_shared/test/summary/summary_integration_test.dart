@@ -3,6 +3,7 @@ library;
 
 import 'dart:io';
 
+import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 import 'package:tom_analyzer_shared/tom_analyzer_shared.dart';
 
@@ -59,7 +60,11 @@ void main() {
 
   setUp(() {
     tempDir = Directory.systemTemp.createTempSync('summary_integration_test_');
-    cacheManager = SummaryCacheManager(tempDir.path);
+    cacheManager = SummaryCacheManager(
+      tempDir.path,
+      // Hermetic: keep the cache inside the temp dir.
+      cacheDirectory: p.join(tempDir.path, '.tom', 'analyzer-cache'),
+    );
     dependencyResolver = DependencyResolver();
     generator = SummaryGenerator(
       cacheManager: cacheManager,

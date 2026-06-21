@@ -38,7 +38,8 @@ class SummaryCacheResult {
 /// Runs the summary-cache stage for a project.
 ///
 /// Resolves dependencies from `pubspec.lock`, generates any missing SDK
-/// and package summaries into `<projectRoot>/.tom/analyzer-cache/`, and
+/// and package summaries into the shared tool cache's `analyzer-cache/`
+/// sub-directory (resolved by [ToolCacheLocator] from [projectRoot]), and
 /// returns the paths that should be passed to the analyzer so it can
 /// skip re-scanning stable dependencies.
 ///
