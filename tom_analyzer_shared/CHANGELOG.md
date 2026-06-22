@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.0
+
+- Migrated to `analyzer: ^10.0.0` (from `^8.4.1`). The package only depends on
+  the internal summary2 / element APIs (`BundleWriter`,
+  `PackageBundleFormat`, `AnalysisContextCollectionImpl`,
+  `buildSdkSummary`, `LibraryElementImpl`, `library.fragments`), all of which
+  are unchanged across analyzer 8.4 → 10. No source changes were required —
+  this is a pure constraint bump. The SDK floor stays `^3.10.4` (analyzer 10
+  only requires Dart `^3.9.0`).
+
 ## 0.2.0
 
 - Added `resolveDartSdkPath()` and `looksLikeDartSdk()` — a robust runtime
