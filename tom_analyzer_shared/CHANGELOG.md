@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.3.0
+## 0.4.0
 
 - Migrated to `analyzer: ^10.0.0` (from `^8.4.1`). The package only depends on
   the internal summary2 / element APIs (`BundleWriter`,
@@ -9,6 +9,9 @@
   are unchanged across analyzer 8.4 → 10. No source changes were required —
   this is a pure constraint bump. The SDK floor stays `^3.10.4` (analyzer 10
   only requires Dart `^3.9.0`).
+- Note: version `0.3.0` was already published to pub.dev on `analyzer ^8.4.1`
+  (out of band, not from this checkout), so this analyzer-10 migration ships as
+  `0.4.0`.
 
 ## 0.2.0
 
