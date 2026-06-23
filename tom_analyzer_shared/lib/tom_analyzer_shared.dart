@@ -6,7 +6,9 @@
 /// - [DependencyResolver] — parses `pubspec.lock` and locates hosted/SDK
 ///   package source trees in the pub cache and the Flutter SDK.
 /// - [SummaryCacheManager] — reads and writes `.sum` files under
-///   `<workspace>/.tom/analyzer-cache/`.
+///   `<workspace>/.tom/analyzer-cache/<analyzer-major>/`.
+/// - [analyzerMajorVersion] — the analyzer major this build targets; used to
+///   partition the cache so analyzer upgrades cannot read stale bundles.
 /// - [SummaryGenerator] — generates the SDK summary and per-package
 ///   summaries in topological order.
 /// - [runSummaryCacheStage] / [SummaryCacheResult] — a reusable
@@ -19,6 +21,7 @@ library;
 
 export 'src/sdk/dart_sdk_locator.dart'
     show resolveDartSdkPath, looksLikeDartSdk;
+export 'src/summary/analyzer_version.dart' show analyzerMajorVersion;
 export 'src/summary/dependency_resolver.dart';
 export 'src/summary/package_dependency.dart';
 export 'src/summary/summary_cache_manager.dart';

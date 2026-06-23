@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.4.1
+
+- **Partition the summary cache by analyzer major version.**
+  `SummaryCacheManager` now stores `.sum` bundles under
+  `.tom/analyzer-cache/<analyzer-major>/` instead of a flat
+  `.tom/analyzer-cache/`. `.sum` files use an analyzer-version-specific binary
+  format, so a bundle written by analyzer N is undecodable by analyzer M (it
+  crashes the reader with a `RangeError`). Because caches were keyed only by
+  `package@version`, a cache populated under one analyzer major silently
+  poisoned a tool that later ran under a different analyzer major. Keying the
+  directory by analyzer major guarantees a tool only ever reads bundles its own
+  analyzer can decode.
+- Added `analyzerMajorVersion` — the compile-time analyzer-major constant this
+  build targets (currently `10`). It is the AOT-safe source of truth for the
+  cache partition (Tom code generators run AOT-compiled, where runtime package
+  path-sniffing is unavailable). **Bump it in lockstep with the `analyzer`
+  constraint in `pubspec.yaml`.**
+- `SummaryCacheManager` gained an `analyzerMajor` constructor parameter
+  (defaults to `analyzerMajorVersion`); intended for tests exercising the
+  partitioning without rebuilding against a different analyzer.
+
 ## 0.4.0
 
 - Migrated to `analyzer: ^10.0.0` (from `^8.4.1`). The package only depends on

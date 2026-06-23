@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 import 'package:tom_analyzer_shared/tom_analyzer_shared.dart';
 
@@ -40,6 +41,61 @@ void main() {
         final path = cacheManager.getCachePath('pkg', '1.0.0+1');
         // '+' is not in the sanitize regex, so it stays
         expect(path, endsWith('.sum'));
+      });
+    });
+
+    group('analyzer-major partitioning', () {
+      test('cache directory is nested under the analyzer major', () {
+        // Default major comes from analyzerMajorVersion (the analyzer this
+        // package is built against).
+        expect(
+          cacheManager.cacheDirectory,
+          endsWith(p.join('analyzer-cache', '$analyzerMajorVersion')),
+        );
+        expect(cacheManager.analyzerMajor, equals(analyzerMajorVersion));
+      });
+
+      test('different analyzer majors resolve to different cache dirs', () {
+        // This is the poison-prevention property: a tool running analyzer 8
+        // and one running analyzer 10 must never share a `.sum` file, because
+        // the bundle binary format is analyzer-major-specific.
+        final manager8 = SummaryCacheManager(tempDir.path, analyzerMajor: 8);
+        final manager10 = SummaryCacheManager(tempDir.path, analyzerMajor: 10);
+
+        expect(
+          manager8.cacheDirectory,
+          isNot(equals(manager10.cacheDirectory)),
+        );
+        expect(
+          manager8.getCachePath('async', '2.13.0'),
+          isNot(equals(manager10.getCachePath('async', '2.13.0'))),
+        );
+        expect(manager8.cacheDirectory, endsWith(p.join('analyzer-cache', '8')));
+        expect(
+          manager10.cacheDirectory,
+          endsWith(p.join('analyzer-cache', '10')),
+        );
+      });
+
+      test('same analyzer major resolves to the same cache dir', () {
+        final a = SummaryCacheManager(tempDir.path, analyzerMajor: 10);
+        final b = SummaryCacheManager(tempDir.path, analyzerMajor: 10);
+        expect(
+          a.getCachePath('pkg', '1.0.0'),
+          equals(b.getCachePath('pkg', '1.0.0')),
+        );
+      });
+
+      test('writes from one major are invisible to another major', () async {
+        final manager8 = SummaryCacheManager(tempDir.path, analyzerMajor: 8);
+        final manager10 = SummaryCacheManager(tempDir.path, analyzerMajor: 10);
+
+        await manager8.writeSummary(
+            'async', '2.13.0', Uint8List.fromList([1, 2, 3]));
+
+        // The analyzer-10 partition must not see the analyzer-8 bundle.
+        expect(await manager10.hasSummary('async', '2.13.0'), isFalse);
+        expect(await manager8.hasSummary('async', '2.13.0'), isTrue);
       });
     });
 

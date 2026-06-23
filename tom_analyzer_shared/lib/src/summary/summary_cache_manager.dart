@@ -9,12 +9,21 @@ import 'package:analyzer/src/summary/package_bundle_reader.dart';
 import 'package:analyzer/src/summary2/package_bundle_format.dart';
 import 'package:path/path.dart' as p;
 
+import 'analyzer_version.dart';
 import 'package_dependency.dart';
 
 /// Manages the analyzer summary cache for a workspace.
 ///
-/// Summaries are stored in `<workspace>/.tom/analyzer-cache/` with filenames
-/// in the format `{package}@{version}.sum`.
+/// Summaries are stored in `<workspace>/.tom/analyzer-cache/<analyzer-major>/`
+/// with filenames in the format `{package}@{version}.sum`.
+///
+/// The `<analyzer-major>` segment (see [analyzerMajorVersion]) partitions the
+/// cache by the major version of the `analyzer` package that produced the
+/// bundles. `.sum` files use an analyzer-version-specific binary format, so a
+/// bundle written by one analyzer major is undecodable by another (it crashes
+/// the reader). Keying the directory by analyzer major guarantees a tool only
+/// ever reads bundles its own analyzer can decode, eliminating the
+/// cross-version cache-poison that otherwise survives an analyzer upgrade.
 ///
 /// ## Usage
 ///
@@ -42,17 +51,35 @@ class SummaryCacheManager {
   /// The current Dart SDK version, used for cache invalidation.
   final String dartSdkVersion;
 
+  /// The analyzer major version this cache partition belongs to.
+  ///
+  /// Defaults to [analyzerMajorVersion] (the analyzer major this package was
+  /// built against). Overridable only to let tests exercise the partitioning
+  /// without rebuilding against a different analyzer.
+  final int analyzerMajor;
+
   /// Creates a cache manager for the given workspace.
   ///
   /// The [workspaceRoot] should be the directory containing the project's
   /// pubspec.yaml (or the overall workspace root).
   ///
   /// The [dartSdkVersion] is used to invalidate caches when the SDK changes.
+  ///
+  /// The [analyzerMajor] selects the per-analyzer-major cache partition; it
+  /// defaults to [analyzerMajorVersion] and should normally be left unset
+  /// outside of tests.
   SummaryCacheManager(
     this.workspaceRoot, {
     String? dartSdkVersion,
-  }) : dartSdkVersion = dartSdkVersion ?? _getDartSdkVersion() {
-    cacheDirectory = p.join(workspaceRoot, '.tom', 'analyzer-cache');
+    int? analyzerMajor,
+  })  : dartSdkVersion = dartSdkVersion ?? _getDartSdkVersion(),
+        analyzerMajor = analyzerMajor ?? analyzerMajorVersion {
+    cacheDirectory = p.join(
+      workspaceRoot,
+      '.tom',
+      'analyzer-cache',
+      '${analyzerMajor ?? analyzerMajorVersion}',
+    );
   }
 
   /// Gets the Dart SDK version from Platform.version.
