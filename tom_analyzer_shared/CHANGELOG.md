@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.5.0
+
+- Added `GroupedPackageBundleBuilder` — builds one grouped `packages.sum`
+  bundle from the **union** of several package dependency closures, for
+  runtime SDK-free analysis in embedded Dart editors. Unlike `SummaryGenerator`
+  (one versioned `.sum` per hosted/SDK package), this emits a single bundle
+  covering every package reachable from one or more resolved
+  `.dart_tool/package_config.json` files.
+  - `buildFromDirs(packageDirs)` merges each directory's resolved config and
+    summarizes the union; `buildFromPackageRoots(map)` is the lower-level
+    counterpart for callers that already hold a name→root map.
+  - The package URI resolver is ordered **before** `ResourceUriResolver` so
+    emitted library URIs are portable `package:` URIs, never `file:///`.
+  - Also exposes `readPackageRoots`, `mergePackageRootsForDirs`, and
+    `SummaryConfigException` (the base-first home for this logic, previously
+    duplicated in `tom_specs_clitool`).
+
 ## 0.4.1
 
 - **Partition the summary cache by analyzer major version.**
