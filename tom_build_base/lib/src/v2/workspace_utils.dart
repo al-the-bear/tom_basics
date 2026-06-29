@@ -88,6 +88,57 @@ String? validateProjectPathsWithinRoot(
   return null;
 }
 
+/// Validate that every *path-style, non-glob* `--project` pattern resolves to an
+/// existing directory under [executionRoot].
+///
+/// A `--project` filter can be a project id, a project name, a folder-name glob,
+/// or a path. Ids, names, and globs legitimately may match zero projects, so
+/// they are never treated as "not found": only a **path** pattern names a
+/// concrete directory. When such a path is **non-glob** (no `*`, `?`, `[`, `{`)
+/// and the directory does not exist, the user mistyped it. Previously the run
+/// scanned, matched nothing, and exited `0` — masking the typo and making the
+/// tool look like a successful no-op (this is the bug #19 regression DEP_ERR01
+/// guards against).
+///
+/// Relative patterns are resolved against [executionRoot] (the workspace root),
+/// matching how [FilterPipeline] interprets relative `--project` paths; absolute
+/// patterns are checked as-is (an absolute path *outside* the root is rejected
+/// earlier by [validateProjectPathsWithinRoot], so this only sees in-root
+/// absolutes). Returns a human-readable error (mentioning "not found") for the
+/// first missing path pattern, or `null` when every path pattern exists.
+String? validateProjectPathsExist(
+  List<String> projectPatterns,
+  String executionRoot,
+) {
+  final rootAbs = p.normalize(p.absolute(executionRoot));
+  for (final pattern in projectPatterns) {
+    if (!_isProjectPathPattern(pattern)) continue; // id / name — not a path
+    if (_containsGlobChar(pattern)) continue; // glob path may match zero
+    final resolved = p.isAbsolute(pattern)
+        ? p.normalize(pattern)
+        : p.normalize(p.join(rootAbs, pattern));
+    if (Directory(resolved).existsSync()) continue;
+    return 'project path not found: $pattern (resolved: $resolved). '
+        '--project must reference an existing project directory, id, or name.';
+  }
+  return null;
+}
+
+/// Whether a `--project` pattern is path-style (contains a directory separator).
+///
+/// Mirrors the path/basename split [FilterPipeline] uses: a value with `/` or
+/// `\` is matched against project paths, anything else against ids / names.
+bool _isProjectPathPattern(String pattern) =>
+    pattern.contains('/') || pattern.contains(r'\');
+
+/// Whether a pattern contains a glob metacharacter, in which case it may
+/// legitimately match zero directories and must not be existence-checked.
+bool _containsGlobChar(String pattern) =>
+    pattern.contains('*') ||
+    pattern.contains('?') ||
+    pattern.contains('[') ||
+    pattern.contains('{');
+
 /// Validate that the `--scan` path does not point outside [executionRoot].
 ///
 /// Unlike `--project` (a filter over the scanned tree), `--scan` names the real

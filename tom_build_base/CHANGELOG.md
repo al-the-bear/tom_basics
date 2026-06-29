@@ -1,3 +1,17 @@
+## 2.6.30
+
+### Fixed
+
+- **Non-existent `--project` path now fails loudly instead of exiting 0** —
+  passing a non-glob `--project` *path* that does not exist (e.g.
+  `--project _build/nonexistent`) previously scanned, matched nothing, and
+  exited `0` with no output, masking the typo (the bug #19 regression that
+  `dependencies_test`'s DEP_ERR01 guards). `ToolRunner` now validates such
+  path patterns up front via the new `validateProjectPathsExist` and returns a
+  failure with a clear `project path not found: …` message. Project ids,
+  names, and glob path patterns are unaffected — they may legitimately match
+  zero projects and are never existence-checked.
+
 ## 2.6.29
 
 ### Fixed

@@ -137,6 +137,87 @@ void main() {
       expect(error!.toLowerCase(), contains('outside'));
     });
   });
+
+  group('validateProjectPathsExist', () {
+    late Directory tempRoot;
+
+    setUp(() {
+      tempRoot = Directory.systemTemp.createTempSync('ws_proj_exist_');
+      // A real project directory under the root.
+      Directory(p.join(tempRoot.path, '_build')).createSync(recursive: true);
+      Directory(
+        p.join(tempRoot.path, 'core', 'tom_core_kernel'),
+      ).createSync(recursive: true);
+    });
+
+    tearDown(() {
+      if (tempRoot.existsSync()) tempRoot.deleteSync(recursive: true);
+    });
+
+    test('returns null when there are no project patterns', () {
+      expect(validateProjectPathsExist([], tempRoot.path), isNull);
+    });
+
+    test('ignores id / name patterns (no separator)', () {
+      // Non-path patterns may match zero projects legitimately — never errored.
+      expect(
+        validateProjectPathsExist(
+          ['tom_core_kernel', 'does_not_exist_anywhere'],
+          tempRoot.path,
+        ),
+        isNull,
+      );
+    });
+
+    test('ignores glob path patterns (may match zero legitimately)', () {
+      expect(
+        validateProjectPathsExist(
+          ['core/*', '**/tom_core_*', 'devops/**'],
+          tempRoot.path,
+        ),
+        isNull,
+      );
+    });
+
+    test('accepts a relative path pattern that exists under the root', () {
+      expect(validateProjectPathsExist(['_build'], tempRoot.path), isNull);
+      expect(
+        validateProjectPathsExist(['core/tom_core_kernel'], tempRoot.path),
+        isNull,
+      );
+    });
+
+    test('rejects a non-glob relative path pattern that does not exist', () {
+      final error = validateProjectPathsExist(
+        ['_build/nonexistent'],
+        tempRoot.path,
+      );
+      expect(error, isNotNull);
+      expect(error!.toLowerCase(), contains('not found'));
+      expect(error, contains('_build/nonexistent'));
+    });
+
+    test('accepts an absolute path that exists', () {
+      final inside = p.join(tempRoot.path, '_build');
+      expect(validateProjectPathsExist([inside], tempRoot.path), isNull);
+    });
+
+    test('rejects an absolute path within the root that does not exist', () {
+      final inside = p.join(tempRoot.path, 'missing', 'project');
+      final error = validateProjectPathsExist([inside], tempRoot.path);
+      expect(error, isNotNull);
+      expect(error!.toLowerCase(), contains('not found'));
+    });
+
+    test('rejects on the first missing path among several patterns', () {
+      final error = validateProjectPathsExist(
+        ['_build', 'core/missing_one', 'core/tom_core_kernel'],
+        tempRoot.path,
+      );
+      expect(error, isNotNull);
+      expect(error, contains('core/missing_one'));
+    });
+  });
 }
 
 /// Create a directory [name] under [parent] containing a minimal pubspec so it

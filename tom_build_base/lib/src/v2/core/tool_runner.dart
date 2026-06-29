@@ -613,6 +613,17 @@ class ToolRunner {
       return ToolResult.failure(projectPathError);
     }
 
+    // Reject a non-glob --project *path* that does not exist, so a mistyped
+    // path fails loudly instead of scanning, matching nothing, and exiting 0.
+    final projectExistsError = validateProjectPathsExist(
+      cliArgs.projectPatterns,
+      executionRoot,
+    );
+    if (projectExistsError != null) {
+      output.writeln('Error: $projectExistsError');
+      return ToolResult.failure(projectExistsError);
+    }
+
     final configDefaults = _loadTraversalDefaults(executionRoot);
     final traversalInfo = cliArgs.toProjectTraversalInfo(
       executionRoot: executionRoot,
@@ -892,6 +903,17 @@ class ToolRunner {
     if (projectPathError != null) {
       output.writeln('Error: $projectPathError');
       return ToolResult.failure(projectPathError);
+    }
+
+    // Reject a non-glob --project *path* that does not exist, so a mistyped
+    // path fails loudly instead of scanning, matching nothing, and exiting 0.
+    final projectExistsError = validateProjectPathsExist(
+      cliArgs.projectPatterns,
+      executionRoot,
+    );
+    if (projectExistsError != null) {
+      output.writeln('Error: $projectExistsError');
+      return ToolResult.failure(projectExistsError);
     }
 
     // Load config defaults from buildkit_master.yaml navigation section
