@@ -260,9 +260,27 @@ void main() {
 
       final stdout = result.stdout as String;
       expect(result.exitCode, equals(0));
-      expect(stdout, contains('[DRY RUN]'));
-      expect(stdout, contains('stdin'));
-      log.expectation('stdin dry-run preview shown', true);
+      // Canonical dry-run format for pipeline stdin steps (see AA16; source:
+      // tom_build_base pipeline_executor `_runStdin`): the step is previewed
+      // under the structured `[PIPELINE:stdin]` marker with each piped line
+      // echoed as `  | <line>`, then NOT executed (`if (dryRun) return true;`).
+      // The old '[DRY RUN]' prose is not emitted for pipeline steps — it is
+      // reserved for the versioner/mklink executors.
+      expect(stdout, contains('[PIPELINE:stdin]'),
+          reason: 'dry-run should preview the stdin step under the '
+              'structured [PIPELINE:stdin] marker');
+      // Verify the step was previewed but NOT executed: `cat` would echo the
+      // piped content as a bare 'Hello stdin world' line, whereas the dry-run
+      // preview only shows it prefixed as '  | Hello stdin world'. A
+      // line-trimmed exact match for the bare line must therefore be absent.
+      final executed = stdout
+          .split('\n')
+          .map((line) => line.trim())
+          .contains('Hello stdin world');
+      expect(executed, isFalse,
+          reason: 'dry-run should not pipe content to / execute the command');
+      log.expectation('stdin dry-run previews step without executing',
+          stdout.contains('[PIPELINE:stdin]') && !executed);
     });
   });
 }
