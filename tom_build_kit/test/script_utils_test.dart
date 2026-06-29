@@ -202,8 +202,14 @@ void main() {
 
       final stdout = result.stdout as String;
       expect(result.exitCode, equals(0));
-      expect(stdout, contains('Piping stdin to'));
-      log.expectation('verbose mentions stdin piping', true);
+      // Canonical verbose format (see AA16): the runner echoes the stdin step
+      // under the structured `[PIPELINE:stdin]` marker (parallel to
+      // `[PIPELINE:shell]`), not the old prose label 'Piping stdin to'.
+      expect(stdout, contains('[PIPELINE:stdin]'),
+          reason: 'verbose mode should echo the stdin step under the '
+              'structured [PIPELINE:stdin] marker');
+      log.expectation('verbose echoes stdin step under [PIPELINE:stdin]',
+          stdout.contains('[PIPELINE:stdin]'));
     });
 
     test('multi-line shell dry-run shows preview', () async {
