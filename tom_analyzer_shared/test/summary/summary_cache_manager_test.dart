@@ -9,15 +9,28 @@ void main() {
   late Directory tempDir;
   late SummaryCacheManager cacheManager;
 
+  /// Builds a cache manager whose shared tool-cache root is pinned inside
+  /// [root] (via `TOM_TOOL_CACHE`), so the suite stays hermetic while still
+  /// exercising the *default* resolution — including the analyzer-major
+  /// partition segment that only the default path appends. Passing an explicit
+  /// `cacheDirectory` would bypass that resolution and drop the segment, which
+  /// the analyzer-major partitioning tests depend on.
+  SummaryCacheManager makeCacheManager(
+    String root, {
+    int? analyzerMajor,
+    String? dartSdkVersion,
+  }) {
+    return SummaryCacheManager(
+      root,
+      dartSdkVersion: dartSdkVersion,
+      analyzerMajor: analyzerMajor,
+      environment: {'TOM_TOOL_CACHE': p.join(root, '.tom', 'tom_tool_cache')},
+    );
+  }
+
   setUp(() {
     tempDir = Directory.systemTemp.createTempSync('summary_cache_test_');
-    cacheManager = SummaryCacheManager(
-      tempDir.path,
-      dartSdkVersion: '3.10.4',
-      // Pin the cache into the temp dir so the suite stays hermetic and does
-      // not resolve to (or pollute) the real shared tool cache.
-      cacheDirectory: p.join(tempDir.path, '.tom', 'analyzer-cache'),
-    );
+    cacheManager = makeCacheManager(tempDir.path, dartSdkVersion: '3.10.4');
   });
 
   tearDown(() {
@@ -44,6 +57,61 @@ void main() {
         final path = cacheManager.getCachePath('pkg', '1.0.0+1');
         // '+' is not in the sanitize regex, so it stays
         expect(path, endsWith('.sum'));
+      });
+    });
+
+    group('analyzer-major partitioning', () {
+      test('cache directory is nested under the analyzer major', () {
+        // Default major comes from analyzerMajorVersion (the analyzer this
+        // package is built against).
+        expect(
+          cacheManager.cacheDirectory,
+          endsWith(p.join('analyzer-cache', '$analyzerMajorVersion')),
+        );
+        expect(cacheManager.analyzerMajor, equals(analyzerMajorVersion));
+      });
+
+      test('different analyzer majors resolve to different cache dirs', () {
+        // This is the poison-prevention property: a tool running analyzer 8
+        // and one running analyzer 10 must never share a `.sum` file, because
+        // the bundle binary format is analyzer-major-specific.
+        final manager8 = makeCacheManager(tempDir.path, analyzerMajor: 8);
+        final manager10 = makeCacheManager(tempDir.path, analyzerMajor: 10);
+
+        expect(
+          manager8.cacheDirectory,
+          isNot(equals(manager10.cacheDirectory)),
+        );
+        expect(
+          manager8.getCachePath('async', '2.13.0'),
+          isNot(equals(manager10.getCachePath('async', '2.13.0'))),
+        );
+        expect(manager8.cacheDirectory, endsWith(p.join('analyzer-cache', '8')));
+        expect(
+          manager10.cacheDirectory,
+          endsWith(p.join('analyzer-cache', '10')),
+        );
+      });
+
+      test('same analyzer major resolves to the same cache dir', () {
+        final a = makeCacheManager(tempDir.path, analyzerMajor: 10);
+        final b = makeCacheManager(tempDir.path, analyzerMajor: 10);
+        expect(
+          a.getCachePath('pkg', '1.0.0'),
+          equals(b.getCachePath('pkg', '1.0.0')),
+        );
+      });
+
+      test('writes from one major are invisible to another major', () async {
+        final manager8 = makeCacheManager(tempDir.path, analyzerMajor: 8);
+        final manager10 = makeCacheManager(tempDir.path, analyzerMajor: 10);
+
+        await manager8.writeSummary(
+            'async', '2.13.0', Uint8List.fromList([1, 2, 3]));
+
+        // The analyzer-10 partition must not see the analyzer-8 bundle.
+        expect(await manager10.hasSummary('async', '2.13.0'), isFalse);
+        expect(await manager8.hasSummary('async', '2.13.0'), isTrue);
       });
     });
 
@@ -301,15 +369,13 @@ void main() {
 
     group('SDK version handling', () {
       test('accepts custom dart SDK version', () {
-        final manager = SummaryCacheManager(
-          tempDir.path,
-          dartSdkVersion: '3.8.0',
-        );
+        final manager =
+            makeCacheManager(tempDir.path, dartSdkVersion: '3.8.0');
         expect(manager.dartSdkVersion, equals('3.8.0'));
       });
 
       test('detects SDK version from Platform when not provided', () {
-        final manager = SummaryCacheManager(tempDir.path);
+        final manager = makeCacheManager(tempDir.path);
         expect(
           manager.dartSdkVersion,
           matches(RegExp(r'^\d+\.\d+\.\d+$')),
@@ -320,14 +386,10 @@ void main() {
         // Currently SDK version is not embedded in cache paths.
         // This documents the current behavior — a future change
         // may add SDK-versioned subdirectories.
-        final managerA = SummaryCacheManager(
-          tempDir.path,
-          dartSdkVersion: '3.8.0',
-        );
-        final managerB = SummaryCacheManager(
-          tempDir.path,
-          dartSdkVersion: '3.10.0',
-        );
+        final managerA =
+            makeCacheManager(tempDir.path, dartSdkVersion: '3.8.0');
+        final managerB =
+            makeCacheManager(tempDir.path, dartSdkVersion: '3.10.0');
 
         final pathA = managerA.getCachePath('pkg', '1.0.0');
         final pathB = managerB.getCachePath('pkg', '1.0.0');

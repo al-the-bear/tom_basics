@@ -1,26 +1,76 @@
 # Changelog
 
-## 0.3.0
+## 0.6.0
 
-- Added `ToolCacheLocator` — resolves a shared **Tom tool-cache directory**
-  reused across projects and tools, so the same hosted-package summary is
-  generated once and shared everywhere. Resolution order:
-  1. the `TOM_TOOL_CACHE` environment variable (explicit override),
-  2. an existing `.tom/tom_tool_cache` directory in any ancestor of the start
-     directory (repo-local shared cache),
-  3. a `tom_tool_cache` sub-directory of the platform's default Dart tool
-     directory (`%APPDATA%\dart`, `~/Library/Application Support/dart`, or
-     `$XDG_CONFIG_HOME`/`~/.config/dart`).
-  `resolve()` only reads the filesystem; the directory is created lazily on
-  first write.
-- `SummaryCacheManager` now stores summaries in the shared tool cache's
-  `analyzer-cache/` sub-directory (resolved by `ToolCacheLocator` from the
-  workspace root) instead of a fixed `<workspace>/.tom/analyzer-cache`.
-  Consumers calling `runSummaryCacheStage()` get the shared cache
-  automatically. A new `cacheDirectory` constructor argument overrides the
-  resolution (used by tests and callers that manage their own layout); a new
-  `environment` argument overrides the process environment consulted by the
-  locator.
+- **Shared tool-cache root for the summary cache.** `SummaryCacheManager` now
+  resolves its cache *root* through the new `ToolCacheLocator` — the shared Tom
+  tool-cache directory (`TOM_TOOL_CACHE` env override -> an ancestor
+  `.tom/tom_tool_cache` -> the platform Dart tool directory) — so the same
+  hosted-package summary is generated once and reused across projects and
+  sibling generators, instead of a fixed `<workspace>/.tom/analyzer-cache`.
+  `ToolCacheLocator.resolve()` only reads the filesystem; the directory is
+  created lazily on first write.
+- This composes with the analyzer-major partitioning from 0.4.1: summaries are
+  stored under `<tool-cache>/analyzer-cache/<analyzer-major>/`, keeping the
+  cross-analyzer-version poison guard while gaining the shared root.
+- `SummaryCacheManager` gained `cacheDirectory` (bypass resolution entirely —
+  used by tests and callers managing their own layout) and `environment`
+  (overrides the process environment consulted by `ToolCacheLocator`)
+  constructor arguments; the existing `analyzerMajor` argument is retained.
+- Exports `ToolCacheLocator`. Folds in the out-of-band `0.3.0`
+  (shared-tool-cache change, published on analyzer 8 and not previously in this
+  checkout) on top of the analyzer-10 line (0.4.0-0.5.0).
+
+## 0.5.0
+
+- Added `GroupedPackageBundleBuilder` — builds one grouped `packages.sum`
+  bundle from the **union** of several package dependency closures, for
+  runtime SDK-free analysis in embedded Dart editors. Unlike `SummaryGenerator`
+  (one versioned `.sum` per hosted/SDK package), this emits a single bundle
+  covering every package reachable from one or more resolved
+  `.dart_tool/package_config.json` files.
+  - `buildFromDirs(packageDirs)` merges each directory's resolved config and
+    summarizes the union; `buildFromPackageRoots(map)` is the lower-level
+    counterpart for callers that already hold a name→root map.
+  - The package URI resolver is ordered **before** `ResourceUriResolver` so
+    emitted library URIs are portable `package:` URIs, never `file:///`.
+  - Also exposes `readPackageRoots`, `mergePackageRootsForDirs`, and
+    `SummaryConfigException` (the base-first home for this logic, previously
+    duplicated in `tom_specs_clitool`).
+
+## 0.4.1
+
+- **Partition the summary cache by analyzer major version.**
+  `SummaryCacheManager` now stores `.sum` bundles under
+  `.tom/analyzer-cache/<analyzer-major>/` instead of a flat
+  `.tom/analyzer-cache/`. `.sum` files use an analyzer-version-specific binary
+  format, so a bundle written by analyzer N is undecodable by analyzer M (it
+  crashes the reader with a `RangeError`). Because caches were keyed only by
+  `package@version`, a cache populated under one analyzer major silently
+  poisoned a tool that later ran under a different analyzer major. Keying the
+  directory by analyzer major guarantees a tool only ever reads bundles its own
+  analyzer can decode.
+- Added `analyzerMajorVersion` — the compile-time analyzer-major constant this
+  build targets (currently `10`). It is the AOT-safe source of truth for the
+  cache partition (Tom code generators run AOT-compiled, where runtime package
+  path-sniffing is unavailable). **Bump it in lockstep with the `analyzer`
+  constraint in `pubspec.yaml`.**
+- `SummaryCacheManager` gained an `analyzerMajor` constructor parameter
+  (defaults to `analyzerMajorVersion`); intended for tests exercising the
+  partitioning without rebuilding against a different analyzer.
+
+## 0.4.0
+
+- Migrated to `analyzer: ^10.0.0` (from `^8.4.1`). The package only depends on
+  the internal summary2 / element APIs (`BundleWriter`,
+  `PackageBundleFormat`, `AnalysisContextCollectionImpl`,
+  `buildSdkSummary`, `LibraryElementImpl`, `library.fragments`), all of which
+  are unchanged across analyzer 8.4 → 10. No source changes were required —
+  this is a pure constraint bump. The SDK floor stays `^3.10.4` (analyzer 10
+  only requires Dart `^3.9.0`).
+- Note: version `0.3.0` was already published to pub.dev on `analyzer ^8.4.1`
+  (out of band, not from this checkout), so this analyzer-10 migration ships as
+  `0.4.0`.
 
 ## 0.2.0
 

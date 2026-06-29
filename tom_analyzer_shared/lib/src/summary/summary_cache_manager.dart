@@ -10,6 +10,7 @@ import 'package:analyzer/src/summary2/package_bundle_format.dart';
 import 'package:path/path.dart' as p;
 
 import '../cache/tool_cache_locator.dart';
+import 'analyzer_version.dart';
 import 'package_dependency.dart';
 
 /// Sub-directory of the shared tool cache that holds analyzer summaries.
@@ -17,11 +18,19 @@ const String _analyzerCacheSubDir = 'analyzer-cache';
 
 /// Manages the analyzer summary cache for a workspace.
 ///
-/// Summaries are stored in `<tool-cache>/analyzer-cache/` with filenames in the
-/// format `{package}@{version}.sum`, where `<tool-cache>` is the shared Tom
-/// tool-cache directory resolved by [ToolCacheLocator] (so the same hosted
-/// package summary is reused across projects and tools). Pass an explicit
-/// [cacheDirectory] to override that resolution.
+/// Summaries are stored in `<tool-cache>/analyzer-cache/<analyzer-major>/` with
+/// filenames in the format `{package}@{version}.sum`, where `<tool-cache>` is
+/// the shared Tom tool-cache directory resolved by [ToolCacheLocator] (so the
+/// same hosted-package summary is reused across projects and tools). Pass an
+/// explicit [cacheDirectory] to override that resolution.
+///
+/// The `<analyzer-major>` segment (see [analyzerMajorVersion]) partitions the
+/// cache by the major version of the `analyzer` package that produced the
+/// bundles. `.sum` files use an analyzer-version-specific binary format, so a
+/// bundle written by one analyzer major is undecodable by another (it crashes
+/// the reader). Keying the directory by analyzer major guarantees a tool only
+/// ever reads bundles its own analyzer can decode, eliminating the
+/// cross-version cache-poison that otherwise survives an analyzer upgrade.
 ///
 /// ## Usage
 ///
@@ -52,6 +61,13 @@ class SummaryCacheManager {
   /// The current Dart SDK version, used for cache invalidation.
   final String dartSdkVersion;
 
+  /// The analyzer major version this cache partition belongs to.
+  ///
+  /// Defaults to [analyzerMajorVersion] (the analyzer major this package was
+  /// built against). Overridable only to let tests exercise the partitioning
+  /// without rebuilding against a different analyzer.
+  final int analyzerMajor;
+
   /// Creates a cache manager for the given workspace.
   ///
   /// The [workspaceRoot] should be the directory containing the project's
@@ -64,12 +80,18 @@ class SummaryCacheManager {
   /// store summaries in a fixed directory — used by tests to stay hermetic and
   /// by callers that manage their own cache layout. [environment] overrides the
   /// process environment consulted by [ToolCacheLocator] (primarily for tests).
+  ///
+  /// The [analyzerMajor] selects the per-analyzer-major cache partition; it
+  /// defaults to [analyzerMajorVersion] and should normally be left unset
+  /// outside of tests.
   SummaryCacheManager(
     this.workspaceRoot, {
     String? dartSdkVersion,
     String? cacheDirectory,
     Map<String, String>? environment,
-  }) : dartSdkVersion = dartSdkVersion ?? _getDartSdkVersion() {
+    int? analyzerMajor,
+  })  : dartSdkVersion = dartSdkVersion ?? _getDartSdkVersion(),
+        analyzerMajor = analyzerMajor ?? analyzerMajorVersion {
     this.cacheDirectory = cacheDirectory ??
         p.join(
           ToolCacheLocator.resolve(
@@ -77,6 +99,7 @@ class SummaryCacheManager {
             environment: environment,
           ),
           _analyzerCacheSubDir,
+          '${analyzerMajor ?? analyzerMajorVersion}',
         );
   }
 
@@ -282,7 +305,7 @@ class SummaryCacheManager {
   ///
   /// Since SDK version is not currently embedded in summary files,
   /// this is a placeholder that clears all summaries when the SDK changes.
-  /// 
+  ///
   /// TODO: Implement SDK version checking in summary metadata.
   Future<void> cleanOutdated() async {
     // For now, we can't check SDK version in summaries.
