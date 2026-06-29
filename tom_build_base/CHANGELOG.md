@@ -1,3 +1,9 @@
+## 2.6.26
+
+### Fixed
+
+- **`ztmp` scratch directory is no longer scanned for projects** — `ztmp` is the workspace's canonical gitignored scratch dir, but the recursive project scanner descended into it and discovered stale full-project copies (e.g. `ztmp/d4gen199`, `ztmp/refgen112`) left over from debugging. Those carry outdated dependency constraints, so `:pubupdate` and the build pipeline picked up versions far behind the published ones. `ztmp` is now in `kAlwaysSkipDirectories` and the repository-id lookup ignore set, and the **non-recursive** scan branch now honors `kAlwaysSkipDirectories` too (it previously only skipped dot- and `zom_`-prefixed dirs). Covered by a new `workspace_utils` regression test.
+
 ## 2.6.25
 
 ### Added
