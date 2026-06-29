@@ -225,10 +225,26 @@ void main() {
 
       final stdout = result.stdout as String;
       expect(result.exitCode, equals(0));
-      expect(stdout, contains('[DRY RUN]'));
-      // In dry-run, the command text appears inside the DRY RUN message
-      expect(stdout, contains('Would execute'));
-      log.expectation('dry-run preview shown', true);
+      // Canonical dry-run format for pipeline shell steps (see AA16; source:
+      // tom_build_base pipeline_executor `_runShell`): the command is previewed
+      // under the structured `[PIPELINE:shell]` marker, then NOT executed
+      // (`if (dryRun) return true;`). The old '[DRY RUN]' / 'Would execute'
+      // prose is not emitted for pipeline steps.
+      expect(stdout, contains('[PIPELINE:shell]'),
+          reason: 'dry-run should preview the shell command under the '
+              'structured [PIPELINE:shell] marker');
+      // Verify the command was previewed but NOT executed: the bare echo result
+      // line 'multi-line-1' must be absent. (The command text
+      // 'echo "multi-line-1"' is shown by the marker, but the command does not
+      // run, so its output never appears.)
+      final executed = stdout
+          .split('\n')
+          .map((line) => line.trim())
+          .contains('multi-line-1');
+      expect(executed, isFalse,
+          reason: 'dry-run should not execute the shell command');
+      log.expectation('dry-run previews command without executing',
+          stdout.contains('[PIPELINE:shell]') && !executed);
     });
 
     test('stdin dry-run shows preview', () async {
