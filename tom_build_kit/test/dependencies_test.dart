@@ -114,9 +114,17 @@ void main() {
         reason: 'Expected build_runner in dev deps',
       );
 
-      // Should NOT show normal deps (-> prefix) in --dev mode
+      // Should NOT show normal dependency entries (-> <pkg>) in --dev mode.
+      // The framework prints a per-command status line for every command —
+      // "  -> :dependencies N dependencies" — which also starts with "-> ".
+      // That line is NOT a dependency entry: real entries are "-> <pkg>: ..."
+      // whereas the status line is "-> :<command> ...". Distinguish them so the
+      // assertion targets actual normal dependencies, not the framework status.
       final lines = stdout.split('\n');
-      final normalLines = lines.where((l) => l.contains('->'));
+      final normalLines = lines.where((l) {
+        final t = l.trimLeft();
+        return t.startsWith('-> ') && !t.startsWith('-> :');
+      });
       expect(
         normalLines,
         isEmpty,
