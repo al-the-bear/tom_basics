@@ -247,18 +247,27 @@ void main() {
       expect(baseHasKernel, isFalse,
           reason: 'Basename pattern should exclude tom_core_kernel');
 
-      // Path pattern: 'core/tom_core_kernel' (has /) should also exclude it
+      // Path pattern (has /): the matcher uses anchored, full-relative-path
+      // glob matching against each project's path relative to the workspace
+      // root. So the pattern must be the kernel's ACTUAL relative path, not a
+      // partial sub-path. Derive it from the baseline output rather than
+      // hardcoding a layout (the old literal 'core/tom_core_kernel' assumed a
+      // non-nested layout; the kernel actually lives at
+      // 'tom_ai/core/tom_core_kernel').
+      final kernelRelPath = baselineProjects.firstWhere(
+        (proj) => proj.endsWith('/tom_core_kernel') || proj == 'tom_core_kernel',
+      );
       final byPath = await ws.runTool('dependencies', [
         '--scan', '.', '--recursive', '--list',
-        '--exclude-projects', 'core/tom_core_kernel',
+        '--exclude-projects', kernelRelPath,
       ]);
-      log.capture('exclude by path: core/tom_core_kernel', byPath);
+      log.capture('exclude by path: $kernelRelPath', byPath);
 
       final pathProjects = parseListOutput(byPath.stdout as String);
       final pathHasKernel =
           pathProjects.any((proj) => proj.endsWith('/tom_core_kernel') || proj == 'tom_core_kernel');
       expect(pathHasKernel, isFalse,
-          reason: 'Path pattern should exclude core/tom_core_kernel');
+          reason: 'Path pattern ($kernelRelPath) should exclude the kernel');
 
       log.expectation('baseline includes tom_core_kernel', baselineHasKernel);
       log.expectation(
