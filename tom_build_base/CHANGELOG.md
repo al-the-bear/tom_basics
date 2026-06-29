@@ -1,3 +1,20 @@
+## 2.6.27
+
+### Fixed
+
+- **`--project` now rejects absolute paths outside the workspace** — a `--project`
+  pattern is a filter resolved against the scanned tree (project id, project name,
+  folder-name glob, or relative path), all of which are contained by construction.
+  The one way to escape the workspace is an **absolute path** that resolves outside
+  the execution root. Previously such a path silently matched nothing and the tool
+  exited `0`, looking like a successful no-op while actually being pointed at a path
+  it must never operate on. The new `validateProjectPathsWithinRoot` helper
+  (`workspace_utils.dart`) checks every absolute `--project` pattern against the
+  resolved execution/workspace root; the `ToolRunner` traversal paths now reject an
+  out-of-root path before any scanning with a clear `Error: project path is outside
+  the workspace ...` message and a non-zero exit. Covered by new `workspace_utils`
+  regression tests.
+
 ## 2.6.26
 
 ### Fixed

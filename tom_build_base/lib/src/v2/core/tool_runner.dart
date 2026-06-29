@@ -603,6 +603,16 @@ class ToolRunner {
       executionRoot = findWorkspaceRoot(Directory.current.path);
     }
 
+    // Security boundary: reject absolute --project paths outside the workspace.
+    final projectPathError = validateProjectPathsWithinRoot(
+      cliArgs.projectPatterns,
+      executionRoot,
+    );
+    if (projectPathError != null) {
+      output.writeln('Error: $projectPathError');
+      return ToolResult.failure(projectPathError);
+    }
+
     final configDefaults = _loadTraversalDefaults(executionRoot);
     final traversalInfo = cliArgs.toProjectTraversalInfo(
       executionRoot: executionRoot,
@@ -852,6 +862,18 @@ class ToolRunner {
     } else {
       // Default: use workspace root (as if bare -R was passed)
       executionRoot = findWorkspaceRoot(Directory.current.path);
+    }
+
+    // Security boundary: reject absolute --project paths outside the workspace
+    // before any scanning happens, so the tool never silently no-ops on a path
+    // it must not operate on.
+    final projectPathError = validateProjectPathsWithinRoot(
+      cliArgs.projectPatterns,
+      executionRoot,
+    );
+    if (projectPathError != null) {
+      output.writeln('Error: $projectPathError');
+      return ToolResult.failure(projectPathError);
     }
 
     // Load config defaults from buildkit_master.yaml navigation section

@@ -46,6 +46,58 @@ void main() {
       expect(kAlwaysSkipDirectories, contains('ztmp'));
     });
   });
+
+  group('validateProjectPathsWithinRoot', () {
+    final root = p.normalize(p.absolute(p.join('home', 'user', 'workspace')));
+
+    test('returns null when there are no project patterns', () {
+      expect(validateProjectPathsWithinRoot([], root), isNull);
+    });
+
+    test('accepts project ids / names / globs (non-absolute patterns)', () {
+      // These are filters resolved against the scanned tree; they can only
+      // match inside the workspace, so they are never rejected.
+      expect(
+        validateProjectPathsWithinRoot(
+          ['tom_build_kit', 'my_project', 'tom_*', 'sub/project'],
+          root,
+        ),
+        isNull,
+      );
+    });
+
+    test('accepts an absolute path equal to the execution root', () {
+      expect(validateProjectPathsWithinRoot([root], root), isNull);
+    });
+
+    test('accepts an absolute path within the execution root', () {
+      final inside = p.join(root, 'packages', 'inner');
+      expect(validateProjectPathsWithinRoot([inside], root), isNull);
+    });
+
+    test('rejects an absolute path outside the execution root', () {
+      final outside = p.normalize(p.absolute(p.join('tmp', 'evil_project')));
+      final error = validateProjectPathsWithinRoot([outside], root);
+      expect(error, isNotNull);
+      // The message must let callers/tests recognise the rejection.
+      final lower = error!.toLowerCase();
+      expect(lower, contains('outside'));
+      expect(lower, contains('path'));
+      expect(lower, contains('within'));
+      expect(error, contains(outside));
+    });
+
+    test('rejects on the first offending absolute path among many patterns', () {
+      final inside = p.join(root, 'ok_project');
+      final outside = p.normalize(p.absolute(p.join('elsewhere', 'bad')));
+      final error = validateProjectPathsWithinRoot(
+        ['some_id', inside, outside],
+        root,
+      );
+      expect(error, isNotNull);
+      expect(error, contains(outside));
+    });
+  });
 }
 
 /// Create a directory [name] under [parent] containing a minimal pubspec so it

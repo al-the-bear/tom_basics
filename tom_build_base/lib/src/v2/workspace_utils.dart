@@ -55,6 +55,39 @@ String findWorkspaceRoot(String startPath) {
   return startPath;
 }
 
+/// Validate that no absolute `--project` pattern points outside [executionRoot].
+///
+/// `--project` patterns are filters resolved against the scanned tree: a project
+/// id, a project name, a folder-name glob, or a relative path are all contained
+/// by construction — they can only ever match something *inside* the workspace.
+/// The single way a `--project` value can escape the workspace is an **absolute
+/// path** that resolves outside the execution root. A tool that silently matches
+/// nothing in that case looks like a successful no-op while actually being asked
+/// to operate on a path it must never touch.
+///
+/// This function therefore checks only the absolute patterns: each must equal
+/// [executionRoot] or be contained within it. The first offending pattern yields
+/// a human-readable error string (mentioning "outside", "path", and "within" so
+/// callers and tests can recognise the rejection); a return of `null` means all
+/// patterns are safe.
+String? validateProjectPathsWithinRoot(
+  List<String> projectPatterns,
+  String executionRoot,
+) {
+  final rootAbs = p.normalize(p.absolute(executionRoot));
+  for (final pattern in projectPatterns) {
+    if (!p.isAbsolute(pattern)) continue;
+    final patternAbs = p.normalize(pattern);
+    if (p.equals(rootAbs, patternAbs) || p.isWithin(rootAbs, patternAbs)) {
+      continue;
+    }
+    return 'project path is outside the workspace and was rejected: '
+        '$pattern (workspace root: $rootAbs). '
+        '--project paths must be within the workspace.';
+  }
+  return null;
+}
+
 /// Check if a directory is a workspace boundary (contains buildkit_master.yaml).
 ///
 /// Workspace boundaries are treated similarly to skip markers — they
