@@ -279,9 +279,17 @@ void main() {
         reason: '--dev mode should show +> prefixed dev dependencies',
       );
 
-      // Should NOT show normal deps (-> prefix) in --dev mode
+      // Should NOT show normal dependency entries (-> <pkg>) in --dev mode.
+      // The framework prints a per-command status line for every command —
+      // "  -> :dependencies N dependencies" — which also starts with "-> ".
+      // That line is NOT a dependency entry: real entries are "-> <pkg>: ..."
+      // whereas the status line is "-> :<command> ...". Distinguish them so the
+      // assertion targets actual normal dependencies, not the framework status.
       final lines = stdout.split('\n');
-      final normalLines = lines.where((l) => l.trimLeft().startsWith('->'));
+      final normalLines = lines.where((l) {
+        final t = l.trimLeft();
+        return t.startsWith('-> ') && !t.startsWith('-> :');
+      });
       expect(
         normalLines,
         isEmpty,
@@ -290,8 +298,30 @@ void main() {
             'not normal deps',
       );
 
+      // Pin the recursive-tree product fix: in --dev mode every *leaf* line of
+      // the tree (a "├──"/"└──" connector that is not a path-dependency edge,
+      // i.e. does not end in "(path)") must be a dev dependency, marked "+>".
+      // A normal third-party leaf (e.g. "├── glob ^2.1.2") would lack "+>" and
+      // fail here — this is the assertion that the deep tree honours --dev.
+      final treeLeafLines = lines.where((l) {
+        final t = l.trimLeft();
+        final isConnector = t.startsWith('├──') || t.startsWith('└──');
+        if (!isConnector) return false;
+        return !t.endsWith('(path)'); // path edges are structural, not leaves
+      });
+      final normalLeafLines = treeLeafLines.where((l) => !l.contains('+>'));
+      expect(
+        normalLeafLines,
+        isEmpty,
+        reason:
+            '--deep --dev recursive tree should contain only dev (+>) leaves '
+            'and path edges, not normal dependency leaves. '
+            'Offending lines: ${normalLeafLines.join(" | ")}',
+      );
+
       log.expectation('has dev deps', stdout.contains('+>'));
       log.expectation('no normal deps', normalLines.isEmpty);
+      log.expectation('no normal tree leaves', normalLeafLines.isEmpty);
     });
 
     test(
