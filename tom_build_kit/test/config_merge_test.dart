@@ -68,16 +68,22 @@ void main() {
       log.start('CFG_DEF01', 'workspace defaults apply');
 
       // The exclusion fixture sets workspace-level versioner prefix to
-      // 'testDefault'. We write a complete _build/buildkit.yaml WITHOUT
-      // a versioner section, so the workspace default should apply.
+      // 'testDefault'. The versioner is opt-in per project: it only runs where
+      // the project's own buildkit.yaml declares a `versioner:` section — the
+      // workspace master provides defaults but does not version every project
+      // (see VersionerExecutor: "skipped (no versioner config)"). So we write a
+      // buildkit.yaml WITH an EMPTY versioner section (opt-in, no
+      // variable-prefix override): the project participates, supplies no
+      // override, and the workspace default 'testDefault' should apply.
       final buildConfig =
           p.join(ws.workspaceRoot, '_build', 'buildkit.yaml');
       File(buildConfig).writeAsStringSync(
-        '# Test fixture: no versioner section\n'
+        '# Test fixture: empty versioner section (opt-in, no override)\n'
+        'versioner:\n'
         'cleanup:\n'
         "  - '**/version.versioner.dart'\n",
       );
-      print('    📝 Wrote _build/buildkit.yaml without versioner section');
+      print('    📝 Wrote _build/buildkit.yaml with empty versioner section');
 
       final result =
           await ws.runTool('versioner', ['--project', '_build']);
