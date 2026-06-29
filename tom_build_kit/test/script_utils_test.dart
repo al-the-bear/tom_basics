@@ -177,9 +177,16 @@ void main() {
       final stdout = result.stdout as String;
       expect(result.exitCode, equals(0),
           reason: 'Pipeline should succeed');
-      expect(stdout, contains('stdin-line-1'));
-      expect(stdout, contains('stdin-line-2'));
-      log.expectation('stdin content appears in output', true);
+      // The `test-stdin` fixture pipes "Hello stdin world\nline two" to `cat`,
+      // which echoes it back. Assert that real piped content (the stale
+      // 'stdin-line-1'/'stdin-line-2' strings were left over from an older
+      // fixture body and never appear in the current output).
+      expect(stdout, contains('Hello stdin world'),
+          reason: 'cat should echo the piped stdin content');
+      expect(stdout, contains('line two'),
+          reason: 'cat should echo all piped stdin lines');
+      log.expectation('stdin content appears in output',
+          stdout.contains('Hello stdin world') && stdout.contains('line two'));
     });
 
     test('stdin piping in verbose mode', () async {
