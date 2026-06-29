@@ -787,7 +787,17 @@ class ToolRunner {
     final candidateName = cliArgs.positionalArgs.first;
     if (candidateName.startsWith('-') || candidateName == 'help') return null;
 
-    final loaded = ToolPipelineConfigLoader.load(tool: _effectiveTool);
+    final ToolPipelineConfig? loaded;
+    try {
+      loaded = ToolPipelineConfigLoader.load(tool: _effectiveTool);
+    } on FormatException catch (error) {
+      // A malformed pipeline command (e.g. an unprefixed, unknown command such
+      // as "rm -rf /") is a security rejection, not a crash: surface it on
+      // stdout with a non-zero exit instead of letting the exception escape to
+      // stderr as an unhandled error.
+      output.writeln('Error: ${error.message}');
+      return const ToolResult.failure('Invalid pipeline command');
+    }
     if (loaded == null || !loaded.hasPipelines) return null;
 
     final definition = loaded.pipelines[candidateName];

@@ -1,3 +1,22 @@
+## 2.6.29
+
+### Fixed
+
+- **Pipeline rejects unknown/unprefixed commands with a clear stdout error** — a
+  pipeline command that is neither a built-in tool command (prefixed with the
+  tool name) nor an explicitly allowed `shell` / `shell-scan` / `stdin` /
+  `print` command — e.g. a bare `rm -rf /` — must never reach process
+  execution. The pipeline parser already rejected such commands, but the
+  `FormatException` it threw escaped to **stderr** as an unhandled error
+  (exit 255) and its message read "Unsupported pipeline command prefix",
+  surfacing nothing actionable on stdout. The message is now reworded to
+  "Unknown command \"…\" … Only built-in tool commands … are allowed", and
+  `ToolRunner` catches the `FormatException` at the pipeline-invocation site,
+  writing the rejection to stdout (`Error: …`) and returning a failure result
+  (non-zero exit) instead of crashing. Covered by new `pipeline_config`
+  (`BB-PLC-11`) and `tool_runner` (`BB-RUN-58`) tests; satisfies
+  `tom_build_kit`'s `SEC_CMD01`.
+
 ## 2.6.28
 
 ### Fixed
