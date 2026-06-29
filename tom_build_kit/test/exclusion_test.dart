@@ -494,21 +494,50 @@ void main() {
 
     test('skip file in parent excludes all children', () async {
       log.start('EXCL_SF07', 'skip file in parent excludes all children');
-      // Place skip file in core/ — should exclude core/tom_core_kernel, etc.
-      tempSkipFiles.add(ws.placeSkipFile('core'));
 
-      final stdout = await runToolList('dependencies');
-      final projects = parseListOutput(stdout);
-      bool allExcluded = true;
-      for (final proj in projects) {
-        if (proj.startsWith('core/')) allExcluded = false;
-        expect(
-          proj,
-          isNot(startsWith('core/')),
-          reason: 'All core/ children should be excluded by parent skip file',
-        );
+      // Discover a real container directory that holds >= 2 child projects,
+      // rather than hardcoding 'core'. Layout-agnostic: the previous literal
+      // 'core' assumed a flat root layout, but in this nested checkout the core
+      // projects live under tom_ai/core/..., so placeSkipFile('core') threw
+      // PathNotFoundException. The --list output interleaves
+      // '-> :dependencies listed' status lines with the clean project-path
+      // lines, so filter the status lines out to get the real project paths.
+      final baseline = parseListOutput(await runToolList('dependencies'))
+          .where((line) => !line.startsWith('->'))
+          .toList();
+      final childCountByParent = <String, int>{};
+      for (final proj in baseline) {
+        final parent = p.dirname(proj);
+        if (parent == '.' || parent.isEmpty) continue;
+        childCountByParent[parent] = (childCountByParent[parent] ?? 0) + 1;
       }
-      log.expectation('no core/ children in list', allExcluded);
+      final parentDir = childCountByParent.entries
+          .firstWhere(
+            (e) => e.value >= 2,
+            orElse: () => throw StateError(
+              'expected a container dir with >= 2 child projects',
+            ),
+          )
+          .key;
+
+      // Place a skip file in that real container and re-run; every project
+      // within parentDir must disappear (parent skip excludes all children).
+      tempSkipFiles.add(ws.placeSkipFile(parentDir));
+
+      final remaining = parseListOutput(await runToolList('dependencies'))
+          .where((line) => !line.startsWith('->'))
+          .toList();
+      final childrenRemain =
+          remaining.where((proj) => p.isWithin(parentDir, proj)).toList();
+      expect(
+        childrenRemain,
+        isEmpty,
+        reason: 'All children of $parentDir should be excluded by parent skip',
+      );
+      log.expectation(
+        'no children of $parentDir in list',
+        childrenRemain.isEmpty,
+      );
     });
 
     test('skip file is cleaned up in tearDown', () async {
