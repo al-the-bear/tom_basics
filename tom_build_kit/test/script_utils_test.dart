@@ -155,8 +155,17 @@ void main() {
 
       final stdout = result.stdout as String;
       expect(result.exitCode, equals(0));
-      expect(stdout, contains('Multi-line shell script'));
-      log.expectation('verbose mentions multi-line script', true);
+      // Canonical verbose format: the runner echoes the executed shell command
+      // under the structured `[PIPELINE:shell]` marker (alongside `[startup]`
+      // timing lines and, for piped steps, `[PIPELINE:stdin]` / `[DRY RUN]`).
+      // The old ad-hoc human label 'Multi-line shell script' was removed in
+      // favour of this machine-parseable scheme; assert the structured marker.
+      expect(stdout, contains('[PIPELINE:shell]'),
+          reason: 'verbose mode should echo the multi-line shell command under '
+              'the structured [PIPELINE:shell] marker');
+      log.expectation(
+          'verbose echoes shell command under [PIPELINE:shell]',
+          stdout.contains('[PIPELINE:shell]'));
     });
 
     test('stdin piping sends content to command', () async {
