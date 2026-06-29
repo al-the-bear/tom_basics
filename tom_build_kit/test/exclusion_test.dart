@@ -777,16 +777,25 @@ versioner:
         'dependencies finds core projects without exclusions',
       );
       final stdout = await runToolList('dependencies');
-      final projects = parseListOutput(stdout);
+      // Layout-agnostic: the framework core projects live in a `core/`
+      // directory segment — flat ('core/...') or nested ('tom_ai/core/...').
+      // The previous startsWith('core/') literal assumed a flat root layout and
+      // found none in this nested checkout. Match any project with a `core`
+      // path segment instead. (The --list output interleaves
+      // '-> :dependencies listed' status lines with the clean path lines, so
+      // filter the status lines out.)
+      final projects = parseListOutput(stdout)
+          .where((line) => !line.startsWith('->'))
+          .toList();
       final coreProjects = projects
-          .where((p) => p.startsWith('core/'))
+          .where((proj) => p.split(proj).contains('core'))
           .toList();
       final found = coreProjects.isNotEmpty;
-      log.expectation('core/ projects found (${coreProjects.length})', found);
+      log.expectation('core projects found (${coreProjects.length})', found);
       expect(
         coreProjects,
         isNotEmpty,
-        reason: 'core/ projects should be found when no exclusions applied',
+        reason: 'core projects should be found when no exclusions applied',
       );
     });
 
