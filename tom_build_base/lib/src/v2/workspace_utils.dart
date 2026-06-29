@@ -30,6 +30,10 @@ const kAlwaysSkipDirectories = <String>{
   '.pub',
   '__pycache__',
   '.fvm',
+  // Workspace-wide scratch dir (gitignored). Full project copies routinely
+  // accumulate here for debugging; they carry stale dependency constraints and
+  // must never be discovered, pub-updated, or built.
+  'ztmp',
 };
 
 /// Find the workspace root by traversing upwards looking for workspace markers.
@@ -98,6 +102,7 @@ List<String> scanForDartProjects(
         if (entity is Directory) {
           final name = p.basename(entity.path);
           if (name.startsWith('.')) continue;
+          if (kAlwaysSkipDirectories.contains(name)) continue;
           if (!includeTestProjects && name.startsWith('zom_')) continue;
           final pubspec = File(p.join(entity.path, 'pubspec.yaml'));
           if (pubspec.existsSync()) results.add(entity.path);

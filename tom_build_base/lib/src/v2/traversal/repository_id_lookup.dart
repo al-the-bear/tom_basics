@@ -116,6 +116,8 @@ class RepositoryIdLookup {
       '.pub-cache',
       '.pub',
       '__pycache__',
+      // Workspace-wide scratch dir (gitignored) — never holds shippable repos.
+      'ztmp',
     };
 
     for (final part in parts) {
