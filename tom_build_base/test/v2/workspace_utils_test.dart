@@ -98,6 +98,45 @@ void main() {
       expect(error, contains(outside));
     });
   });
+
+  group('validateScanPathWithinRoot', () {
+    final root = p.normalize(p.absolute(p.join('home', 'user', 'workspace')));
+
+    test('accepts an absolute scan equal to the execution root', () {
+      expect(validateScanPathWithinRoot(root, root), isNull);
+    });
+
+    test('accepts an absolute scan within the execution root', () {
+      final inside = p.join(root, 'packages', 'inner');
+      expect(validateScanPathWithinRoot(inside, root), isNull);
+    });
+
+    test('rejects an absolute scan outside the execution root', () {
+      final outside = p.normalize(p.absolute(p.join('tmp')));
+      final error = validateScanPathWithinRoot(outside, root);
+      expect(error, isNotNull);
+      final lower = error!.toLowerCase();
+      expect(lower, contains('outside'));
+      expect(lower, contains('path'));
+      expect(lower, contains('within'));
+      expect(error, contains(outside));
+    });
+
+    test('accepts a relative scan that resolves inside the root (cwd)', () {
+      // The scanner resolves a relative scan against the current directory,
+      // so use the real cwd as the root and `.` as the scan.
+      final cwd = Directory.current.path;
+      expect(validateScanPathWithinRoot('.', cwd), isNull);
+    });
+
+    test('rejects a relative scan that escapes the root via ..', () {
+      // cwd is the root; `../..` walks above it and must be rejected.
+      final cwd = Directory.current.path;
+      final error = validateScanPathWithinRoot(p.join('..', '..'), cwd);
+      expect(error, isNotNull);
+      expect(error!.toLowerCase(), contains('outside'));
+    });
+  });
 }
 
 /// Create a directory [name] under [parent] containing a minimal pubspec so it

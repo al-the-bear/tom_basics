@@ -88,6 +88,54 @@ String? validateProjectPathsWithinRoot(
   return null;
 }
 
+/// Validate that the `--scan` path does not point outside [executionRoot].
+///
+/// Unlike `--project` (a filter over the scanned tree), `--scan` names the real
+/// directory the traversal walks: the scanner runs `Directory(scan)` directly,
+/// resolving a relative value against the current directory and using an
+/// absolute value as-is. Either form can therefore escape the workspace — an
+/// absolute path such as `/tmp`, or a relative `../../sibling`. As with
+/// `--project`, a scan that lands outside the workspace previously produced an
+/// empty result and an exit code of `0`, masking the fact that the tool was
+/// pointed at a location it must not walk.
+///
+/// This resolves [scan] to an absolute, normalised path the same way the scanner
+/// does (relative-to-cwd) and requires it to equal or be contained within the
+/// resolved [executionRoot]. Returns a human-readable error string (mentioning
+/// "outside", "path", and "within") for an out-of-root scan, or `null` when the
+/// scan is safe.
+String? validateScanPathWithinRoot(String scan, String executionRoot) {
+  // Canonicalise both endpoints (resolving symlinks for existing paths) before
+  // comparing. Without this, a symlinked root vs a cwd-resolved relative scan
+  // can disagree purely on the link target — on macOS, for example,
+  // `/var/folders/...` (a symlink) versus its `/private/var/folders/...` target
+  // — and a legitimately-contained scan would be falsely rejected.
+  final rootAbs = _canonicalize(executionRoot);
+  final scanAbs = _canonicalize(scan);
+  if (p.equals(rootAbs, scanAbs) || p.isWithin(rootAbs, scanAbs)) {
+    return null;
+  }
+  return 'scan path is outside the workspace and was rejected: '
+      '$scan (workspace root: $rootAbs). '
+      '--scan paths must be within the workspace.';
+}
+
+/// Resolve [path] to a normalised absolute path, following symlinks when the
+/// path exists. Falls back to a plain normalised-absolute path when the target
+/// does not exist (e.g. a mistyped scan path), so the function never throws.
+String _canonicalize(String path) {
+  final abs = p.normalize(p.absolute(path));
+  try {
+    return Directory(abs).resolveSymbolicLinksSync();
+  } on FileSystemException {
+    try {
+      return File(abs).resolveSymbolicLinksSync();
+    } on FileSystemException {
+      return abs;
+    }
+  }
+}
+
 /// Check if a directory is a workspace boundary (contains buildkit_master.yaml).
 ///
 /// Workspace boundaries are treated similarly to skip markers — they

@@ -1,3 +1,21 @@
+## 2.6.28
+
+### Fixed
+
+- **`--scan` now rejects paths outside the workspace** — `--scan` names the real
+  directory the traversal walks (`Directory(scan)`: a relative value resolves
+  against the current directory, an absolute value is used as-is), so either an
+  absolute path like `/tmp` or a relative `../../sibling` could escape the
+  workspace. Previously such a scan returned an empty result and exit `0`,
+  masking that the tool was pointed at a location it must not walk. The new
+  `validateScanPathWithinRoot` helper (`workspace_utils.dart`) canonicalises both
+  the scan path and the execution root (resolving symlinks so a symlinked temp
+  root is not confused with its real target) and requires the scan to equal or be
+  contained within the root; both `ToolRunner` project-traversal paths now reject
+  an out-of-root scan before scanning with a clear `Error: scan path is outside
+  the workspace ...` message and a non-zero exit. Covered by new `workspace_utils`
+  regression tests.
+
 ## 2.6.27
 
 ### Fixed

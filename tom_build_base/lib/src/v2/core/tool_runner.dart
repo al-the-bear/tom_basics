@@ -619,6 +619,14 @@ class ToolRunner {
       configDefaults: configDefaults,
     );
 
+    // Security boundary: reject a --scan path outside the workspace.
+    final scanPathError =
+        validateScanPathWithinRoot(traversalInfo.scan, executionRoot);
+    if (scanPathError != null) {
+      output.writeln('Error: $scanPathError');
+      return ToolResult.failure(scanPathError);
+    }
+
     final masterDefines = _loadMasterDefines(cliArgs.modes);
     final results = <ItemResult>[];
 
@@ -919,6 +927,18 @@ class ToolRunner {
         executionRoot: executionRoot,
         configDefaults: configDefaults,
       );
+    }
+
+    // Security boundary: reject a --scan path outside the workspace before any
+    // scanning happens. Only project traversal walks a --scan path; git
+    // traversal uses the already-validated execution root.
+    if (traversalInfo is ProjectTraversalInfo) {
+      final scanPathError =
+          validateScanPathWithinRoot(traversalInfo.scan, executionRoot);
+      if (scanPathError != null) {
+        output.writeln('Error: $scanPathError');
+        return ToolResult.failure(scanPathError);
+      }
     }
 
     // Check if command requires traversal
