@@ -33,8 +33,17 @@ void main() {
     await ws.saveHeadRefs();
   });
 
-  setUp(() {
+  setUp(() async {
     log = TestLogger(ws);
+    // Provision the `_build` project each test so its pubspec.yaml exists.
+    // The versionbump tests read/bump `<root>/_build/pubspec.yaml`; without
+    // this the file is absent and VBM_PAT01 (et al.) throw
+    // PathNotFoundException. installFixture also lays down a
+    // buildkit_master.yaml (workspace defaults) and is the same provisioning
+    // pattern used by exclusion_test / config_merge_test. tearDownAll already
+    // calls deprovisionBuildProject(), confirming provisioning was intended
+    // here but omitted.
+    await ws.installFixture('versioner');
   });
 
   tearDown(() async {
