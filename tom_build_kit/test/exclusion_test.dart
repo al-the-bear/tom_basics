@@ -438,21 +438,34 @@ void main() {
 
     test('skip file excludes project from runner', () async {
       log.start('EXCL_SF05', 'skip file excludes project from runner');
-      // Place skip file in a project that has build.yaml
-      tempSkipFiles.add(ws.placeSkipFile('devops/tom_build_cli'));
 
-      final stdout = await runToolList('runner');
-      final projects = parseListOutput(stdout);
-      bool allExcluded = true;
-      for (final proj in projects) {
-        if (proj == 'devops/tom_build_cli') allExcluded = false;
-        expect(
-          proj,
-          isNot(equals('devops/tom_build_cli')),
-          reason: 'tom_build_cli with skip file should be excluded',
-        );
-      }
-      log.expectation('devops/tom_build_cli absent from list', allExcluded);
+      // Discover a real project the runner tool lists (one with a build.yaml)
+      // rather than hardcoding a path. Layout-agnostic: the previous literal
+      // 'devops/tom_build_cli' assumed a flat root layout, but in this nested
+      // checkout projects live under tom_ai/..., so placeSkipFile threw
+      // PathNotFoundException. The runner --list output interleaves
+      // '-> :runner skipped/listed' status lines with the clean project-path
+      // lines, so filter the status lines out to get the real project paths.
+      final baseline = parseListOutput(await runToolList('runner'))
+          .where((line) => !line.startsWith('->'))
+          .toList();
+      expect(baseline, isNotEmpty,
+          reason: 'runner should list at least one project with build.yaml');
+      final target = baseline.first;
+
+      // Place a skip file at that real project and re-run; it must disappear.
+      tempSkipFiles.add(ws.placeSkipFile(target));
+
+      final projects = parseListOutput(await runToolList('runner'))
+          .where((line) => !line.startsWith('->'))
+          .toList();
+      final excluded = !projects.contains(target);
+      expect(
+        projects,
+        isNot(contains(target)),
+        reason: '$target with skip file should be excluded from runner',
+      );
+      log.expectation('$target absent from runner list', excluded);
     });
 
     // Bug #13 FIXED: -v abbreviation removed from --versioner flag.
