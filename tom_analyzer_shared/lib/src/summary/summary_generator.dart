@@ -357,9 +357,13 @@ class SummaryGenerator {
   /// analyzer uses proper `package:` URIs instead of `file://` URIs.
   ///
   /// If [librarySummaryPaths] is provided, the analyzer loads those summaries
-  /// to resolve cross-package type references. Note: [sdkSummaryPath] is NOT
-  /// passed to the analysis context because individual package contexts cannot
-  /// reliably use a summary-based SDK (the SDK resolves naturally from disk).
+  /// to resolve cross-package type references. When [sdkSummaryPath] is
+  /// non-null it is passed to the analysis context, so `dart:` libraries
+  /// resolve from the cached SDK summary (a summary-based SDK) and the on-disk
+  /// SDK is not read — see the `SummaryDataStore` note on the context
+  /// construction below for the condition that makes this reliable. When
+  /// [sdkSummaryPath] is null the analyzer falls back to resolving the SDK
+  /// from disk.
   Future<Uint8List?> _analyzeAndCreateBundle(
     String packagePath,
     String packageName,
