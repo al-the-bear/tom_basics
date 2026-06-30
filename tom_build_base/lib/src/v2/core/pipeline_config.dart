@@ -212,9 +212,17 @@ class ToolPipelineConfigLoader {
           toolPrefix: toolPrefix,
         );
         if (parsed == null) {
+          // The command does not start with any recognised prefix, so it is
+          // neither a built-in tool command (prefixed with the tool name) nor
+          // an explicitly allowed shell/stdin/print command. Rejecting it here
+          // is a security boundary: an unprefixed command such as "rm -rf /"
+          // must never reach process execution. The wording mentions both
+          // "Unknown command" and "Only built-in" so callers and tests can
+          // recognise the rejection.
           throw FormatException(
-            'Unsupported pipeline command prefix in "$text". '
-            'Allowed prefixes: $toolPrefix, shell, shell-scan, stdin, print.',
+            'Unknown command "$text" in pipeline. Only built-in tool commands '
+            '(prefixed with "$toolPrefix ") or shell, shell-scan, stdin, print '
+            'commands are allowed.',
           );
         }
         commands.add(parsed);

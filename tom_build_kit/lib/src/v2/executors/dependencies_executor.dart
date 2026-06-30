@@ -145,7 +145,14 @@ class DependenciesExecutor extends CommandExecutor {
 
       if (showDeep) {
         print('  --- recursive tree ---');
-        _printDeepTree(projectPath, projectName, overrideNames, visited: {});
+        _printDeepTree(
+          projectPath,
+          projectName,
+          overrideNames,
+          visited: {},
+          showDev: showDev,
+          showAll: showAll,
+        );
       }
 
       return ItemResult.success(
@@ -243,11 +250,24 @@ class DependenciesExecutor extends CommandExecutor {
   }
 
   /// Print recursive dependency tree following path dependencies.
+  ///
+  /// Honours the same dependency-class filtering as the flat listing:
+  /// - default mode (`showDev` and `showAll` both false): normal deps only;
+  /// - `--dev` (`showDev`): dev deps only — normal leaf deps are suppressed;
+  /// - `--all` (`showAll`): both normal and dev deps.
+  ///
+  /// Path dependencies are *structural edges*, not leaves: their header is
+  /// always printed and recursed into regardless of the dev/normal filter, so
+  /// the tree can still navigate the workspace graph. Dev leaves are printed
+  /// with the `+>` prefix to match the flat listing's dependency-class marker;
+  /// normal leaves use a bare name so they are distinguishable.
   void _printDeepTree(
     String projectPath,
     String projectName,
     Set<String> overrideNames, {
     required Set<String> visited,
+    required bool showDev,
+    required bool showAll,
     String indent = '  ',
   }) {
     if (visited.contains(projectPath)) {
@@ -259,9 +279,27 @@ class DependenciesExecutor extends CommandExecutor {
     final pubspecFile = File('$projectPath/pubspec.yaml');
     if (!pubspecFile.existsSync()) return;
 
+    final showNormal = showAll || !showDev;
+    final showDevHere = showAll || showDev;
+
     try {
       final yaml = loadYaml(pubspecFile.readAsStringSync()) as YamlMap?;
       if (yaml == null) return;
+
+      // Dev leaves first (mirrors the flat listing's dev-after-normal sort only
+      // loosely; here dev deps are printed up-front so they are not buried under
+      // recursive path-dep subtrees).
+      final devDepsYaml = yaml['dev_dependencies'] as YamlMap?;
+      if (showDevHere && devDepsYaml != null) {
+        for (final entry in devDepsYaml.entries) {
+          final name = entry.key.toString();
+          final value = entry.value;
+          final ver = value is String
+              ? value
+              : (value is YamlMap ? value['version']?.toString() : null);
+          print('$indent├── +> $name ${ver ?? ""}'.trimRight());
+        }
+      }
 
       final depsYaml = yaml['dependencies'] as YamlMap?;
       if (depsYaml == null) return;
@@ -269,10 +307,12 @@ class DependenciesExecutor extends CommandExecutor {
       for (final entry in depsYaml.entries) {
         final name = entry.key.toString();
         final value = entry.value;
-        if (value is YamlMap && value.containsKey('path')) {
+        final isPath = value is YamlMap && value.containsKey('path');
+        if (isPath) {
           final depPath = p.normalize(
             p.join(projectPath, value['path'].toString()),
           );
+          // Path deps are navigation edges: always shown and recursed.
           print('$indent├── $name (path)');
           if (File('$depPath/pubspec.yaml').existsSync()) {
             _printDeepTree(
@@ -280,14 +320,16 @@ class DependenciesExecutor extends CommandExecutor {
               name,
               overrideNames,
               visited: visited,
+              showDev: showDev,
+              showAll: showAll,
               indent: '$indent│   ',
             );
           }
-        } else {
+        } else if (showNormal) {
           final ver = value is String
               ? value
               : (value is YamlMap ? value['version']?.toString() : null);
-          print('$indent├── $name ${ver ?? ""}');
+          print('$indent├── $name ${ver ?? ""}'.trimRight());
         }
       }
     } catch (_) {}

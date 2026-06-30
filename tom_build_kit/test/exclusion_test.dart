@@ -438,21 +438,34 @@ void main() {
 
     test('skip file excludes project from runner', () async {
       log.start('EXCL_SF05', 'skip file excludes project from runner');
-      // Place skip file in a project that has build.yaml
-      tempSkipFiles.add(ws.placeSkipFile('devops/tom_build_cli'));
 
-      final stdout = await runToolList('runner');
-      final projects = parseListOutput(stdout);
-      bool allExcluded = true;
-      for (final proj in projects) {
-        if (proj == 'devops/tom_build_cli') allExcluded = false;
-        expect(
-          proj,
-          isNot(equals('devops/tom_build_cli')),
-          reason: 'tom_build_cli with skip file should be excluded',
-        );
-      }
-      log.expectation('devops/tom_build_cli absent from list', allExcluded);
+      // Discover a real project the runner tool lists (one with a build.yaml)
+      // rather than hardcoding a path. Layout-agnostic: the previous literal
+      // 'devops/tom_build_cli' assumed a flat root layout, but in this nested
+      // checkout projects live under tom_ai/..., so placeSkipFile threw
+      // PathNotFoundException. The runner --list output interleaves
+      // '-> :runner skipped/listed' status lines with the clean project-path
+      // lines, so filter the status lines out to get the real project paths.
+      final baseline = parseListOutput(await runToolList('runner'))
+          .where((line) => !line.startsWith('->'))
+          .toList();
+      expect(baseline, isNotEmpty,
+          reason: 'runner should list at least one project with build.yaml');
+      final target = baseline.first;
+
+      // Place a skip file at that real project and re-run; it must disappear.
+      tempSkipFiles.add(ws.placeSkipFile(target));
+
+      final projects = parseListOutput(await runToolList('runner'))
+          .where((line) => !line.startsWith('->'))
+          .toList();
+      final excluded = !projects.contains(target);
+      expect(
+        projects,
+        isNot(contains(target)),
+        reason: '$target with skip file should be excluded from runner',
+      );
+      log.expectation('$target absent from runner list', excluded);
     });
 
     // Bug #13 FIXED: -v abbreviation removed from --versioner flag.
@@ -481,21 +494,50 @@ void main() {
 
     test('skip file in parent excludes all children', () async {
       log.start('EXCL_SF07', 'skip file in parent excludes all children');
-      // Place skip file in core/ — should exclude core/tom_core_kernel, etc.
-      tempSkipFiles.add(ws.placeSkipFile('core'));
 
-      final stdout = await runToolList('dependencies');
-      final projects = parseListOutput(stdout);
-      bool allExcluded = true;
-      for (final proj in projects) {
-        if (proj.startsWith('core/')) allExcluded = false;
-        expect(
-          proj,
-          isNot(startsWith('core/')),
-          reason: 'All core/ children should be excluded by parent skip file',
-        );
+      // Discover a real container directory that holds >= 2 child projects,
+      // rather than hardcoding 'core'. Layout-agnostic: the previous literal
+      // 'core' assumed a flat root layout, but in this nested checkout the core
+      // projects live under tom_ai/core/..., so placeSkipFile('core') threw
+      // PathNotFoundException. The --list output interleaves
+      // '-> :dependencies listed' status lines with the clean project-path
+      // lines, so filter the status lines out to get the real project paths.
+      final baseline = parseListOutput(await runToolList('dependencies'))
+          .where((line) => !line.startsWith('->'))
+          .toList();
+      final childCountByParent = <String, int>{};
+      for (final proj in baseline) {
+        final parent = p.dirname(proj);
+        if (parent == '.' || parent.isEmpty) continue;
+        childCountByParent[parent] = (childCountByParent[parent] ?? 0) + 1;
       }
-      log.expectation('no core/ children in list', allExcluded);
+      final parentDir = childCountByParent.entries
+          .firstWhere(
+            (e) => e.value >= 2,
+            orElse: () => throw StateError(
+              'expected a container dir with >= 2 child projects',
+            ),
+          )
+          .key;
+
+      // Place a skip file in that real container and re-run; every project
+      // within parentDir must disappear (parent skip excludes all children).
+      tempSkipFiles.add(ws.placeSkipFile(parentDir));
+
+      final remaining = parseListOutput(await runToolList('dependencies'))
+          .where((line) => !line.startsWith('->'))
+          .toList();
+      final childrenRemain =
+          remaining.where((proj) => p.isWithin(parentDir, proj)).toList();
+      expect(
+        childrenRemain,
+        isEmpty,
+        reason: 'All children of $parentDir should be excluded by parent skip',
+      );
+      log.expectation(
+        'no children of $parentDir in list',
+        childrenRemain.isEmpty,
+      );
     });
 
     test('skip file is cleaned up in tearDown', () async {
@@ -735,16 +777,25 @@ versioner:
         'dependencies finds core projects without exclusions',
       );
       final stdout = await runToolList('dependencies');
-      final projects = parseListOutput(stdout);
+      // Layout-agnostic: the framework core projects live in a `core/`
+      // directory segment — flat ('core/...') or nested ('tom_ai/core/...').
+      // The previous startsWith('core/') literal assumed a flat root layout and
+      // found none in this nested checkout. Match any project with a `core`
+      // path segment instead. (The --list output interleaves
+      // '-> :dependencies listed' status lines with the clean path lines, so
+      // filter the status lines out.)
+      final projects = parseListOutput(stdout)
+          .where((line) => !line.startsWith('->'))
+          .toList();
       final coreProjects = projects
-          .where((p) => p.startsWith('core/'))
+          .where((proj) => p.split(proj).contains('core'))
           .toList();
       final found = coreProjects.isNotEmpty;
-      log.expectation('core/ projects found (${coreProjects.length})', found);
+      log.expectation('core projects found (${coreProjects.length})', found);
       expect(
         coreProjects,
         isNotEmpty,
-        reason: 'core/ projects should be found when no exclusions applied',
+        reason: 'core projects should be found when no exclusions applied',
       );
     });
 

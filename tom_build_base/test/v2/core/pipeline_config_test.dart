@@ -199,7 +199,55 @@ required-environment:
           tool: tool,
           fromDirectory: workspace.path,
         ),
-        throwsFormatException,
+        throwsA(
+          isA<FormatException>().having(
+            (e) => e.message,
+            'message',
+            allOf(contains('Unknown command'), contains('Only built-in')),
+          ),
+        ),
+      );
+    });
+
+    test('BB-PLC-11: rejects unprefixed dangerous command (security)', () {
+      // An unprefixed command such as "rm -rf /" is neither a built-in tool
+      // command (prefixed with the tool name) nor an explicitly allowed
+      // shell/stdin/print command. It must be rejected at load time so it can
+      // never reach process execution (SEC_CMD01).
+      final tool = const ToolDefinition(
+        name: 'buildkit',
+        description: 'Build tool',
+        mode: ToolMode.multiCommand,
+      );
+
+      File(p.join(workspace.path, 'buildkit_master.yaml'))
+        ..createSync()
+        ..writeAsStringSync('''
+buildkit:
+  pipelines:
+    test-malicious:
+      executable: true
+      core:
+        - commands:
+            - "rm -rf /"
+''');
+
+      expect(
+        () => ToolPipelineConfigLoader.load(
+          tool: tool,
+          fromDirectory: workspace.path,
+        ),
+        throwsA(
+          isA<FormatException>().having(
+            (e) => e.message,
+            'message',
+            allOf(
+              contains('Unknown command'),
+              contains('rm -rf /'),
+              contains('Only built-in'),
+            ),
+          ),
+        ),
       );
     });
 

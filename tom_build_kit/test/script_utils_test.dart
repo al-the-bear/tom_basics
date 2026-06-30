@@ -155,8 +155,17 @@ void main() {
 
       final stdout = result.stdout as String;
       expect(result.exitCode, equals(0));
-      expect(stdout, contains('Multi-line shell script'));
-      log.expectation('verbose mentions multi-line script', true);
+      // Canonical verbose format: the runner echoes the executed shell command
+      // under the structured `[PIPELINE:shell]` marker (alongside `[startup]`
+      // timing lines and, for piped steps, `[PIPELINE:stdin]` / `[DRY RUN]`).
+      // The old ad-hoc human label 'Multi-line shell script' was removed in
+      // favour of this machine-parseable scheme; assert the structured marker.
+      expect(stdout, contains('[PIPELINE:shell]'),
+          reason: 'verbose mode should echo the multi-line shell command under '
+              'the structured [PIPELINE:shell] marker');
+      log.expectation(
+          'verbose echoes shell command under [PIPELINE:shell]',
+          stdout.contains('[PIPELINE:shell]'));
     });
 
     test('stdin piping sends content to command', () async {
@@ -168,9 +177,16 @@ void main() {
       final stdout = result.stdout as String;
       expect(result.exitCode, equals(0),
           reason: 'Pipeline should succeed');
-      expect(stdout, contains('stdin-line-1'));
-      expect(stdout, contains('stdin-line-2'));
-      log.expectation('stdin content appears in output', true);
+      // The `test-stdin` fixture pipes "Hello stdin world\nline two" to `cat`,
+      // which echoes it back. Assert that real piped content (the stale
+      // 'stdin-line-1'/'stdin-line-2' strings were left over from an older
+      // fixture body and never appear in the current output).
+      expect(stdout, contains('Hello stdin world'),
+          reason: 'cat should echo the piped stdin content');
+      expect(stdout, contains('line two'),
+          reason: 'cat should echo all piped stdin lines');
+      log.expectation('stdin content appears in output',
+          stdout.contains('Hello stdin world') && stdout.contains('line two'));
     });
 
     test('stdin piping in verbose mode', () async {
@@ -186,8 +202,14 @@ void main() {
 
       final stdout = result.stdout as String;
       expect(result.exitCode, equals(0));
-      expect(stdout, contains('Piping stdin to'));
-      log.expectation('verbose mentions stdin piping', true);
+      // Canonical verbose format (see AA16): the runner echoes the stdin step
+      // under the structured `[PIPELINE:stdin]` marker (parallel to
+      // `[PIPELINE:shell]`), not the old prose label 'Piping stdin to'.
+      expect(stdout, contains('[PIPELINE:stdin]'),
+          reason: 'verbose mode should echo the stdin step under the '
+              'structured [PIPELINE:stdin] marker');
+      log.expectation('verbose echoes stdin step under [PIPELINE:stdin]',
+          stdout.contains('[PIPELINE:stdin]'));
     });
 
     test('multi-line shell dry-run shows preview', () async {
@@ -203,10 +225,26 @@ void main() {
 
       final stdout = result.stdout as String;
       expect(result.exitCode, equals(0));
-      expect(stdout, contains('[DRY RUN]'));
-      // In dry-run, the command text appears inside the DRY RUN message
-      expect(stdout, contains('Would execute'));
-      log.expectation('dry-run preview shown', true);
+      // Canonical dry-run format for pipeline shell steps (see AA16; source:
+      // tom_build_base pipeline_executor `_runShell`): the command is previewed
+      // under the structured `[PIPELINE:shell]` marker, then NOT executed
+      // (`if (dryRun) return true;`). The old '[DRY RUN]' / 'Would execute'
+      // prose is not emitted for pipeline steps.
+      expect(stdout, contains('[PIPELINE:shell]'),
+          reason: 'dry-run should preview the shell command under the '
+              'structured [PIPELINE:shell] marker');
+      // Verify the command was previewed but NOT executed: the bare echo result
+      // line 'multi-line-1' must be absent. (The command text
+      // 'echo "multi-line-1"' is shown by the marker, but the command does not
+      // run, so its output never appears.)
+      final executed = stdout
+          .split('\n')
+          .map((line) => line.trim())
+          .contains('multi-line-1');
+      expect(executed, isFalse,
+          reason: 'dry-run should not execute the shell command');
+      log.expectation('dry-run previews command without executing',
+          stdout.contains('[PIPELINE:shell]') && !executed);
     });
 
     test('stdin dry-run shows preview', () async {
@@ -222,9 +260,27 @@ void main() {
 
       final stdout = result.stdout as String;
       expect(result.exitCode, equals(0));
-      expect(stdout, contains('[DRY RUN]'));
-      expect(stdout, contains('stdin'));
-      log.expectation('stdin dry-run preview shown', true);
+      // Canonical dry-run format for pipeline stdin steps (see AA16; source:
+      // tom_build_base pipeline_executor `_runStdin`): the step is previewed
+      // under the structured `[PIPELINE:stdin]` marker with each piped line
+      // echoed as `  | <line>`, then NOT executed (`if (dryRun) return true;`).
+      // The old '[DRY RUN]' prose is not emitted for pipeline steps — it is
+      // reserved for the versioner/mklink executors.
+      expect(stdout, contains('[PIPELINE:stdin]'),
+          reason: 'dry-run should preview the stdin step under the '
+              'structured [PIPELINE:stdin] marker');
+      // Verify the step was previewed but NOT executed: `cat` would echo the
+      // piped content as a bare 'Hello stdin world' line, whereas the dry-run
+      // preview only shows it prefixed as '  | Hello stdin world'. A
+      // line-trimmed exact match for the bare line must therefore be absent.
+      final executed = stdout
+          .split('\n')
+          .map((line) => line.trim())
+          .contains('Hello stdin world');
+      expect(executed, isFalse,
+          reason: 'dry-run should not pipe content to / execute the command');
+      log.expectation('stdin dry-run previews step without executing',
+          stdout.contains('[PIPELINE:stdin]') && !executed);
     });
   });
 }

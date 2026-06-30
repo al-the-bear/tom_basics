@@ -603,11 +603,40 @@ class ToolRunner {
       executionRoot = findWorkspaceRoot(Directory.current.path);
     }
 
+    // Security boundary: reject absolute --project paths outside the workspace.
+    final projectPathError = validateProjectPathsWithinRoot(
+      cliArgs.projectPatterns,
+      executionRoot,
+    );
+    if (projectPathError != null) {
+      output.writeln('Error: $projectPathError');
+      return ToolResult.failure(projectPathError);
+    }
+
+    // Reject a non-glob --project *path* that does not exist, so a mistyped
+    // path fails loudly instead of scanning, matching nothing, and exiting 0.
+    final projectExistsError = validateProjectPathsExist(
+      cliArgs.projectPatterns,
+      executionRoot,
+    );
+    if (projectExistsError != null) {
+      output.writeln('Error: $projectExistsError');
+      return ToolResult.failure(projectExistsError);
+    }
+
     final configDefaults = _loadTraversalDefaults(executionRoot);
     final traversalInfo = cliArgs.toProjectTraversalInfo(
       executionRoot: executionRoot,
       configDefaults: configDefaults,
     );
+
+    // Security boundary: reject a --scan path outside the workspace.
+    final scanPathError =
+        validateScanPathWithinRoot(traversalInfo.scan, executionRoot);
+    if (scanPathError != null) {
+      output.writeln('Error: $scanPathError');
+      return ToolResult.failure(scanPathError);
+    }
 
     final masterDefines = _loadMasterDefines(cliArgs.modes);
     final results = <ItemResult>[];
@@ -769,7 +798,17 @@ class ToolRunner {
     final candidateName = cliArgs.positionalArgs.first;
     if (candidateName.startsWith('-') || candidateName == 'help') return null;
 
-    final loaded = ToolPipelineConfigLoader.load(tool: _effectiveTool);
+    final ToolPipelineConfig? loaded;
+    try {
+      loaded = ToolPipelineConfigLoader.load(tool: _effectiveTool);
+    } on FormatException catch (error) {
+      // A malformed pipeline command (e.g. an unprefixed, unknown command such
+      // as "rm -rf /") is a security rejection, not a crash: surface it on
+      // stdout with a non-zero exit instead of letting the exception escape to
+      // stderr as an unhandled error.
+      output.writeln('Error: ${error.message}');
+      return const ToolResult.failure('Invalid pipeline command');
+    }
     if (loaded == null || !loaded.hasPipelines) return null;
 
     final definition = loaded.pipelines[candidateName];
@@ -854,6 +893,29 @@ class ToolRunner {
       executionRoot = findWorkspaceRoot(Directory.current.path);
     }
 
+    // Security boundary: reject absolute --project paths outside the workspace
+    // before any scanning happens, so the tool never silently no-ops on a path
+    // it must not operate on.
+    final projectPathError = validateProjectPathsWithinRoot(
+      cliArgs.projectPatterns,
+      executionRoot,
+    );
+    if (projectPathError != null) {
+      output.writeln('Error: $projectPathError');
+      return ToolResult.failure(projectPathError);
+    }
+
+    // Reject a non-glob --project *path* that does not exist, so a mistyped
+    // path fails loudly instead of scanning, matching nothing, and exiting 0.
+    final projectExistsError = validateProjectPathsExist(
+      cliArgs.projectPatterns,
+      executionRoot,
+    );
+    if (projectExistsError != null) {
+      output.writeln('Error: $projectExistsError');
+      return ToolResult.failure(projectExistsError);
+    }
+
     // Load config defaults from buildkit_master.yaml navigation section
     final configDefaults = _loadTraversalDefaults(executionRoot);
 
@@ -897,6 +959,18 @@ class ToolRunner {
         executionRoot: executionRoot,
         configDefaults: configDefaults,
       );
+    }
+
+    // Security boundary: reject a --scan path outside the workspace before any
+    // scanning happens. Only project traversal walks a --scan path; git
+    // traversal uses the already-validated execution root.
+    if (traversalInfo is ProjectTraversalInfo) {
+      final scanPathError =
+          validateScanPathWithinRoot(traversalInfo.scan, executionRoot);
+      if (scanPathError != null) {
+        output.writeln('Error: $scanPathError');
+        return ToolResult.failure(scanPathError);
+      }
     }
 
     // Check if command requires traversal

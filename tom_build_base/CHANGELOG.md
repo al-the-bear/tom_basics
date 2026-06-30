@@ -1,3 +1,77 @@
+## 2.6.30
+
+### Fixed
+
+- **Non-existent `--project` path now fails loudly instead of exiting 0** —
+  passing a non-glob `--project` *path* that does not exist (e.g.
+  `--project _build/nonexistent`) previously scanned, matched nothing, and
+  exited `0` with no output, masking the typo (the bug #19 regression that
+  `dependencies_test`'s DEP_ERR01 guards). `ToolRunner` now validates such
+  path patterns up front via the new `validateProjectPathsExist` and returns a
+  failure with a clear `project path not found: …` message. Project ids,
+  names, and glob path patterns are unaffected — they may legitimately match
+  zero projects and are never existence-checked.
+
+## 2.6.29
+
+### Fixed
+
+- **Pipeline rejects unknown/unprefixed commands with a clear stdout error** — a
+  pipeline command that is neither a built-in tool command (prefixed with the
+  tool name) nor an explicitly allowed `shell` / `shell-scan` / `stdin` /
+  `print` command — e.g. a bare `rm -rf /` — must never reach process
+  execution. The pipeline parser already rejected such commands, but the
+  `FormatException` it threw escaped to **stderr** as an unhandled error
+  (exit 255) and its message read "Unsupported pipeline command prefix",
+  surfacing nothing actionable on stdout. The message is now reworded to
+  "Unknown command \"…\" … Only built-in tool commands … are allowed", and
+  `ToolRunner` catches the `FormatException` at the pipeline-invocation site,
+  writing the rejection to stdout (`Error: …`) and returning a failure result
+  (non-zero exit) instead of crashing. Covered by new `pipeline_config`
+  (`BB-PLC-11`) and `tool_runner` (`BB-RUN-58`) tests; satisfies
+  `tom_build_kit`'s `SEC_CMD01`.
+
+## 2.6.28
+
+### Fixed
+
+- **`--scan` now rejects paths outside the workspace** — `--scan` names the real
+  directory the traversal walks (`Directory(scan)`: a relative value resolves
+  against the current directory, an absolute value is used as-is), so either an
+  absolute path like `/tmp` or a relative `../../sibling` could escape the
+  workspace. Previously such a scan returned an empty result and exit `0`,
+  masking that the tool was pointed at a location it must not walk. The new
+  `validateScanPathWithinRoot` helper (`workspace_utils.dart`) canonicalises both
+  the scan path and the execution root (resolving symlinks so a symlinked temp
+  root is not confused with its real target) and requires the scan to equal or be
+  contained within the root; both `ToolRunner` project-traversal paths now reject
+  an out-of-root scan before scanning with a clear `Error: scan path is outside
+  the workspace ...` message and a non-zero exit. Covered by new `workspace_utils`
+  regression tests.
+
+## 2.6.27
+
+### Fixed
+
+- **`--project` now rejects absolute paths outside the workspace** — a `--project`
+  pattern is a filter resolved against the scanned tree (project id, project name,
+  folder-name glob, or relative path), all of which are contained by construction.
+  The one way to escape the workspace is an **absolute path** that resolves outside
+  the execution root. Previously such a path silently matched nothing and the tool
+  exited `0`, looking like a successful no-op while actually being pointed at a path
+  it must never operate on. The new `validateProjectPathsWithinRoot` helper
+  (`workspace_utils.dart`) checks every absolute `--project` pattern against the
+  resolved execution/workspace root; the `ToolRunner` traversal paths now reject an
+  out-of-root path before any scanning with a clear `Error: project path is outside
+  the workspace ...` message and a non-zero exit. Covered by new `workspace_utils`
+  regression tests.
+
+## 2.6.26
+
+### Fixed
+
+- **`ztmp` scratch directory is no longer scanned for projects** — `ztmp` is the workspace's canonical gitignored scratch dir, but the recursive project scanner descended into it and discovered stale full-project copies (e.g. `ztmp/d4gen199`, `ztmp/refgen112`) left over from debugging. Those carry outdated dependency constraints, so `:pubupdate` and the build pipeline picked up versions far behind the published ones. `ztmp` is now in `kAlwaysSkipDirectories` and the repository-id lookup ignore set, and the **non-recursive** scan branch now honors `kAlwaysSkipDirectories` too (it previously only skipped dot- and `zom_`-prefixed dirs). Covered by a new `workspace_utils` regression test.
+
 ## 2.6.25
 
 ### Added

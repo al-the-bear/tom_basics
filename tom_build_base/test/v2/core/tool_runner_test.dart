@@ -591,6 +591,48 @@ required-environment:
         }
       });
 
+      test('BB-RUN-58: pipeline rejects unprefixed unknown command on stdout '
+          '[2026-06-29]', () async {
+        // SEC_CMD01: a pipeline whose command is neither a built-in tool
+        // command nor a shell/stdin/print command (e.g. "rm -rf /") must be
+        // rejected with a clear message on stdout and a non-zero result —
+        // never escape as an unhandled exception to stderr.
+        final tempRoot = await Directory.systemTemp.createTemp(
+          'bb_pipe_unknown_',
+        );
+        final workspace = Directory('${tempRoot.path}/ws')..createSync();
+        final master = File('${workspace.path}/testtool_master.yaml');
+        master.writeAsStringSync('''
+required-environment:
+  pipelines:
+    test-malicious:
+      executable: true
+      core:
+        - commands:
+          - "rm -rf /"
+''');
+
+        final previousCwd = Directory.current.path;
+        final output = StringBuffer();
+        try {
+          Directory.current = workspace.path;
+          final runner = ToolRunner(tool: testTool, output: output);
+
+          final result = await runner.run(['test-malicious']);
+
+          expect(result.success, isFalse);
+          final out = output.toString();
+          expect(out, contains('Unknown command'));
+          expect(out, contains('Only built-in'));
+          expect(out, contains('rm -rf /'));
+        } finally {
+          Directory.current = previousCwd;
+          if (tempRoot.existsSync()) {
+            await tempRoot.delete(recursive: true);
+          }
+        }
+      });
+
       test('BB-RUN-42: macro/macros runtime built-ins work when eligible '
           '[2026-02-28]', () async {
         final tempRoot = await Directory.systemTemp.createTemp('bb_macro_');
