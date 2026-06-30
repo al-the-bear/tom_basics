@@ -54,6 +54,9 @@ class SummaryCacheResult {
 /// * When [cacheOnlyPackages] is non-empty, only those packages are
 ///   considered — useful for targeted rebuilds.
 /// * [log] defaults to `print`; pass a sink to redirect output.
+/// * [cacheManager] overrides the default shared-cache manager — used by
+///   tests to keep the cache hermetic (a fixed temp directory) instead of
+///   writing into the workspace-resolved shared tool cache.
 ///
 /// Returns `null` when no dependencies could be resolved or no
 /// summaries are available. Otherwise returns a [SummaryCacheResult]
@@ -65,9 +68,10 @@ Future<SummaryCacheResult?> runSummaryCacheStage(
   bool showCacheStatus = false,
   List<String> cacheOnlyPackages = const [],
   void Function(String message)? log,
+  SummaryCacheManager? cacheManager,
 }) async {
   final out = log ?? print;
-  final cacheManager = SummaryCacheManager(projectRoot);
+  final cache = cacheManager ?? SummaryCacheManager(projectRoot);
   final depResolver = DependencyResolver();
 
   out('Resolving dependencies for summary caching...');
@@ -94,7 +98,7 @@ Future<SummaryCacheResult?> runSummaryCacheStage(
   }
 
   if (showCacheStatus) {
-    await _printCacheStatus(cacheManager, cacheable, out);
+    await _printCacheStatus(cache, cacheable, out);
     return null;
   }
 
@@ -105,11 +109,11 @@ Future<SummaryCacheResult?> runSummaryCacheStage(
 
   if (rebuildCache) {
     out('Clearing summary cache...');
-    await cacheManager.clearCache();
+    await cache.clearCache();
   }
 
   final generator = SummaryGenerator(
-    cacheManager: cacheManager,
+    cacheManager: cache,
     dependencyResolver: depResolver,
   );
 
@@ -117,10 +121,10 @@ Future<SummaryCacheResult?> runSummaryCacheStage(
   // (when Flutter is on the path) `dart:ui` from it.
   await generator.generateSdkSummary();
 
-  final sdkSummaryPath = cacheManager.getSdkSummaryPath();
+  final sdkSummaryPath = cache.getSdkSummaryPath();
   final hasSdkSummary = await File(sdkSummaryPath).exists();
 
-  final missing = await cacheManager.findMissingSummaries(cacheable);
+  final missing = await cache.findMissingSummaries(cacheable);
 
   if (missing.isNotEmpty) {
     out('Generating ${missing.length} missing summaries...');
@@ -153,14 +157,22 @@ Future<SummaryCacheResult?> runSummaryCacheStage(
 
   final summaryPaths = <String>[];
   for (final dep in cacheable) {
-    final cachePath = cacheManager.getCachePath(dep.name, dep.version);
+    final cachePath = cache.getCachePath(dep.name, dep.version);
     if (await File(cachePath).exists()) {
       summaryPaths.add(cachePath);
+      if (verbose) {
+        // Per-summary trace so a run can be audited for actual cache use.
+        out('  using ${dep.name}@${dep.version}.sum from cache at $cachePath');
+      }
     }
   }
 
   if (summaryPaths.isEmpty && !hasSdkSummary) {
     return null;
+  }
+
+  if (hasSdkSummary && verbose) {
+    out('  using SDK summary from cache at $sdkSummaryPath');
   }
 
   out('Loading ${summaryPaths.length} cached summaries.');

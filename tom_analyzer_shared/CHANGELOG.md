@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.6.1
+
+- **Auditable cache use.** `runSummaryCacheStage` now emits a per-summary
+  trace under `--verbose` — `using {pkg}@{ver}.sum from cache at {path}` for
+  every loaded package summary, plus one line for the SDK summary — so a run
+  can be inspected to confirm the cache is actually being read rather than
+  re-analyzed. Non-verbose output is unchanged (still the single
+  `Loading N cached summaries.` line).
+- `runSummaryCacheStage` gained an optional `cacheManager` argument so the
+  whole stage can be exercised hermetically against a fixed cache directory
+  (used by the new `summary_cache_stage_test.dart`). Defaults to the
+  shared-cache manager, so existing callers are unaffected.
+
 ## 0.6.0
 
 - **Shared tool-cache root for the summary cache.** `SummaryCacheManager` now
