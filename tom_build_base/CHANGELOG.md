@@ -1,3 +1,19 @@
+## 2.6.31
+
+### Fixed
+
+- **Nested tool output is no longer swallowed in the traversal path** — when a
+  host tool (e.g. `buildkit`) ran a wired nested tool during project traversal,
+  `NestedToolExecutor` captured the child's stdout/stderr and only echoed it
+  when `--verbose` was set, the child failed, or the output happened to contain
+  the words "error"/"warn"/"fail". On a quiet, successful run this hid all
+  legitimate output: a flag like `--show-cache-status` ran correctly but its
+  report never reached the terminal, making the option look like a no-op, and
+  per-file progress was invisible. The executor now streams the child's
+  stdout/stderr live (via `runBinaryStreaming`/`inheritStdio`), matching how the
+  pipeline path already runs nested tools (`ToolPipelineExecutor._runToolCommand`).
+  Failure is determined by the child's exit code.
+
 ## 2.6.30
 
 ### Fixed
