@@ -58,7 +58,7 @@ void main() {
       }
     });
 
-    test('TRV-PROJ-2: Non-recursive scan only finds top-level projects [2026-06-30]',
+    test('TRV-PROJ-2: Non-recursive scan finds projects in containers but does not descend into projects [2026-07-05]',
         () async {
       final info = ProjectTraversalInfo(
         executionRoot: fixture.rootPath,
@@ -77,12 +77,34 @@ void main() {
         },
       );
 
-      // Non-recursive: should only find the root itself (zom_traversal_ws_*)
-      // and NOT nested projects
-      expect(found.any((n) => n == 'proj_delta'), isFalse,
-          reason: 'Non-recursive should NOT find nested proj_delta');
+      // `recursive` controls whether the scanner descends into *project*
+      // directories (those with a pubspec.yaml). Non-project *container*
+      // directories are ALWAYS traversed — that is the purpose of scanning,
+      // and it is what makes the default (recursive: false) find real projects
+      // that live inside container folders (see FolderScanner 2.6.6 contract).
+      //
+      // So a non-recursive scan DOES surface projects that sit inside plain
+      // container directories, but does NOT surface projects nested inside
+      // another project.
+
+      // proj_delta lives in the container `sub_dart/` (sub_dart has no
+      // pubspec.yaml), so it IS found non-recursively.
+      expect(found, contains('proj_delta'),
+          reason: 'Non-recursive should find proj_delta — it is a project in '
+              'the container sub_dart/, not nested inside another project');
+      // module_one lives in the container `xternal/`, so it IS found.
+      expect(found, contains('module_one'),
+          reason: 'Non-recursive should find module_one — a project in the '
+              'container xternal/');
+
+      // pkg_one_a lives INSIDE the project module_one (module_one/pkg_one_a),
+      // so descending into it requires recursive: true — NOT found here.
       expect(found.any((n) => n == 'pkg_one_a'), isFalse,
-          reason: 'Non-recursive should NOT find deeply nested pkg_one_a');
+          reason: 'Non-recursive should NOT descend into project module_one to '
+              'find its nested project pkg_one_a');
+      expect(found.any((n) => n == 'pkg_two_a'), isFalse,
+          reason: 'Non-recursive should NOT descend into project module_two to '
+              'find its nested project pkg_two_a');
     });
 
     test('TRV-PROJ-3: Scan with different root finds only that subtree [2026-06-30]',
