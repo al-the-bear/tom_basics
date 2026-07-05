@@ -25,6 +25,19 @@
   clear `stderr` warning naming the projects involved in the cycle before
   falling back, so callers can trust (and debug) execution-order semantics.
 
+### Fixed
+
+- **`--project` path guards now also cover command-level patterns.** The
+  within-root and existence guards (`validateProjectPathsWithinRoot`,
+  `validateProjectPathsExist`) were only applied to the global
+  `cliArgs.projectPatterns`, so a bad path passed *after* the command
+  (`tool :cmd --project sub/nonexistent`, which lands in
+  `commandArgs[cmd].projectPatterns`) slipped past both guards — an
+  out-of-root or non-existent path scanned, matched nothing, and exited `0`.
+  Both guard sites now validate the combined global + per-command pattern list
+  via a shared `_guardProjectPaths` helper, preserving the
+  within-root-before-existence ordering. Covered by BB-RUN-63..66.
+
 ## 2.6.31
 
 ### Fixed

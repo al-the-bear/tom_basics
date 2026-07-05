@@ -611,25 +611,11 @@ class ToolRunner {
       executionRoot = findWorkspaceRoot(Directory.current.path);
     }
 
-    // Security boundary: reject absolute --project paths outside the workspace.
-    final projectPathError = validateProjectPathsWithinRoot(
-      cliArgs.projectPatterns,
-      executionRoot,
-    );
-    if (projectPathError != null) {
-      output.writeln('Error: $projectPathError');
-      return ToolResult.failure(projectPathError);
-    }
-
-    // Reject a non-glob --project *path* that does not exist, so a mistyped
-    // path fails loudly instead of scanning, matching nothing, and exiting 0.
-    final projectExistsError = validateProjectPathsExist(
-      cliArgs.projectPatterns,
-      executionRoot,
-    );
-    if (projectExistsError != null) {
-      output.writeln('Error: $projectExistsError');
-      return ToolResult.failure(projectExistsError);
+    // Reject any --project path (global *or* per-command) that is outside the
+    // workspace or that names a non-glob path which does not exist.
+    final projectPathsError = _guardProjectPaths(cliArgs, executionRoot);
+    if (projectPathsError != null) {
+      return ToolResult.failure(projectPathsError);
     }
 
     final configDefaults = _loadTraversalDefaults(executionRoot);
@@ -884,6 +870,46 @@ class ToolRunner {
     return _runWithTraversal(executor, cmd, cliArgs);
   }
 
+  /// Every `--project` pattern that must pass the path guards.
+  ///
+  /// A `--project` placed *before* the command name lands in the global
+  /// [CliArgs.projectPatterns]; one placed *after* a command name (e.g.
+  /// `:dependencies --project _build/x`) lands in
+  /// `commandArgs[cmd].projectPatterns`. Both forms select which projects the
+  /// tool operates on, so both must be guarded — otherwise the per-command form
+  /// silently no-ops on a mistyped or out-of-workspace path.
+  List<String> _allProjectPatterns(CliArgs cliArgs) => [
+        ...cliArgs.projectPatterns,
+        for (final cmdArgs in cliArgs.commandArgs.values)
+          ...cmdArgs.projectPatterns,
+      ];
+
+  /// Guard every `--project` path (global and per-command) against the
+  /// workspace boundary and, for non-glob paths, existence.
+  ///
+  /// Within-root is validated before existence so the existence check only ever
+  /// sees in-root absolute paths (as its contract documents). On the first
+  /// offending pattern the error is written to [output] and returned; a return
+  /// of null means every `--project` path is valid.
+  String? _guardProjectPaths(CliArgs cliArgs, String executionRoot) {
+    final patterns = _allProjectPatterns(cliArgs);
+
+    final withinRootError =
+        validateProjectPathsWithinRoot(patterns, executionRoot);
+    if (withinRootError != null) {
+      output.writeln('Error: $withinRootError');
+      return withinRootError;
+    }
+
+    final existsError = validateProjectPathsExist(patterns, executionRoot);
+    if (existsError != null) {
+      output.writeln('Error: $existsError');
+      return existsError;
+    }
+
+    return null;
+  }
+
   /// Run executor with traversal.
   Future<ToolResult> _runWithTraversal(
     CommandExecutor executor,
@@ -901,27 +927,12 @@ class ToolRunner {
       executionRoot = findWorkspaceRoot(Directory.current.path);
     }
 
-    // Security boundary: reject absolute --project paths outside the workspace
-    // before any scanning happens, so the tool never silently no-ops on a path
-    // it must not operate on.
-    final projectPathError = validateProjectPathsWithinRoot(
-      cliArgs.projectPatterns,
-      executionRoot,
-    );
-    if (projectPathError != null) {
-      output.writeln('Error: $projectPathError');
-      return ToolResult.failure(projectPathError);
-    }
-
-    // Reject a non-glob --project *path* that does not exist, so a mistyped
-    // path fails loudly instead of scanning, matching nothing, and exiting 0.
-    final projectExistsError = validateProjectPathsExist(
-      cliArgs.projectPatterns,
-      executionRoot,
-    );
-    if (projectExistsError != null) {
-      output.writeln('Error: $projectExistsError');
-      return ToolResult.failure(projectExistsError);
+    // Reject any --project path (global *or* per-command) that is outside the
+    // workspace or that names a non-glob path which does not exist, before any
+    // scanning happens, so the tool never silently no-ops on such a path.
+    final projectPathsError = _guardProjectPaths(cliArgs, executionRoot);
+    if (projectPathsError != null) {
+      return ToolResult.failure(projectPathsError);
     }
 
     // Load config defaults from buildkit_master.yaml navigation section

@@ -484,6 +484,189 @@ void main() {
         }
       });
 
+      // AC2: the --project path guards (within-root + existence) must also
+      // cover a --project placed AFTER the command name, which lands in the
+      // per-command args rather than the global projectPatterns.
+      test('BB-RUN-63: per-command --project non-existent path is rejected '
+          '[2026-07-05]', () async {
+        final tempRoot = await Directory.systemTemp.createTemp('bb_pcguard_');
+        final previousCwd = Directory.current.path;
+        final output = StringBuffer();
+        try {
+          final projectA = Directory('${tempRoot.path}/a_proj')..createSync();
+          File('${projectA.path}/pubspec.yaml').writeAsStringSync(
+            'name: a_proj\nversion: 1.0.0\nenvironment:\n  sdk: ^3.0.0\n',
+          );
+
+          final executor = TrackingExecutor();
+          final runner = ToolRunner(
+            tool: testTool,
+            output: output,
+            executors: {'traverse': executor},
+          );
+
+          Directory.current = tempRoot.path;
+          final result = await runner.run([
+            '--root',
+            tempRoot.path,
+            ':traverse',
+            '--project',
+            'sub/nonexistent',
+          ]);
+
+          expect(result.success, isFalse,
+              reason: 'a non-existent per-command --project path must fail');
+          expect(output.toString().toLowerCase(), contains('not found'));
+          expect(executor.calls, isEmpty,
+              reason: 'traversal must not run when the guard rejects the path');
+        } finally {
+          Directory.current = previousCwd;
+          if (tempRoot.existsSync()) {
+            await tempRoot.delete(recursive: true);
+          }
+        }
+      });
+
+      test('BB-RUN-64: per-command --project absolute path outside root is '
+          'rejected [2026-07-05]', () async {
+        final tempRoot = await Directory.systemTemp.createTemp('bb_pcguard_');
+        final outsideDir = await Directory.systemTemp.createTemp('bb_outside_');
+        final previousCwd = Directory.current.path;
+        final output = StringBuffer();
+        try {
+          final projectA = Directory('${tempRoot.path}/a_proj')..createSync();
+          File('${projectA.path}/pubspec.yaml').writeAsStringSync(
+            'name: a_proj\nversion: 1.0.0\nenvironment:\n  sdk: ^3.0.0\n',
+          );
+
+          final executor = TrackingExecutor();
+          final runner = ToolRunner(
+            tool: testTool,
+            output: output,
+            executors: {'traverse': executor},
+          );
+
+          Directory.current = tempRoot.path;
+          final result = await runner.run([
+            '--root',
+            tempRoot.path,
+            ':traverse',
+            '--project',
+            outsideDir.path, // absolute path outside the workspace root
+          ]);
+
+          expect(result.success, isFalse,
+              reason: 'an out-of-root per-command --project must fail');
+          expect(output.toString().toLowerCase(), contains('outside'));
+          expect(executor.calls, isEmpty);
+        } finally {
+          Directory.current = previousCwd;
+          if (tempRoot.existsSync()) {
+            await tempRoot.delete(recursive: true);
+          }
+          if (outsideDir.existsSync()) {
+            await outsideDir.delete(recursive: true);
+          }
+        }
+      });
+
+      test('BB-RUN-65: valid per-command --project name is accepted and '
+          'filters traversal [2026-07-05]', () async {
+        final tempRoot = await Directory.systemTemp.createTemp('bb_pcguard_');
+        final previousCwd = Directory.current.path;
+        final output = StringBuffer();
+        try {
+          final projectA = Directory('${tempRoot.path}/a_proj')..createSync();
+          File('${projectA.path}/pubspec.yaml').writeAsStringSync(
+            'name: a_proj\nversion: 1.0.0\nenvironment:\n  sdk: ^3.0.0\n',
+          );
+          final projectB = Directory('${tempRoot.path}/b_proj')..createSync();
+          File('${projectB.path}/pubspec.yaml').writeAsStringSync(
+            'name: b_proj\nversion: 1.0.0\nenvironment:\n  sdk: ^3.0.0\n',
+          );
+
+          final orderLog = <String>[];
+          final runner = ToolRunner(
+            tool: _twoTraversalCommandsTool,
+            output: output,
+            executors: {
+              'first': _OrderTrackingExecutor('first', orderLog),
+              'second': _OrderTrackingExecutor('second', orderLog),
+            },
+          );
+
+          Directory.current = tempRoot.path;
+          final result = await runner.run([
+            '-r',
+            '--root',
+            tempRoot.path,
+            '--scan',
+            '.',
+            ':first',
+            '--project',
+            'a_proj',
+          ]);
+
+          expect(result.success, isTrue,
+              reason: 'a valid per-command --project must not be rejected');
+          expect(orderLog.any((e) => e.startsWith('a_proj|')), isTrue,
+              reason: 'traversal should run on the selected project a_proj');
+          expect(orderLog.any((e) => e.startsWith('b_proj|')), isFalse,
+              reason: 'per-command --project must still filter traversal');
+        } finally {
+          Directory.current = previousCwd;
+          if (tempRoot.existsSync()) {
+            await tempRoot.delete(recursive: true);
+          }
+        }
+      });
+
+      test('BB-RUN-66: per-command --project guard also fires in multi-command '
+          'traversal [2026-07-05]', () async {
+        final tempRoot = await Directory.systemTemp.createTemp('bb_pcguard_');
+        final previousCwd = Directory.current.path;
+        final output = StringBuffer();
+        try {
+          final projectA = Directory('${tempRoot.path}/a_proj')..createSync();
+          File('${projectA.path}/pubspec.yaml').writeAsStringSync(
+            'name: a_proj\nversion: 1.0.0\nenvironment:\n  sdk: ^3.0.0\n',
+          );
+
+          final orderLog = <String>[];
+          final runner = ToolRunner(
+            tool: _twoTraversalCommandsTool,
+            output: output,
+            executors: {
+              'first': _OrderTrackingExecutor('first', orderLog),
+              'second': _OrderTrackingExecutor('second', orderLog),
+            },
+          );
+
+          Directory.current = tempRoot.path;
+          final result = await runner.run([
+            '-r',
+            '--root',
+            tempRoot.path,
+            '--scan',
+            '.',
+            ':first',
+            ':second',
+            '--project',
+            'sub/nonexistent',
+          ]);
+
+          expect(result.success, isFalse,
+              reason: 'the multi-command guard must reject the bad path too');
+          expect(output.toString().toLowerCase(), contains('not found'));
+          expect(orderLog, isEmpty);
+        } finally {
+          Directory.current = previousCwd;
+          if (tempRoot.existsSync()) {
+            await tempRoot.delete(recursive: true);
+          }
+        }
+      });
+
       test('BB-RUN-40: help skips env checks for fast startup '
           '[2026-03-11]', () async {
         final tempRoot = await Directory.systemTemp.createTemp(
