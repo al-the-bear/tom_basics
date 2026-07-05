@@ -719,6 +719,62 @@ versioner:
     test('master YAML path pattern exclude-projects', () async {
       log.start('EXCL_MY02', 'master YAML path pattern exclude-projects');
       final masterPath = p.join(ws.workspaceRoot, 'buildkit_master.yaml');
+
+      // Master YAML `exclude-projects` path patterns are glob-matched against
+      // each project's path *relative to the execution root* (anchored — see
+      // filter_pipeline._matchesRelativePath / AA7). A literal 'core/*' is
+      // therefore anchored at the root and matches nothing in this nested
+      // checkout (core projects live at 'tom_ai/core/...'), so the old
+      // assertion `isNot(startsWith('core/'))` was satisfied without the
+      // exclusion ever firing — a vacuous pass (AC3, follow-up of AA10).
+      //
+      // Harden it: capture a real baseline, derive the actual core-container
+      // path from it, exclude that container's children, and assert those
+      // projects are genuinely removed versus the baseline.
+
+      // --- Baseline: true no-exclusion project set (delete any leftover
+      //     master YAML from a prior test first). ---
+      final masterFile = File(masterPath);
+      if (masterFile.existsSync()) masterFile.deleteSync();
+      final baseline = parseListOutput(await runToolList('dependencies'))
+          .where((line) => !line.startsWith('->'))
+          .toList();
+      final coreBaseline = baseline
+          .where((proj) => p.split(proj).contains('core'))
+          .toList();
+      log.expectation(
+        'baseline has core projects to exclude (${coreBaseline.length})',
+        coreBaseline.isNotEmpty,
+      );
+      expect(
+        coreBaseline,
+        isNotEmpty,
+        reason:
+            'EXCL_MY02 needs at least one core project in the baseline to '
+            'exercise the exclusion; found none — check the fixture layout.',
+      );
+
+      // Derive the core container: the path segments up to and including the
+      // `core` segment (e.g. 'tom_ai/core'), preferring a sample where `core`
+      // is a container segment rather than a leaf basename. Exclude everything
+      // beneath it with '<container>/**' — the '**' glob matches core projects
+      // at any depth (direct children like 'tom_ai/core/tom_core_kernel' and
+      // deeper ones like 'tom_ai/core/tom_core_samples/core_client_sample'),
+      // which the anchored matcher resolves in any layout (flat or nested).
+      final sample = coreBaseline.firstWhere(
+        (proj) {
+          final segs = p.split(proj);
+          final idx = segs.indexOf('core');
+          return idx >= 0 && idx < segs.length - 1;
+        },
+        orElse: () => coreBaseline.first,
+      );
+      final sampleSegments = p.split(sample);
+      final coreIndex = sampleSegments.indexOf('core');
+      final coreContainer =
+          p.joinAll(sampleSegments.sublist(0, coreIndex + 1));
+      final pattern = '$coreContainer/**';
+
       File(masterPath).writeAsStringSync('''
 navigation:
   exclude:
@@ -729,26 +785,50 @@ navigation:
     - 'ai_build/**'
     - 'zom_workspaces/**'
   exclude-projects:
-    - 'core/*'
+    - '$pattern'
 
 versioner:
   variable-prefix: testDefault
 ''');
 
-      final stdout = await runToolList('dependencies');
-      final projects = parseListOutput(stdout);
-      bool allExcluded = true;
-      for (final proj in projects) {
-        if (proj.startsWith('core/')) allExcluded = false;
+      final excluded = parseListOutput(await runToolList('dependencies'))
+          .where((line) => !line.startsWith('->'))
+          .toList();
+
+      // Every core project present in the baseline must now be gone.
+      for (final coreProj in coreBaseline) {
         expect(
-          proj,
-          isNot(startsWith('core/')),
-          reason: 'core/ excluded by master YAML path pattern',
+          excluded,
+          isNot(contains(coreProj)),
+          reason:
+              "$coreProj should be excluded by master YAML path pattern "
+              "'$pattern'",
         );
       }
+      final coreStillPresent = excluded
+          .where((proj) => p.split(proj).contains('core'))
+          .toList();
       log.expectation(
-        'no core/ projects (master YAML path pattern)',
-        allExcluded,
+        'all core projects removed by master YAML path pattern',
+        coreStillPresent.isEmpty,
+      );
+      expect(coreStillPresent, isEmpty);
+
+      // Non-core projects must survive: the exclusion removed something, not
+      // everything (guards against an over-broad pattern or an empty scan).
+      log.expectation(
+        'non-core projects remain (${excluded.length} of ${baseline.length})',
+        excluded.isNotEmpty && excluded.length < baseline.length,
+      );
+      expect(
+        excluded,
+        isNotEmpty,
+        reason: 'non-core projects should remain after excluding core',
+      );
+      expect(
+        excluded.length,
+        lessThan(baseline.length),
+        reason: 'the core exclusion must actually remove projects',
       );
     });
   });
