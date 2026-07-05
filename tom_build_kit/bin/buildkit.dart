@@ -30,7 +30,12 @@ Future<void> _runCli(List<String> args) async {
     stdout.writeln('\n$summary');
   }
 
+  // Set the exit code and return rather than hard-exiting. A bare `exit(1)`
+  // can drop buffered stdout (the run summary just written above) and diverges
+  // from testkit/issuekit, which set `exitCode`. Aligning here gives all three
+  // tools identical, flush-safe failure semantics.
+  // See tom_build_base doc/cli_error_handling.md.
   if (!result.success) {
-    exit(1);
+    exitCode = 1;
   }
 }
