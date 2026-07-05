@@ -112,6 +112,12 @@ class CliArgs {
   final bool nested;
   final bool dumpDefinitions;
 
+  /// Requested shell for `--completion <shell>` (bash|zsh|fish), or null.
+  ///
+  /// When set, the tool prints a shell completion script and exits without
+  /// traversing or running any command.
+  final String? completion;
+
   // Test project options
   final bool includeTestProjects;
   final bool testProjectsOnly;
@@ -157,6 +163,7 @@ class CliArgs {
     this.noSkip = false,
     this.nested = false,
     this.dumpDefinitions = false,
+    this.completion,
     this.includeTestProjects = false,
     this.testProjectsOnly = false,
     this.positionalArgs = const [],
@@ -325,6 +332,7 @@ class CliArgs {
       noSkip: noSkip,
       nested: nested,
       dumpDefinitions: dumpDefinitions,
+      completion: completion,
       includeTestProjects: includeTestProjects,
       testProjectsOnly: testProjectsOnly,
       positionalArgs: positionalArgs.map(resolver).toList(),
@@ -658,6 +666,9 @@ class CliArgParser {
       case 'dump-definitions':
         state.dumpDefinitions = true;
         break;
+      case 'completion':
+        state.completion = value;
+        break;
       case 'include-test-projects':
         state.includeTestProjects = true;
         break;
@@ -701,6 +712,7 @@ class CliArgParser {
       'no-skip',
       'nested',
       'dump-definitions',
+      'completion',
       'include-test-projects',
       'test-projects-only',
       'guide',
@@ -750,6 +762,7 @@ class CliArgParser {
       'm',
       'skip-modules',
       'config',
+      'completion',
     };
     if (valueOptions.contains(name)) return true;
 
@@ -947,6 +960,7 @@ class _ParseState {
   bool noSkip = false;
   bool nested = false;
   bool dumpDefinitions = false;
+  String? completion;
   bool includeTestProjects = false;
   bool testProjectsOnly = false;
   final List<String> positionalArgs = [];
@@ -989,6 +1003,7 @@ class _ParseState {
       noSkip: noSkip,
       nested: nested,
       dumpDefinitions: dumpDefinitions,
+      completion: completion,
       includeTestProjects: includeTestProjects,
       testProjectsOnly: testProjectsOnly,
       positionalArgs: positionalArgs,

@@ -6,6 +6,7 @@ import 'package:yaml/yaml.dart';
 import '../../console_encoding.dart';
 import 'cli_arg_parser.dart';
 import 'command_definition.dart';
+import 'completion_generator.dart';
 import 'console_markdown_zone.dart';
 import 'help_generator.dart';
 import 'macro_expansion.dart';
@@ -395,6 +396,13 @@ class ToolRunner {
       final yaml = ToolDefinitionSerializer.toYaml(tool);
       output.write(yaml);
       return const ToolResult.success();
+    }
+
+    // --completion <shell>: emit a shell completion script and exit.
+    // Intercepted here (like --dump-definitions) so it works as a bare
+    // invocation, before any wiring, env checks, or traversal.
+    if (cliArgs.completion != null) {
+      return _handleCompletion(cliArgs.completion!);
     }
 
     final doctorRequested = _isDoctorRequested(cliArgs);
@@ -1247,6 +1255,30 @@ class ToolRunner {
   /// Look up an executor by command name (checks both native and wired).
   CommandExecutor? _findExecutor(String cmdName) {
     return executors[cmdName] ?? _wiredExecutors[cmdName];
+  }
+
+  /// Handle `--completion <shell>`: print a shell completion script.
+  ///
+  /// Intercepted early (alongside `--dump-definitions`, before lazy wiring), so
+  /// it emits from the tool's own command/option definitions. Returns a failure
+  /// (non-zero exit) for an unknown shell so automation can distinguish a bad
+  /// request from a successful emission.
+  ToolResult _handleCompletion(String shellName) {
+    final shell = switch (shellName.toLowerCase()) {
+      'bash' => ShellType.bash,
+      'zsh' => ShellType.zsh,
+      'fish' => ShellType.fish,
+      _ => null,
+    };
+    if (shell == null) {
+      output.writeln(
+        "Error: unknown shell '$shellName' for --completion. "
+        'Supported shells: bash, zsh, fish.',
+      );
+      return const ToolResult.failure('Unknown completion shell');
+    }
+    output.write(tool.generateCompletion(shell));
+    return const ToolResult.success();
   }
 
   /// Handle help display with wired commands included.

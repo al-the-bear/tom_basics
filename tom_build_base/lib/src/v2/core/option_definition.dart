@@ -250,4 +250,12 @@ const List<OptionDefinition> commonOptions = [
     description:
         'Dump complete tool definition as YAML (tool info + all commands)',
   ),
+  OptionDefinition.option(
+    name: 'completion',
+    description:
+        'Print a shell completion script for the tool and exit '
+        '(bash, zsh, or fish)',
+    allowedValues: ['bash', 'zsh', 'fish'],
+    valueName: 'shell',
+  ),
 ];

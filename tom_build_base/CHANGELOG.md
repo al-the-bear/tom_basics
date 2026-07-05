@@ -1,3 +1,17 @@
+## 2.6.32
+
+### Added
+
+- **Shell completion delivery (`--completion <shell>`)** — every tool built on
+  the v2 `ToolRunner` now accepts a global `--completion bash|zsh|fish` option
+  that prints a shell completion script generated from the tool's own command
+  and option definitions, then exits. Intercepted early (alongside
+  `--dump-definitions`), so it runs anywhere without traversal. An unknown shell
+  prints an error and exits non-zero. The generation itself
+  (`CompletionGenerator`) already existed; this wires it into the framework so
+  the capability is delivered uniformly with no per-tool code. See
+  `doc/cli_shell_completion.md`.
+
 ## 2.6.31
 
 ### Fixed

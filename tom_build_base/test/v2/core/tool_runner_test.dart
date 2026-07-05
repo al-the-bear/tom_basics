@@ -278,6 +278,70 @@ void main() {
       });
 
       test(
+        'BB-RUN-59: Emits bash completion for --completion bash [2026-07-05]',
+        () async {
+          final output = StringBuffer();
+          final runner = ToolRunner(tool: testTool, output: output);
+
+          final result = await runner.run(['--completion', 'bash']);
+
+          expect(result.success, isTrue);
+          final script = output.toString();
+          expect(script, contains('# Bash completion for testtool'));
+          expect(script, contains('complete -F _testtool_completions testtool'));
+          // Reflects the tool's actual commands/options.
+          expect(script, contains(':simple'));
+          expect(script, contains('--verbose'));
+        },
+      );
+
+      test(
+        'BB-RUN-60: Emits zsh completion for --completion=zsh [2026-07-05]',
+        () async {
+          final output = StringBuffer();
+          final runner = ToolRunner(tool: testTool, output: output);
+
+          // `=`-joined value form.
+          final result = await runner.run(['--completion=zsh']);
+
+          expect(result.success, isTrue);
+          final script = output.toString();
+          expect(script, contains('#compdef testtool'));
+          expect(script, contains(':simple:'));
+        },
+      );
+
+      test(
+        'BB-RUN-61: Emits fish completion for --completion fish [2026-07-05]',
+        () async {
+          final output = StringBuffer();
+          final runner = ToolRunner(tool: testTool, output: output);
+
+          final result = await runner.run(['--completion', 'fish']);
+
+          expect(result.success, isTrue);
+          final script = output.toString();
+          expect(script, contains('# Fish completion for testtool'));
+          expect(script, contains('complete -c testtool'));
+        },
+      );
+
+      test(
+        'BB-RUN-62: Fails with non-zero for unknown --completion shell '
+        '[2026-07-05]',
+        () async {
+          final output = StringBuffer();
+          final runner = ToolRunner(tool: testTool, output: output);
+
+          final result = await runner.run(['--completion', 'powershell']);
+
+          expect(result.success, isFalse);
+          expect(output.toString(), contains('unknown shell'));
+          expect(output.toString(), contains('bash, zsh, fish'));
+        },
+      );
+
+      test(
         'BB-RUN-18: Shows command help for :command --help [2026-02-12]',
         () async {
           final output = StringBuffer();
