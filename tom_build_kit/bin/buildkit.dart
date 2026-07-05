@@ -2,26 +2,19 @@
 
 library;
 
-import 'dart:async';
 import 'dart:io';
 
-import 'package:console_markdown/console_markdown.dart';
 import 'package:tom_build_base/tom_build_base_v2.dart';
 import 'package:tom_build_kit/tom_build_kit.dart';
 
 Future<void> main(List<String> args) async {
-  if (Zone.current[#consoleMarkdownActive] != true) {
-    return runZoned(
-      () => main(args),
-      zoneSpecification: ZoneSpecification(
-        print: (self, parent, zone, line) {
-          parent.print(zone, line.toConsole());
-        },
-      ),
-      zoneValues: {#consoleMarkdownActive: true},
-    );
-  }
+  // Run inside the shared console_markdown zone (tom_build_base) so
+  // help/version/output render consistently with testkit and issuekit.
+  await runWithConsoleMarkdown(() => _runCli(args));
+}
 
+/// Run the buildkit CLI flow through the v2 [ToolRunner].
+Future<void> _runCli(List<String> args) async {
   final runner = ToolRunner(
     tool: buildkitTool,
     executors: createBuildkitExecutors(),
