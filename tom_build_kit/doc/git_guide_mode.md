@@ -1,16 +1,53 @@
 # Git Guide Mode Design
 
-This document describes the guided mode (`-g` / `--guide`) for git commands in BuildKit.
+This document describes the **target design** for the guided mode (`-g` /
+`--guide`) of git commands in BuildKit. The flows below (`gitcommit -g`,
+`gitpull -g`, …) are the *intended* end-state, not the current behaviour — see
+the status table for what actually ships today.
 
 ## Implementation Status
 
+> **Reality check (2026-07-05).** An investigation for `ab8` found that the git
+> guided flows described in this document are **not wired into the v2
+> `ToolRunner` pipeline**. The `--guide` flag is parsed but currently only
+> flips the command into help/preview mode (`CliArgs.isHelpMode`); no git
+> executor reads it, and none of the interactive flows below run. The
+> `GuidedMode` / `ProjectGroupPicker` classes exist but were previously
+> untested. This table now reflects the *true* state.
+
 | Component | Status |
 |-----------|--------|
-| `--guide` flag on all git commands | ✅ Implemented |
-| `GuidedMode` utility class | ✅ Implemented |
-| `ProjectGroupPicker` for scope selection | ✅ Implemented |
-| `gitcommit -g` full flow | ✅ Implemented |
-| Other git commands `-g` | ⏳ Pending (flag added, flow not implemented) |
+| `--guide` flag parsed by the arg parser | ✅ Implemented (feeds `isHelpMode` only) |
+| `GuidedMode` utility class | ✅ Implemented — now driver-injectable + unit-tested (`BK-GUIDE-*`) |
+| `PromptDriver` abstraction (`DcliPromptDriver` / `ScriptedPromptDriver`) | ✅ Implemented — makes guided flows testable |
+| `ProjectGroupPicker` for scope selection | ✅ Present (still binds `dcli` directly; not yet driver-injected) |
+| `ToolRunner` dispatch of `--guide` → interactive flow | ❌ Not implemented (tracked: `ai1`) |
+| `gitcommit -g` full flow | ❌ Not implemented (tracked: `ai1`) |
+| Other git commands `-g` | ❌ Not implemented (tracked: `ai1`) |
+
+The follow-up epic (`ai1` in `todos.cli_tools.todo.yaml`) tracks wiring
+`--guide` through the runner and building the per-command flows below
+**test-first** on top of the now-testable `GuidedMode`.
+
+## Testing guided flows (PromptDriver)
+
+Guided-mode flow logic is decoupled from terminal I/O through the
+`PromptDriver` abstraction (`lib/src/guided/prompt_driver.dart`):
+
+- **`DcliPromptDriver`** — the default; performs real terminal I/O via `dcli`.
+- **`ScriptedPromptDriver`** — a test double that replays a fixed list of
+  answers in order. Menu answers may be a **1-based index** into the presented
+  options or an exact option label; confirm answers parse `y`/`yes`/`true`;
+  ask answers are returned verbatim (empty → the prompt default). Running out
+  of scripted answers throws a `StateError` so a mis-scripted test fails loudly
+  instead of hanging on real input.
+
+`GuidedMode` takes an optional `PromptDriver` (`GuidedMode({PromptDriver?
+driver})`), defaulting to `DcliPromptDriver`. Tests inject a
+`ScriptedPromptDriver` to drive menu/multi-select/confirm/input flows
+deterministically (see `test/guided/guided_mode_test.dart`). New guided flows
+built under `ai1` must follow this pattern so their non-interactive logic is
+covered without a live TTY.
 
 ## Overview
 

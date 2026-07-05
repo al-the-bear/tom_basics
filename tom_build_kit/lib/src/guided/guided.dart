@@ -1,7 +1,10 @@
 /// Guided mode utilities for BuildKit CLI tools.
 ///
-/// Provides interactive prompts using the `interact` package.
+/// Provides interactive prompts through an injectable [PromptDriver], so guided
+/// flows run against a real terminal in production and scripted answers in
+/// tests.
 library;
 
 export 'guided_mode.dart';
 export 'project_group_picker.dart';
+export 'prompt_driver.dart';

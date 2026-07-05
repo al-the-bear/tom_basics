@@ -2,6 +2,13 @@
 
 ### Features
 
+- **Guided-mode is now testable** — `GuidedMode` renders its menus,
+  confirmations and text prompts through an injectable `PromptDriver` instead
+  of calling `dcli` directly. `DcliPromptDriver` performs real terminal I/O by
+  default; `ScriptedPromptDriver` replays a fixed list of answers so guided-flow
+  logic can be unit-tested without a live TTY (`BK-GUIDE-*`). Existing callers
+  are unaffected (`GuidedMode()` still defaults to the real terminal driver).
+
 - **`:execute` command** — Run shell commands in each traversed folder with placeholder substitution.
   - Aliases: `exec`, `x`
   - Path placeholders: `${root}`, `${folder}`, `${folder.name}`, `${folder.relative}`
