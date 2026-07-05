@@ -270,10 +270,18 @@ class ToolRunner {
 
   /// Normalize legacy/alternative flag forms before parsing.
   ///
-  /// Converts:
-  /// - `-version` → `--version` (single-dash long form)
-  /// - `-help` → `--help` (single-dash long form)
-  static List<String> _normalizeArgs(List<String> args) {
+  /// Converts single-dash long-form flags to their canonical double-dash form,
+  /// at any position in [args]:
+  /// - `-version` → `--version`
+  /// - `-help` → `--help`
+  ///
+  /// [run] applies this automatically after macro expansion. It is also exposed
+  /// publicly so tools that pre-parse arguments *before* delegating to [run]
+  /// (e.g. to detect a TUI mode, or to early-exit for help/version before
+  /// loading credentials) can apply the identical normalization instead of
+  /// maintaining their own duplicate helper. Idempotent; returns [args]
+  /// unchanged when empty or when there is nothing to convert.
+  static List<String> normalizeArgs(List<String> args) {
     if (args.isEmpty) return args;
     return args.map((arg) {
       if (arg == '-version') return '--version';
@@ -374,7 +382,7 @@ class ToolRunner {
     final expandedAt = checkpoint();
 
     // Normalize legacy flags before parsing.
-    final normalizedArgs = _normalizeArgs(expandedArgs);
+    final normalizedArgs = normalizeArgs(expandedArgs);
 
     // Parse arguments
     final parser = CliArgParser(toolDefinition: tool);

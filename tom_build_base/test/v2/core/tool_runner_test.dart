@@ -1602,6 +1602,42 @@ testtool:
         }
       });
     });
+
+    group('normalizeArgs', () {
+      test(
+        'BB-RUN-67: converts single-dash -help/-version at any position, '
+        'leaves other args untouched [2026-07-05]',
+        () {
+          // Canonical conversions.
+          expect(ToolRunner.normalizeArgs(['-help']), ['--help']);
+          expect(ToolRunner.normalizeArgs(['-version']), ['--version']);
+
+          // Converts at any position, not just the first token.
+          expect(
+            ToolRunner.normalizeArgs([':test', '-help']),
+            [':test', '--help'],
+          );
+          expect(
+            ToolRunner.normalizeArgs(['create', '--foo', '-version']),
+            ['create', '--foo', '--version'],
+          );
+
+          // Non-legacy forms and bare positionals are passed through as-is.
+          expect(
+            ToolRunner.normalizeArgs(['--help', 'help', 'version', '-v']),
+            ['--help', 'help', 'version', '-v'],
+          );
+
+          // Empty is returned unchanged (identity).
+          final empty = <String>[];
+          expect(identical(ToolRunner.normalizeArgs(empty), empty), isTrue);
+
+          // Idempotent: applying twice yields the same result.
+          final once = ToolRunner.normalizeArgs([':test', '-help', '-version']);
+          expect(ToolRunner.normalizeArgs(once), once);
+        },
+      );
+    });
   });
 
   group('CommandExecutor', () {

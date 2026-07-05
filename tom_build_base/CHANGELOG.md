@@ -15,6 +15,12 @@
   `computeBuildOrder` returning a `BuildOrderResult` (the ordered paths, or the
   names of the projects participating in a dependency cycle). `computeBuildOrder`
   is retained and now delegates to it.
+- **`ToolRunner.normalizeArgs`** — the legacy single-dash flag normalization
+  (`-help` → `--help`, `-version` → `--version`, at any position) that `run`
+  already applied internally is now exposed as a public static method. Tools
+  that pre-parse arguments *before* delegating to `run` (e.g. testkit's `--tui`
+  detection, issuekit's pre-token help/version early-exit) can call the shared
+  method instead of carrying their own duplicate helper. Covered by BB-RUN-67.
 
 ### Changed
 
