@@ -24,6 +24,15 @@
   `?? []`, so build-order mode quietly proceeded in scan order. It now emits a
   clear `stderr` warning naming the projects involved in the cycle before
   falling back, so callers can trust (and debug) execution-order semantics.
+- **Pipeline `shell`/`stdin` dry-run previews now carry a `[DRY RUN]`
+  indicator.** `ToolPipelineExecutor._runShell`/`_runStdin` previewed a dry-run
+  step under the same `[PIPELINE:shell]`/`[PIPELINE:stdin]` marker used for
+  verbose real runs, so the only cue that a step was skipped was the *absence*
+  of execution output — ambiguous, since a real command may also be silent.
+  Dry-run previews are now prefixed `[DRY RUN] [PIPELINE:shell] …` /
+  `[DRY RUN] [PIPELINE:stdin] …`, consistent with the mklink/versioner
+  executors' `[DRY RUN]` precedent; verbose real runs keep the bare marker.
+  Covered by BB-PLX-6/BB-PLX-7.
 
 ### Fixed
 

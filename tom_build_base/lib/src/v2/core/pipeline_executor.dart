@@ -265,7 +265,12 @@ class ToolPipelineExecutor {
     );
 
     if (dryRun || verbose) {
-      output.writeln('[PIPELINE:shell] $command');
+      // Mark dry-run previews with a `[DRY RUN]` indicator so they are
+      // unambiguous (a real command may also produce no output). Verbose real
+      // runs keep the bare `[PIPELINE:shell]` marker. Consistent with the
+      // mklink / versioner executors' `[DRY RUN]` prefix.
+      final prefix = dryRun ? '[DRY RUN] ' : '';
+      output.writeln('$prefix[PIPELINE:shell] $command');
     }
     if (dryRun) return true;
 
@@ -295,7 +300,10 @@ class ToolPipelineExecutor {
     );
 
     if (dryRun || verbose) {
-      output.writeln('[PIPELINE:stdin] $command');
+      // See `_runShell`: dry-run previews carry a `[DRY RUN]` indicator;
+      // verbose real runs keep the bare `[PIPELINE:stdin]` marker.
+      final prefix = dryRun ? '[DRY RUN] ' : '';
+      output.writeln('$prefix[PIPELINE:stdin] $command');
       if (stdinContent.isNotEmpty) {
         for (final line in stdinContent.split('\n')) {
           output.writeln('  | $line');

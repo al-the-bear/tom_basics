@@ -146,6 +146,142 @@ void main() {
       },
     );
 
+    test(
+      'BB-PLX-6: shell dry-run preview carries a [DRY RUN] indicator '
+      '[2026-07-05]',
+      () async {
+        final tempRoot = await Directory.systemTemp.createTemp('bb_plx_drysh_');
+        final workspace = Directory('${tempRoot.path}/ws')..createSync();
+        final master = File('${workspace.path}/testtool_master.yaml')
+          ..createSync()
+          ..writeAsStringSync('required-environment:\n  pipelines: {}\n');
+
+        final tool = ToolDefinition(
+          name: 'testtool',
+          description: 'Test tool',
+          version: '1.0.0',
+          mode: ToolMode.multiCommand,
+        );
+        ToolPipelineConfig shellConfig() => ToolPipelineConfig(
+              sourcePath: master.path,
+              pipelines: {
+                'sh': PipelineDefinition(
+                  executable: true,
+                  core: const [
+                    PipelineStepConfig(
+                      commands: [
+                        PipelineCommandSpec(
+                          raw: 'echo dry-run-marker-probe',
+                          prefix: PipelineCommandPrefix.shell,
+                          body: 'echo dry-run-marker-probe',
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              },
+            );
+
+        // Dry-run: preview is prefixed with [DRY RUN] and the command is not
+        // executed (the echoed token never appears on its own line).
+        final dryOutput = StringBuffer();
+        final dryOk = await ToolPipelineExecutor(tool: tool, output: dryOutput)
+            .executeInvocation(
+          pipelineName: 'sh',
+          config: shellConfig(),
+          cliArgs: const CliArgs(dryRun: true),
+        );
+        expect(dryOk, isTrue);
+        final dry = dryOutput.toString();
+        expect(dry, contains('[DRY RUN] [PIPELINE:shell]'));
+        expect(
+          dry.split('\n').map((l) => l.trim()),
+          isNot(contains('dry-run-marker-probe')),
+          reason: 'dry-run must not execute the shell command',
+        );
+
+        // Verbose real run (executor.verbose = true): bare [PIPELINE:shell]
+        // marker, no [DRY RUN] prefix — the indicator is dry-run-only.
+        final verboseOutput = StringBuffer();
+        await ToolPipelineExecutor(
+          tool: tool,
+          output: verboseOutput,
+          verbose: true,
+        ).executeInvocation(
+          pipelineName: 'sh',
+          config: shellConfig(),
+          cliArgs: const CliArgs(),
+        );
+        final verbose = verboseOutput.toString();
+        expect(verbose, contains('[PIPELINE:shell]'));
+        expect(verbose, isNot(contains('[DRY RUN]')));
+
+        if (tempRoot.existsSync()) {
+          await tempRoot.delete(recursive: true);
+        }
+      },
+    );
+
+    test(
+      'BB-PLX-7: stdin dry-run preview carries a [DRY RUN] indicator '
+      '[2026-07-05]',
+      () async {
+        final tempRoot = await Directory.systemTemp.createTemp('bb_plx_dryin_');
+        final workspace = Directory('${tempRoot.path}/ws')..createSync();
+        final master = File('${workspace.path}/testtool_master.yaml')
+          ..createSync()
+          ..writeAsStringSync('required-environment:\n  pipelines: {}\n');
+
+        final tool = ToolDefinition(
+          name: 'testtool',
+          description: 'Test tool',
+          version: '1.0.0',
+          mode: ToolMode.multiCommand,
+        );
+        final config = ToolPipelineConfig(
+          sourcePath: master.path,
+          pipelines: {
+            'in': PipelineDefinition(
+              executable: true,
+              core: const [
+                PipelineStepConfig(
+                  commands: [
+                    PipelineCommandSpec(
+                      raw: 'cat\nstdin-probe-line',
+                      prefix: PipelineCommandPrefix.stdin,
+                      body: 'cat\nstdin-probe-line',
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          },
+        );
+
+        final output = StringBuffer();
+        final ok = await ToolPipelineExecutor(tool: tool, output: output)
+            .executeInvocation(
+          pipelineName: 'in',
+          config: config,
+          cliArgs: const CliArgs(dryRun: true),
+        );
+        expect(ok, isTrue);
+        final out = output.toString();
+        expect(out, contains('[DRY RUN] [PIPELINE:stdin]'));
+        // Piped content is previewed as '  | <line>', not executed.
+        expect(out, contains('  | stdin-probe-line'));
+        expect(
+          out.split('\n').map((l) => l.trim()),
+          isNot(contains('stdin-probe-line')),
+          reason: 'dry-run must not pipe content to / execute the command',
+        );
+
+        if (tempRoot.existsSync()) {
+          await tempRoot.delete(recursive: true);
+        }
+      },
+    );
+
     test('BB-PLX-5: print command outputs message once', () async {
       final tempRoot = await Directory.systemTemp.createTemp('bb_plx_print_');
       final workspace = Directory('${tempRoot.path}/ws')..createSync();
