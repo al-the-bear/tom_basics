@@ -11,6 +11,19 @@
   (`CompletionGenerator`) already existed; this wires it into the framework so
   the capability is delivered uniformly with no per-tool code. See
   `doc/cli_shell_completion.md`.
+- **`BuildOrderComputer.computeBuildOrderResult`** — a cycle-aware variant of
+  `computeBuildOrder` returning a `BuildOrderResult` (the ordered paths, or the
+  names of the projects participating in a dependency cycle). `computeBuildOrder`
+  is retained and now delegates to it.
+
+### Changed
+
+- **Build-order traversal now reports dependency cycles instead of silently
+  falling back to scan order.** Previously a circular dependency made
+  `computeBuildOrder` return `null`, which `BuildBase.traverse` swallowed with
+  `?? []`, so build-order mode quietly proceeded in scan order. It now emits a
+  clear `stderr` warning naming the projects involved in the cycle before
+  falling back, so callers can trust (and debug) execution-order semantics.
 
 ## 2.6.31
 
