@@ -9,6 +9,14 @@
   logic can be unit-tested without a live TTY (`BK-GUIDE-*`). Existing callers
   are unaffected (`GuidedMode()` still defaults to the real terminal driver).
 
+- **`ProjectGroupPicker` / `pickProjectScopes` are now testable** — the project
+  scope picker used by git guided flows renders through the same injectable
+  `PromptDriver` instead of calling `dcli` directly, so its scope-choice,
+  multi-select and cancellation logic is covered by unit tests (`BK-PGP-*`).
+  `ProjectGroupPicker({PromptDriver? driver})` and `pickProjectScopes({...,
+  PromptDriver? driver})` default to the real terminal driver; existing callers
+  are unaffected.
+
 - **`:execute` command** — Run shell commands in each traversed folder with placeholder substitution.
   - Aliases: `exec`, `x`
   - Path placeholders: `${root}`, `${folder}`, `${folder.name}`, `${folder.relative}`

@@ -20,7 +20,7 @@ the status table for what actually ships today.
 | `--guide` flag parsed by the arg parser | ✅ Implemented (feeds `isHelpMode` only) |
 | `GuidedMode` utility class | ✅ Implemented — now driver-injectable + unit-tested (`BK-GUIDE-*`) |
 | `PromptDriver` abstraction (`DcliPromptDriver` / `ScriptedPromptDriver`) | ✅ Implemented — makes guided flows testable |
-| `ProjectGroupPicker` for scope selection | ✅ Present (still binds `dcli` directly; not yet driver-injected) |
+| `ProjectGroupPicker` for scope selection | ✅ Implemented — now driver-injectable + unit-tested (`BK-PGP-*`) |
 | `ToolRunner` dispatch of `--guide` → interactive flow | ❌ Not implemented (tracked: `ai1`) |
 | `gitcommit -g` full flow | ❌ Not implemented (tracked: `ai1`) |
 | Other git commands `-g` | ❌ Not implemented (tracked: `ai1`) |
@@ -43,10 +43,14 @@ Guided-mode flow logic is decoupled from terminal I/O through the
   instead of hanging on real input.
 
 `GuidedMode` takes an optional `PromptDriver` (`GuidedMode({PromptDriver?
-driver})`), defaulting to `DcliPromptDriver`. Tests inject a
+driver})`), defaulting to `DcliPromptDriver`. The scope picker follows the same
+pattern: `ProjectGroupPicker({PromptDriver? driver})` and the top-level
+`pickProjectScopes({..., PromptDriver? driver})` both default to the real
+terminal driver and accept a scripted one. Tests inject a
 `ScriptedPromptDriver` to drive menu/multi-select/confirm/input flows
-deterministically (see `test/guided/guided_mode_test.dart`). New guided flows
-built under `ai1` must follow this pattern so their non-interactive logic is
+deterministically (see `test/guided/guided_mode_test.dart` and
+`test/guided/project_group_picker_test.dart`). New guided flows built under the
+dispatch epic must follow this pattern so their non-interactive logic is
 covered without a live TTY.
 
 ## Overview
