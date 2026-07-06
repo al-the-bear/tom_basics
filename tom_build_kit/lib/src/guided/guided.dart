@@ -5,6 +5,7 @@
 /// tests.
 library;
 
+export 'guided_git_flows.dart';
 export 'guided_mode.dart';
 export 'project_group_picker.dart';
 export 'prompt_driver.dart';

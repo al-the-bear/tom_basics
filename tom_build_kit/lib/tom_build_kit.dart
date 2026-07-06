@@ -7,6 +7,9 @@ library;
 // Version info
 export 'src/version.versioner.dart';
 
+// Guided mode (interactive `-g` git flows)
+export 'src/guided/guided.dart';
+
 // Shared utilities
 export 'src/builtin_commands.dart';
 export 'src/compiler_config.dart';
