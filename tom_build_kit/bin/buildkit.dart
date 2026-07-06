@@ -2,8 +2,6 @@
 
 library;
 
-import 'dart:io';
-
 import 'package:tom_build_base/tom_build_base_v2.dart';
 import 'package:tom_build_kit/tom_build_kit.dart';
 
@@ -21,21 +19,10 @@ Future<void> _runCli(List<String> args) async {
     verbose: true,
   );
 
-  final result = await runner.run(args);
-
-  // Shared, consistent end-of-run errors/skips summary (tom_build_base).
-  // Empty for special/single-shot commands that traverse nothing.
-  final summary = result.renderRunSummary();
-  if (summary.isNotEmpty) {
-    stdout.writeln('\n$summary');
-  }
-
-  // Set the exit code and return rather than hard-exiting. A bare `exit(1)`
-  // can drop buffered stdout (the run summary just written above) and diverges
-  // from testkit/issuekit, which set `exitCode`. Aligning here gives all three
-  // tools identical, flush-safe failure semantics.
-  // See tom_build_base doc/cli_error_handling.md.
-  if (!result.success) {
-    exitCode = 1;
-  }
+  // Run to completion — the shared run → summary → exit-code tail lives in
+  // ToolRunner.runToCompletion (tom_build_base) so buildkit/testkit/issuekit
+  // share identical, flush-safe failure semantics (it sets exitCode and never
+  // calls exit(), so buffered output — including the summary — is drained
+  // first). See tom_build_base doc/cli_error_handling.md.
+  await runner.runToCompletion(args);
 }
