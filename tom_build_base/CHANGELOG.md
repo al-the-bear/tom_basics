@@ -30,6 +30,13 @@
   contain colons, and treats a trailing empty file part (`csv:`) as "no file".
   Consumers migrate onto it (issuekit's `filename` field reconciled to
   `filePath`) once published. Covered by BB-OUT-1..10.
+- **`ToolRunner.runToCompletion`** — folds the shared CLI entrypoint tail
+  (`run` → print `renderRunSummary()` when non-empty → set `exitCode = 1` on
+  failure, never `exit()`) that buildkit/testkit/issuekit each repeated into a
+  single method, so the exit-code contract in `doc/cli_error_handling.md` cannot
+  drift per tool. Returns the `ToolResult`; leaves `exitCode` untouched on
+  success. Consumers collapse their tail to a single call once published.
+  Covered by BB-RUN-68.
 
 ### Changed
 

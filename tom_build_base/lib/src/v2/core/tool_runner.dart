@@ -357,6 +357,38 @@ class ToolRunner {
     );
   }
 
+  /// Run the tool to completion, applying the shared CLI entrypoint contract.
+  ///
+  /// This folds the identical `run → print summary → set exit code` tail that
+  /// every tool's `main` repeated (buildkit/testkit/issuekit) into a single
+  /// shared implementation, so the process-exit semantics defined in
+  /// `doc/cli_error_handling.md` cannot drift per tool. It:
+  ///
+  /// 1. runs [args] via [run];
+  /// 2. writes `result.renderRunSummary()` (with a leading blank line) to
+  ///    [output] when it is non-empty — empty for single-shot commands that
+  ///    traverse nothing (`--version`, `--help`);
+  /// 3. sets the process [exitCode] to `1` when the run failed — and **never**
+  ///    calls `exit()`, so `main` can return and the VM drains buffered output
+  ///    first (a bare `exit(1)` can truncate the summary just written).
+  ///
+  /// Returns the [ToolResult] so callers may inspect it further. A successful
+  /// run leaves [exitCode] untouched (it does not reset it to `0`).
+  Future<ToolResult> runToCompletion(List<String> args) async {
+    final result = await run(args);
+
+    final summary = result.renderRunSummary();
+    if (summary.isNotEmpty) {
+      output.writeln('\n$summary');
+    }
+
+    if (!result.success) {
+      exitCode = 1;
+    }
+
+    return result;
+  }
+
   /// Run the tool with command-line arguments.
   Future<ToolResult> run(List<String> args) async {
     // Ensure non-ASCII tool/subprocess output renders correctly on Windows

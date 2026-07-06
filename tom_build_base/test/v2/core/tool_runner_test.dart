@@ -1638,6 +1638,68 @@ testtool:
         },
       );
     });
+
+    group('runToCompletion', () {
+      test(
+        'BB-RUN-68: prints the run summary and sets exitCode per the shared '
+        'entrypoint contract [2026-07-05]',
+        () async {
+          final savedExit = exitCode;
+          try {
+            // Success, single-shot (empty summary): returns success, no summary
+            // block is printed, and the exit code is left untouched at 0.
+            exitCode = 0;
+            final okOut = StringBuffer();
+            final okResult =
+                await ToolRunner(tool: _singleExecuteTool, output: okOut)
+                    .runToCompletion(['--version']);
+            expect(okResult.success, isTrue);
+            expect(okOut.toString(), contains('1.0.0'));
+            expect(okOut.toString(), isNot(contains('error(s) in')));
+            expect(exitCode, 0,
+                reason: 'a successful run must not set a failure exit code');
+
+            // Failure via traversal (non-empty summary): returns failure, the
+            // summary is printed with a leading blank line, and exitCode = 1.
+            // Uses a command whose nature is a DartProjectFolder so the temp
+            // project is actually processed (and the executor is invoked).
+            exitCode = 0;
+            final tempRoot =
+                await Directory.systemTemp.createTemp('bb_runtocomp_');
+            final previousCwd = Directory.current.path;
+            try {
+              final proj = Directory('${tempRoot.path}/a_proj')..createSync();
+              File('${proj.path}/pubspec.yaml').writeAsStringSync(
+                'name: a_proj\nversion: 1.0.0\nenvironment:\n  sdk: ^3.0.0\n',
+              );
+
+              final failOut = StringBuffer();
+              final runner = ToolRunner(
+                tool: _singleExecuteTool,
+                output: failOut,
+                executors: {'execute': TrackingExecutor(shouldSucceed: false)},
+              );
+
+              Directory.current = tempRoot.path;
+              final failResult = await runner
+                  .runToCompletion(['--root', tempRoot.path, ':execute']);
+
+              expect(failResult.success, isFalse);
+              expect(failOut.toString(), contains('error(s) in'));
+              expect(exitCode, 1,
+                  reason: 'a failed run must set exitCode = 1');
+            } finally {
+              Directory.current = previousCwd;
+              if (tempRoot.existsSync()) {
+                await tempRoot.delete(recursive: true);
+              }
+            }
+          } finally {
+            exitCode = savedExit;
+          }
+        },
+      );
+    });
   });
 
   group('CommandExecutor', () {
