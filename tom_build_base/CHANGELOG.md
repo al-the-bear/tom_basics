@@ -21,6 +21,15 @@
   that pre-parse arguments *before* delegating to `run` (e.g. testkit's `--tui`
   detection, issuekit's pre-token help/version early-exit) can call the shared
   method instead of carrying their own duplicate helper. Covered by BB-RUN-67.
+- **Canonical `OutputFormat` / `OutputSpec`** (`src/v2/core/output_format.dart`,
+  exported from `tom_build_base_v2.dart`) — the shared CLI output-format enum
+  (`plain`/`csv`/`json`/`md`, with `text`/`markdown` aliases) and the
+  `<format>[:<file>]` spec parser that testkit and issuekit each duplicated.
+  `OutputSpec` carries `format` + optional `filePath` (with `hasFile` and a
+  `defaultSpec` of plain→stdout), splits at the first colon so file paths may
+  contain colons, and treats a trailing empty file part (`csv:`) as "no file".
+  Consumers migrate onto it (issuekit's `filename` field reconciled to
+  `filePath`) once published. Covered by BB-OUT-1..10.
 
 ### Changed
 
