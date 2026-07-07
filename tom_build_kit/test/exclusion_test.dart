@@ -117,6 +117,39 @@ void main() {
         .toList();
   }
 
+  /// Project paths in [projects] that live under a `core` container segment.
+  ///
+  /// Used by the path-pattern exclusion tests to derive a real baseline: the
+  /// set of core projects that a `<container>/**` exclusion must remove.
+  List<String> coreProjectsIn(Iterable<String> projects) =>
+      projects.where((proj) => p.split(proj).contains('core')).toList();
+
+  /// Derive an anchored `<container>/**` exclusion pattern from a non-empty
+  /// [coreBaseline].
+  ///
+  /// `--exclude-projects` path patterns are glob-matched against each project's
+  /// path *relative to the execution root* (anchored — see
+  /// filter_pipeline._matchesRelativePath / AA7). A literal `core/*` is
+  /// therefore anchored at the root and matches nothing in this nested checkout
+  /// (core projects live at `tom_ai/core/...`), which is why the old
+  /// assertions passed vacuously (AD7). This derives the *actual* container
+  /// (e.g. `tom_ai/core`) from a baseline sample and returns `<container>/**`,
+  /// whose `**` glob matches core projects at any depth (direct children and
+  /// deeper `tom_core_samples/...` ones) in flat or nested layouts.
+  String coreContainerPattern(List<String> coreBaseline) {
+    final sample = coreBaseline.firstWhere(
+      (proj) {
+        final segs = p.split(proj);
+        final idx = segs.indexOf('core');
+        return idx >= 0 && idx < segs.length - 1;
+      },
+      orElse: () => coreBaseline.first,
+    );
+    final segs = p.split(sample);
+    final coreIndex = segs.indexOf('core');
+    return '${p.joinAll(segs.sublist(0, coreIndex + 1))}/**';
+  }
+
   // ---------------------------------------------------------------------------
   // Group: --exclude-projects with basename patterns
   // ---------------------------------------------------------------------------
@@ -285,26 +318,67 @@ void main() {
   group('--exclude-projects path patterns', () {
     test('path pattern excludes core/* projects', () async {
       log.start('EXCL_PP01', 'path pattern excludes core/* projects');
-      final stdout = await runToolList(
-        'dependencies',
-        extraArgs: ['--exclude-projects', 'core/*'],
+
+      // A literal 'core/*' is anchored at the execution root and matches
+      // nothing in the nested 'tom_ai/core/...' checkout, so the old assertion
+      // `isNot(startsWith('core/'))` was satisfied without the exclusion ever
+      // firing — a vacuous pass (AD7, follow-up of the EXCL_MY02 fix AC3).
+      //
+      // Harden it: capture a real baseline, require core projects to be
+      // present, derive the actual '<container>/**' pattern, apply it via the
+      // CLI, and assert those core projects are genuinely removed.
+      final baseline = parseListOutput(await runToolList('dependencies'))
+          .where((line) => !line.startsWith('->'))
+          .toList();
+      final coreBaseline = coreProjectsIn(baseline);
+      log.expectation(
+        'baseline has core projects to exclude (${coreBaseline.length})',
+        coreBaseline.isNotEmpty,
       );
-      final projects = parseListOutput(stdout);
-      bool allExcluded = true;
-      for (final proj in projects) {
-        if (proj.startsWith('core/')) allExcluded = false;
+      expect(
+        coreBaseline,
+        isNotEmpty,
+        reason:
+            'EXCL_PP01 needs core projects in the baseline to exercise the '
+            'exclusion; found none — check the fixture layout.',
+      );
+      final pattern = coreContainerPattern(coreBaseline);
+
+      final excluded = parseListOutput(
+        await runToolList(
+          'dependencies',
+          extraArgs: ['--exclude-projects', pattern],
+        ),
+      ).where((line) => !line.startsWith('->')).toList();
+
+      // Every core project present in the baseline must now be gone.
+      for (final coreProj in coreBaseline) {
         expect(
-          proj,
-          isNot(startsWith('core/')),
-          reason: 'All core/ projects should be excluded by path pattern',
+          excluded,
+          isNot(contains(coreProj)),
+          reason: "$coreProj should be excluded by path pattern '$pattern'",
         );
       }
-      log.expectation('no core/ projects in list', allExcluded);
+      final coreStillPresent = coreProjectsIn(excluded);
+      log.expectation('no core projects in list', coreStillPresent.isEmpty);
+      expect(coreStillPresent, isEmpty);
+
+      // Non-core projects must survive: the exclusion removed something, not
+      // everything (guards against an over-broad pattern or an empty scan).
       log.expectation(
-        'other projects remain (found ${projects.length})',
-        projects.isNotEmpty,
+        'other projects remain (${excluded.length} of ${baseline.length})',
+        excluded.isNotEmpty && excluded.length < baseline.length,
       );
-      expect(projects.isNotEmpty, isTrue);
+      expect(
+        excluded,
+        isNotEmpty,
+        reason: 'non-core projects should remain after excluding core',
+      );
+      expect(
+        excluded.length,
+        lessThan(baseline.length),
+        reason: 'the core exclusion must actually remove projects',
+      );
     });
 
     test('path pattern excludes devops/** from runner', () async {
@@ -347,38 +421,69 @@ void main() {
 
     test('combined basename + path patterns', () async {
       log.start('EXCL_PP04', 'combined basename + path patterns');
-      final stdout = await runToolList(
-        'dependencies',
-        extraArgs: [
-          '--exclude-projects',
-          '_build',
-          '--exclude-projects',
-          'core/*',
-        ],
+
+      // Combine a basename exclusion (_build) with a *real* anchored core path
+      // pattern. The old literal 'core/*' was vacuous (see EXCL_PP01 /
+      // EXCL_MY02); derive the actual '<container>/**' from the baseline so
+      // both halves of the combined exclusion are genuinely exercised.
+      final baseline = parseListOutput(await runToolList('dependencies'))
+          .where((line) => !line.startsWith('->'))
+          .toList();
+      final coreBaseline = coreProjectsIn(baseline);
+      log.expectation(
+        'baseline has _build and core projects to exclude',
+        baseline.contains('_build') && coreBaseline.isNotEmpty,
       );
-      final projects = parseListOutput(stdout);
-      final buildExcluded = !projects.contains('_build');
-      log.expectation('_build excluded by basename', buildExcluded);
       expect(
-        projects,
+        baseline,
+        contains('_build'),
+        reason: 'baseline should contain the provisioned _build project',
+      );
+      expect(
+        coreBaseline,
+        isNotEmpty,
+        reason: 'baseline needs core projects to exercise the path pattern',
+      );
+      final pattern = coreContainerPattern(coreBaseline);
+
+      final excluded = parseListOutput(
+        await runToolList(
+          'dependencies',
+          extraArgs: [
+            '--exclude-projects',
+            '_build',
+            '--exclude-projects',
+            pattern,
+          ],
+        ),
+      ).where((line) => !line.startsWith('->')).toList();
+
+      log.expectation('_build excluded by basename', !excluded.contains('_build'));
+      expect(
+        excluded,
         isNot(contains('_build')),
         reason: '_build excluded by basename',
       );
-      bool coreExcluded = true;
-      for (final proj in projects) {
-        if (proj.startsWith('core/')) coreExcluded = false;
+      for (final coreProj in coreBaseline) {
         expect(
-          proj,
-          isNot(startsWith('core/')),
-          reason: 'core/* excluded by path',
+          excluded,
+          isNot(contains(coreProj)),
+          reason: "$coreProj should be excluded by path pattern '$pattern'",
         );
       }
-      log.expectation('no core/ projects (path pattern)', coreExcluded);
+      final coreStillPresent = coreProjectsIn(excluded);
+      log.expectation('no core/ projects (path pattern)', coreStillPresent.isEmpty);
+      expect(coreStillPresent, isEmpty);
       log.expectation(
-        'other projects remain (found ${projects.length})',
-        projects.isNotEmpty,
+        'other projects remain (${excluded.length} of ${baseline.length})',
+        excluded.isNotEmpty && excluded.length < baseline.length,
       );
-      expect(projects.isNotEmpty, isTrue);
+      expect(excluded, isNotEmpty);
+      expect(
+        excluded.length,
+        lessThan(baseline.length),
+        reason: 'the combined exclusion must actually remove projects',
+      );
     });
   });
 
@@ -565,58 +670,155 @@ void main() {
   group('buildkit --exclude-projects', () {
     test('buildkit excludes _build by basename', () async {
       log.start('EXCL_BK01', 'buildkit excludes _build by basename');
-      // buildkit runs per-project, so we verify _build never appears
-      // in the output when excluded. Use --scan with a small scope.
-      final result = await ws.runTool('buildkit', [
+
+      // Verify buildkit's global --exclude-projects removes the provisioned
+      // `_build` project (a *basename* pattern). Baseline diff: the project is
+      // provisioned at the workspace root, so its path is the bare `_build`
+      // (no parent segment). The old assertion `isNot(contains('/_build'))`
+      // could therefore never match a root-level project even if exclusion
+      // failed — and it ran via `runTool('buildkit', …)`, which emitted the
+      // rejected `:buildkit` command, so it only ever inspected the error
+      // message "Unknown command: :buildkit" (AD7). Route through `versioner`
+      // (a valid buildkit command) and diff a real baseline against exclusion.
+      final buildRe = RegExp(r'(?:^|[\s/>])_build(?:$|[\s/])', multiLine: true);
+
+      final baselineResult = await ws.runTool('versioner', [
+        '--scan',
+        '.',
+        '--recursive',
+        '--verbose',
+        '--list',
+      ]);
+      log.capture('versioner --verbose --list (baseline)', baselineResult);
+      final baselineOut = baselineResult.stdout as String;
+      log.expectation(
+        'baseline lists the provisioned _build project',
+        buildRe.hasMatch(baselineOut),
+      );
+      expect(
+        buildRe.hasMatch(baselineOut),
+        isTrue,
+        reason:
+            'EXCL_BK01 needs the provisioned _build project in the baseline '
+            'to exercise the basename exclusion.',
+      );
+
+      final result = await ws.runTool('versioner', [
         '--scan',
         '.',
         '--recursive',
         '--verbose',
         '--exclude-projects',
         '_build',
-        ':versioner',
         '--list',
       ]);
       log.capture(
-        'buildkit --verbose --exclude-projects _build :versioner --list',
+        'versioner --verbose --exclude-projects _build --list',
         result,
       );
       final stdout = result.stdout as String;
-      // In verbose mode, buildkit lists discovered projects with "  - "
-      // The excluded project should never appear
-      final excluded = !stdout.contains('/_build');
-      log.expectation('/_build not in verbose output', excluded);
+      final excluded = !buildRe.hasMatch(stdout);
+      log.expectation('_build absent from verbose output', excluded);
       expect(
-        stdout,
-        isNot(contains('/_build')),
+        buildRe.hasMatch(stdout),
+        isFalse,
         reason: '_build should not appear when excluded by basename',
       );
     });
 
     test('buildkit excludes by path pattern', () async {
       log.start('EXCL_BK02', 'buildkit excludes by path pattern');
-      final result = await ws.runTool('buildkit', [
+
+      // The old test excluded literal 'core/*' and asserted the verbose output
+      // no longer contained '/core/tom_core_'. That pattern is anchored at the
+      // execution root (see EXCL_MY02 / filter_pipeline._matchesRelativePath),
+      // so it matched nothing in the nested 'tom_ai/core/...' checkout and the
+      // assertion could pass without the exclusion ever firing (AD7).
+      //
+      // Harden it with a baseline diff: run the same verbose scan *without*
+      // exclusion, collect the core project paths that genuinely appear, derive
+      // the actual '<container>/**' pattern, then re-run *with* that exclusion
+      // and require every baseline core project to be gone. This fails if
+      // buildkit's CLI --exclude-projects path matching stops working.
+      //
+      // NB: route through the `versioner` tool (runTool prepends `:versioner`
+      // to the buildkit.dart invocation, so buildkit's global
+      // `--exclude-projects` is what's exercised). The old test invoked
+      // `runTool('buildkit', …)`, which emitted the pipeline `:buildkit`
+      // command — buildkit rejects it with "Unknown command: :buildkit", so
+      // the negative assertion passed against an *error message*, never against
+      // a real project listing (AD7).
+      final baselineResult = await ws.runTool('versioner', [
+        '--scan',
+        '.',
+        '--recursive',
+        '--verbose',
+        '--list',
+      ]);
+      log.capture(
+        'versioner --verbose --list (baseline)',
+        baselineResult,
+      );
+      final baselineOut = baselineResult.stdout as String;
+
+      // Core project paths present in the baseline verbose output (e.g.
+      // 'tom_ai/core/tom_core_d4rt'). Matching 'tom_core_*' basenames is
+      // enough to prove the exclusion — the derived '<container>/**' removes
+      // every core project regardless of basename shape.
+      final coreRe = RegExp(r'[\w./-]*?/core/tom_core_[\w-]+');
+      final baselineCore =
+          coreRe.allMatches(baselineOut).map((m) => m.group(0)!).toSet();
+      log.expectation(
+        'baseline verbose output has core projects (${baselineCore.length})',
+        baselineCore.isNotEmpty,
+      );
+      expect(
+        baselineCore,
+        isNotEmpty,
+        reason:
+            'EXCL_BK02 needs core projects in the baseline scan to exercise '
+            'the exclusion; found none — check the fixture layout.',
+      );
+      final pattern = coreContainerPattern(baselineCore.toList());
+
+      final result = await ws.runTool('versioner', [
         '--scan',
         '.',
         '--recursive',
         '--verbose',
         '--exclude-projects',
-        'core/*',
-        ':versioner',
+        pattern,
         '--list',
       ]);
       log.capture(
-        'buildkit --verbose --exclude-projects core/* :versioner --list',
+        'versioner --verbose --exclude-projects $pattern --list',
         result,
       );
       final stdout = result.stdout as String;
-      // core/ projects should not appear
-      final excluded = !stdout.contains('/core/tom_core_');
-      log.expectation('/core/tom_core_ not in verbose output', excluded);
+
+      for (final coreProj in baselineCore) {
+        expect(
+          stdout,
+          isNot(contains(coreProj)),
+          reason:
+              "$coreProj should not appear when excluded by path pattern "
+              "'$pattern'",
+        );
+      }
+      final coreGone = baselineCore.every((proj) => !stdout.contains(proj));
+      log.expectation('core projects removed from verbose output', coreGone);
+
+      // The exclusion must remove content, not silently produce identical or
+      // empty output.
+      log.expectation(
+        'output shrank after exclusion (${stdout.length} < ${baselineOut.length})',
+        stdout.isNotEmpty && stdout.length < baselineOut.length,
+      );
+      expect(stdout, isNotEmpty);
       expect(
-        stdout,
-        isNot(contains('/core/tom_core_')),
-        reason: 'core/ projects should not appear when excluded by path',
+        stdout.length,
+        lessThan(baselineOut.length),
+        reason: 'the core exclusion must actually remove projects',
       );
     });
 
@@ -719,6 +921,46 @@ versioner:
     test('master YAML path pattern exclude-projects', () async {
       log.start('EXCL_MY02', 'master YAML path pattern exclude-projects');
       final masterPath = p.join(ws.workspaceRoot, 'buildkit_master.yaml');
+
+      // Master YAML `exclude-projects` path patterns are glob-matched against
+      // each project's path *relative to the execution root* (anchored — see
+      // filter_pipeline._matchesRelativePath / AA7). A literal 'core/*' is
+      // therefore anchored at the root and matches nothing in this nested
+      // checkout (core projects live at 'tom_ai/core/...'), so the old
+      // assertion `isNot(startsWith('core/'))` was satisfied without the
+      // exclusion ever firing — a vacuous pass (AC3, follow-up of AA10).
+      //
+      // Harden it: capture a real baseline, derive the actual core-container
+      // path from it, exclude that container's children, and assert those
+      // projects are genuinely removed versus the baseline.
+
+      // --- Baseline: true no-exclusion project set (delete any leftover
+      //     master YAML from a prior test first). ---
+      final masterFile = File(masterPath);
+      if (masterFile.existsSync()) masterFile.deleteSync();
+      final baseline = parseListOutput(await runToolList('dependencies'))
+          .where((line) => !line.startsWith('->'))
+          .toList();
+      final coreBaseline = coreProjectsIn(baseline);
+      log.expectation(
+        'baseline has core projects to exclude (${coreBaseline.length})',
+        coreBaseline.isNotEmpty,
+      );
+      expect(
+        coreBaseline,
+        isNotEmpty,
+        reason:
+            'EXCL_MY02 needs at least one core project in the baseline to '
+            'exercise the exclusion; found none — check the fixture layout.',
+      );
+
+      // Derive the core container (e.g. 'tom_ai/core') and exclude everything
+      // beneath it with '<container>/**' — see coreContainerPattern. The '**'
+      // glob matches core projects at any depth (direct children like
+      // 'tom_ai/core/tom_core_kernel' and deeper ones like
+      // 'tom_ai/core/tom_core_samples/core_client_sample').
+      final pattern = coreContainerPattern(coreBaseline);
+
       File(masterPath).writeAsStringSync('''
 navigation:
   exclude:
@@ -729,26 +971,48 @@ navigation:
     - 'ai_build/**'
     - 'zom_workspaces/**'
   exclude-projects:
-    - 'core/*'
+    - '$pattern'
 
 versioner:
   variable-prefix: testDefault
 ''');
 
-      final stdout = await runToolList('dependencies');
-      final projects = parseListOutput(stdout);
-      bool allExcluded = true;
-      for (final proj in projects) {
-        if (proj.startsWith('core/')) allExcluded = false;
+      final excluded = parseListOutput(await runToolList('dependencies'))
+          .where((line) => !line.startsWith('->'))
+          .toList();
+
+      // Every core project present in the baseline must now be gone.
+      for (final coreProj in coreBaseline) {
         expect(
-          proj,
-          isNot(startsWith('core/')),
-          reason: 'core/ excluded by master YAML path pattern',
+          excluded,
+          isNot(contains(coreProj)),
+          reason:
+              "$coreProj should be excluded by master YAML path pattern "
+              "'$pattern'",
         );
       }
+      final coreStillPresent = coreProjectsIn(excluded);
       log.expectation(
-        'no core/ projects (master YAML path pattern)',
-        allExcluded,
+        'all core projects removed by master YAML path pattern',
+        coreStillPresent.isEmpty,
+      );
+      expect(coreStillPresent, isEmpty);
+
+      // Non-core projects must survive: the exclusion removed something, not
+      // everything (guards against an over-broad pattern or an empty scan).
+      log.expectation(
+        'non-core projects remain (${excluded.length} of ${baseline.length})',
+        excluded.isNotEmpty && excluded.length < baseline.length,
+      );
+      expect(
+        excluded,
+        isNotEmpty,
+        reason: 'non-core projects should remain after excluding core',
+      );
+      expect(
+        excluded.length,
+        lessThan(baseline.length),
+        reason: 'the core exclusion must actually remove projects',
       );
     });
   });

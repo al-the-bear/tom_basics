@@ -8,6 +8,7 @@
 @TestOn('vm')
 library;
 
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:test/test.dart';
@@ -117,6 +118,45 @@ void main() {
 
       final result = BuildOrderComputer.computeBuildOrder(paths);
       expect(result, isNull);
+    });
+
+    test(
+        'BO-COMP-7: computeBuildOrderResult reports cycle participants [2026-07-05]',
+        () {
+      createProject('cycle_a', deps: ['cycle_b']);
+      createProject('cycle_b', deps: ['cycle_a']);
+      createProject('standalone');
+
+      final paths = [
+        '${tempDir.path}/cycle_a',
+        '${tempDir.path}/cycle_b',
+        '${tempDir.path}/standalone',
+      ];
+
+      final result = BuildOrderComputer.computeBuildOrderResult(paths);
+      expect(result.hasCycle, isTrue);
+      expect(result.order, isNull);
+      // Both cycle members are reported; the acyclic project is not.
+      expect(result.cycleParticipants, containsAll(['cycle_a', 'cycle_b']));
+      expect(result.cycleParticipants, isNot(contains('standalone')));
+    });
+
+    test(
+        'BO-COMP-8: computeBuildOrderResult has no cycle for acyclic graph [2026-07-05]',
+        () {
+      createProject('proj_a');
+      createProject('proj_b', deps: ['proj_a']);
+
+      final paths = [
+        '${tempDir.path}/proj_b',
+        '${tempDir.path}/proj_a',
+      ];
+
+      final result = BuildOrderComputer.computeBuildOrderResult(paths);
+      expect(result.hasCycle, isFalse);
+      expect(result.cycleParticipants, isEmpty);
+      final names = result.order!.map((p) => p.split('/').last).toList();
+      expect(names, equals(['proj_a', 'proj_b']));
     });
 
     test('BO-COMP-5: External deps are ignored [2026-02-20]', () {
@@ -317,5 +357,74 @@ void main() {
       // Just verify all three are present
       expect(names, containsAll(['lib_core', 'lib_utils', 'app']));
     });
+
+    test(
+        'BO-TRAV-4: cyclic deps warn on stderr and fall back to scan order [2026-07-05]',
+        () async {
+      // Introduce a cycle: lib_core now depends on app (app already depends
+      // on lib_utils which depends on lib_core) → app → lib_utils → lib_core → app.
+      File('${tempDir.path}/lib_core/pubspec.yaml').writeAsStringSync(
+        'name: lib_core\ndependencies:\n  app:\n    path: ../app\n',
+      );
+
+      final names = <String>[];
+      final err = StringBuffer();
+      await IOOverrides.runZoned(
+        () async {
+          await BuildBase.traverse(
+            info: ProjectTraversalInfo(
+              scan: tempDir.path,
+              recursive: true,
+              executionRoot: tempDir.path,
+              buildOrder: true,
+            ),
+            requiredNatures: {FsFolder},
+            run: (ctx) async {
+              names.add(ctx.name);
+              return true;
+            },
+          );
+        },
+        stderr: () => _CaptureStdout(err),
+      );
+
+      // All projects still processed (graceful fallback, not a crash).
+      expect(names, containsAll(['lib_core', 'lib_utils', 'app']));
+      // A clear cycle diagnostic was emitted.
+      final diag = err.toString();
+      expect(diag.toLowerCase(), contains('circular'));
+      expect(diag, contains('scan order'));
+      // The cycle members are named in the diagnostic.
+      expect(diag, contains('lib_core'));
+      expect(diag, contains('app'));
+    });
   });
+}
+
+/// Minimal [Stdout] stub that captures written strings into a [StringBuffer],
+/// used to assert on stderr diagnostics via [IOOverrides.runZoned]. Only the
+/// write methods are meaningful; everything else is stubbed out.
+class _CaptureStdout implements Stdout {
+  _CaptureStdout(this._buffer);
+
+  final StringBuffer _buffer;
+
+  @override
+  void writeln([Object? object = '']) => _buffer.writeln(object);
+
+  @override
+  void write(Object? object) => _buffer.write(object);
+
+  @override
+  void writeAll(Iterable<dynamic> objects, [String separator = '']) =>
+      _buffer.writeAll(objects, separator);
+
+  @override
+  void writeCharCode(int charCode) => _buffer.writeCharCode(charCode);
+
+  @override
+  Encoding encoding = utf8;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => null;
 }

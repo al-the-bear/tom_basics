@@ -1,16 +1,67 @@
 # Git Guide Mode Design
 
-This document describes the guided mode (`-g` / `--guide`) for git commands in BuildKit.
+This document describes the **target design** for the guided mode (`-g` /
+`--guide`) of git commands in BuildKit. The flows below (`gitcommit -g`,
+`gitpull -g`, …) are the *intended* end-state, not the current behaviour — see
+the status table for what actually ships today.
 
 ## Implementation Status
 
+> **Reality check (2026-07-06).** The git guided flows are now **wired and
+> shipping**. `buildkit`'s entrypoint pre-parses `--guide` (`bin/buildkit.dart`),
+> runs the matching interactive flow, resolves the answers into the exact option
+> flags the git executor already understands, then re-dispatches through
+> `ToolRunner.runToCompletion`. All 16 git commands have a flow, each unit-tested
+> by driving a `ScriptedPromptDriver` and asserting the resolved flags
+> (`BK-GITGUIDE-*`). A cancelled or declined flow executes nothing. This table
+> reflects the *true* state as of AD6.
+
 | Component | Status |
 |-----------|--------|
-| `--guide` flag on all git commands | ✅ Implemented |
-| `GuidedMode` utility class | ✅ Implemented |
-| `ProjectGroupPicker` for scope selection | ✅ Implemented |
-| `gitcommit -g` full flow | ✅ Implemented |
-| Other git commands `-g` | ⏳ Pending (flag added, flow not implemented) |
+| `--guide` flag parsed by the arg parser | ✅ Implemented |
+| `GuidedMode` utility class | ✅ Implemented — driver-injectable + unit-tested (`BK-GUIDE-*`) |
+| `PromptDriver` abstraction (`DcliPromptDriver` / `ScriptedPromptDriver`) | ✅ Implemented — makes guided flows testable |
+| `ProjectGroupPicker` for scope selection | ✅ Implemented — driver-injectable + unit-tested (`BK-PGP-*`) |
+| `GuidedGitFlows` — flow-per-command → resolved flags | ✅ Implemented + unit-tested (`BK-GITGUIDE-*`) |
+| `buildkit` dispatch of `--guide` → flow → re-dispatch | ✅ Implemented (`bin/buildkit.dart`; pure helpers `targetCommand`/`rewriteArgs` unit-tested) |
+| `gitcommit -g` full flow | ✅ Implemented (`BK-GITGUIDE-4..8`) |
+| Other git commands `-g` (all 16) | ✅ Implemented (`BK-GITGUIDE-*`) |
+
+### Architecture: resolve-then-delegate
+
+Each guided flow is **I/O-free logic** that maps menu/confirm/input answers to
+the CLI option flags the corresponding git executor already reads
+(`GuidedGitFlows.resolve('gitcommit')` → `['--message', 'msg', '--push']`). The
+dispatcher strips `-g` from the original argv, appends the resolved flags, and
+re-runs the tool through the normal runner — so guided mode reuses the tested
+per-repo git executors instead of duplicating any git logic. Because the flow
+logic never touches a terminal, every flow (and the pure dispatch helpers) is
+covered without a live TTY. The only untested seam is the thin `DcliPromptDriver`
+terminal binding, which is exercised interactively.
+
+## Testing guided flows (PromptDriver)
+
+Guided-mode flow logic is decoupled from terminal I/O through the
+`PromptDriver` abstraction (`lib/src/guided/prompt_driver.dart`):
+
+- **`DcliPromptDriver`** — the default; performs real terminal I/O via `dcli`.
+- **`ScriptedPromptDriver`** — a test double that replays a fixed list of
+  answers in order. Menu answers may be a **1-based index** into the presented
+  options or an exact option label; confirm answers parse `y`/`yes`/`true`;
+  ask answers are returned verbatim (empty → the prompt default). Running out
+  of scripted answers throws a `StateError` so a mis-scripted test fails loudly
+  instead of hanging on real input.
+
+`GuidedMode` takes an optional `PromptDriver` (`GuidedMode({PromptDriver?
+driver})`), defaulting to `DcliPromptDriver`. The scope picker follows the same
+pattern: `ProjectGroupPicker({PromptDriver? driver})` and the top-level
+`pickProjectScopes({..., PromptDriver? driver})` both default to the real
+terminal driver and accept a scripted one. Tests inject a
+`ScriptedPromptDriver` to drive menu/multi-select/confirm/input flows
+deterministically (see `test/guided/guided_mode_test.dart` and
+`test/guided/project_group_picker_test.dart`). New guided flows built under the
+dispatch epic must follow this pattern so their non-interactive logic is
+covered without a live TTY.
 
 ## Overview
 
@@ -655,7 +706,7 @@ Choose [1-6]:
 
 ### Menu Selection
 
-Uses `interact` package's `Select` component:
+Uses `GuidedMode.menu` (single-select via the `PromptDriver`):
 
 ```
 What files to stage?
@@ -670,7 +721,7 @@ Use arrow keys to navigate, Enter to select
 
 ### Confirmation
 
-Uses `interact` package's `Confirm` component:
+Uses `GuidedMode.confirm`:
 
 ```
 Proceed? [Y/n]: 
@@ -681,7 +732,8 @@ Proceed? [Y/n]:
 
 ### Selection Lists
 
-Uses `interact` package's `MultiSelect` component:
+Uses the toggle-menu multi-select in `GuidedMode.multiSelect` /
+`ProjectGroupPicker`:
 
 ```
 Select scope (Space to toggle, Enter to confirm):
@@ -692,10 +744,9 @@ Select scope (Space to toggle, Enter to confirm):
   [x] Tests
 ```
 
-Keys (provided by interact):
-- Space - Toggle selection
-- Up/Down - Navigate
-- Enter - Confirm
+Keys:
+- Enter on an item - Toggle selection
+- Choose "Done" - Confirm the current selection
 
 ### File/Folder Trees
 
@@ -721,36 +772,31 @@ final paths = selection.getFilePaths();
 
 ## Implementation Notes
 
-### Library: interact
+### Prompt I/O: GuidedMode + PromptDriver
 
-Guided mode uses the `interact` package for cross-platform interactive prompts:
+Guided mode performs all prompts through `GuidedMode`, which delegates raw I/O
+to an injectable `PromptDriver` (`DcliPromptDriver` for the real terminal,
+`ScriptedPromptDriver` in tests). Flows never call the terminal directly, which
+is what makes them unit-testable:
 
 ```dart
-import 'package:interact/interact.dart';
+import '../guided/guided.dart';
 
-// Single select menu
-final choice = Select(
-  prompt: 'What files to stage?',
-  options: ['All files (git add -A)', 'Tracked only', 'By project scope'],
-).interact();
+final gm = GuidedMode(); // real terminal; inject a ScriptedPromptDriver in tests
 
-// Multi-select with checkboxes
-final scopes = MultiSelect(
-  prompt: 'Select scope',
-  options: ['Complete project', 'Code only', 'Examples', 'Tests'],
-  defaults: [true, false, false, false],
-).interact();
+// Single select menu (returns index; -1 on Cancel)
+final choice = gm.menu('What files to stage?',
+    ['All modified files (git add -A)', 'Only already-staged files']);
+
+// Multi-select with checkboxes (ProjectGroupPicker / pickProjectScopes)
+final scopes = pickProjectScopes(prompt: 'Select scope');
 
 // Confirmation
-final proceed = Confirm(
-  prompt: 'Execute commands?',
-  defaultValue: true,
-).interact();
+final proceed = gm.confirm('Execute commands?', defaultYes: true);
 
-// Text input
-final message = Input(
-  prompt: 'Commit message',
-).interact();
+// Text input (with optional validator)
+final message = gm.input('Commit message',
+    validator: (v) => v.trim().isNotEmpty);
 ```
 
 ### Project Scopes
@@ -771,6 +817,8 @@ Implementation in `lib/src/guided/`:
 | File | Purpose |
 |------|---------|---|
 | `guided_mode.dart` | `GuidedMode` class with menu, multiSelect, confirm, input, showPreview |
+| `prompt_driver.dart` | `PromptDriver` abstraction (`DcliPromptDriver` / `ScriptedPromptDriver`) |
+| `guided_git_flows.dart` | `GuidedGitFlows` — flow-per-git-command → resolved option flags + dispatch helpers |
 | `project_group_picker.dart` | `ProjectGroupPicker` for project scope selection |
 | `guided.dart` | Barrel export |
 

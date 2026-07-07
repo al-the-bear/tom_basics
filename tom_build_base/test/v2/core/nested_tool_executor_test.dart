@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:test/test.dart';
 import 'package:tom_build_base/tom_build_base_v2.dart';
 
@@ -241,6 +243,77 @@ void main() {
         expect(str, contains('astgen'));
         expect(str, contains('standalone'));
       });
+    });
+
+    group('execute (streaming path)', () {
+      // These spawn a real child binary through the streaming path. Output is
+      // inherited by the parent's stdio (not capturable here); the assertable
+      // contract is that the child's exit code maps to ItemResult. POSIX-only:
+      // the test fixtures are shell scripts.
+      late Directory tmp;
+
+      setUp(() {
+        tmp = Directory.systemTemp.createTempSync('nte_exec_');
+      });
+
+      tearDown(() {
+        if (tmp.existsSync()) tmp.deleteSync(recursive: true);
+      });
+
+      String writeScript(String name, int exitCode) {
+        final file = File('${tmp.path}/$name');
+        // Ignores all forwarded args (--nested, …) and just exits.
+        file.writeAsStringSync('#!/bin/sh\necho "NESTED_RAN"\nexit $exitCode\n');
+        Process.runSync('chmod', ['+x', file.path]);
+        return file.path;
+      }
+
+      CommandContext contextAt(String path) => CommandContext(
+            fsFolder: FsFolder(path: path),
+            natures: const [],
+            executionRoot: path,
+          );
+
+      test(
+        'BB-NTE-15: exit 0 → ItemResult.success [2026-06-30]',
+        () async {
+          final binary = writeScript('ok_tool', 0);
+          final executor = NestedToolExecutor(
+            binary: binary,
+            hostCommandName: 'ok_tool',
+            isStandalone: true,
+          );
+
+          final result = await executor.execute(
+            contextAt(tmp.path),
+            const CliArgs(),
+          );
+
+          expect(result.success, isTrue);
+        },
+        skip: Platform.isWindows ? 'POSIX shell-script fixture' : null,
+      );
+
+      test(
+        'BB-NTE-16: non-zero exit → ItemResult.failure with code [2026-06-30]',
+        () async {
+          final binary = writeScript('fail_tool', 3);
+          final executor = NestedToolExecutor(
+            binary: binary,
+            hostCommandName: 'fail_tool',
+            isStandalone: true,
+          );
+
+          final result = await executor.execute(
+            contextAt(tmp.path),
+            const CliArgs(),
+          );
+
+          expect(result.success, isFalse);
+          expect(result.error, contains('3'));
+        },
+        skip: Platform.isWindows ? 'POSIX shell-script fixture' : null,
+      );
     });
   });
 }

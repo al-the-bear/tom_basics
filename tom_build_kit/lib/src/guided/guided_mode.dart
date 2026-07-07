@@ -1,12 +1,13 @@
-/// Guided mode utilities using DCli package.
+/// Guided mode utilities.
 ///
-/// Provides interactive prompts for BuildKit CLI tools.
-/// This is a DCli-based replacement for the interact package.
+/// Provides interactive prompts for BuildKit CLI tools. Prompt I/O is
+/// delegated to an injectable [PromptDriver] (real terminal by default), so the
+/// flow logic is testable with a [ScriptedPromptDriver].
 library;
 
 import 'dart:io';
 
-import 'package:dcli/dcli.dart' as dcli;
+import 'prompt_driver.dart';
 
 /// Result of a guided mode operation.
 enum GuidedResult {
@@ -22,8 +23,18 @@ enum GuidedResult {
 
 /// Helper class for guided mode interactions.
 ///
-/// Uses DCli for cross-platform interactive prompts.
+/// Delegates raw prompt I/O to a [PromptDriver] so flows work against a real
+/// terminal in production and against scripted answers in tests.
 class GuidedMode {
+  /// Creates a guided-mode helper.
+  ///
+  /// [driver] defaults to a [DcliPromptDriver] (real terminal). Pass a
+  /// [ScriptedPromptDriver] in tests to drive flows deterministically.
+  GuidedMode({PromptDriver? driver})
+      : _driver = driver ?? const DcliPromptDriver();
+
+  final PromptDriver _driver;
+
   /// Show a single-select menu and return selected index.
   ///
   /// Returns -1 if cancelled.
@@ -35,8 +46,8 @@ class GuidedMode {
   }) {
     final allOptions = showCancel ? [...options, 'Cancel'] : options;
 
-    // DCli menu returns the selected item, not the index
-    final result = dcli.menu(
+    // The driver returns the selected item, not the index.
+    final result = _driver.menu(
       prompt,
       options: allOptions,
       defaultOption: allOptions[defaultIndex],
@@ -85,7 +96,7 @@ class GuidedMode {
       displayOptions.add('── Done ──');
       displayOptions.add('── Cancel ──');
 
-      final result = dcli.menu(prompt, options: displayOptions);
+      final result = _driver.menu(prompt, options: displayOptions);
 
       final idx = displayOptions.indexOf(result);
 
@@ -108,7 +119,7 @@ class GuidedMode {
 
   /// Show a confirmation prompt (Y/n or y/N).
   bool confirm(String prompt, {bool defaultYes = true}) {
-    return dcli.confirm(prompt, defaultValue: defaultYes);
+    return _driver.confirm(prompt, defaultValue: defaultYes);
   }
 
   /// Show a text input prompt.
@@ -121,7 +132,7 @@ class GuidedMode {
     // DCli's ask doesn't support custom validators directly,
     // so we implement validation manually
     while (true) {
-      final result = dcli.ask(prompt, defaultValue: defaultValue);
+      final result = _driver.ask(prompt, defaultValue: defaultValue);
       if (validator == null || validator(result)) {
         return result;
       }
@@ -131,7 +142,7 @@ class GuidedMode {
 
   /// Show a password input prompt (hidden text).
   String password(String prompt) {
-    return dcli.ask(prompt, hidden: true);
+    return _driver.ask(prompt, hidden: true);
   }
 
   /// Show a command preview box before execution.
@@ -225,6 +236,6 @@ class GuidedMode {
 
   /// Wait for Enter key to continue.
   void waitForEnter([String message = 'Press Enter to continue...']) {
-    dcli.ask(message, defaultValue: '');
+    _driver.ask(message, defaultValue: '');
   }
 }

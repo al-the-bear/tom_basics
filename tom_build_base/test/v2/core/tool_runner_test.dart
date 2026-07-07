@@ -278,6 +278,70 @@ void main() {
       });
 
       test(
+        'BB-RUN-59: Emits bash completion for --completion bash [2026-07-05]',
+        () async {
+          final output = StringBuffer();
+          final runner = ToolRunner(tool: testTool, output: output);
+
+          final result = await runner.run(['--completion', 'bash']);
+
+          expect(result.success, isTrue);
+          final script = output.toString();
+          expect(script, contains('# Bash completion for testtool'));
+          expect(script, contains('complete -F _testtool_completions testtool'));
+          // Reflects the tool's actual commands/options.
+          expect(script, contains(':simple'));
+          expect(script, contains('--verbose'));
+        },
+      );
+
+      test(
+        'BB-RUN-60: Emits zsh completion for --completion=zsh [2026-07-05]',
+        () async {
+          final output = StringBuffer();
+          final runner = ToolRunner(tool: testTool, output: output);
+
+          // `=`-joined value form.
+          final result = await runner.run(['--completion=zsh']);
+
+          expect(result.success, isTrue);
+          final script = output.toString();
+          expect(script, contains('#compdef testtool'));
+          expect(script, contains(':simple:'));
+        },
+      );
+
+      test(
+        'BB-RUN-61: Emits fish completion for --completion fish [2026-07-05]',
+        () async {
+          final output = StringBuffer();
+          final runner = ToolRunner(tool: testTool, output: output);
+
+          final result = await runner.run(['--completion', 'fish']);
+
+          expect(result.success, isTrue);
+          final script = output.toString();
+          expect(script, contains('# Fish completion for testtool'));
+          expect(script, contains('complete -c testtool'));
+        },
+      );
+
+      test(
+        'BB-RUN-62: Fails with non-zero for unknown --completion shell '
+        '[2026-07-05]',
+        () async {
+          final output = StringBuffer();
+          final runner = ToolRunner(tool: testTool, output: output);
+
+          final result = await runner.run(['--completion', 'powershell']);
+
+          expect(result.success, isFalse);
+          expect(output.toString(), contains('unknown shell'));
+          expect(output.toString(), contains('bash, zsh, fish'));
+        },
+      );
+
+      test(
         'BB-RUN-18: Shows command help for :command --help [2026-02-12]',
         () async {
           final output = StringBuffer();
@@ -412,6 +476,189 @@ void main() {
               .map((entry) => entry.split('|').first)
               .toSet();
           expect(folders.length, equals(2));
+        } finally {
+          Directory.current = previousCwd;
+          if (tempRoot.existsSync()) {
+            await tempRoot.delete(recursive: true);
+          }
+        }
+      });
+
+      // AC2: the --project path guards (within-root + existence) must also
+      // cover a --project placed AFTER the command name, which lands in the
+      // per-command args rather than the global projectPatterns.
+      test('BB-RUN-63: per-command --project non-existent path is rejected '
+          '[2026-07-05]', () async {
+        final tempRoot = await Directory.systemTemp.createTemp('bb_pcguard_');
+        final previousCwd = Directory.current.path;
+        final output = StringBuffer();
+        try {
+          final projectA = Directory('${tempRoot.path}/a_proj')..createSync();
+          File('${projectA.path}/pubspec.yaml').writeAsStringSync(
+            'name: a_proj\nversion: 1.0.0\nenvironment:\n  sdk: ^3.0.0\n',
+          );
+
+          final executor = TrackingExecutor();
+          final runner = ToolRunner(
+            tool: testTool,
+            output: output,
+            executors: {'traverse': executor},
+          );
+
+          Directory.current = tempRoot.path;
+          final result = await runner.run([
+            '--root',
+            tempRoot.path,
+            ':traverse',
+            '--project',
+            'sub/nonexistent',
+          ]);
+
+          expect(result.success, isFalse,
+              reason: 'a non-existent per-command --project path must fail');
+          expect(output.toString().toLowerCase(), contains('not found'));
+          expect(executor.calls, isEmpty,
+              reason: 'traversal must not run when the guard rejects the path');
+        } finally {
+          Directory.current = previousCwd;
+          if (tempRoot.existsSync()) {
+            await tempRoot.delete(recursive: true);
+          }
+        }
+      });
+
+      test('BB-RUN-64: per-command --project absolute path outside root is '
+          'rejected [2026-07-05]', () async {
+        final tempRoot = await Directory.systemTemp.createTemp('bb_pcguard_');
+        final outsideDir = await Directory.systemTemp.createTemp('bb_outside_');
+        final previousCwd = Directory.current.path;
+        final output = StringBuffer();
+        try {
+          final projectA = Directory('${tempRoot.path}/a_proj')..createSync();
+          File('${projectA.path}/pubspec.yaml').writeAsStringSync(
+            'name: a_proj\nversion: 1.0.0\nenvironment:\n  sdk: ^3.0.0\n',
+          );
+
+          final executor = TrackingExecutor();
+          final runner = ToolRunner(
+            tool: testTool,
+            output: output,
+            executors: {'traverse': executor},
+          );
+
+          Directory.current = tempRoot.path;
+          final result = await runner.run([
+            '--root',
+            tempRoot.path,
+            ':traverse',
+            '--project',
+            outsideDir.path, // absolute path outside the workspace root
+          ]);
+
+          expect(result.success, isFalse,
+              reason: 'an out-of-root per-command --project must fail');
+          expect(output.toString().toLowerCase(), contains('outside'));
+          expect(executor.calls, isEmpty);
+        } finally {
+          Directory.current = previousCwd;
+          if (tempRoot.existsSync()) {
+            await tempRoot.delete(recursive: true);
+          }
+          if (outsideDir.existsSync()) {
+            await outsideDir.delete(recursive: true);
+          }
+        }
+      });
+
+      test('BB-RUN-65: valid per-command --project name is accepted and '
+          'filters traversal [2026-07-05]', () async {
+        final tempRoot = await Directory.systemTemp.createTemp('bb_pcguard_');
+        final previousCwd = Directory.current.path;
+        final output = StringBuffer();
+        try {
+          final projectA = Directory('${tempRoot.path}/a_proj')..createSync();
+          File('${projectA.path}/pubspec.yaml').writeAsStringSync(
+            'name: a_proj\nversion: 1.0.0\nenvironment:\n  sdk: ^3.0.0\n',
+          );
+          final projectB = Directory('${tempRoot.path}/b_proj')..createSync();
+          File('${projectB.path}/pubspec.yaml').writeAsStringSync(
+            'name: b_proj\nversion: 1.0.0\nenvironment:\n  sdk: ^3.0.0\n',
+          );
+
+          final orderLog = <String>[];
+          final runner = ToolRunner(
+            tool: _twoTraversalCommandsTool,
+            output: output,
+            executors: {
+              'first': _OrderTrackingExecutor('first', orderLog),
+              'second': _OrderTrackingExecutor('second', orderLog),
+            },
+          );
+
+          Directory.current = tempRoot.path;
+          final result = await runner.run([
+            '-r',
+            '--root',
+            tempRoot.path,
+            '--scan',
+            '.',
+            ':first',
+            '--project',
+            'a_proj',
+          ]);
+
+          expect(result.success, isTrue,
+              reason: 'a valid per-command --project must not be rejected');
+          expect(orderLog.any((e) => e.startsWith('a_proj|')), isTrue,
+              reason: 'traversal should run on the selected project a_proj');
+          expect(orderLog.any((e) => e.startsWith('b_proj|')), isFalse,
+              reason: 'per-command --project must still filter traversal');
+        } finally {
+          Directory.current = previousCwd;
+          if (tempRoot.existsSync()) {
+            await tempRoot.delete(recursive: true);
+          }
+        }
+      });
+
+      test('BB-RUN-66: per-command --project guard also fires in multi-command '
+          'traversal [2026-07-05]', () async {
+        final tempRoot = await Directory.systemTemp.createTemp('bb_pcguard_');
+        final previousCwd = Directory.current.path;
+        final output = StringBuffer();
+        try {
+          final projectA = Directory('${tempRoot.path}/a_proj')..createSync();
+          File('${projectA.path}/pubspec.yaml').writeAsStringSync(
+            'name: a_proj\nversion: 1.0.0\nenvironment:\n  sdk: ^3.0.0\n',
+          );
+
+          final orderLog = <String>[];
+          final runner = ToolRunner(
+            tool: _twoTraversalCommandsTool,
+            output: output,
+            executors: {
+              'first': _OrderTrackingExecutor('first', orderLog),
+              'second': _OrderTrackingExecutor('second', orderLog),
+            },
+          );
+
+          Directory.current = tempRoot.path;
+          final result = await runner.run([
+            '-r',
+            '--root',
+            tempRoot.path,
+            '--scan',
+            '.',
+            ':first',
+            ':second',
+            '--project',
+            'sub/nonexistent',
+          ]);
+
+          expect(result.success, isFalse,
+              reason: 'the multi-command guard must reject the bad path too');
+          expect(output.toString().toLowerCase(), contains('not found'));
+          expect(orderLog, isEmpty);
         } finally {
           Directory.current = previousCwd;
           if (tempRoot.existsSync()) {
@@ -1354,6 +1601,104 @@ testtool:
           }
         }
       });
+    });
+
+    group('normalizeArgs', () {
+      test(
+        'BB-RUN-67: converts single-dash -help/-version at any position, '
+        'leaves other args untouched [2026-07-05]',
+        () {
+          // Canonical conversions.
+          expect(ToolRunner.normalizeArgs(['-help']), ['--help']);
+          expect(ToolRunner.normalizeArgs(['-version']), ['--version']);
+
+          // Converts at any position, not just the first token.
+          expect(
+            ToolRunner.normalizeArgs([':test', '-help']),
+            [':test', '--help'],
+          );
+          expect(
+            ToolRunner.normalizeArgs(['create', '--foo', '-version']),
+            ['create', '--foo', '--version'],
+          );
+
+          // Non-legacy forms and bare positionals are passed through as-is.
+          expect(
+            ToolRunner.normalizeArgs(['--help', 'help', 'version', '-v']),
+            ['--help', 'help', 'version', '-v'],
+          );
+
+          // Empty is returned unchanged (identity).
+          final empty = <String>[];
+          expect(identical(ToolRunner.normalizeArgs(empty), empty), isTrue);
+
+          // Idempotent: applying twice yields the same result.
+          final once = ToolRunner.normalizeArgs([':test', '-help', '-version']);
+          expect(ToolRunner.normalizeArgs(once), once);
+        },
+      );
+    });
+
+    group('runToCompletion', () {
+      test(
+        'BB-RUN-68: prints the run summary and sets exitCode per the shared '
+        'entrypoint contract [2026-07-05]',
+        () async {
+          final savedExit = exitCode;
+          try {
+            // Success, single-shot (empty summary): returns success, no summary
+            // block is printed, and the exit code is left untouched at 0.
+            exitCode = 0;
+            final okOut = StringBuffer();
+            final okResult =
+                await ToolRunner(tool: _singleExecuteTool, output: okOut)
+                    .runToCompletion(['--version']);
+            expect(okResult.success, isTrue);
+            expect(okOut.toString(), contains('1.0.0'));
+            expect(okOut.toString(), isNot(contains('error(s) in')));
+            expect(exitCode, 0,
+                reason: 'a successful run must not set a failure exit code');
+
+            // Failure via traversal (non-empty summary): returns failure, the
+            // summary is printed with a leading blank line, and exitCode = 1.
+            // Uses a command whose nature is a DartProjectFolder so the temp
+            // project is actually processed (and the executor is invoked).
+            exitCode = 0;
+            final tempRoot =
+                await Directory.systemTemp.createTemp('bb_runtocomp_');
+            final previousCwd = Directory.current.path;
+            try {
+              final proj = Directory('${tempRoot.path}/a_proj')..createSync();
+              File('${proj.path}/pubspec.yaml').writeAsStringSync(
+                'name: a_proj\nversion: 1.0.0\nenvironment:\n  sdk: ^3.0.0\n',
+              );
+
+              final failOut = StringBuffer();
+              final runner = ToolRunner(
+                tool: _singleExecuteTool,
+                output: failOut,
+                executors: {'execute': TrackingExecutor(shouldSucceed: false)},
+              );
+
+              Directory.current = tempRoot.path;
+              final failResult = await runner
+                  .runToCompletion(['--root', tempRoot.path, ':execute']);
+
+              expect(failResult.success, isFalse);
+              expect(failOut.toString(), contains('error(s) in'));
+              expect(exitCode, 1,
+                  reason: 'a failed run must set exitCode = 1');
+            } finally {
+              Directory.current = previousCwd;
+              if (tempRoot.existsSync()) {
+                await tempRoot.delete(recursive: true);
+              }
+            }
+          } finally {
+            exitCode = savedExit;
+          }
+        },
+      );
     });
   });
 

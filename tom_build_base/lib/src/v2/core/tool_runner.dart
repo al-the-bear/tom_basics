@@ -6,6 +6,7 @@ import 'package:yaml/yaml.dart';
 import '../../console_encoding.dart';
 import 'cli_arg_parser.dart';
 import 'command_definition.dart';
+import 'completion_generator.dart';
 import 'console_markdown_zone.dart';
 import 'help_generator.dart';
 import 'macro_expansion.dart';
@@ -269,10 +270,18 @@ class ToolRunner {
 
   /// Normalize legacy/alternative flag forms before parsing.
   ///
-  /// Converts:
-  /// - `-version` → `--version` (single-dash long form)
-  /// - `-help` → `--help` (single-dash long form)
-  static List<String> _normalizeArgs(List<String> args) {
+  /// Converts single-dash long-form flags to their canonical double-dash form,
+  /// at any position in [args]:
+  /// - `-version` → `--version`
+  /// - `-help` → `--help`
+  ///
+  /// [run] applies this automatically after macro expansion. It is also exposed
+  /// publicly so tools that pre-parse arguments *before* delegating to [run]
+  /// (e.g. to detect a TUI mode, or to early-exit for help/version before
+  /// loading credentials) can apply the identical normalization instead of
+  /// maintaining their own duplicate helper. Idempotent; returns [args]
+  /// unchanged when empty or when there is nothing to convert.
+  static List<String> normalizeArgs(List<String> args) {
     if (args.isEmpty) return args;
     return args.map((arg) {
       if (arg == '-version') return '--version';
@@ -348,6 +357,38 @@ class ToolRunner {
     );
   }
 
+  /// Run the tool to completion, applying the shared CLI entrypoint contract.
+  ///
+  /// This folds the identical `run → print summary → set exit code` tail that
+  /// every tool's `main` repeated (buildkit/testkit/issuekit) into a single
+  /// shared implementation, so the process-exit semantics defined in
+  /// `doc/cli_error_handling.md` cannot drift per tool. It:
+  ///
+  /// 1. runs [args] via [run];
+  /// 2. writes `result.renderRunSummary()` (with a leading blank line) to
+  ///    [output] when it is non-empty — empty for single-shot commands that
+  ///    traverse nothing (`--version`, `--help`);
+  /// 3. sets the process [exitCode] to `1` when the run failed — and **never**
+  ///    calls `exit()`, so `main` can return and the VM drains buffered output
+  ///    first (a bare `exit(1)` can truncate the summary just written).
+  ///
+  /// Returns the [ToolResult] so callers may inspect it further. A successful
+  /// run leaves [exitCode] untouched (it does not reset it to `0`).
+  Future<ToolResult> runToCompletion(List<String> args) async {
+    final result = await run(args);
+
+    final summary = result.renderRunSummary();
+    if (summary.isNotEmpty) {
+      output.writeln('\n$summary');
+    }
+
+    if (!result.success) {
+      exitCode = 1;
+    }
+
+    return result;
+  }
+
   /// Run the tool with command-line arguments.
   Future<ToolResult> run(List<String> args) async {
     // Ensure non-ASCII tool/subprocess output renders correctly on Windows
@@ -373,7 +414,7 @@ class ToolRunner {
     final expandedAt = checkpoint();
 
     // Normalize legacy flags before parsing.
-    final normalizedArgs = _normalizeArgs(expandedArgs);
+    final normalizedArgs = normalizeArgs(expandedArgs);
 
     // Parse arguments
     final parser = CliArgParser(toolDefinition: tool);
@@ -395,6 +436,13 @@ class ToolRunner {
       final yaml = ToolDefinitionSerializer.toYaml(tool);
       output.write(yaml);
       return const ToolResult.success();
+    }
+
+    // --completion <shell>: emit a shell completion script and exit.
+    // Intercepted here (like --dump-definitions) so it works as a bare
+    // invocation, before any wiring, env checks, or traversal.
+    if (cliArgs.completion != null) {
+      return _handleCompletion(cliArgs.completion!);
     }
 
     final doctorRequested = _isDoctorRequested(cliArgs);
@@ -603,25 +651,11 @@ class ToolRunner {
       executionRoot = findWorkspaceRoot(Directory.current.path);
     }
 
-    // Security boundary: reject absolute --project paths outside the workspace.
-    final projectPathError = validateProjectPathsWithinRoot(
-      cliArgs.projectPatterns,
-      executionRoot,
-    );
-    if (projectPathError != null) {
-      output.writeln('Error: $projectPathError');
-      return ToolResult.failure(projectPathError);
-    }
-
-    // Reject a non-glob --project *path* that does not exist, so a mistyped
-    // path fails loudly instead of scanning, matching nothing, and exiting 0.
-    final projectExistsError = validateProjectPathsExist(
-      cliArgs.projectPatterns,
-      executionRoot,
-    );
-    if (projectExistsError != null) {
-      output.writeln('Error: $projectExistsError');
-      return ToolResult.failure(projectExistsError);
+    // Reject any --project path (global *or* per-command) that is outside the
+    // workspace or that names a non-glob path which does not exist.
+    final projectPathsError = _guardProjectPaths(cliArgs, executionRoot);
+    if (projectPathsError != null) {
+      return ToolResult.failure(projectPathsError);
     }
 
     final configDefaults = _loadTraversalDefaults(executionRoot);
@@ -876,6 +910,46 @@ class ToolRunner {
     return _runWithTraversal(executor, cmd, cliArgs);
   }
 
+  /// Every `--project` pattern that must pass the path guards.
+  ///
+  /// A `--project` placed *before* the command name lands in the global
+  /// [CliArgs.projectPatterns]; one placed *after* a command name (e.g.
+  /// `:dependencies --project _build/x`) lands in
+  /// `commandArgs[cmd].projectPatterns`. Both forms select which projects the
+  /// tool operates on, so both must be guarded — otherwise the per-command form
+  /// silently no-ops on a mistyped or out-of-workspace path.
+  List<String> _allProjectPatterns(CliArgs cliArgs) => [
+        ...cliArgs.projectPatterns,
+        for (final cmdArgs in cliArgs.commandArgs.values)
+          ...cmdArgs.projectPatterns,
+      ];
+
+  /// Guard every `--project` path (global and per-command) against the
+  /// workspace boundary and, for non-glob paths, existence.
+  ///
+  /// Within-root is validated before existence so the existence check only ever
+  /// sees in-root absolute paths (as its contract documents). On the first
+  /// offending pattern the error is written to [output] and returned; a return
+  /// of null means every `--project` path is valid.
+  String? _guardProjectPaths(CliArgs cliArgs, String executionRoot) {
+    final patterns = _allProjectPatterns(cliArgs);
+
+    final withinRootError =
+        validateProjectPathsWithinRoot(patterns, executionRoot);
+    if (withinRootError != null) {
+      output.writeln('Error: $withinRootError');
+      return withinRootError;
+    }
+
+    final existsError = validateProjectPathsExist(patterns, executionRoot);
+    if (existsError != null) {
+      output.writeln('Error: $existsError');
+      return existsError;
+    }
+
+    return null;
+  }
+
   /// Run executor with traversal.
   Future<ToolResult> _runWithTraversal(
     CommandExecutor executor,
@@ -893,27 +967,12 @@ class ToolRunner {
       executionRoot = findWorkspaceRoot(Directory.current.path);
     }
 
-    // Security boundary: reject absolute --project paths outside the workspace
-    // before any scanning happens, so the tool never silently no-ops on a path
-    // it must not operate on.
-    final projectPathError = validateProjectPathsWithinRoot(
-      cliArgs.projectPatterns,
-      executionRoot,
-    );
-    if (projectPathError != null) {
-      output.writeln('Error: $projectPathError');
-      return ToolResult.failure(projectPathError);
-    }
-
-    // Reject a non-glob --project *path* that does not exist, so a mistyped
-    // path fails loudly instead of scanning, matching nothing, and exiting 0.
-    final projectExistsError = validateProjectPathsExist(
-      cliArgs.projectPatterns,
-      executionRoot,
-    );
-    if (projectExistsError != null) {
-      output.writeln('Error: $projectExistsError');
-      return ToolResult.failure(projectExistsError);
+    // Reject any --project path (global *or* per-command) that is outside the
+    // workspace or that names a non-glob path which does not exist, before any
+    // scanning happens, so the tool never silently no-ops on such a path.
+    final projectPathsError = _guardProjectPaths(cliArgs, executionRoot);
+    if (projectPathsError != null) {
+      return ToolResult.failure(projectPathsError);
     }
 
     // Load config defaults from buildkit_master.yaml navigation section
@@ -1247,6 +1306,30 @@ class ToolRunner {
   /// Look up an executor by command name (checks both native and wired).
   CommandExecutor? _findExecutor(String cmdName) {
     return executors[cmdName] ?? _wiredExecutors[cmdName];
+  }
+
+  /// Handle `--completion <shell>`: print a shell completion script.
+  ///
+  /// Intercepted early (alongside `--dump-definitions`, before lazy wiring), so
+  /// it emits from the tool's own command/option definitions. Returns a failure
+  /// (non-zero exit) for an unknown shell so automation can distinguish a bad
+  /// request from a successful emission.
+  ToolResult _handleCompletion(String shellName) {
+    final shell = switch (shellName.toLowerCase()) {
+      'bash' => ShellType.bash,
+      'zsh' => ShellType.zsh,
+      'fish' => ShellType.fish,
+      _ => null,
+    };
+    if (shell == null) {
+      output.writeln(
+        "Error: unknown shell '$shellName' for --completion. "
+        'Supported shells: bash, zsh, fish.',
+      );
+      return const ToolResult.failure('Unknown completion shell');
+    }
+    output.write(tool.generateCompletion(shell));
+    return const ToolResult.success();
   }
 
   /// Handle help display with wired commands included.

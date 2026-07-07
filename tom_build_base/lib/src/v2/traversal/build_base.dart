@@ -146,12 +146,24 @@ abstract class BuildBase {
             .where((f) => File('${f.path}/pubspec.yaml').existsSync())
             .map((f) => f.path)
             .toList();
-        final globalOrder =
-            BuildOrderComputer.computeBuildOrder(
-              allDartPaths,
-              includeDev: pi.includeDevDependencies,
-            ) ??
-            [];
+        final orderResult = BuildOrderComputer.computeBuildOrderResult(
+          allDartPaths,
+          includeDev: pi.includeDevDependencies,
+        );
+        if (orderResult.hasCycle) {
+          // A dependency cycle means no valid build order exists. Rather than
+          // silently proceeding in scan order, warn clearly and name the
+          // projects involved so the cycle can be broken.
+          final participants = orderResult.cycleParticipants.isEmpty
+              ? 'the scanned projects'
+              : orderResult.cycleParticipants.join(', ');
+          stderr.writeln(
+            'Warning: circular dependency detected among $participants; '
+            'a valid build order could not be computed. Falling back to '
+            'scan order for build-order traversal.',
+          );
+        }
+        final globalOrder = orderResult.order ?? [];
         ordered = sorter.sortByBuildOrder(contexts, (c) => c.path, globalOrder);
       default:
         ordered = contexts;

@@ -5,15 +5,18 @@ library;
 
 import 'dart:io';
 
-import 'package:dcli/dcli.dart' as dcli;
 import 'package:path/path.dart' as p;
 
-/// Multi-select using DCli menu with toggle pattern.
+import 'prompt_driver.dart';
+
+/// Multi-select using a menu with toggle pattern.
 ///
-/// Returns list of selected indices.
+/// Prompt I/O is delegated to [driver] so selection logic is testable with a
+/// [ScriptedPromptDriver]. Returns list of selected indices.
 List<int> _multiSelect({
   required String prompt,
   required List<String> options,
+  required PromptDriver driver,
   List<bool>? defaults,
 }) {
   final selected = List<bool>.filled(options.length, false);
@@ -33,7 +36,7 @@ List<int> _multiSelect({
       '--- Done ---',
     ];
 
-    final choice = dcli.menu(
+    final choice = driver.menu(
       'Toggle selection:',
       options: menuOptions,
       defaultOption: menuOptions.last,
@@ -137,13 +140,17 @@ class ProjectGroupPicker {
   ProjectGroupPicker({
     required this.workspaceRoot,
     this.changedProjects,
-  });
+    PromptDriver? driver,
+  }) : _driver = driver ?? const DcliPromptDriver();
 
   /// Workspace root directory
   final String workspaceRoot;
 
   /// Optional list of projects with changes (for smart defaults)
   final List<String>? changedProjects;
+
+  /// Prompt I/O driver (real terminal by default; scripted in tests).
+  final PromptDriver _driver;
 
   /// Show the project group picker.
   ///
@@ -157,7 +164,7 @@ class ProjectGroupPicker {
       'Select specific projects',
       'Cancel',
     ];
-    final scopeChoice = scopeOptions.indexOf(dcli.menu(
+    final scopeChoice = scopeOptions.indexOf(_driver.menu(
       'What to include?',
       options: scopeOptions,
       defaultOption: scopeOptions[0],
@@ -196,6 +203,7 @@ class ProjectGroupPicker {
           prompt: 'Select projects',
           options: changedProjects!.map((p) => _formatProjectName(p)).toList(),
           defaults: List.filled(changedProjects!.length, true),
+          driver: _driver,
         );
 
         if (selected.isEmpty) return null;
@@ -203,7 +211,7 @@ class ProjectGroupPicker {
         selectedProjects = selected.map((i) => changedProjects![i]).toList();
 
         // Ask for scope selection mode
-        final perProject = dcli.confirm(
+        final perProject = _driver.confirm(
           'Select scope per project?',
           defaultValue: false,
         );
@@ -276,6 +284,7 @@ class ProjectGroupPicker {
       prompt: prompt,
       options: options,
       defaults: [true, ...List.filled(options.length - 1, false)],
+      driver: _driver,
     );
 
     if (selected.isEmpty) return null;
@@ -295,11 +304,15 @@ class ProjectGroupPicker {
 
 /// Quick scope picker for simpler use cases.
 ///
-/// Returns list of [ProjectScope]s selected, or null if cancelled.
+/// Prompt I/O is delegated to [driver] (real terminal by default) so the
+/// selection logic is testable with a [ScriptedPromptDriver]. Returns list of
+/// [ProjectScope]s selected, or null if cancelled.
 List<ProjectScope>? pickProjectScopes({
   String prompt = 'What to include?',
   bool allowMultiple = true,
+  PromptDriver? driver,
 }) {
+  final effectiveDriver = driver ?? const DcliPromptDriver();
   final options = ProjectScope.values
       .map((s) => '${s.label} (${s.description})')
       .toList();
@@ -310,12 +323,13 @@ List<ProjectScope>? pickProjectScopes({
       prompt: prompt,
       options: options.sublist(0, options.length - 1), // Exclude Cancel
       defaults: [true, false, false, false],
+      driver: effectiveDriver,
     );
 
     if (selected.isEmpty) return null;
     return selected.map((i) => ProjectScope.values[i]).toList();
   } else {
-    final choice = dcli.menu(
+    final choice = effectiveDriver.menu(
       prompt,
       options: options,
       defaultOption: options[0],

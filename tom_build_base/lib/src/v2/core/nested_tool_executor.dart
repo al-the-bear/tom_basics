@@ -55,35 +55,23 @@ class NestedToolExecutor extends CommandExecutor {
       isStandalone: isStandalone,
     );
 
-    final result = await runBinary(binary, cmdArgs, context.path);
+    // Stream the nested tool's stdout/stderr live, so its own output (progress,
+    // `--show-cache-status` reports, warnings) reaches the user as it happens.
+    // This matches how the pipeline path runs nested tools
+    // (`ToolPipelineExecutor._runToolCommand` → `runBinaryStreaming`); the
+    // traversal path used to capture-and-conditionally-echo, which silently
+    // swallowed nested output on quiet successful runs and made nested options
+    // look like no-ops. Failure is determined by the child's exit code.
+    final exitCode = await runBinaryStreaming(binary, cmdArgs, context.path);
 
-    final stdout = result.stdout.toString().trim();
-    final stderr = result.stderr.toString().trim();
-    final failed = result.exitCode != 0;
-    final combined = '${stdout.toLowerCase()}\n${stderr.toLowerCase()}';
-    final hasSignalWords = combined.contains('error') ||
-        combined.contains('warn') ||
-        combined.contains('fail');
-
-    if (args.verbose || failed || hasSignalWords) {
-      if (stdout.isNotEmpty) {
-        // ignore: avoid_print
-        print(stdout);
-      }
-      if (stderr.isNotEmpty) {
-        // ignore: avoid_print
-        print(stderr);
-      }
-    }
-
-    if (!failed) {
+    if (exitCode == 0) {
       return ItemResult.success(path: context.path, name: context.name);
     } else {
       final resolved = resolveBinary(binary);
       return ItemResult.failure(
         path: context.path,
         name: context.name,
-        error: '$resolved exited with code ${result.exitCode}',
+        error: '$resolved exited with code $exitCode',
       );
     }
   }

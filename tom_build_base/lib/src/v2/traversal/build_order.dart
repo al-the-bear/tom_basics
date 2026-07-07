@@ -9,6 +9,28 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 import 'package:yaml/yaml.dart';
 
+/// Outcome of a build-order computation.
+///
+/// Carries either a successfully computed [order] (dependencies first) or,
+/// when a circular dependency prevents ordering, the set of
+/// [cycleParticipants] so callers can produce an actionable diagnostic instead
+/// of silently falling back to scan order.
+class BuildOrderResult {
+  /// Ordered project paths (dependencies first), or `null` if a cycle was
+  /// detected and no valid order exists.
+  final List<String>? order;
+
+  /// Names of the projects that could not be ordered because they participate
+  /// in (or are blocked by) a dependency cycle. Empty when [order] is non-null.
+  final List<String> cycleParticipants;
+
+  /// Creates a result with the given [order] and [cycleParticipants].
+  const BuildOrderResult(this.order, this.cycleParticipants);
+
+  /// Whether a circular dependency was detected (i.e. [order] is `null`).
+  bool get hasCycle => order == null;
+}
+
 /// Computes build order for Dart projects using topological sort.
 ///
 /// Uses Kahn's algorithm to sort projects so that dependencies are
@@ -21,7 +43,21 @@ class BuildOrderComputer {
   ///
   /// Returns ordered list of paths (dependencies first), or null if
   /// a circular dependency is detected.
+  ///
+  /// Use [computeBuildOrderResult] instead when you also need to know which
+  /// projects participate in a detected cycle (for diagnostics).
   static List<String>? computeBuildOrder(
+    List<String> allProjectPaths, {
+    bool includeDev = false,
+  }) =>
+      computeBuildOrderResult(allProjectPaths, includeDev: includeDev).order;
+
+  /// Compute build order and report cycle participants on failure.
+  ///
+  /// Like [computeBuildOrder], but returns a [BuildOrderResult] so callers can
+  /// distinguish a genuine cycle from an empty order and surface an actionable
+  /// diagnostic naming the projects involved.
+  static BuildOrderResult computeBuildOrderResult(
     List<String> allProjectPaths, {
     bool includeDev = false,
   }) {
@@ -107,11 +143,18 @@ class BuildOrderComputer {
     }
 
     if (result.length != allProjectPaths.length) {
-      // Circular dependency detected
-      return null;
+      // Circular dependency detected. The nodes whose in-degree never reached
+      // zero are the ones participating in (or blocked by) the cycle; name
+      // them so callers can produce an actionable diagnostic.
+      final unresolved = allProjectPaths
+          .where((path) => (inDegree[path] ?? 0) > 0)
+          .map((path) => pathToName[path] ?? path)
+          .toList()
+        ..sort();
+      return BuildOrderResult(null, unresolved);
     }
 
-    return result;
+    return BuildOrderResult(result, const []);
   }
 
   /// Get project name from pubspec.yaml, or folder basename as fallback.

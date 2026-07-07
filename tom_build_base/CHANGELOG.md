@@ -1,3 +1,90 @@
+## 2.6.32
+
+### Added
+
+- **Shell completion delivery (`--completion <shell>`)** — every tool built on
+  the v2 `ToolRunner` now accepts a global `--completion bash|zsh|fish` option
+  that prints a shell completion script generated from the tool's own command
+  and option definitions, then exits. Intercepted early (alongside
+  `--dump-definitions`), so it runs anywhere without traversal. An unknown shell
+  prints an error and exits non-zero. The generation itself
+  (`CompletionGenerator`) already existed; this wires it into the framework so
+  the capability is delivered uniformly with no per-tool code. See
+  `doc/cli_shell_completion.md`.
+- **`BuildOrderComputer.computeBuildOrderResult`** — a cycle-aware variant of
+  `computeBuildOrder` returning a `BuildOrderResult` (the ordered paths, or the
+  names of the projects participating in a dependency cycle). `computeBuildOrder`
+  is retained and now delegates to it.
+- **`ToolRunner.normalizeArgs`** — the legacy single-dash flag normalization
+  (`-help` → `--help`, `-version` → `--version`, at any position) that `run`
+  already applied internally is now exposed as a public static method. Tools
+  that pre-parse arguments *before* delegating to `run` (e.g. testkit's `--tui`
+  detection, issuekit's pre-token help/version early-exit) can call the shared
+  method instead of carrying their own duplicate helper. Covered by BB-RUN-67.
+- **Canonical `OutputFormat` / `OutputSpec`** (`src/v2/core/output_format.dart`,
+  exported from `tom_build_base_v2.dart`) — the shared CLI output-format enum
+  (`plain`/`csv`/`json`/`md`, with `text`/`markdown` aliases) and the
+  `<format>[:<file>]` spec parser that testkit and issuekit each duplicated.
+  `OutputSpec` carries `format` + optional `filePath` (with `hasFile` and a
+  `defaultSpec` of plain→stdout), splits at the first colon so file paths may
+  contain colons, and treats a trailing empty file part (`csv:`) as "no file".
+  Consumers migrate onto it (issuekit's `filename` field reconciled to
+  `filePath`) once published. Covered by BB-OUT-1..10.
+- **`ToolRunner.runToCompletion`** — folds the shared CLI entrypoint tail
+  (`run` → print `renderRunSummary()` when non-empty → set `exitCode = 1` on
+  failure, never `exit()`) that buildkit/testkit/issuekit each repeated into a
+  single method, so the exit-code contract in `doc/cli_error_handling.md` cannot
+  drift per tool. Returns the `ToolResult`; leaves `exitCode` untouched on
+  success. Consumers collapse their tail to a single call once published.
+  Covered by BB-RUN-68.
+
+### Changed
+
+- **Build-order traversal now reports dependency cycles instead of silently
+  falling back to scan order.** Previously a circular dependency made
+  `computeBuildOrder` return `null`, which `BuildBase.traverse` swallowed with
+  `?? []`, so build-order mode quietly proceeded in scan order. It now emits a
+  clear `stderr` warning naming the projects involved in the cycle before
+  falling back, so callers can trust (and debug) execution-order semantics.
+- **Pipeline `shell`/`stdin` dry-run previews now carry a `[DRY RUN]`
+  indicator.** `ToolPipelineExecutor._runShell`/`_runStdin` previewed a dry-run
+  step under the same `[PIPELINE:shell]`/`[PIPELINE:stdin]` marker used for
+  verbose real runs, so the only cue that a step was skipped was the *absence*
+  of execution output — ambiguous, since a real command may also be silent.
+  Dry-run previews are now prefixed `[DRY RUN] [PIPELINE:shell] …` /
+  `[DRY RUN] [PIPELINE:stdin] …`, consistent with the mklink/versioner
+  executors' `[DRY RUN]` precedent; verbose real runs keep the bare marker.
+  Covered by BB-PLX-6/BB-PLX-7.
+
+### Fixed
+
+- **`--project` path guards now also cover command-level patterns.** The
+  within-root and existence guards (`validateProjectPathsWithinRoot`,
+  `validateProjectPathsExist`) were only applied to the global
+  `cliArgs.projectPatterns`, so a bad path passed *after* the command
+  (`tool :cmd --project sub/nonexistent`, which lands in
+  `commandArgs[cmd].projectPatterns`) slipped past both guards — an
+  out-of-root or non-existent path scanned, matched nothing, and exited `0`.
+  Both guard sites now validate the combined global + per-command pattern list
+  via a shared `_guardProjectPaths` helper, preserving the
+  within-root-before-existence ordering. Covered by BB-RUN-63..66.
+
+## 2.6.31
+
+### Fixed
+
+- **Nested tool output is no longer swallowed in the traversal path** — when a
+  host tool (e.g. `buildkit`) ran a wired nested tool during project traversal,
+  `NestedToolExecutor` captured the child's stdout/stderr and only echoed it
+  when `--verbose` was set, the child failed, or the output happened to contain
+  the words "error"/"warn"/"fail". On a quiet, successful run this hid all
+  legitimate output: a flag like `--show-cache-status` ran correctly but its
+  report never reached the terminal, making the option look like a no-op, and
+  per-file progress was invisible. The executor now streams the child's
+  stdout/stderr live (via `runBinaryStreaming`/`inheritStdio`), matching how the
+  pipeline path already runs nested tools (`ToolPipelineExecutor._runToolCommand`).
+  Failure is determined by the child's exit code.
+
 ## 2.6.30
 
 ### Fixed
