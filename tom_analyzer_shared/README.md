@@ -114,7 +114,7 @@ runs on desktop, server, and CLI hosts.
 | `SummaryGenerationResult` | class | Counts of generated / skipped / failed + per-package errors |
 | `SummaryCacheManager` | class | Reads/writes `.sum` files; cache paths, stats, cleanup |
 | `CacheStats` | class | Cache directory size and file count |
-| `ToolCacheLocator` | class | Resolves the shared Tom tool-cache root (env → ancestor → Dart tool dir) |
+| `ToolCacheLocator` | class | Resolves the workspace-local tool-cache root (env → workspace-root `.tom` → `<start>/.tom`) |
 
 ---
 
@@ -229,29 +229,34 @@ print(deps.hosted.map((d) => d.name));  // hosted only
 print(deps.findByName('flutter')?.cacheKey);
 ```
 
-### The shared tool cache
+### The workspace tool cache
 
-Summaries live in a **shared Tom tool-cache directory** so the same
-hosted-package summary is generated once and reused by every project and tool on
-the machine. `ToolCacheLocator.resolve` picks the root — the first branch that
-applies wins:
+Summaries live in a **workspace-local Tom tool-cache directory** — the workspace's
+`.tom/` folder — so the same hosted-package summary is generated once and reused
+by every project and tool *in that workspace*. `ToolCacheLocator.resolve` picks
+the root — the first branch that applies wins:
 
 1. **`TOM_TOOL_CACHE` environment variable** — set it to point the cache at a
    fast disk, a shared CI cache, or a RAM-backed directory.
-2. **An ancestor `.tom/tom_tool_cache` directory** — a workspace opts into a
-   repo-local shared cache simply by creating that directory; the search walks
-   up from the start directory.
-3. **`<dart-tool-dir>/tom_tool_cache`** — the machine-global fallback under the
-   platform's default Dart tool directory (`%APPDATA%\dart`,
-   `~/Library/Application Support/dart`, or `$XDG_CONFIG_HOME`/`~/.config/dart`).
+2. **The workspace root's `.tom` directory** — the search walks up from the
+   start directory to the nearest **workspace root** (a directory containing
+   `tom_workspace.yaml` or `.tom_metadata/tom_master.yaml`) and returns that
+   root's `.tom` directory as the cache root (analyzer summaries then live in
+   `.tom/analyzer-cache/`). Keying off the committed workspace-root marker rather
+   than the nearest `.tom` means nested project-level `.tom` directories never
+   fragment the cache — every tool in the tree shares the one
+   `<workspace>/.tom/analyzer-cache/`.
+3. **Workspace-local fallback `<start>/.tom`** — when no workspace-root ancestor
+   exists.
+   The resolver **never** falls back to a machine-global directory such as
+   `~/.config/dart`; the cache is always inside the workspace tree.
 
 ```dart
 final root = ToolCacheLocator.resolve(startDirectory: projectRoot);
-// e.g. /home/me/.config/dart/tom_tool_cache  (branch 3)
+// e.g. <workspace>/.tom  (branch 2 — the committed workspace .tom)
 
 // Override the resolution explicitly:
 //   TOM_TOOL_CACHE=/fast/disk/cache  → branch 1
-//   mkdir -p <repo>/.tom/tom_tool_cache → branch 2
 ```
 
 `resolve` only reads the filesystem; the directory is created lazily the first
@@ -337,7 +342,7 @@ package:tom_analyzer_shared/tom_analyzer_shared.dart   (single entry point)
         │        getCachePath / getSdkSummaryPath / getStats / clearCache
         │
         └── ToolCacheLocator  ── resolves <tool-cache> root
-                 TOM_TOOL_CACHE → ancestor .tom/tom_tool_cache → Dart tool dir
+                 TOM_TOOL_CACHE → workspace-root .tom → <start>/.tom (workspace-local)
 ```
 
 | Type | Role |

@@ -13,7 +13,6 @@ void main() {
       final resolved = ToolCacheLocator.resolve(
         startDirectory: '/some/unrelated/start',
         environment: {ToolCacheLocator.envVariable: override.path},
-        dartToolDirectory: '/should/not/be/used',
       );
 
       expect(resolved, equals(p.normalize(p.absolute(override.path))));
@@ -23,29 +22,36 @@ void main() {
       final resolved = ToolCacheLocator.resolve(
         startDirectory: '/start',
         environment: {ToolCacheLocator.envVariable: '  /a/b/../c  '},
-        dartToolDirectory: '/fallback',
       );
 
       expect(resolved, equals(p.normalize(p.absolute('/a/c'))));
     });
 
-    test('branch 1: blank env override is ignored', () {
+    test('branch 1: blank env override falls through to the workspace cache', () {
+      // With a blank override and no workspace root, resolution uses the
+      // workspace-local fallback `<start>/.tom` — never a machine-global dir.
+      final start = Directory.systemTemp.createTempSync('tcl_blank_');
+      addTearDown(() => start.deleteSync(recursive: true));
+
       final resolved = ToolCacheLocator.resolve(
-        startDirectory: '/start',
+        startDirectory: start.path,
         environment: {ToolCacheLocator.envVariable: '   '},
-        dartToolDirectory: '/fallback',
       );
 
-      expect(resolved, equals(p.join('/fallback', ToolCacheLocator.cacheDirName)));
+      expect(
+        resolved,
+        equals(p.join(
+          p.normalize(p.absolute(start.path)),
+          ToolCacheLocator.workspaceCacheDirName,
+        )),
+      );
     });
 
-    test('branch 2: discovers .tom/tom_tool_cache in an ancestor', () {
-      final root = Directory.systemTemp.createTempSync('tcl_ancestor_');
+    test('branch 2: resolves the workspace-root .tom via tom_workspace.yaml', () {
+      final root = Directory.systemTemp.createTempSync('tcl_ws_');
       addTearDown(() => root.deleteSync(recursive: true));
 
-      final cacheDir = Directory(
-        p.join(root.path, '.tom', ToolCacheLocator.cacheDirName),
-      )..createSync(recursive: true);
+      File(p.join(root.path, 'tom_workspace.yaml')).writeAsStringSync('name: ws');
 
       final deepStart = Directory(p.join(root.path, 'a', 'b', 'c'))
         ..createSync(recursive: true);
@@ -53,58 +59,105 @@ void main() {
       final resolved = ToolCacheLocator.resolve(
         startDirectory: deepStart.path,
         environment: const {},
-        dartToolDirectory: '/should/not/be/used',
       );
 
-      expect(resolved, equals(cacheDir.path));
+      // The cache root is the workspace root's `.tom`, so SummaryCacheManager
+      // writes summaries to `<workspace>/.tom/analyzer-cache/<major>/`.
+      expect(
+        resolved,
+        equals(p.join(
+          p.normalize(p.absolute(root.path)),
+          ToolCacheLocator.workspaceCacheDirName,
+        )),
+      );
     });
 
-    test('branch 3: falls back to <dartToolDirectory>/tom_tool_cache', () {
+    test('branch 2: also recognises .tom_metadata/tom_master.yaml', () {
+      final root = Directory.systemTemp.createTempSync('tcl_meta_');
+      addTearDown(() => root.deleteSync(recursive: true));
+
+      File(p.join(root.path, '.tom_metadata', 'tom_master.yaml'))
+        ..createSync(recursive: true)
+        ..writeAsStringSync('projects: []');
+
+      final deepStart = Directory(p.join(root.path, 'x', 'y'))
+        ..createSync(recursive: true);
+
+      final resolved = ToolCacheLocator.resolve(
+        startDirectory: deepStart.path,
+        environment: const {},
+      );
+
+      expect(
+        resolved,
+        equals(p.join(
+          p.normalize(p.absolute(root.path)),
+          ToolCacheLocator.workspaceCacheDirName,
+        )),
+      );
+    });
+
+    test('branch 2: a nested project .tom does NOT shadow the workspace root',
+        () {
+      // A nested project that has its own `.tom` (but no workspace marker) must
+      // not capture the cache — resolution keeps walking up to the workspace.
+      final root = Directory.systemTemp.createTempSync('tcl_nested_');
+      addTearDown(() => root.deleteSync(recursive: true));
+
+      File(p.join(root.path, 'tom_workspace.yaml')).writeAsStringSync('name: ws');
+
+      final nested = Directory(p.join(root.path, 'proj'))..createSync();
+      Directory(p.join(nested.path, ToolCacheLocator.workspaceCacheDirName))
+          .createSync(); // nested project-level .tom, no marker
+
+      final resolved = ToolCacheLocator.resolve(
+        startDirectory: nested.path,
+        environment: const {},
+      );
+
+      expect(
+        resolved,
+        equals(p.join(
+          p.normalize(p.absolute(root.path)),
+          ToolCacheLocator.workspaceCacheDirName,
+        )),
+      );
+    });
+
+    test(
+        'branch 3: falls back to <start>/.tom, never a machine-global directory',
+        () {
       final start = Directory.systemTemp.createTempSync('tcl_fallback_');
       addTearDown(() => start.deleteSync(recursive: true));
 
       final resolved = ToolCacheLocator.resolve(
         startDirectory: start.path,
         environment: const {},
-        dartToolDirectory: '/opt/dart-tool',
       );
 
       expect(
         resolved,
-        equals(p.join('/opt/dart-tool', ToolCacheLocator.cacheDirName)),
+        equals(p.join(
+          p.normalize(p.absolute(start.path)),
+          ToolCacheLocator.workspaceCacheDirName,
+        )),
       );
+      // Guard: the resolved path is inside the workspace, not under a global
+      // Dart tool / config directory.
+      expect(resolved, isNot(contains('.config')));
+      expect(resolved, isNot(contains('Application Support')));
     });
 
     test('resolve never creates the cache directory', () {
       final start = Directory.systemTemp.createTempSync('tcl_nocreate_');
       addTearDown(() => start.deleteSync(recursive: true));
-      final toolDir = p.join(start.path, 'dart-tool');
 
       final resolved = ToolCacheLocator.resolve(
         startDirectory: start.path,
         environment: const {},
-        dartToolDirectory: toolDir,
       );
 
       expect(Directory(resolved).existsSync(), isFalse);
-    });
-  });
-
-  group('ToolCacheLocator.defaultDartToolDirectory', () {
-    test('Linux uses XDG_CONFIG_HOME when set', () {
-      // Only assert the XDG branch on non-Windows/non-macOS hosts where it is
-      // reachable; on other platforms the platform branch wins.
-      if (Platform.isWindows || Platform.isMacOS) return;
-      final dir = ToolCacheLocator.defaultDartToolDirectory(
-        {'XDG_CONFIG_HOME': '/xdg/config'},
-      );
-      expect(dir, equals(p.join('/xdg/config', 'dart')));
-    });
-
-    test('Linux falls back to ~/.config/dart from HOME', () {
-      if (Platform.isWindows || Platform.isMacOS) return;
-      final dir = ToolCacheLocator.defaultDartToolDirectory({'HOME': '/home/u'});
-      expect(dir, equals(p.join('/home/u', '.config', 'dart')));
     });
   });
 }

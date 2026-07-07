@@ -1,5 +1,33 @@
 # Changelog
 
+## 0.7.0
+
+- **Workspace-local tool cache only — no machine-global fallback.**
+  `ToolCacheLocator.resolve` now resolves the tool-cache root to the workspace's
+  `.tom/` directory and **never** falls back to a machine-global location such as
+  `~/.config/dart/tom_tool_cache`. Resolution order is now: `TOM_TOOL_CACHE` env
+  override → the nearest ancestor **workspace root** (a directory containing
+  `tom_workspace.yaml` or `.tom_metadata/tom_master.yaml`), whose `.tom`
+  sub-directory is the cache root → `<start>/.tom` when no workspace-root
+  ancestor exists. Analyzer summaries therefore live in
+  `<workspace>/.tom/analyzer-cache/<analyzer-major>/`, matching the committed
+  `.tom/analyzer-cache/` marker.
+- **Keys off the workspace-root marker, not the nearest `.tom`.** Because the
+  Tom tree contains nested project-level `.tom` directories (with no workspace
+  marker), searching for the nearest `.tom` would fragment the cache into a
+  nested project. Identifying the *workspace root* by its committed marker means
+  every tool in the tree shares the single `<workspace>/.tom/analyzer-cache/`.
+- **Fixes the stale-global-cache trap.** The 0.6.0 ancestor branch searched for
+  `.tom/tom_tool_cache`, which never matched the committed `.tom/analyzer-cache/`
+  layout, so resolution silently fell through to the machine-global Dart tool
+  directory. Path-dependent workspaces now keep their cache in-tree where it
+  belongs.
+- **Breaking:** removed `ToolCacheLocator.defaultDartToolDirectory`, the
+  `cacheDirName` constant, and the `dartToolDirectory` parameter of `resolve`
+  (the machine-global fallback they served no longer exists). Added the
+  `workspaceCacheDirName` constant (`'.tom'`). No workspace consumer referenced
+  the removed symbols.
+
 ## 0.6.0
 
 - **Shared tool-cache root for the summary cache.** `SummaryCacheManager` now

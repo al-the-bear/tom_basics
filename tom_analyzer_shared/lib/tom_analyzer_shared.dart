@@ -5,9 +5,10 @@
 /// - [PackageDependency] / [DependencySet] — resolved dependency metadata.
 /// - [DependencyResolver] — parses `pubspec.lock` and locates hosted/SDK
 ///   package source trees in the pub cache and the Flutter SDK.
-/// - [ToolCacheLocator] — resolves the shared Tom tool-cache directory
-///   (`TOM_TOOL_CACHE` → ancestor `.tom/tom_tool_cache` → Dart tool dir).
-/// - [SummaryCacheManager] — reads and writes `.sum` files under the shared
+/// - [ToolCacheLocator] — resolves the workspace-local Tom tool-cache directory
+///   (`TOM_TOOL_CACHE` → the workspace-root marker's `.tom` → `<start>/.tom`;
+///   never a machine-global directory).
+/// - [SummaryCacheManager] — reads and writes `.sum` files under the workspace
 ///   tool cache's `analyzer-cache/<analyzer-major>/` sub-directory.
 /// - [analyzerMajorVersion] — the analyzer major this build targets; used to
 ///   partition the cache so analyzer upgrades cannot read stale bundles.

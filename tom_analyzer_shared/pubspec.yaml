@@ -1,6 +1,6 @@
 name: tom_analyzer_shared
 description: Shared analyzer-summary caching infrastructure reused by Tom code generators (reflection, d4rt bridges, etc).
-version: 0.6.0
+version: 0.7.0
 repository: https://github.com/al-the-bear/tom_basics
 homepage: https://github.com/al-the-bear/tom_basics/tree/main/tom_analyzer_shared
 topics:
