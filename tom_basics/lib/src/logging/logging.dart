@@ -265,23 +265,28 @@ class TomLogger {
   /// Note: Per-name log levels will not work when this is disabled.
   static bool globalSettingDetermineCaller = true;
 
-  TomLogLevel _logLevel = TomLogLevel.production;
+  /// LIFO stack of log levels. The top of the stack ([List.last]) is always
+  /// the current effective level, so [logLevel] derives from it and the two
+  /// can never diverge. The stack always holds at least the base level.
   final List<TomLogLevel> _levelStack = [TomLogLevel.production];
 
-  /// The current effective log level.
-  TomLogLevel get logLevel => _logLevel;
+  /// The current effective log level — the top of the level stack.
+  TomLogLevel get logLevel => _levelStack.last;
 
-  /// Sets the current log level.
+  /// Sets the current log level, replacing the top of the level stack.
   ///
-  /// Messages with levels not matching [l] will be filtered out.
+  /// Messages with levels not matching [l] will be filtered out. This changes
+  /// the *current* scope in place; a subsequent [popLogLevel] restores the
+  /// level that was active before the most recent [pushLogLevel], not this one.
   void setLogLevel(TomLogLevel l) {
-    _logLevel = l;
+    _levelStack[_levelStack.length - 1] = l;
   }
 
   /// Pushes a new log level onto the level stack.
   ///
   /// Use this for temporarily changing the log level (e.g., for debugging
-  /// a specific section of code). Call [popLogLevel] to restore the previous level.
+  /// a specific section of code). The current level is preserved beneath the
+  /// new one; call [popLogLevel] to restore it.
   ///
   /// Example:
   /// ```dart
@@ -291,16 +296,15 @@ class TomLogger {
   /// ```
   void pushLogLevel(TomLogLevel l) {
     _levelStack.add(l);
-    _logLevel = l;
   }
 
-  /// Restores the previous log level from the stack.
+  /// Restores the log level that was active before the most recent
+  /// [pushLogLevel] by removing the top of the stack (LIFO).
   ///
-  /// Does nothing if the stack only contains the initial level.
+  /// Does nothing if the stack only contains the base level.
   void popLogLevel() {
     if (_levelStack.length > 1) {
-      _levelStack.removeAt(0);
-      _logLevel = _levelStack.first;
+      _levelStack.removeLast();
     }
   }
 
@@ -549,7 +553,7 @@ class TomLogger {
 
   @override
   String toString() {
-    return "TomLogger $_logLevel $globalSettingDetermineCaller $_levelStack $_nameLevels";
+    return "TomLogger $logLevel $globalSettingDetermineCaller $_levelStack $_nameLevels";
   }
 }
 

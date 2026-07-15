@@ -59,4 +59,74 @@ void main() {
       expect(exception.stackTrace, isNotEmpty);
     });
   });
+
+  group('TomLogger log-level stack', () {
+    test('setLogLevel replaces the current effective level', () {
+      final logger = TomLogger();
+      logger.setLogLevel(TomLogLevel.info);
+      expect(
+        logger.logLevel.levelPattern,
+        equals(TomLogLevel.info.levelPattern),
+      );
+    });
+
+    test('pushLogLevel sets the level, popLogLevel restores the level '
+        'that was active before the push', () {
+      final logger = TomLogger();
+      logger.setLogLevelByName('info');
+      logger.pushLogLevel(TomLogLevel.trace);
+      expect(
+        logger.logLevel.levelPattern,
+        equals(TomLogLevel.trace.levelPattern),
+      );
+
+      logger.popLogLevel();
+      // The pre-push level (info) must be restored, not left at trace.
+      expect(
+        logger.logLevel.levelPattern,
+        equals(TomLogLevel.info.levelPattern),
+      );
+    });
+
+    test('nested pushes pop back in LIFO order', () {
+      final logger = TomLogger();
+      logger.setLogLevel(TomLogLevel.warn);
+
+      logger.pushLogLevel(TomLogLevel.info);
+      logger.pushLogLevel(TomLogLevel.debug);
+      logger.pushLogLevel(TomLogLevel.trace);
+      expect(
+        logger.logLevel.levelPattern,
+        equals(TomLogLevel.trace.levelPattern),
+      );
+
+      logger.popLogLevel();
+      expect(
+        logger.logLevel.levelPattern,
+        equals(TomLogLevel.debug.levelPattern),
+      );
+
+      logger.popLogLevel();
+      expect(
+        logger.logLevel.levelPattern,
+        equals(TomLogLevel.info.levelPattern),
+      );
+
+      logger.popLogLevel();
+      expect(
+        logger.logLevel.levelPattern,
+        equals(TomLogLevel.warn.levelPattern),
+      );
+    });
+
+    test('popLogLevel on the base level is a no-op', () {
+      final logger = TomLogger();
+      logger.setLogLevel(TomLogLevel.production);
+      logger.popLogLevel();
+      expect(
+        logger.logLevel.levelPattern,
+        equals(TomLogLevel.production.levelPattern),
+      );
+    });
+  });
 }
