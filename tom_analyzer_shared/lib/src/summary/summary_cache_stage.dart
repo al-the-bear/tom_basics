@@ -26,10 +26,7 @@ class SummaryCacheResult {
   /// could be generated or found.
   final String? sdkSummaryPath;
 
-  const SummaryCacheResult({
-    this.summaryPaths,
-    this.sdkSummaryPath,
-  });
+  const SummaryCacheResult({this.summaryPaths, this.sdkSummaryPath});
 
   /// Whether this result carries any usable summary at all.
   bool get isEmpty => summaryPaths == null && sdkSummaryPath == null;
@@ -84,16 +81,20 @@ Future<SummaryCacheResult?> runSummaryCacheStage(
   }
 
   var cacheable = dependencies.where((d) => d.isCacheable).toList();
-  out('Found ${dependencies.length} dependencies '
-      '(${cacheable.length} cacheable).');
+  out(
+    'Found ${dependencies.length} dependencies '
+    '(${cacheable.length} cacheable).',
+  );
 
   if (cacheOnlyPackages.isNotEmpty) {
     cacheable = cacheable
         .where((d) => cacheOnlyPackages.contains(d.name))
         .toList();
     if (verbose) {
-      out('Filtering to ${cacheable.length} packages: '
-          '${cacheOnlyPackages.join(', ')}');
+      out(
+        'Filtering to ${cacheable.length} packages: '
+        '${cacheOnlyPackages.join(', ')}',
+      );
     }
   }
 
@@ -123,6 +124,32 @@ Future<SummaryCacheResult?> runSummaryCacheStage(
 
   final sdkSummaryPath = cache.getSdkSummaryPath();
   final hasSdkSummary = await File(sdkSummaryPath).exists();
+
+  // Dependency-closure fingerprints. A summary keyed only by its own
+  // `name@version` is silently stale when a *transitive* dependency changes
+  // version (the classic case: `tom_crypto@1.0.0.sum` linked against
+  // `tom_basics@1.0.0` after `tom_basics` moved to `1.0.1`). Compute the
+  // expected closure fingerprint for every package, delete any cached bundle
+  // whose recorded fingerprint no longer matches, and regenerate it against
+  // the current graph. Bundles with no fingerprint sidecar (produced before
+  // this mechanism existed) are treated as stale so the cache self-heals.
+  final fingerprints = await generator.computeDependencyFingerprints(cacheable);
+
+  var invalidated = 0;
+  for (final dep in cacheable) {
+    final expected = fingerprints[dep.name] ?? '';
+    if (await cache.hasSummary(dep.name, dep.version) &&
+        !await cache.isSummaryFresh(dep.name, dep.version, expected)) {
+      await cache.deleteSummary(dep.name, dep.version);
+      invalidated++;
+    }
+  }
+  if (invalidated > 0) {
+    out(
+      'Invalidated $invalidated stale summaries (dependency version '
+      'change); they will be regenerated.',
+    );
+  }
 
   final missing = await cache.findMissingSummaries(cacheable);
 
@@ -155,15 +182,36 @@ Future<SummaryCacheResult?> runSummaryCacheStage(
     out('All ${cacheable.length} summaries are cached.');
   }
 
+  // Record the dependency-closure fingerprint next to every present bundle so
+  // the next run can detect a transitive version change. Idempotent overwrite.
+  for (final dep in cacheable) {
+    if (await cache.hasSummary(dep.name, dep.version)) {
+      await cache.writeFingerprint(
+        dep.name,
+        dep.version,
+        fingerprints[dep.name] ?? '',
+      );
+    }
+  }
+
+  // Load only fresh bundles. A summary whose regeneration failed above is
+  // still stale — loading it would crash the analyzer with "Missing library",
+  // so skip it and let the caller fall back to scanning that package's source.
   final summaryPaths = <String>[];
   for (final dep in cacheable) {
     final cachePath = cache.getCachePath(dep.name, dep.version);
-    if (await File(cachePath).exists()) {
+    final expected = fingerprints[dep.name] ?? '';
+    if (await cache.isSummaryFresh(dep.name, dep.version, expected)) {
       summaryPaths.add(cachePath);
       if (verbose) {
         // Per-summary trace so a run can be audited for actual cache use.
         out('  using ${dep.name}@${dep.version}.sum from cache at $cachePath');
       }
+    } else if (await File(cachePath).exists()) {
+      out(
+        '  Warning: skipping stale summary ${dep.name}@${dep.version} '
+        '(could not be refreshed for the current dependency graph).',
+      );
     }
   }
 
@@ -191,8 +239,10 @@ Future<void> _printCacheStatus(
   final stats = await cacheManager.getStats();
   out('Summary Cache Status:');
   out('  Cache directory: ${cacheManager.cacheDirectory}');
-  out('  Total cached: ${stats.summaryCount} files '
-      '(${_formatBytes(stats.totalSizeBytes)})');
+  out(
+    '  Total cached: ${stats.summaryCount} files '
+    '(${_formatBytes(stats.totalSizeBytes)})',
+  );
   out('  Dart SDK version: ${cacheManager.dartSdkVersion}');
   out('');
 
@@ -211,8 +261,10 @@ Future<void> _printCacheStatus(
   }
 
   out('');
-  out('  Summary: $cached cached, $missing missing, '
-      '${cacheable.length} total cacheable');
+  out(
+    '  Summary: $cached cached, $missing missing, '
+    '${cacheable.length} total cacheable',
+  );
 }
 
 String _formatBytes(int bytes) {

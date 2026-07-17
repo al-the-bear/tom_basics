@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.7.2
+
+- **Summary bundles invalidated when a *transitive* dependency changes
+  version (dependency-closure fingerprinting).** A `.sum` bundle keyed only by
+  its own `name@version` was silently stale when a package deeper in its
+  dependency closure moved version — the classic case being `tom_crypto@1.0.0`
+  linked against `tom_basics@1.0.0` (whose `TomBaseException` lived at
+  `src/exception_base.dart`) after `tom_basics` moved to `1.0.1`
+  (`src/exceptions/exception_base.dart`). Loading the stale bundle threw
+  `Invalid argument(s): Missing library: package:tom_basics/src/exception_base.dart`
+  when the analyzer lazily linked a subclass's supertype; code generators
+  swallow that error and silently drop the affected classes (observed: the JWT
+  bridge surface disappearing from `tom_core_d4rt` on regeneration).
+  `SummaryCacheManager` now writes a `{package}@{version}.sum.deps` sidecar
+  recording the sorted versioned closure each bundle was linked against.
+  `runSummaryCacheStage` computes the expected closure fingerprint for every
+  cacheable package, deletes and regenerates any bundle whose recorded
+  fingerprint no longer matches (bundles with no sidecar — produced before this
+  mechanism existed — are treated as stale so the cache self-heals), and never
+  *loads* a bundle that is not fingerprint-fresh. `--rebuild-cache` is no longer
+  needed to recover from a transitive-version-change poisoning.
+
 ## 0.7.1
 
 - **Cache partitioned by Dart SDK version, not just analyzer major.**

@@ -123,8 +123,10 @@ class SummaryGenerator {
       return false;
     }
 
-    stdout.writeln('    Analyzing ${dependency.name}@${dependency.version} '
-        '(${libraryFiles.length} libraries)...');
+    stdout.writeln(
+      '    Analyzing ${dependency.name}@${dependency.version} '
+      '(${libraryFiles.length} libraries)...',
+    );
 
     // Analyze and create summary bundle
     final summaryBytes = await _analyzeAndCreateBundle(
@@ -148,8 +150,10 @@ class SummaryGenerator {
     );
 
     final sizeKB = (summaryBytes.length / 1024).toStringAsFixed(1);
-    stdout.writeln('    Cached ${dependency.name}@${dependency.version} '
-        '($sizeKB KB)');
+    stdout.writeln(
+      '    Cached ${dependency.name}@${dependency.version} '
+      '($sizeKB KB)',
+    );
 
     return true;
   }
@@ -171,9 +175,12 @@ class SummaryGenerator {
     // from `Platform.resolvedExecutable` only works under `dart run`, not for an
     // AOT-compiled tool (where the executable is the tool itself). Fall back to
     // the executable-relative path so behaviour under `dart run` is unchanged.
-    final sdkPath = resolveDartSdkPath() ??
+    final sdkPath =
+        resolveDartSdkPath() ??
         p.dirname(p.dirname(Platform.resolvedExecutable));
-    stdout.writeln('  Generating SDK summary (Dart ${cacheManager.dartSdkVersion})...');
+    stdout.writeln(
+      '  Generating SDK summary (Dart ${cacheManager.dartSdkVersion})...',
+    );
 
     // Check for Flutter embedder (sky_engine provides dart:ui)
     String? embedderYamlPath;
@@ -223,8 +230,7 @@ class SummaryGenerator {
     String? sdkSummaryPath,
     void Function(String package, int current, int total)? onProgress,
   }) async {
-    final cacheable =
-        dependencies.where((d) => d.isCacheable).toList();
+    final cacheable = dependencies.where((d) => d.isCacheable).toList();
 
     // Build topological generation order so dependencies come first
     final ordered = await _buildGenerationOrder(cacheable);
@@ -285,6 +291,66 @@ class SummaryGenerator {
     );
   }
 
+  /// Computes, for each cacheable package, a fingerprint of the exact
+  /// versioned dependency closure its summary is linked against.
+  ///
+  /// The fingerprint is the sorted `name@version` list of a package's
+  /// transitive cacheable dependency closure under the current resolution.
+  /// Two runs that resolve the same closure produce the same fingerprint; a
+  /// version change anywhere in a package's closure changes its fingerprint,
+  /// which invalidates the cached summary even though the package's own
+  /// `name@version` (and hence its `.sum` filename) is unchanged.
+  ///
+  /// This is what prevents the "stale transitive dependency" cache poison: a
+  /// bundle such as `tom_crypto@1.0.0.sum` linked against `tom_basics@1.0.0`
+  /// must be regenerated once `tom_basics` resolves to `1.0.1`, or loading it
+  /// fails with "Missing library" for the moved source file.
+  ///
+  /// Dependency edges come from each package's `pubspec.yaml` `dependencies`
+  /// section (see [_readPackageDependencies]); versions come from the resolved
+  /// [dependencies] list. Cycles are tolerated (the closure is a set).
+  Future<Map<String, String>> computeDependencyFingerprints(
+    List<PackageDependency> dependencies,
+  ) async {
+    final cacheable = dependencies.where((d) => d.isCacheable).toList();
+    final nameToDep = <String, PackageDependency>{
+      for (final d in cacheable) d.name: d,
+    };
+
+    // Direct dependency edges restricted to the cacheable set.
+    final directDeps = <String, Set<String>>{};
+    for (final dep in cacheable) {
+      final path = await _resolvePackagePath(dep);
+      final pkgDeps = path != null
+          ? _readPackageDependencies(path)
+          : <String>[];
+      directDeps[dep.name] = pkgDeps.where(nameToDep.containsKey).toSet();
+    }
+
+    // Transitive closure per package via BFS. `add` returning false on a
+    // revisit terminates cycles.
+    Set<String> closureOf(String start) {
+      final result = <String>{};
+      final queue = <String>[...?directDeps[start]];
+      while (queue.isNotEmpty) {
+        final next = queue.removeLast();
+        if (result.add(next)) {
+          queue.addAll(directDeps[next] ?? const <String>{});
+        }
+      }
+      return result;
+    }
+
+    final fingerprints = <String, String>{};
+    for (final dep in cacheable) {
+      final closure = closureOf(
+        dep.name,
+      ).map((n) => '$n@${nameToDep[n]!.version}').toList()..sort();
+      fingerprints[dep.name] = closure.join('\n');
+    }
+    return fingerprints;
+  }
+
   /// Resolves the filesystem path for a dependency.
   Future<String?> _resolvePackagePath(PackageDependency dependency) async {
     switch (dependency.source) {
@@ -342,9 +408,7 @@ class SummaryGenerator {
     }
 
     final writerResult = bundleWriter.finish();
-    return bundleBuilder.finish(
-      resolutionBytes: writerResult.resolutionBytes,
-    );
+    return bundleBuilder.finish(resolutionBytes: writerResult.resolutionBytes);
   }
 
   /// Analyzes a package and creates its summary bundle.
@@ -373,7 +437,9 @@ class SummaryGenerator {
   }) async {
     AnalysisContextCollectionImpl? collection;
     final dartToolDir = Directory(p.join(packagePath, '.dart_tool'));
-    final packageConfigFile = File(p.join(dartToolDir.path, 'package_config.json'));
+    final packageConfigFile = File(
+      p.join(dartToolDir.path, 'package_config.json'),
+    );
     final hadDartTool = dartToolDir.existsSync();
     final hadPackageConfig = packageConfigFile.existsSync();
 
@@ -382,12 +448,13 @@ class SummaryGenerator {
       if (!dartToolDir.existsSync()) {
         dartToolDir.createSync(recursive: true);
       }
-      
+
       // Get language version from pubspec.yaml if possible
       final languageVersion = _getLanguageVersion(packagePath);
-      
+
       // Write a minimal package_config.json
-      final packageConfig = '''{
+      final packageConfig =
+          '''{
   "configVersion": 2,
   "packages": [
     {
@@ -406,7 +473,8 @@ class SummaryGenerator {
       // SummaryDataStore when librarySummaryPaths != null, and the SDK bundle
       // is only registered into that store via `summaryData?.addBundle(...)`.
       // Without a SummaryDataStore, dart:core is not found.
-      if (sdkSummaryPath != null || (librarySummaryPaths != null && librarySummaryPaths.isNotEmpty)) {
+      if (sdkSummaryPath != null ||
+          (librarySummaryPaths != null && librarySummaryPaths.isNotEmpty)) {
         collection = AnalysisContextCollectionImpl(
           includedPaths: [p.normalize(p.absolute(packagePath))],
           sdkSummaryPath: sdkSummaryPath,
@@ -453,7 +521,7 @@ class SummaryGenerator {
       return _createSummaryBundle(resolvedLibraries);
     } finally {
       await collection?.dispose();
-      
+
       // Clean up the temporary package_config.json
       if (!hadPackageConfig && packageConfigFile.existsSync()) {
         packageConfigFile.deleteSync();
@@ -467,7 +535,7 @@ class SummaryGenerator {
       }
     }
   }
-  
+
   /// Builds a topological generation order for package summaries.
   ///
   /// Reads each package's `pubspec.yaml` to discover its dependencies,
@@ -491,10 +559,12 @@ class SummaryGenerator {
 
     for (final dep in deps) {
       final path = await _resolvePackagePath(dep);
-      final pkgDeps =
-          path != null ? _readPackageDependencies(path) : <String>[];
-      final filtered =
-          pkgDeps.where((d) => nameToDepMap.containsKey(d)).toSet();
+      final pkgDeps = path != null
+          ? _readPackageDependencies(path)
+          : <String>[];
+      final filtered = pkgDeps
+          .where((d) => nameToDepMap.containsKey(d))
+          .toSet();
       dependsOn[dep.name] = filtered;
 
       for (final d in filtered) {
@@ -522,8 +592,7 @@ class SummaryGenerator {
         inDegree[dependent] = inDegree[dependent]! - 1;
         if (inDegree[dependent] == 0) {
           // Insert in sorted position for determinism
-          final insertIdx =
-              queue.indexWhere((s) => s.compareTo(dependent) > 0);
+          final insertIdx = queue.indexWhere((s) => s.compareTo(dependent) > 0);
           if (insertIdx < 0) {
             queue.add(dependent);
           } else {
@@ -540,9 +609,7 @@ class SummaryGenerator {
       }
     }
 
-    return sorted
-        .map((name) => nameToDepMap[name]!)
-        .toList();
+    return sorted.map((name) => nameToDepMap[name]!).toList();
   }
 
   /// Reads dependency names from a package's `pubspec.yaml`.
@@ -576,16 +643,18 @@ class SummaryGenerator {
     if (!pubspecFile.existsSync()) {
       return '2.12'; // Default to null-safety era
     }
-    
+
     final content = pubspecFile.readAsStringSync();
-    
+
     // Look for environment.sdk constraint like "sdk: ^3.0.0" or "sdk: '>=3.0.0 <4.0.0'"
-    final sdkMatch = RegExp(r'''sdk:\s*['"]?[>=^]*(\d+\.\d+)''', multiLine: true)
-        .firstMatch(content);
+    final sdkMatch = RegExp(
+      r'''sdk:\s*['"]?[>=^]*(\d+\.\d+)''',
+      multiLine: true,
+    ).firstMatch(content);
     if (sdkMatch != null) {
       return sdkMatch.group(1)!;
     }
-    
+
     return '2.12'; // Default
   }
 }
