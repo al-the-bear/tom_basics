@@ -18,19 +18,34 @@ const String _analyzerCacheSubDir = 'analyzer-cache';
 
 /// Manages the analyzer summary cache for a workspace.
 ///
-/// Summaries are stored in `<tool-cache>/analyzer-cache/<analyzer-major>/` with
+/// Summaries are stored in
+/// `<tool-cache>/analyzer-cache/<analyzer-major>/<dart-sdk-version>/` with
 /// filenames in the format `{package}@{version}.sum`, where `<tool-cache>` is
 /// the shared Tom tool-cache directory resolved by [ToolCacheLocator] (so the
 /// same hosted-package summary is reused across projects and tools). Pass an
 /// explicit [cacheDirectory] to override that resolution.
 ///
-/// The `<analyzer-major>` segment (see [analyzerMajorVersion]) partitions the
-/// cache by the major version of the `analyzer` package that produced the
-/// bundles. `.sum` files use an analyzer-version-specific binary format, so a
-/// bundle written by one analyzer major is undecodable by another (it crashes
-/// the reader). Keying the directory by analyzer major guarantees a tool only
-/// ever reads bundles its own analyzer can decode, eliminating the
-/// cross-version cache-poison that otherwise survives an analyzer upgrade.
+/// Two partition segments together prevent cross-toolchain cache poison, both
+/// necessary because `.sum` files use an analyzer-version-specific binary
+/// format that a *different* analyzer cannot decode (it crashes the reader):
+///
+/// * `<analyzer-major>` (see [analyzerMajorVersion]) partitions by the major
+///   version of the `analyzer` package that produced the bundles.
+/// * `<dart-sdk-version>` (see [dartSdkVersion]) partitions by the exact Dart
+///   SDK that produced them. This is load-bearing because the bundle format has
+///   **no stability guarantee within an analyzer major** — a point SDK upgrade
+///   can ship a format-incompatible analyzer of the same major, so keying by
+///   major alone is insufficient. Concretely, after the 2026-07-16 fleet SDK
+///   upgrade, pre-upgrade `.sum` files were read by the new analyzer and
+///   crashed with `RangeError ... StringTable` (string-table misalignment).
+///   The SDK version is the AOT-safe toolchain-identity signal (the analyzer
+///   exposes no runtime version constant, and AOT-compiled generators cannot
+///   path-sniff their own `package_config`), and it self-freshens on every SDK
+///   upgrade: a toolchain change starts from an empty partition automatically,
+///   so `--rebuild-cache` is never needed for *correctness*.
+///
+/// Keying the directory by both guarantees a tool only ever reads bundles its
+/// own toolchain produced.
 ///
 /// ## Usage
 ///
@@ -100,6 +115,7 @@ class SummaryCacheManager {
           ),
           _analyzerCacheSubDir,
           '${analyzerMajor ?? analyzerMajorVersion}',
+          this.dartSdkVersion,
         );
   }
 

@@ -61,12 +61,15 @@ void main() {
     });
 
     group('analyzer-major partitioning', () {
-      test('cache directory is nested under the analyzer major', () {
+      test('cache directory is nested under the analyzer major and SDK version',
+          () {
         // Default major comes from analyzerMajorVersion (the analyzer this
-        // package is built against).
+        // package is built against); the innermost segment is the Dart SDK
+        // version, which tracks the toolchain (see the SDK-version
+        // partitioning group below for why).
         expect(
           cacheManager.cacheDirectory,
-          endsWith(p.join('analyzer-cache', '$analyzerMajorVersion')),
+          endsWith(p.join('analyzer-cache', '$analyzerMajorVersion', '3.10.4')),
         );
         expect(cacheManager.analyzerMajor, equals(analyzerMajorVersion));
       });
@@ -86,10 +89,13 @@ void main() {
           manager8.getCachePath('async', '2.13.0'),
           isNot(equals(manager10.getCachePath('async', '2.13.0'))),
         );
-        expect(manager8.cacheDirectory, endsWith(p.join('analyzer-cache', '8')));
+        expect(
+          manager8.cacheDirectory,
+          contains(p.join('analyzer-cache', '8')),
+        );
         expect(
           manager10.cacheDirectory,
-          endsWith(p.join('analyzer-cache', '10')),
+          contains(p.join('analyzer-cache', '10')),
         );
       });
 
@@ -382,10 +388,13 @@ void main() {
         );
       });
 
-      test('different SDK versions use same cache paths', () {
-        // Currently SDK version is not embedded in cache paths.
-        // This documents the current behavior — a future change
-        // may add SDK-versioned subdirectories.
+      test('different SDK versions resolve to different cache paths', () {
+        // Poison-prevention across a toolchain upgrade: the analyzer's binary
+        // `.sum` format has no stability guarantee *within* an analyzer major,
+        // so bundles written under one Dart SDK can crash the analyzer bundled
+        // with the next SDK (observed: `RangeError ... StringTable` after the
+        // 2026-07-16 fleet SDK upgrade). The SDK version is the AOT-safe
+        // toolchain-identity signal, so it partitions the cache.
         final managerA =
             makeCacheManager(tempDir.path, dartSdkVersion: '3.8.0');
         final managerB =
@@ -393,7 +402,28 @@ void main() {
 
         final pathA = managerA.getCachePath('pkg', '1.0.0');
         final pathB = managerB.getCachePath('pkg', '1.0.0');
-        expect(pathA, equals(pathB));
+        expect(pathA, isNot(equals(pathB)));
+        expect(managerA.cacheDirectory, endsWith('3.8.0'));
+        expect(managerB.cacheDirectory, endsWith('3.10.0'));
+      });
+
+      test('a summary written under a mismatched SDK partition is not loaded',
+          () async {
+        // The explicit RCK26 requirement: a `.sum` produced by one toolchain
+        // must be invisible to a manager keyed to a different toolchain, so a
+        // Dart SDK upgrade starts from an empty partition automatically and
+        // never reads a stale, format-incompatible bundle.
+        final oldToolchain =
+            makeCacheManager(tempDir.path, dartSdkVersion: '3.8.0');
+        final newToolchain =
+            makeCacheManager(tempDir.path, dartSdkVersion: '3.10.0');
+
+        await oldToolchain.writeSummary(
+            'async', '2.13.0', Uint8List.fromList([1, 2, 3]));
+
+        expect(await newToolchain.hasSummary('async', '2.13.0'), isFalse);
+        expect(await newToolchain.loadSummary('async', '2.13.0'), isNull);
+        expect(await oldToolchain.hasSummary('async', '2.13.0'), isTrue);
       });
     });
 

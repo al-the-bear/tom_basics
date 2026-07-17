@@ -17,10 +17,14 @@
 /// analyzer major.
 ///
 /// To prevent that, [SummaryCacheManager] partitions the cache into a
-/// per-analyzer-major subdirectory (`.tom/analyzer-cache/<major>/`). Bundles
-/// written under analyzer 10 live under `.../10/` and are never read by an
-/// analyzer-8 tool (which looks under `.../8/`), so the two formats can never
-/// collide.
+/// per-analyzer-major, per-Dart-SDK subdirectory
+/// (`.tom/analyzer-cache/<major>/<dart-sdk-version>/`). Bundles written under
+/// analyzer 10 live under `.../10/` and are never read by an analyzer-8 tool
+/// (which looks under `.../8/`), so the two formats can never collide. The
+/// nested `<dart-sdk-version>` segment adds the same guarantee *within* a
+/// major, since the bundle format also drifts across point SDK upgrades that
+/// keep the analyzer major fixed (see [SummaryCacheManager] for the full
+/// rationale).
 ///
 /// The analyzer package does not expose its own marketing version as a runtime
 /// constant, and the Tom code generators that use this cache run

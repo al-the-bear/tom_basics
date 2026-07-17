@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.7.1
+
+- **Cache partitioned by Dart SDK version, not just analyzer major.**
+  `SummaryCacheManager` now stores summaries under
+  `<tool-cache>/analyzer-cache/<analyzer-major>/<dart-sdk-version>/` (previously
+  the innermost segment was the analyzer major only). The analyzer's binary
+  `.sum` format has **no stability guarantee within an analyzer major**, so a
+  point Dart SDK upgrade can ship a format-incompatible analyzer of the same
+  major. Keying only by major let a pre-upgrade bundle be read by the new
+  analyzer, which crashed with `RangeError ... StringTable` (string-table
+  misalignment) after the 2026-07-16 fleet SDK upgrade. The Dart SDK version is
+  the AOT-safe toolchain-identity signal (the analyzer exposes no runtime
+  version constant, and AOT-compiled generators cannot path-sniff their own
+  `package_config`) and self-freshens on every SDK upgrade, so a toolchain
+  change starts from an empty partition automatically — `--rebuild-cache` is
+  never needed for *correctness*.
+
 ## 0.7.0
 
 - **Workspace-local tool cache only — no machine-global fallback.**
