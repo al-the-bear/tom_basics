@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.7.4
+
+- **Removed dead pre-partition scaffolding from `SummaryCacheManager`.** The
+  `cleanOutdated()` no-op method and the two stale "check SDK version
+  compatibility from summary metadata" TODOs are all superseded by the
+  `<analyzer-major>/<dart-sdk-version>` partition key introduced in 0.7.1:
+  toolchain compatibility is now guaranteed *structurally* by the cache path, so
+  there is nothing to verify from per-summary metadata and nothing to sweep as
+  "outdated" within a partition. `cleanOutdated()` (a documented no-op with no
+  callers) is deleted rather than kept as a placeholder. Use
+  `cleanUnusedSummaries()` to prune summaries that no longer match the resolved
+  dependency set.
+
 ## 0.7.3
 
 - **Opt-in garbage collector for orphaned analyzer-cache partitions.** The cache

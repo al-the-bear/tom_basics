@@ -228,10 +228,10 @@ class SummaryCacheManager {
 
   /// Checks if a valid summary exists for the package.
   ///
-  /// A summary is considered valid if:
-  /// 1. The file exists
-  /// 2. The file is not empty
-  /// 3. The file was created with a compatible SDK version (TODO)
+  /// A summary is considered valid if the file exists and is not empty. Toolchain
+  /// (SDK / analyzer-major) compatibility is guaranteed *structurally* by the
+  /// `<analyzer-major>/<dart-sdk-version>` partition path (see the class
+  /// dartdoc), so there is nothing to verify from per-summary metadata here.
   Future<bool> hasSummary(String packageName, String version) async {
     final path = getCachePath(packageName, version);
     final file = File(path);
@@ -242,12 +242,7 @@ class SummaryCacheManager {
 
     // Check if file is not empty
     final stat = await file.stat();
-    if (stat.size == 0) {
-      return false;
-    }
-
-    // TODO: Check SDK version compatibility from summary metadata
-    return true;
+    return stat.size != 0;
   }
 
   /// Checks which dependencies are missing from the cache.
@@ -389,18 +384,6 @@ class SummaryCacheManager {
         }
       }
     }
-  }
-
-  /// Clears outdated summaries created with a different SDK version.
-  ///
-  /// Since SDK version is not currently embedded in summary files,
-  /// this is a placeholder that clears all summaries when the SDK changes.
-  ///
-  /// TODO: Implement SDK version checking in summary metadata.
-  Future<void> cleanOutdated() async {
-    // For now, we can't check SDK version in summaries.
-    // This will be implemented when we add SDK metadata to summaries.
-    // Currently a no-op - callers should use cleanUnusedSummaries() instead.
   }
 
   /// Clears summaries that don't match current dependencies.

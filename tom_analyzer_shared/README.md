@@ -286,8 +286,8 @@ callers that manage their own layout), or `environment:` to override the
 process environment the locator consults.
 
 It also offers `hasSummary`, `findMissingSummaries`, `loadSummary`,
-`clearCache`, `cleanOutdated`, and `cleanUnusedSummaries` for tools that manage
-the cache lifecycle directly.
+`clearCache`, and `cleanUnusedSummaries` for tools that manage the cache
+lifecycle directly.
 
 ### Generating summaries directly
 

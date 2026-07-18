@@ -427,19 +427,6 @@ void main() {
       });
     });
 
-    group('cleanOutdated', () {
-      test('is currently a no-op', () async {
-        // cleanOutdated is a placeholder until SDK version metadata
-        // is embedded in summary files. Verify it doesn't throw.
-        await cacheManager.writeSummary(
-            'pkg', '1.0.0', Uint8List.fromList([1]));
-        await cacheManager.cleanOutdated();
-
-        // Summary should still exist (no-op)
-        expect(await cacheManager.hasSummary('pkg', '1.0.0'), isTrue);
-      });
-    });
-
     group('loadSummaries', () {
       test('returns empty store when no summaries exist', () async {
         final deps = [
