@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.7.3
+
+- **Opt-in garbage collector for orphaned analyzer-cache partitions.** The cache
+  is partitioned by `<analyzer-major>/<dart-sdk-version>`, which makes it
+  self-freshening (a toolchain change starts from an empty partition) at the
+  acknowledged cost that *retired* partitions — from a Dart SDK or analyzer
+  major the machine no longer uses — linger on disk forever. There is
+  deliberately no automatic pruning, because the shared cache cannot safely know
+  a partition is truly dead (another checkout pinned to an older SDK might still
+  need it). New `AnalyzerCacheGarbageCollector` / `AnalyzerCachePartition`
+  (exported from the package) enumerate partitions with their last-used time and
+  size and delete those older than a caller-supplied cutoff, never touching the
+  live partition unless explicitly told to. A matching `analyzer_cache_gc` CLI
+  (built on the tom_build_base v2 tool framework) exposes `list` and
+  `clean --older-than <days> [--dry-run] [--include-current]` so a human or CI
+  can reclaim that space deliberately. Adds a `tom_build_base` dependency (CLI
+  only) and a new `currentDartSdkVersion()` helper in `analyzer_version.dart`
+  (reused by `SummaryCacheManager`).
+
 ## 0.7.2
 
 - **Summary bundles invalidated when a *transitive* dependency changes

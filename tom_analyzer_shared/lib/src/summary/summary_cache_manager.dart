@@ -121,12 +121,7 @@ class SummaryCacheManager {
   }
 
   /// Gets the Dart SDK version from Platform.version.
-  static String _getDartSdkVersion() {
-    // Platform.version format: "3.8.0 (stable) ..."
-    final version = Platform.version;
-    final match = RegExp(r'^(\d+\.\d+\.\d+)').firstMatch(version);
-    return match?.group(1) ?? 'unknown';
-  }
+  static String _getDartSdkVersion() => currentDartSdkVersion();
 
   /// Returns the cache file path for a package.
   ///

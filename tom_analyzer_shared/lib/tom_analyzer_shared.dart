@@ -21,6 +21,9 @@
 ///   orchestration entry-point for CLIs and builders.
 /// - [resolveDartSdkPath] — robust Dart SDK location for AOT-compiled tools
 ///   (where executable-relative SDK detection fails).
+/// - [AnalyzerCacheGarbageCollector] / [AnalyzerCachePartition] — opt-in
+///   reclamation of orphaned `<analyzer-major>/<dart-sdk-version>` cache
+///   partitions left behind by retired toolchains.
 ///
 /// See the package README for motivation and examples.
 library;
@@ -28,7 +31,10 @@ library;
 export 'src/cache/tool_cache_locator.dart' show ToolCacheLocator;
 export 'src/sdk/dart_sdk_locator.dart'
     show resolveDartSdkPath, looksLikeDartSdk;
-export 'src/summary/analyzer_version.dart' show analyzerMajorVersion;
+export 'src/summary/analyzer_cache_gc.dart'
+    show AnalyzerCacheGarbageCollector, AnalyzerCachePartition;
+export 'src/summary/analyzer_version.dart'
+    show analyzerMajorVersion, currentDartSdkVersion;
 export 'src/summary/dependency_resolver.dart';
 export 'src/summary/grouped_package_bundle.dart';
 export 'src/summary/package_dependency.dart';

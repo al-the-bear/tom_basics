@@ -1,6 +1,9 @@
 // Copyright (c) 2024-2026. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
+library;
+
+import 'dart:io';
 
 /// The major version of the `analyzer` package this build of
 /// `tom_analyzer_shared` was compiled against.
@@ -40,3 +43,15 @@
 /// set this to `11`. The two must always agree; a mismatch reintroduces the
 /// cross-major poison this guard exists to prevent.
 const int analyzerMajorVersion = 10;
+
+/// The `<major>.<minor>.<patch>` Dart SDK version of the running toolchain.
+///
+/// Parsed from [Platform.version] (e.g. `"3.12.2 (stable) (…)"` → `"3.12.2"`),
+/// returning `"unknown"` when the string is unparseable. This is the second
+/// cache-partition segment (see [SummaryCacheManager]) and the single source of
+/// truth for it — [SummaryCacheManager] and the cache garbage collector both
+/// derive the current toolchain's partition from this function.
+String currentDartSdkVersion() {
+  final match = RegExp(r'^(\d+\.\d+\.\d+)').firstMatch(Platform.version);
+  return match?.group(1) ?? 'unknown';
+}
