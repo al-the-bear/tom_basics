@@ -129,4 +129,54 @@ void main() {
       );
     });
   });
+
+  group('TomRuntime.reset', () {
+    // The environment/platform registries are process-global static state, so
+    // each test resets first to isolate itself from the others.
+    setUp(TomRuntime.reset);
+
+    test('clears registered environments and drops the active selection', () {
+      TomRuntime.addEnvironment(TomEnvironment('dev', isDevelopment: true));
+      TomRuntime.setCurrentEnvironment('dev');
+      expect(TomRuntime.getEnvironments(), isNotEmpty);
+      expect(TomRuntime.getCurrentEnvironment().env, equals('dev'));
+
+      TomRuntime.reset();
+
+      expect(TomRuntime.getEnvironments(), isEmpty);
+      expect(TomRuntime.getRoot(), same(defaultTomEnvironment));
+      // No current environment after reset.
+      expect(TomRuntime.getCurrentEnvironment, throwsA(isA<Exception>()));
+    });
+
+    test('a fresh registration after reset resolves the correct environment', () {
+      // A stale 'dev' registered before reset must not shadow the new one.
+      TomRuntime.addEnvironment(TomEnvironment('dev'));
+      TomRuntime.reset();
+
+      var initialized = false;
+      TomRuntime.addEnvironment(
+        TomEnvironment(
+          'dev',
+          isDevelopment: true,
+          initializer: (_) => initialized = true,
+        ),
+      );
+      TomRuntime.setCurrentEnvironment('dev');
+      TomRuntime.getCurrentEnvironment().initialize();
+
+      expect(TomRuntime.getEnvironments(), hasLength(1));
+      expect(initialized, isTrue);
+    });
+
+    test('clears registered platforms', () {
+      TomRuntime.addPlatform(const TomPlatform('custom'));
+      expect(TomRuntime.getPlatforms(), isNotEmpty);
+
+      TomRuntime.reset();
+
+      expect(TomRuntime.getPlatforms(), isEmpty);
+      expect(TomRuntime.getCurrentPlatform(), isNull);
+    });
+  });
 }

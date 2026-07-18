@@ -258,6 +258,26 @@ class TomRuntime {
     _root = env;
   }
 
+  /// Clears all registered environments and platforms and drops the active
+  /// selections, returning the runtime to its pristine startup state.
+  ///
+  /// The environment/platform registries are process-global static state. A
+  /// real application registers each environment exactly once at startup, so
+  /// the registries never need clearing there. Independent units of work that
+  /// each build their own runtime — most visibly tests and runnable samples —
+  /// would otherwise inherit registrations from a previously executed unit: a
+  /// second `addEnvironment('dev', ...)` leaves two `dev` entries, and
+  /// [setCurrentEnvironment] would resolve the *earlier* one, running the wrong
+  /// initializer. Call this between such units to isolate them. This mirrors
+  /// `TomBean.resetBeanContext` for the bean registry.
+  static void reset() {
+    _environments.clear();
+    _platforms.clear();
+    _currentEnvironment = null;
+    _currentPlatform = null;
+    _root = defaultTomEnvironment;
+  }
+
   /// Sets the current environment by name.
   ///
   /// [name] The environment name to activate.

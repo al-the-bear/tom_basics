@@ -1,3 +1,18 @@
+## 1.0.2
+
+- **Added `TomRuntime.reset()` to clear the process-global environment/platform
+  registries (RCL1).** The environment and platform registries are static
+  process-global state. A real application registers each environment once at
+  startup, but independent units of work that each build their own runtime —
+  most visibly tests and runnable samples executed in one process — would
+  otherwise inherit registrations from a previously executed unit. A second
+  `addEnvironment('dev', ...)` then leaves two `dev` entries and
+  `setCurrentEnvironment('dev')` resolves the *earlier* one, running the wrong
+  initializer. `reset()` clears the environment and platform lists, drops the
+  active environment/platform selections, and restores the root environment to
+  `defaultTomEnvironment`. It mirrors `TomBean.resetBeanContext` for the bean
+  registry; call it between independent units to isolate them.
+
 ## 1.0.1
 
 - **Fixed `TomLogger` push/pop log-level stack to proper LIFO semantics (RCE6).**
