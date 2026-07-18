@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.7.5
+
+- **Summary-cache invalidation is now closure-complete, so a poisoned cache
+  self-heals in a single pass.** When a `.sum` is invalidated because its
+  dependency-closure fingerprint no longer matches, deleting *only* that bundle
+  left every bundle that depends on it still on disk, still linked against the
+  deleted bundle's old layout. Feeding such a dependent to the analyzer (as a
+  `librarySummaryPath` while generating a third package, or loading it directly)
+  throws "Missing library"; the reflection/d4rt generator swallows that throw
+  and falls back to a source scan — correct output, but the stale bundle was
+  only deleted, never regenerated-and-relinked, so the cache took several runs
+  to reach steady state. `runSummaryCacheStage` now expands the stale set to the
+  full transitive-dependent closure (new pure `SummaryGenerator.dependentsClosure`)
+  and deletes the whole affected subgraph up front, so every affected bundle is
+  regenerated in dependency order before any consumer loads it — one run reaches
+  steady state (0 invalidations, all sidecars written). The dependency graph is
+  now built once per run via the new `SummaryGenerator.buildDirectDependencyGraph`
+  and reused by fingerprinting, generation ordering, and the cascade (previously
+  three separate pubspec reads). `computeDependencyFingerprints` gains an
+  optional `directDependencyGraph` parameter to accept a pre-built graph.
+
 ## 0.7.4
 
 - **Removed dead pre-partition scaffolding from `SummaryCacheManager`.** The

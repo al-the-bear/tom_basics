@@ -133,21 +133,51 @@ Future<SummaryCacheResult?> runSummaryCacheStage(
   // whose recorded fingerprint no longer matches, and regenerate it against
   // the current graph. Bundles with no fingerprint sidecar (produced before
   // this mechanism existed) are treated as stale so the cache self-heals.
-  final fingerprints = await generator.computeDependencyFingerprints(cacheable);
+  // Build the cacheable direct-dependency graph once and reuse it for both
+  // fingerprinting and the stale-set cascade below (avoids reading every
+  // pubspec twice per run).
+  final directDeps = await generator.buildDirectDependencyGraph(cacheable);
+  final fingerprints = await generator.computeDependencyFingerprints(
+    cacheable,
+    directDependencyGraph: directDeps,
+  );
 
-  var invalidated = 0;
+  // Seed the stale set with every present bundle whose recorded closure
+  // fingerprint no longer matches (or whose sidecar is absent — a
+  // pre-fingerprint bundle).
+  final stale = <String>{};
   for (final dep in cacheable) {
     final expected = fingerprints[dep.name] ?? '';
     if (await cache.hasSummary(dep.name, dep.version) &&
         !await cache.isSummaryFresh(dep.name, dep.version, expected)) {
+      stale.add(dep.name);
+    }
+  }
+
+  // Cascade the invalidation to dependents. A bundle that (transitively)
+  // depends on a stale one was linked against that bundle's OLD layout;
+  // regenerating the stale bundle alone leaves the dependent referencing a
+  // bundle that has just been deleted, so loading it — or feeding it to the
+  // analyzer while generating a third package — throws "Missing library".
+  // Deleting the whole dependent closure up front makes invalidation and
+  // regeneration atomic within this single pass: every affected bundle is
+  // regenerated (in dependency order) before any consumer loads it, so the
+  // cache reaches steady state in one run instead of self-healing over several.
+  final nameToDep = {for (final d in cacheable) d.name: d};
+  final invalidationSet = SummaryGenerator.dependentsClosure(directDeps, stale);
+  var invalidated = 0;
+  for (final name in invalidationSet) {
+    final dep = nameToDep[name];
+    if (dep == null) continue;
+    if (await cache.hasSummary(dep.name, dep.version)) {
       await cache.deleteSummary(dep.name, dep.version);
       invalidated++;
     }
   }
   if (invalidated > 0) {
     out(
-      'Invalidated $invalidated stale summaries (dependency version '
-      'change); they will be regenerated.',
+      'Invalidated $invalidated stale summaries (dependency version change, '
+      'or dependent of one); they will be regenerated.',
     );
   }
 

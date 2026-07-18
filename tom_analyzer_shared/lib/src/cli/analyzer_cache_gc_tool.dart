@@ -80,7 +80,7 @@ const cleanCommand = CommandDefinition(
 /// Tool version — tracks the `tom_analyzer_shared` pubspec version.
 ///
 /// Bump in lockstep with `pubspec.yaml` when publishing.
-const analyzerCacheGcVersion = '0.7.4';
+const analyzerCacheGcVersion = '0.7.5';
 
 /// The `analyzer_cache_gc` tool definition (multi-command, both global).
 final analyzerCacheGcTool = ToolDefinition(

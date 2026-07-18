@@ -309,23 +309,23 @@ class SummaryGenerator {
   /// Dependency edges come from each package's `pubspec.yaml` `dependencies`
   /// section (see [_readPackageDependencies]); versions come from the resolved
   /// [dependencies] list. Cycles are tolerated (the closure is a set).
+  ///
+  /// Pass [directDependencyGraph] to reuse an already-built graph (from
+  /// [buildDirectDependencyGraph]) instead of re-reading every pubspec — the
+  /// summary-cache stage does this so the graph is read from disk only once
+  /// per run.
   Future<Map<String, String>> computeDependencyFingerprints(
-    List<PackageDependency> dependencies,
-  ) async {
+    List<PackageDependency> dependencies, {
+    Map<String, Set<String>>? directDependencyGraph,
+  }) async {
     final cacheable = dependencies.where((d) => d.isCacheable).toList();
     final nameToDep = <String, PackageDependency>{
       for (final d in cacheable) d.name: d,
     };
 
     // Direct dependency edges restricted to the cacheable set.
-    final directDeps = <String, Set<String>>{};
-    for (final dep in cacheable) {
-      final path = await _resolvePackagePath(dep);
-      final pkgDeps = path != null
-          ? _readPackageDependencies(path)
-          : <String>[];
-      directDeps[dep.name] = pkgDeps.where(nameToDep.containsKey).toSet();
-    }
+    final directDeps =
+        directDependencyGraph ?? await buildDirectDependencyGraph(cacheable);
 
     // Transitive closure per package via BFS. `add` returning false on a
     // revisit terminates cycles.
@@ -349,6 +349,67 @@ class SummaryGenerator {
       fingerprints[dep.name] = closure.join('\n');
     }
     return fingerprints;
+  }
+
+  /// Builds the direct-dependency graph restricted to the cacheable set.
+  ///
+  /// Returns a map from each cacheable package name to the set of its direct
+  /// dependencies that are themselves cacheable. Edges come from each package's
+  /// `pubspec.yaml` `dependencies` section (see [_readPackageDependencies]);
+  /// dependencies outside the cacheable set are dropped so the graph is closed
+  /// over the packages we actually cache.
+  ///
+  /// This is the single source of the dependency graph reused by
+  /// [computeDependencyFingerprints], [_buildGenerationOrder], and the
+  /// stale-set cascade in the summary-cache stage.
+  Future<Map<String, Set<String>>> buildDirectDependencyGraph(
+    List<PackageDependency> dependencies,
+  ) async {
+    final cacheable = dependencies.where((d) => d.isCacheable).toList();
+    final names = {for (final d in cacheable) d.name};
+    final directDeps = <String, Set<String>>{};
+    for (final dep in cacheable) {
+      final path = await _resolvePackagePath(dep);
+      final pkgDeps = path != null
+          ? _readPackageDependencies(path)
+          : <String>[];
+      directDeps[dep.name] = pkgDeps.where(names.contains).toSet();
+    }
+    return directDeps;
+  }
+
+  /// Expands [seeds] to include every package that transitively depends on any
+  /// seed, following the reverse of [directDeps].
+  ///
+  /// Given `directDeps[A] = {B}` (A depends on B) and `seeds = {B}`, the result
+  /// is `{B, A}`: B is stale, and A — linked against B's old layout — must be
+  /// regenerated too. This is what makes the summary-cache invalidation
+  /// *closure-complete*: deleting a stale bundle without deleting its
+  /// dependents would leave those dependents referencing a bundle that was just
+  /// removed, which the analyzer reports as "Missing library" when it links
+  /// them. A pure function (no I/O) so the cascade logic is unit-testable in
+  /// isolation. Cycles are tolerated (the result is a set).
+  static Set<String> dependentsClosure(
+    Map<String, Set<String>> directDeps,
+    Iterable<String> seeds,
+  ) {
+    // Reverse the edges: dependents[B] = {A : A depends on B}.
+    final dependents = <String, Set<String>>{};
+    for (final entry in directDeps.entries) {
+      for (final dep in entry.value) {
+        dependents.putIfAbsent(dep, () => <String>{}).add(entry.key);
+      }
+    }
+
+    final result = <String>{};
+    final queue = <String>[...seeds];
+    while (queue.isNotEmpty) {
+      final next = queue.removeLast();
+      if (result.add(next)) {
+        queue.addAll(dependents[next] ?? const <String>{});
+      }
+    }
+    return result;
   }
 
   /// Resolves the filesystem path for a dependency.
@@ -553,22 +614,12 @@ class SummaryGenerator {
     }
 
     // Build dependency graph: dependsOn[A] = {B, C} means A depends on B and C
-    final dependsOn = <String, Set<String>>{};
+    final dependsOn = await buildDirectDependencyGraph(deps);
     // Reverse graph: dependedBy[B] = {A} means A depends on B
     final dependedBy = <String, Set<String>>{};
-
-    for (final dep in deps) {
-      final path = await _resolvePackagePath(dep);
-      final pkgDeps = path != null
-          ? _readPackageDependencies(path)
-          : <String>[];
-      final filtered = pkgDeps
-          .where((d) => nameToDepMap.containsKey(d))
-          .toSet();
-      dependsOn[dep.name] = filtered;
-
-      for (final d in filtered) {
-        dependedBy.putIfAbsent(d, () => <String>{}).add(dep.name);
+    for (final entry in dependsOn.entries) {
+      for (final d in entry.value) {
+        dependedBy.putIfAbsent(d, () => <String>{}).add(entry.key);
       }
     }
 
