@@ -1,6 +1,6 @@
 name: tom_basics
 description: Basic utilities for the TOM framework including exception handling with UUID tracking.
-version: 1.0.2
+version: 1.0.3
 repository: https://github.com/al-the-bear/tom_basics
 
 environment:

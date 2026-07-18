@@ -1,3 +1,14 @@
+## 1.0.3
+
+- **Fixed `TomRuntime.setCurrentEnvironment` to apply its fallback
+  unconditionally (RCL1).** The fallback branches were guarded by
+  `_currentEnvironment == null`, so once a current environment was set, calling
+  the setter with an unregistered name silently kept the *old* environment
+  instead of switching to the fallback — a setter that refuses to set. The
+  fallback (`defaultRoot`, a named environment, or the root) now applies
+  whether or not a current environment is already active, and the named-fallback
+  branch returns instead of falling through to the root. No back-compat shim.
+
 ## 1.0.2
 
 - **Added `TomRuntime.reset()` to clear the process-global environment/platform

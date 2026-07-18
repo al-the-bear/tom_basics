@@ -179,4 +179,51 @@ void main() {
       expect(TomRuntime.getCurrentPlatform(), isNull);
     });
   });
+
+  group('TomRuntime.setCurrentEnvironment fallback', () {
+    setUp(TomRuntime.reset);
+
+    test('resolves a registered environment by name', () {
+      TomRuntime.addEnvironment(const TomEnvironment('dev'));
+      TomRuntime.setCurrentEnvironment('dev');
+      expect(TomRuntime.getCurrentEnvironment().env, equals('dev'));
+    });
+
+    test('unknown name with defaultRoot fallback resolves to the default', () {
+      TomRuntime.setCurrentEnvironment('nonexistent', 'defaultRoot');
+      expect(
+        TomRuntime.getCurrentEnvironment(),
+        same(defaultTomEnvironment),
+      );
+    });
+
+    test('unknown name with a named fallback resolves to that fallback', () {
+      TomRuntime.addEnvironment(const TomEnvironment('development'));
+      TomRuntime.setCurrentEnvironment('missing', 'development');
+      expect(TomRuntime.getCurrentEnvironment().env, equals('development'));
+    });
+
+    test('fallback replaces an already-set current environment', () {
+      // Regression: the setter must not silently keep a previously-set
+      // environment when the requested name is absent — the fallback applies
+      // regardless of prior state.
+      TomRuntime.addEnvironment(const TomEnvironment('current'));
+      TomRuntime.addEnvironment(const TomEnvironment('development'));
+      TomRuntime.setCurrentEnvironment('current');
+      expect(TomRuntime.getCurrentEnvironment().env, equals('current'));
+
+      TomRuntime.setCurrentEnvironment('missing', 'development');
+      expect(TomRuntime.getCurrentEnvironment().env, equals('development'));
+
+      TomRuntime.setCurrentEnvironment('gone', 'defaultRoot');
+      expect(TomRuntime.getCurrentEnvironment(), same(defaultTomEnvironment));
+    });
+
+    test('unknown name and unknown fallback fall through to the root', () {
+      final root = TomRuntime.addEnvironment(const TomEnvironment('root'));
+      TomRuntime.setRootEnvironment(root);
+      TomRuntime.setCurrentEnvironment('missing', 'alsomissing');
+      expect(TomRuntime.getCurrentEnvironment(), same(root));
+    });
+  });
 }

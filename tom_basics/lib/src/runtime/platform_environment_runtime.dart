@@ -280,14 +280,21 @@ class TomRuntime {
 
   /// Sets the current environment by name.
   ///
+  /// This is an unconditional setter: it resolves [name] (or its [fallback]
+  /// when [name] is not registered) and *replaces* the current environment.
+  /// The fallback applies whether or not a current environment was already
+  /// set — a caller invoking this to switch to a fallback must not be silently
+  /// ignored just because a previous environment happened to be active.
+  ///
   /// [name] The environment name to activate.
   /// [fallback] Fallback environment name if [name] not found.
-  ///   Use "defaultRoot" to fall back to [defaultTomEnvironment].
+  ///   Use "defaultRoot" to fall back to [defaultTomEnvironment]. An empty
+  ///   string means "no named fallback" — fall through to the root environment.
   static void setCurrentEnvironment(
     String? name, [
     String fallback = "defaultRoot",
   ]) {
-    // Try to find environment by name
+    // Try to find environment by name.
     for (var env in _environments) {
       if (env.env == name) {
         _currentEnvironment = env;
@@ -295,22 +302,25 @@ class TomRuntime {
       }
     }
 
-    // Handle fallback to default root
-    if (_currentEnvironment == null && fallback == "defaultRoot") {
+    // Name not registered — apply the fallback, replacing any current value.
+
+    // Fallback to the framework default root environment.
+    if (fallback == "defaultRoot") {
       tomLog.info("Environment fallback to defaultRoot");
       _currentEnvironment = defaultTomEnvironment;
       return;
     }
 
-    // Try named fallback
-    if (_currentEnvironment == null && fallback.isNotEmpty) {
+    // Named fallback: resolve it with no further named fallback.
+    if (fallback.isNotEmpty) {
       tomLog.info("Environment fallback to $fallback");
       setCurrentEnvironment(fallback, "");
+      return;
     }
 
-    // Ultimate fallback to root
+    // Ultimate fallback to the configured root environment.
     tomLog.info("Environment fallback to root $_root");
-    _currentEnvironment ??= _root;
+    _currentEnvironment = _root;
   }
 
   /// Returns the current environment.
