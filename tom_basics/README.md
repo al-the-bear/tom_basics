@@ -595,6 +595,9 @@ and the [samples learning path](../README.md#samples-learning-path).
 
 ## Further documentation
 
+- [`doc/runtime/runtime.md`](doc/runtime/runtime.md) — the runtime guide:
+  `TomEnvironment`, `TomPlatform`, `TomRuntime` and the `TomPlatformUtils` seam,
+  with the initialization sequence and the bean-context integration.
 - [Basics repository README](../README.md) — the map of all ten basics packages.
 - [`tom_basics_console`](../tom_basics_console/) — supplies the desktop/server
   `TomPlatformUtils` implementation that backs the platform seam.
