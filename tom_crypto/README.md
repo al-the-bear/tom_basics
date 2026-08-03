@@ -44,7 +44,7 @@ command-line tools, and builds on [`pointycastle`](https://pub.dev/packages/poin
 
 ```yaml
 dependencies:
-  tom_crypto: ^1.0.1
+  tom_crypto: ^1.1.0
 ```
 
 or from the command line:
@@ -75,7 +75,7 @@ import 'package:pointycastle/export.dart';
 | ---------- | --- | ----- |
 | Hash a password | `hashPassword(password)` → `(hash, spec)` | Random per-password salt; returns a record |
 | Verify a password | `verifyPassword(password, hash, spec)` | Re-derives with the stored spec/salt |
-| Generate a salt | `generateSalt(length)` | Hex string from `Random.secure()` |
+| Generate a salt | `generateSalt(length)` | Hex string over `TomSecureBytes` |
 | Build a derivator | `buildKeyDerivator([spec, salt])` | Lower-level Argon2 access |
 | Tune defaults | `globalSettingDefaultHashSpec`, `globalSettingDefaultSaltLength` | Process-wide cost factors |
 
@@ -103,13 +103,24 @@ import 'package:pointycastle/export.dart';
 
 | Capability | API | Notes |
 | ---------- | --- | ----- |
-| Seed a CSPRNG | `getSecureRandom()` | Fortuna, seeded from `Random.secure()` |
+| Seed a CSPRNG | `getSecureRandom()` | Fortuna, seeded from `TomSecureBytes` |
 | Generate a key pair | `computeRSAKeyPair(random)` | 2048-bit, exponent 65537 |
 | Parse a public key | `parsePublicKeyFromPem(pem)` | PKCS#1 and PKCS#8 auto-detected |
 | Parse a private key | `parsePrivateKeyFromPem(pem)` | PKCS#1 and PKCS#8 auto-detected |
 | Encode a public key | `encodePublicKeyToPemPKCS1(key)` | PEM output |
 | Encode a private key | `encodePrivateKeyToPemPKCS1(key)` | PEM output |
 | Sign a string | `sign(plainText, privateKey)` | Base64 SHA-256 signature |
+
+### Raw randomness — `TomSecureBytes`
+
+| Capability | API | Notes |
+| ---------- | --- | ----- |
+| Draw secure bytes | `TomSecureBytes.generate(length)` | Uniform over the full `0..255` range |
+
+This is the package's single source of raw randomness — the Fortuna seed and
+the password salt both draw from it. Use it directly when you need secret bytes
+of your own (a TOTP shared secret, an API key) rather than reaching for
+`Random.secure()` at the call site.
 
 ---
 
@@ -317,8 +328,11 @@ package:tom_crypto/tom_crypto.dart   (single export surface)
 ├── rsa_encryption.dart     rsaEncrypt / rsaDecrypt     → pointycastle
 │                           rsaSign   / rsaVerify          (OAEP, RSA-SHA256)
 │
-└── rsa_tools.dart          RsaKeyHelper                → pointycastle + asn1lib
-                            getRsaKeyPair (top-level)      (key gen, PEM I/O)
+├── rsa_tools.dart          RsaKeyHelper                → pointycastle + asn1lib
+│                           getRsaKeyPair (top-level)      (key gen, PEM I/O)
+│
+└── secure_bytes.dart       TomSecureBytes              → dart:math
+                                                           (Random.secure)
 ```
 
 | Type / function | Role |
@@ -331,10 +345,16 @@ package:tom_crypto/tom_crypto.dart   (single export surface)
 | `rsaEncrypt` / `rsaDecrypt` | RSA-OAEP byte encryption |
 | `rsaSign` / `rsaVerify` | RSA-SHA-256 signatures |
 | `RsaKeyHelper` | Key generation and PEM parse/encode |
+| `TomSecureBytes` | The package's only draw of raw random bytes |
 
 The JWT layer is the only part that reaches into `tom_basics` (for
 `TomBaseException` and `tomLog`); the password and RSA layers depend only on
 `pointycastle` and `asn1lib`.
+
+`secure_bytes.dart` is the one internal edge in the diagram above: both
+`TomPasswordHasher.generateSalt` and `RsaKeyHelper.getSecureRandom` route
+through it rather than calling `Random.secure()` themselves. One implementation
+means a bound cannot go stale in a copy that nobody is reading.
 
 ---
 
@@ -404,7 +424,8 @@ BSD-3-Clause as in [LICENSE](LICENSE).
 
 ## Status
 
-Stable (`1.0.1`). Public API covers password hashing, JWT issuance/parsing, RSA
-encryption/signatures, and RSA key management. `dart analyze` is clean. A
+Stable (`1.1.0`). Public API covers password hashing, JWT issuance/parsing, RSA
+encryption/signatures, RSA key management, and secure random bytes.
+`dart analyze` is clean. A
 runnable, article-grade project lives in the
 [`tom_crypto_sample`](../tom_basics_samples/tom_crypto_sample/).
