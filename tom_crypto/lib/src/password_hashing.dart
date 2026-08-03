@@ -36,7 +36,6 @@ library;
 // Dart SDK Imports
 // =============================================================================
 
-import 'dart:math';
 import 'dart:typed_data';
 
 // =============================================================================
@@ -44,6 +43,12 @@ import 'dart:typed_data';
 // =============================================================================
 
 import 'package:pointycastle/export.dart';
+
+// =============================================================================
+// Relative Imports
+// =============================================================================
+
+import 'secure_bytes.dart';
 
 // =============================================================================
 // Password Hasher
@@ -191,15 +196,10 @@ class TomPasswordHasher {
   ///
   /// Returns a hex-encoded string of the salt.
   ///
-  /// Uses [Random.secure] for cryptographically strong randomness.
-  static String generateSalt(int length) {
-    var secureRandom = Random.secure();
-    var salt = Uint8List(length);
-    for (int i = 0; i < salt.length; i++) {
-      salt[i] = secureRandom.nextInt(255);
-    }
-    return toHexString(salt);
-  }
+  /// Uses [TomSecureBytes] for cryptographically strong randomness.
+  static String generateSalt(int length) => toHexString(
+        TomSecureBytes.generate(length),
+      );
 
   // ---------------------------------------------------------------------------
   // Key Derivation

@@ -37,7 +37,6 @@ library;
 // =============================================================================
 
 import 'dart:convert';
-import 'dart:math';
 import 'dart:typed_data';
 
 // =============================================================================
@@ -52,6 +51,7 @@ import "package:pointycastle/export.dart";
 // =============================================================================
 
 import 'rsa_encryption.dart';
+import 'secure_bytes.dart';
 
 // =============================================================================
 // RSA Key Helper
@@ -114,15 +114,14 @@ class RsaKeyHelper {
   /// final random = RsaKeyHelper.getSecureRandom();
   /// ```
   static SecureRandom getSecureRandom() {
-    var secureRandom = FortunaRandom();
-    var random = Random.secure();
-    List<int> seeds = [];
-    for (int i = 0; i < 32; i++) {
-      seeds.add(random.nextInt(255));
-    }
-    secureRandom.seed(KeyParameter(Uint8List.fromList(seeds)));
+    final secureRandom = FortunaRandom();
+    secureRandom.seed(KeyParameter(TomSecureBytes.generate(_fortunaSeedBytes)));
     return secureRandom;
   }
+
+  /// Fortuna's seed size. PointyCastle's `FortunaRandom` requires exactly 32
+  /// bytes of seed material, so this is fixed by the algorithm, not a choice.
+  static const int _fortunaSeedBytes = 32;
 
   // ---------------------------------------------------------------------------
   // PEM Parsing

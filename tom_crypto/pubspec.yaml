@@ -1,6 +1,6 @@
 name: tom_crypto
 description: Cryptographic utilities for secure authentication and data protection including JWT tokens, password hashing, and RSA encryption.
-version: 1.0.1
+version: 1.1.0
 repository: https://github.com/al-the-bear/tom_crypto
 
 environment:
