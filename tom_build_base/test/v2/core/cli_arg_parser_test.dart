@@ -1,3 +1,6 @@
+import 'dart:io';
+
+import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 import 'package:tom_build_base/tom_build_base_v2.dart';
 
@@ -911,7 +914,8 @@ void main() {
   group('command option vs global flag collision', () {
     ToolDefinition buildVersionerLikeTool() => ToolDefinition(
       name: 'test-tool',
-      description: 'Tool whose command declares a value option colliding '
+      description:
+          'Tool whose command declares a value option colliding '
           'with the global --version flag',
       version: '1.0',
       mode: ToolMode.multiCommand,
@@ -929,37 +933,37 @@ void main() {
       ],
     );
 
-    test(
-      'BB-CLI-93: per-command --version with a value routes to the command, '
-      'not the global version flag [2026-06-14]',
-      () {
-        // Regression for VER_OVR01: `buildkit :versioner --version 9.9.9` was
-        // hijacked by the global --version print-version flag, dropping 9.9.9
-        // and skipping the command entirely.
-        final toolParser = CliArgParser(toolDefinition: buildVersionerLikeTool());
-        final args = toolParser.parse([':versioner', '--version', '9.9.9']);
+    test('BB-CLI-93: per-command --version with a value routes to the command, '
+        'not the global version flag [2026-06-14]', () {
+      // Regression for VER_OVR01: `buildkit :versioner --version 9.9.9` was
+      // hijacked by the global --version print-version flag, dropping 9.9.9
+      // and skipping the command entirely.
+      final toolParser = CliArgParser(toolDefinition: buildVersionerLikeTool());
+      final args = toolParser.parse([':versioner', '--version', '9.9.9']);
 
-        expect(args.commands, equals(['versioner']));
-        expect(
-          args.version,
-          isFalse,
-          reason: 'global version flag must NOT be set when --version carries '
-              'a value for a command that declares it',
-        );
-        expect(
-          args.commandArgs['versioner']!.options['version'],
-          equals('9.9.9'),
-          reason: 'the value 9.9.9 must reach the command option',
-        );
-      },
-    );
+      expect(args.commands, equals(['versioner']));
+      expect(
+        args.version,
+        isFalse,
+        reason:
+            'global version flag must NOT be set when --version carries '
+            'a value for a command that declares it',
+      );
+      expect(
+        args.commandArgs['versioner']!.options['version'],
+        equals('9.9.9'),
+        reason: 'the value 9.9.9 must reach the command option',
+      );
+    });
 
     test(
       'BB-CLI-94: bare per-command --version (no value) still sets the global '
       'version flag [2026-06-14]',
       () {
         // A bare --version with no value preserves the print-version behavior.
-        final toolParser = CliArgParser(toolDefinition: buildVersionerLikeTool());
+        final toolParser = CliArgParser(
+          toolDefinition: buildVersionerLikeTool(),
+        );
         final args = toolParser.parse([':versioner', '--version']);
 
         expect(
@@ -979,7 +983,9 @@ void main() {
       'BB-CLI-95: per-command --version=value (eq form) routes to the command '
       '[2026-06-14]',
       () {
-        final toolParser = CliArgParser(toolDefinition: buildVersionerLikeTool());
+        final toolParser = CliArgParser(
+          toolDefinition: buildVersionerLikeTool(),
+        );
         final args = toolParser.parse([':versioner', '--version=2.0.0']);
 
         expect(args.version, isFalse);
@@ -990,4 +996,217 @@ void main() {
       },
     );
   });
+
+  group('CliArgs field carry-through', () {
+    test('BB-CLI-96: _fieldsOf covers every CliArgs constructor field '
+        '[2026-08-04]', () {
+      expect(
+        _fieldsOf(const CliArgs()).keys.toSet(),
+        equals(_constructorFieldNames()),
+        reason:
+            'A field was added to CliArgs but not to _fieldsOf in this test. '
+            'Add it there so the carry-through tests below cover it, and '
+            'make sure CliArgs.copyWith carries it too.',
+      );
+    });
+
+    test('BB-CLI-97: the populated fixture differs from the defaults in every '
+        'field [2026-08-04]', () {
+      final defaults = _fieldsOf(const CliArgs());
+      final populated = _fieldsOf(_populatedArgs);
+
+      for (final name in populated.keys) {
+        expect(
+          populated[name],
+          isNot(equals(defaults[name])),
+          reason:
+              'Field "$name" has its default value in _populatedArgs, so a '
+              'copy that drops it would still look correct. Give it a '
+              'distinct value.',
+        );
+      }
+    });
+
+    test('BB-CLI-98: withResolvedStrings carries every field through '
+        '[2026-08-04]', () {
+      final resolved = _populatedArgs.withResolvedStrings((s) => s);
+
+      expect(_fieldsOf(resolved), equals(_fieldsOf(_populatedArgs)));
+    });
+
+    test('BB-CLI-99: copyWith carries every field through [2026-08-04]', () {
+      expect(
+        _fieldsOf(_populatedArgs.copyWith()),
+        equals(_fieldsOf(_populatedArgs)),
+      );
+    });
+
+    test(
+      'BB-CLI-100: --exclude-dev survives placeholder resolution [2026-08-04]',
+      () {
+        final args = CliArgParser().parse(['--exclude-dev']);
+        final resolved = args.withResolvedStrings((s) => s);
+
+        expect(resolved.excludeDev, isTrue);
+        expect(
+          resolved
+              .toProjectTraversalInfo(executionRoot: '.')
+              .includeDevDependencies,
+          isFalse,
+        );
+      },
+    );
+
+    test('BB-CLI-101: withResolvedStrings still resolves the string fields '
+        '[2026-08-04]', () {
+      final resolved = _populatedArgs.withResolvedStrings(
+        (s) => s.toUpperCase(),
+      );
+
+      expect(resolved.positionalArgs, equals(['POS']));
+      expect(resolved.extraOptions['extra'], equals('X'));
+      expect(resolved.commandArgs['build']!.options['opt'], equals('V'));
+      // Non-string configuration is left alone.
+      expect(resolved.excludePatterns, equals(['ex']));
+      expect(resolved.commands, equals(['build']));
+    });
+  });
+}
+
+/// A [CliArgs] whose every field differs from the constructor default.
+///
+/// Used by the carry-through tests: a copy that silently drops a field falls
+/// back to that field's default, which is only detectable if the source value
+/// is not the default already. BB-CLI-97 enforces that property.
+const CliArgs _populatedArgs = CliArgs(
+  scan: 'sub/dir',
+  recursive: true,
+  notRecursive: true,
+  root: '/root',
+  bareRoot: true,
+  scanExplicitlySet: true,
+  recursiveExplicitlySet: true,
+  excludePatterns: ['ex'],
+  excludeProjects: ['exp'],
+  recursionExclude: ['rex'],
+  projectPatterns: ['pp'],
+  allowEmpty: true,
+  modes: ['mode'],
+  modules: ['mod'],
+  skipModules: ['skip'],
+  innerFirstGit: true,
+  outerFirstGit: true,
+  topRepo: true,
+  buildOrder: false,
+  excludeDev: true,
+  workspaceRecursion: true,
+  verbose: true,
+  dryRun: true,
+  listOnly: true,
+  force: true,
+  guide: true,
+  dumpConfig: true,
+  configPath: 'cfg.yaml',
+  help: true,
+  version: true,
+  noSkip: true,
+  nested: true,
+  dumpDefinitions: true,
+  completion: 'bash',
+  includeTestProjects: true,
+  testProjectsOnly: true,
+  positionalArgs: ['pos'],
+  commands: ['build'],
+  commandArgs: {
+    'build': PerCommandArgs(
+      commandName: 'build',
+      projectPatterns: ['cp'],
+      excludePatterns: ['ce'],
+      options: {'opt': 'v'},
+    ),
+  },
+  extraOptions: {'extra': 'x'},
+);
+
+/// Every field of [CliArgs], projected onto values that compare by value.
+///
+/// [PerCommandArgs] has no `==`, so `commandArgs` is projected onto its
+/// contents; everything else is read straight off the instance. The key set is
+/// checked against the constructor's parameter list by BB-CLI-96, which is what
+/// makes the carry-through tests catch a *future* field rather than only the
+/// ones known when they were written.
+Map<String, Object?> _fieldsOf(CliArgs a) => {
+  'scan': a.scan,
+  'recursive': a.recursive,
+  'notRecursive': a.notRecursive,
+  'root': a.root,
+  'bareRoot': a.bareRoot,
+  'scanExplicitlySet': a.scanExplicitlySet,
+  'recursiveExplicitlySet': a.recursiveExplicitlySet,
+  'excludePatterns': a.excludePatterns,
+  'excludeProjects': a.excludeProjects,
+  'recursionExclude': a.recursionExclude,
+  'projectPatterns': a.projectPatterns,
+  'allowEmpty': a.allowEmpty,
+  'modes': a.modes,
+  'modules': a.modules,
+  'skipModules': a.skipModules,
+  'innerFirstGit': a.innerFirstGit,
+  'outerFirstGit': a.outerFirstGit,
+  'topRepo': a.topRepo,
+  'buildOrder': a.buildOrder,
+  'excludeDev': a.excludeDev,
+  'workspaceRecursion': a.workspaceRecursion,
+  'verbose': a.verbose,
+  'dryRun': a.dryRun,
+  'listOnly': a.listOnly,
+  'force': a.force,
+  'guide': a.guide,
+  'dumpConfig': a.dumpConfig,
+  'configPath': a.configPath,
+  'help': a.help,
+  'version': a.version,
+  'noSkip': a.noSkip,
+  'nested': a.nested,
+  'dumpDefinitions': a.dumpDefinitions,
+  'completion': a.completion,
+  'includeTestProjects': a.includeTestProjects,
+  'testProjectsOnly': a.testProjectsOnly,
+  'positionalArgs': a.positionalArgs,
+  'commands': a.commands,
+  'commandArgs': a.commandArgs.map(
+    (name, per) => MapEntry(name, <Object?>[
+      per.commandName,
+      per.projectPatterns,
+      per.excludePatterns,
+      per.options,
+    ]),
+  ),
+  'extraOptions': a.extraOptions,
+};
+
+/// The `this.<field>` parameter names of the `CliArgs` constructor, read from
+/// the source so the test cannot drift from the class it guards.
+Set<String> _constructorFieldNames() {
+  final source = File(
+    p.join('lib', 'src', 'v2', 'core', 'cli_arg_parser.dart'),
+  );
+  expect(
+    source.existsSync(),
+    isTrue,
+    reason:
+        'Expected to read ${source.path} relative to the package root; run '
+        'the suite from the tom_build_base directory.',
+  );
+
+  final text = source.readAsStringSync();
+  final start = text.indexOf('const CliArgs({');
+  expect(start, greaterThan(-1), reason: 'CliArgs constructor not found.');
+  final end = text.indexOf('});', start);
+  expect(end, greaterThan(start), reason: 'CliArgs constructor not closed.');
+
+  final body = text.substring(start, end);
+  return RegExp(
+    r'this\.(\w+)',
+  ).allMatches(body).map((m) => m.group(1)!).toSet();
 }

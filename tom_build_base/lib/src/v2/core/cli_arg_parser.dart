@@ -299,53 +299,116 @@ class CliArgs {
   /// Whether this is a help-related mode (help, version, list, guide).
   bool get isHelpMode => help || version || listOnly || guide;
 
+  /// Create a copy of this instance with the given fields replaced.
+  ///
+  /// Every field defaults to the current value, so a caller only names what it
+  /// changes. Passing `null` means "leave unchanged" — a nullable field such as
+  /// [scan] or [configPath] cannot be cleared through here; construct a new
+  /// [CliArgs] for that.
+  ///
+  /// **When adding a field to [CliArgs], add it here too.** Every copy in the
+  /// codebase goes through this method, so a field missing from it is silently
+  /// reset to its default on every copy. `BB-CLI-96` in
+  /// `test/v2/core/cli_arg_parser_test.dart` fails if that happens.
+  CliArgs copyWith({
+    String? scan,
+    bool? recursive,
+    bool? notRecursive,
+    String? root,
+    bool? bareRoot,
+    bool? scanExplicitlySet,
+    bool? recursiveExplicitlySet,
+    List<String>? excludePatterns,
+    List<String>? excludeProjects,
+    List<String>? recursionExclude,
+    List<String>? projectPatterns,
+    bool? allowEmpty,
+    List<String>? modes,
+    List<String>? modules,
+    List<String>? skipModules,
+    bool? innerFirstGit,
+    bool? outerFirstGit,
+    bool? topRepo,
+    bool? buildOrder,
+    bool? excludeDev,
+    bool? workspaceRecursion,
+    bool? verbose,
+    bool? dryRun,
+    bool? listOnly,
+    bool? force,
+    bool? guide,
+    bool? dumpConfig,
+    String? configPath,
+    bool? help,
+    bool? version,
+    bool? noSkip,
+    bool? nested,
+    bool? dumpDefinitions,
+    String? completion,
+    bool? includeTestProjects,
+    bool? testProjectsOnly,
+    List<String>? positionalArgs,
+    List<String>? commands,
+    Map<String, PerCommandArgs>? commandArgs,
+    Map<String, dynamic>? extraOptions,
+  }) {
+    return CliArgs(
+      scan: scan ?? this.scan,
+      recursive: recursive ?? this.recursive,
+      notRecursive: notRecursive ?? this.notRecursive,
+      root: root ?? this.root,
+      bareRoot: bareRoot ?? this.bareRoot,
+      scanExplicitlySet: scanExplicitlySet ?? this.scanExplicitlySet,
+      recursiveExplicitlySet:
+          recursiveExplicitlySet ?? this.recursiveExplicitlySet,
+      excludePatterns: excludePatterns ?? this.excludePatterns,
+      excludeProjects: excludeProjects ?? this.excludeProjects,
+      recursionExclude: recursionExclude ?? this.recursionExclude,
+      projectPatterns: projectPatterns ?? this.projectPatterns,
+      allowEmpty: allowEmpty ?? this.allowEmpty,
+      modes: modes ?? this.modes,
+      modules: modules ?? this.modules,
+      skipModules: skipModules ?? this.skipModules,
+      innerFirstGit: innerFirstGit ?? this.innerFirstGit,
+      outerFirstGit: outerFirstGit ?? this.outerFirstGit,
+      topRepo: topRepo ?? this.topRepo,
+      buildOrder: buildOrder ?? this.buildOrder,
+      excludeDev: excludeDev ?? this.excludeDev,
+      workspaceRecursion: workspaceRecursion ?? this.workspaceRecursion,
+      verbose: verbose ?? this.verbose,
+      dryRun: dryRun ?? this.dryRun,
+      listOnly: listOnly ?? this.listOnly,
+      force: force ?? this.force,
+      guide: guide ?? this.guide,
+      dumpConfig: dumpConfig ?? this.dumpConfig,
+      configPath: configPath ?? this.configPath,
+      help: help ?? this.help,
+      version: version ?? this.version,
+      noSkip: noSkip ?? this.noSkip,
+      nested: nested ?? this.nested,
+      dumpDefinitions: dumpDefinitions ?? this.dumpDefinitions,
+      completion: completion ?? this.completion,
+      includeTestProjects: includeTestProjects ?? this.includeTestProjects,
+      testProjectsOnly: testProjectsOnly ?? this.testProjectsOnly,
+      positionalArgs: positionalArgs ?? this.positionalArgs,
+      commands: commands ?? this.commands,
+      commandArgs: commandArgs ?? this.commandArgs,
+      extraOptions: extraOptions ?? this.extraOptions,
+    );
+  }
+
   /// Create a copy with placeholders resolved in user-provided string values.
   ///
   /// Resolves placeholders in [positionalArgs], string values in
   /// [extraOptions], and per-command [PerCommandArgs.options].
-  /// Other fields (flags, patterns, traversal config) are copied as-is.
+  /// Other fields (flags, patterns, traversal config) are carried over
+  /// unchanged by [copyWith].
   ///
   /// The [resolver] function is called for each string value.
   /// Typically wraps [ExecutePlaceholderResolver.resolveCommand].
   CliArgs withResolvedStrings(String Function(String) resolver) {
-    return CliArgs(
-      scan: scan,
-      recursive: recursive,
-      notRecursive: notRecursive,
-      root: root,
-      bareRoot: bareRoot,
-      scanExplicitlySet: scanExplicitlySet,
-      recursiveExplicitlySet: recursiveExplicitlySet,
-      excludePatterns: excludePatterns,
-      excludeProjects: excludeProjects,
-      recursionExclude: recursionExclude,
-      projectPatterns: projectPatterns,
-      allowEmpty: allowEmpty,
-      modes: modes,
-      modules: modules,
-      skipModules: skipModules,
-      innerFirstGit: innerFirstGit,
-      outerFirstGit: outerFirstGit,
-      topRepo: topRepo,
-      buildOrder: buildOrder,
-      workspaceRecursion: workspaceRecursion,
-      verbose: verbose,
-      dryRun: dryRun,
-      listOnly: listOnly,
-      force: force,
-      guide: guide,
-      dumpConfig: dumpConfig,
-      configPath: configPath,
-      help: help,
-      version: version,
-      noSkip: noSkip,
-      nested: nested,
-      dumpDefinitions: dumpDefinitions,
-      completion: completion,
-      includeTestProjects: includeTestProjects,
-      testProjectsOnly: testProjectsOnly,
+    return copyWith(
       positionalArgs: positionalArgs.map(resolver).toList(),
-      commands: commands,
       commandArgs: commandArgs.map(
         (k, v) => MapEntry(
           k,
@@ -551,7 +614,8 @@ class CliArgParser {
       // `buildkit :versioner --version 9.9.9` routes 9.9.9 to the command, while
       // a bare `buildkit :versioner --version` (no value) still prints the tool
       // version via the global handling below.
-      if (value != null && _commandDeclaresValueOption(state.currentCommand!, name)) {
+      if (value != null &&
+          _commandDeclaresValueOption(state.currentCommand!, name)) {
         cmdState.options[name] = value;
         return;
       }

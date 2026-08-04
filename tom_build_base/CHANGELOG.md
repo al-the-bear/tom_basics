@@ -1,3 +1,41 @@
+## 2.8.0
+
+### Fixed
+
+- **`--exclude-dev` no longer disappears when placeholders are resolved.**
+  `CliArgs.withResolvedStrings` rebuilt the instance by naming 39 of the class's
+  40 fields, and `excludeDev` was the one it left out. Because the field
+  defaults to `false`, the loss was silent: the rebuilt `CliArgs` reported that
+  dev dependencies should be included, so any tool that resolved placeholders
+  before traversing went back to ordering its projects by their dev
+  dependencies as well — the exact thing the caller had asked it not to do.
+  Covered by BB-CLI-100.
+
+  This is the third field to be dropped this way (`nested` and
+  `dumpDefinitions` were the first two, hence BB-CLI-79/80), so the fix
+  addresses the shape rather than the field — see below.
+
+### Added
+
+- **`CliArgs.copyWith(...)`** — a copy that starts from the current instance,
+  so a caller names only what it changes. `withResolvedStrings` is now written
+  in terms of it and mentions just the three fields it actually resolves
+  (`positionalArgs`, `commandArgs`, `extraOptions`); everything else is carried
+  over by construction instead of by transcription.
+
+  `copyWith` still lists the fields once, so the guarantee is held by tests
+  rather than by the type system: BB-CLI-96 reads the constructor's parameter
+  list out of the source and fails if a field is missing from the test's field
+  projection, BB-CLI-97 requires the round-trip fixture to differ from the
+  defaults in every field, and BB-CLI-98/99 assert field-for-field equality
+  across `withResolvedStrings` and `copyWith`. Together they fail when a field
+  is added to `CliArgs` without being carried through, which is what the
+  previous field-at-a-time tests could not do.
+
+  Null means "unchanged", following `WorkspaceNavigationArgs.copyWith` in
+  `navigation_bridge.dart`; a nullable field such as `scan` or `configPath`
+  cannot be cleared through `copyWith`.
+
 ## 2.7.1
 
 ### Fixed
