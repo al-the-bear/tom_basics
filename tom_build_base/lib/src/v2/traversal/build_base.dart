@@ -16,6 +16,18 @@ class ProcessingResult {
   final List<String> _successes = [];
   final List<String> _failures = [];
   final Map<String, Object> _errors = {};
+  List<String> _unmatchedProjectPatterns = const [];
+
+  /// `--project` selectors that matched none of the scanned projects.
+  ///
+  /// Non-empty means the caller asked for projects that are not there — a
+  /// mistyped id, name, path, or glob. Unless the traversal was told to allow
+  /// it, nothing was executed, so the result is empty *because of* these
+  /// patterns rather than because there was no work to do. Callers that map a
+  /// traversal onto an exit code should treat a non-empty list as a failure
+  /// and name the patterns; see `ToolRunner`.
+  List<String> get unmatchedProjectPatterns =>
+      List.unmodifiable(_unmatchedProjectPatterns);
 
   /// Paths that were processed successfully.
   List<String> get successes => List.unmodifiable(_successes);
@@ -41,6 +53,8 @@ class ProcessingResult {
   void recordSuccess(String path) => _successes.add(path);
   void recordFailure(String path) => _failures.add(path);
   void recordError(String path, Object error) => _errors[path] = error;
+  void recordUnmatchedProjectPatterns(List<String> patterns) =>
+      _unmatchedProjectPatterns = List<String>.of(patterns);
 
   @override
   String toString() =>
@@ -74,12 +88,27 @@ abstract class BuildBase {
   /// **Special types:**
   /// - [FsFolder] in either set always matches (every folder is an FsFolder).
   /// - [DartProjectFolder] matches any Dart project subtype (hierarchy check).
+  ///
+  /// ## Unmatched project selectors
+  ///
+  /// A `--project` pattern that matches none of the scanned projects is a
+  /// mistake, not an empty request: the run would otherwise do nothing and
+  /// report success, which is indistinguishable from a run that worked. Such
+  /// patterns are collected into [ProcessingResult.unmatchedProjectPatterns]
+  /// and, unless [allowUnmatchedProjectPatterns] is set, nothing is executed.
+  ///
+  /// [additionalProjectPatterns] lets a caller that applies further `--project`
+  /// selectors of its own (per-command patterns in `ToolRunner`, which are
+  /// filtered inside [run] rather than by the pipeline) have them audited by
+  /// the same rule.
   static Future<ProcessingResult> traverse({
     required BaseTraversalInfo info,
     required Future<bool> Function(CommandContext) run,
     Set<Type>? requiredNatures,
     Set<Type> worksWithNatures = const {},
     bool verbose = false,
+    List<String> additionalProjectPatterns = const [],
+    bool allowUnmatchedProjectPatterns = false,
   }) async {
     final detector = NatureDetector();
     final filter = FilterPipeline();
@@ -108,6 +137,20 @@ abstract class BuildBase {
     // Build order must be computed from ALL scanned folders so that
     // dependency ordering is correct even when filters are applied.
     final allScannedFolders = List<FsFolder>.of(folders);
+
+    // Audit the project selectors against what was actually scanned, before
+    // the exclude filters run: "select A, exclude A" names A correctly and is
+    // a coherent (if empty) request, whereas a selector matching nothing at
+    // all is a typo the caller needs to hear about.
+    if (info case ProjectTraversalInfo pi) {
+      result.recordUnmatchedProjectPatterns(
+        filter.unmatchedProjectPatterns(
+          allScannedFolders,
+          [...pi.projectPatterns, ...additionalProjectPatterns],
+          executionRoot: pi.executionRoot,
+        ),
+      );
+    }
 
     // Apply filters AFTER nature detection (so ID/name matching works)
     switch (info) {
@@ -178,6 +221,14 @@ abstract class BuildBase {
         'Neither requiredNatures nor worksWithNatures is configured. '
         'Set requiredNatures or worksWithNatures (use FsFolder for all folders).',
       );
+    }
+
+    // A selection built on a selector that matched nothing is not the
+    // selection the caller asked for. Execute none of it, so the caller sees a
+    // reported mistake instead of a partial run.
+    if (result.unmatchedProjectPatterns.isNotEmpty &&
+        !allowUnmatchedProjectPatterns) {
+      return result;
     }
 
     // Execute on each context

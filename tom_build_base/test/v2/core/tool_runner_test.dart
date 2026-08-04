@@ -667,6 +667,307 @@ void main() {
         }
       });
 
+      // ----------------------------------------------------------------
+      // tccc4 — a --project selector that matches nothing is a user error.
+      //
+      // The path guards above (BB-RUN-63/64) catch two *shapes* of mistake:
+      // an out-of-workspace absolute path, and a non-glob path that does not
+      // exist. They cannot catch the general case, because a selector is not
+      // only a path — it is also an id, a name, or a glob, and those three
+      // are exempt from the existence check by design (a glob "may match
+      // zero"). The result was that every other way of mistyping a selector
+      // produced a silent, successful no-op: nothing generated, nothing
+      // printed, exit 0 — indistinguishable from a run that did its job.
+      //
+      // These tests pin the general rule instead of the shapes: whatever the
+      // selector's form, if it matches no scanned project the run fails and
+      // names it. `--allow-empty` is the deliberate opt-out.
+      // ----------------------------------------------------------------
+
+      test('BB-RUN-69: a --project name matching no project fails and names '
+          'the selector [2026-08-04]', () async {
+        final tempRoot = await Directory.systemTemp.createTemp('bb_nomatch_');
+        final previousCwd = Directory.current.path;
+        final output = StringBuffer();
+        try {
+          final projectA = Directory('${tempRoot.path}/a_proj')..createSync();
+          File('${projectA.path}/pubspec.yaml').writeAsStringSync(
+            'name: a_proj\nversion: 1.0.0\nenvironment:\n  sdk: ^3.0.0\n',
+          );
+
+          final orderLog = <String>[];
+          final runner = ToolRunner(
+            tool: _twoTraversalCommandsTool,
+            output: output,
+            executors: {
+              'first': _OrderTrackingExecutor('first', orderLog),
+              'second': _OrderTrackingExecutor('second', orderLog),
+            },
+          );
+
+          Directory.current = tempRoot.path;
+          final result = await runner.run([
+            '-r',
+            '--root',
+            tempRoot.path,
+            '--scan',
+            '.',
+            '--project',
+            'typo_proj',
+            ':first',
+          ]);
+
+          expect(result.success, isFalse,
+              reason: 'a selector that matches nothing is a typo, not a no-op');
+          expect(output.toString(), contains('typo_proj'),
+              reason: 'the message must name the offending selector');
+          expect(orderLog, isEmpty,
+              reason: 'nothing should run when the selection is a mistake');
+        } finally {
+          Directory.current = previousCwd;
+          if (tempRoot.existsSync()) {
+            await tempRoot.delete(recursive: true);
+          }
+        }
+      });
+
+      test('BB-RUN-70: a --project glob matching no project fails, which the '
+          'existence guard cannot catch [2026-08-04]', () async {
+        final tempRoot = await Directory.systemTemp.createTemp('bb_nomatch_');
+        final previousCwd = Directory.current.path;
+        final output = StringBuffer();
+        try {
+          final projectA = Directory('${tempRoot.path}/a_proj')..createSync();
+          File('${projectA.path}/pubspec.yaml').writeAsStringSync(
+            'name: a_proj\nversion: 1.0.0\nenvironment:\n  sdk: ^3.0.0\n',
+          );
+
+          final orderLog = <String>[];
+          final runner = ToolRunner(
+            tool: _twoTraversalCommandsTool,
+            output: output,
+            executors: {
+              'first': _OrderTrackingExecutor('first', orderLog),
+              'second': _OrderTrackingExecutor('second', orderLog),
+            },
+          );
+
+          Directory.current = tempRoot.path;
+          final result = await runner.run([
+            '-r',
+            '--root',
+            tempRoot.path,
+            '--scan',
+            '.',
+            '--project',
+            './*',
+            ':first',
+          ]);
+
+          expect(result.success, isFalse,
+              reason: "'./*' is the form the CLI guide documented; it selects "
+                  'nothing and must say so');
+          expect(orderLog, isEmpty);
+        } finally {
+          Directory.current = previousCwd;
+          if (tempRoot.existsSync()) {
+            await tempRoot.delete(recursive: true);
+          }
+        }
+      });
+
+      test('BB-RUN-71: one bad selector among good ones still fails, and only '
+          'the bad one is named [2026-08-04]', () async {
+        final tempRoot = await Directory.systemTemp.createTemp('bb_nomatch_');
+        final previousCwd = Directory.current.path;
+        final output = StringBuffer();
+        try {
+          final projectA = Directory('${tempRoot.path}/a_proj')..createSync();
+          File('${projectA.path}/pubspec.yaml').writeAsStringSync(
+            'name: a_proj\nversion: 1.0.0\nenvironment:\n  sdk: ^3.0.0\n',
+          );
+
+          final orderLog = <String>[];
+          final runner = ToolRunner(
+            tool: _twoTraversalCommandsTool,
+            output: output,
+            executors: {
+              'first': _OrderTrackingExecutor('first', orderLog),
+              'second': _OrderTrackingExecutor('second', orderLog),
+            },
+          );
+
+          Directory.current = tempRoot.path;
+          final result = await runner.run([
+            '-r',
+            '--root',
+            tempRoot.path,
+            '--scan',
+            '.',
+            '--project',
+            'a_proj',
+            '--project',
+            'typo_proj',
+            ':first',
+          ]);
+
+          // A typo hidden inside a list is *more* silent than a lone one: the
+          // run does real work, so nothing looks wrong.
+          expect(result.success, isFalse);
+          expect(output.toString(), contains('typo_proj'));
+          expect(output.toString(), isNot(contains('a_proj')),
+              reason: 'a selector that did match must not be blamed');
+        } finally {
+          Directory.current = previousCwd;
+          if (tempRoot.existsSync()) {
+            await tempRoot.delete(recursive: true);
+          }
+        }
+      });
+
+      test('BB-RUN-72: --allow-empty restores the old permissive behaviour '
+          '[2026-08-04]', () async {
+        final tempRoot = await Directory.systemTemp.createTemp('bb_nomatch_');
+        final previousCwd = Directory.current.path;
+        final output = StringBuffer();
+        try {
+          final projectA = Directory('${tempRoot.path}/a_proj')..createSync();
+          File('${projectA.path}/pubspec.yaml').writeAsStringSync(
+            'name: a_proj\nversion: 1.0.0\nenvironment:\n  sdk: ^3.0.0\n',
+          );
+
+          final orderLog = <String>[];
+          final runner = ToolRunner(
+            tool: _twoTraversalCommandsTool,
+            output: output,
+            executors: {
+              'first': _OrderTrackingExecutor('first', orderLog),
+              'second': _OrderTrackingExecutor('second', orderLog),
+            },
+          );
+
+          Directory.current = tempRoot.path;
+          final result = await runner.run([
+            '-r',
+            '--root',
+            tempRoot.path,
+            '--scan',
+            '.',
+            '--allow-empty',
+            '--project',
+            'a_proj',
+            '--project',
+            'typo_proj',
+            ':first',
+          ]);
+
+          expect(result.success, isTrue,
+              reason: 'a shared script may legitimately use an "if present" '
+                  'selector across differing workspaces');
+          expect(orderLog.any((e) => e.startsWith('a_proj|')), isTrue,
+              reason: 'the matching selector must still do its work');
+        } finally {
+          Directory.current = previousCwd;
+          if (tempRoot.existsSync()) {
+            await tempRoot.delete(recursive: true);
+          }
+        }
+      });
+
+      test('BB-RUN-73: a per-command --project matching no project fails too '
+          '[2026-08-04]', () async {
+        final tempRoot = await Directory.systemTemp.createTemp('bb_nomatch_');
+        final previousCwd = Directory.current.path;
+        final output = StringBuffer();
+        try {
+          final projectA = Directory('${tempRoot.path}/a_proj')..createSync();
+          File('${projectA.path}/pubspec.yaml').writeAsStringSync(
+            'name: a_proj\nversion: 1.0.0\nenvironment:\n  sdk: ^3.0.0\n',
+          );
+
+          final orderLog = <String>[];
+          final runner = ToolRunner(
+            tool: _twoTraversalCommandsTool,
+            output: output,
+            executors: {
+              'first': _OrderTrackingExecutor('first', orderLog),
+              'second': _OrderTrackingExecutor('second', orderLog),
+            },
+          );
+
+          Directory.current = tempRoot.path;
+          final result = await runner.run([
+            '-r',
+            '--root',
+            tempRoot.path,
+            '--scan',
+            '.',
+            ':first',
+            '--project',
+            'typo_proj',
+          ]);
+
+          expect(result.success, isFalse,
+              reason: 'the same silence, one flag position away');
+          expect(output.toString(), contains('typo_proj'));
+          expect(orderLog, isEmpty);
+        } finally {
+          Directory.current = previousCwd;
+          if (tempRoot.existsSync()) {
+            await tempRoot.delete(recursive: true);
+          }
+        }
+      });
+
+      test('BB-RUN-74: a selector that matches but is then excluded is not '
+          'reported as unmatched [2026-08-04]', () async {
+        final tempRoot = await Directory.systemTemp.createTemp('bb_nomatch_');
+        final previousCwd = Directory.current.path;
+        final output = StringBuffer();
+        try {
+          final projectA = Directory('${tempRoot.path}/a_proj')..createSync();
+          File('${projectA.path}/pubspec.yaml').writeAsStringSync(
+            'name: a_proj\nversion: 1.0.0\nenvironment:\n  sdk: ^3.0.0\n',
+          );
+
+          final orderLog = <String>[];
+          final runner = ToolRunner(
+            tool: _twoTraversalCommandsTool,
+            output: output,
+            executors: {
+              'first': _OrderTrackingExecutor('first', orderLog),
+              'second': _OrderTrackingExecutor('second', orderLog),
+            },
+          );
+
+          Directory.current = tempRoot.path;
+          final result = await runner.run([
+            '-r',
+            '--root',
+            tempRoot.path,
+            '--scan',
+            '.',
+            '--project',
+            'a_proj',
+            '--exclude-projects',
+            'a_proj',
+            ':first',
+          ]);
+
+          // "Select A, then exclude A" is a coherent (if useless) request, and
+          // the selector is not mistyped — it names a project that exists. The
+          // audit is about typos, so it must look at what was *scanned*, not
+          // at what survived the other filters.
+          expect(result.success, isTrue);
+          expect(orderLog, isEmpty);
+        } finally {
+          Directory.current = previousCwd;
+          if (tempRoot.existsSync()) {
+            await tempRoot.delete(recursive: true);
+          }
+        }
+      });
+
       test('BB-RUN-40: help skips env checks for fast startup '
           '[2026-03-11]', () async {
         final tempRoot = await Directory.systemTemp.createTemp(

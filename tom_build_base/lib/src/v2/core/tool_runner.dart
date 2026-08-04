@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:path/path.dart' as p;
 import 'package:yaml/yaml.dart';
 
 import '../../console_encoding.dart';
@@ -675,10 +676,17 @@ class ToolRunner {
     final masterDefines = _loadMasterDefines(cliArgs.modes);
     final results = <ItemResult>[];
 
-    await BuildBase.traverse(
+    final processingResult = await BuildBase.traverse(
       info: traversalInfo,
       verbose: verbose,
       worksWithNatures: const {FsFolder},
+      // Per-command patterns are applied inside `run` rather than by the
+      // filter pipeline, so they have to be handed to the audit explicitly.
+      additionalProjectPatterns: [
+        for (final entry in resolved)
+          ...?cliArgs.commandArgs[entry.cmd.name]?.projectPatterns,
+      ],
+      allowUnmatchedProjectPatterns: cliArgs.allowEmpty,
       run: (context) async {
         final runnable =
             <
@@ -763,6 +771,13 @@ class ToolRunner {
         return true;
       },
     );
+
+    final unmatchedError = _reportUnmatchedProjects(
+      processingResult,
+      traversalInfo,
+      allowEmpty: cliArgs.allowEmpty,
+    );
+    if (unmatchedError != null) return ToolResult.failure(unmatchedError);
 
     return ToolResult.fromItems(results);
   }
@@ -950,6 +965,38 @@ class ToolRunner {
     return null;
   }
 
+  /// Turn `--project` selectors that matched nothing into a failure message.
+  ///
+  /// An unmatched selector yields an empty selection, and an empty selection
+  /// executes nothing and would otherwise report success — so a mistyped
+  /// selector and a finished job are indistinguishable from the outside. The
+  /// message names both the selector and the root it was searched under, since
+  /// the same selector is right or wrong depending on where the tool was
+  /// pointed. Returns null when every selector matched something, or when
+  /// [allowEmpty] (`--allow-empty`) opts out of the rule.
+  String? _reportUnmatchedProjects(
+    ProcessingResult result,
+    BaseTraversalInfo traversalInfo, {
+    required bool allowEmpty,
+  }) {
+    final unmatched = result.unmatchedProjectPatterns;
+    if (unmatched.isEmpty || allowEmpty) return null;
+
+    final quoted = unmatched.map((pattern) => "'$pattern'").join(', ');
+    final label = unmatched.length == 1 ? 'selector' : 'selectors';
+    final scan = traversalInfo is ProjectTraversalInfo
+        ? traversalInfo.scan
+        : '.';
+    final scanRoot = p.normalize(
+      p.isAbsolute(scan) ? scan : p.join(traversalInfo.executionRoot, scan),
+    );
+    final message =
+        '--project $label matched no project: $quoted (scanned $scanRoot)';
+    output.writeln('Error: $message');
+    output.writeln('Use --allow-empty if matching nothing is intended.');
+    return message;
+  }
+
   /// Run executor with traversal.
   Future<ToolResult> _runWithTraversal(
     CommandExecutor executor,
@@ -1064,11 +1111,16 @@ class ToolRunner {
     // Execute with traversal
     final results = <ItemResult>[];
 
-    await BuildBase.traverse(
+    final processingResult = await BuildBase.traverse(
       info: traversalInfo,
       verbose: verbose,
       requiredNatures: reqNatures,
       worksWithNatures: workNatures,
+      // Per-command patterns are applied inside `run` rather than by the
+      // filter pipeline, so they have to be handed to the audit explicitly.
+      additionalProjectPatterns:
+          cliArgs.commandArgs[cmd?.name]?.projectPatterns ?? const [],
+      allowUnmatchedProjectPatterns: cliArgs.allowEmpty,
       run: (context) async {
         // Apply per-command filters for project traversal
         if (traversalInfo is ProjectTraversalInfo) {
@@ -1138,6 +1190,13 @@ class ToolRunner {
         return true; // Continue to next
       },
     );
+
+    final unmatchedError = _reportUnmatchedProjects(
+      processingResult,
+      traversalInfo,
+      allowEmpty: cliArgs.allowEmpty,
+    );
+    if (unmatchedError != null) return ToolResult.failure(unmatchedError);
 
     return ToolResult.fromItems(results);
   }

@@ -32,15 +32,11 @@ class FilterPipeline {
     if (info.projectPatterns.isNotEmpty) {
       result = result
           .where(
-            (f) =>
-                _matchesProjectId(f, info.projectPatterns) ||
-                _matchesProjectName(f, info.projectPatterns) ||
-                _matchesNamePattern(f.name, info.projectPatterns) ||
-                _matchesFullPath(f.path, info.projectPatterns) ||
-                _matchesRelativePath(
-                  p.relative(f.path, from: info.executionRoot),
-                  info.projectPatterns,
-                ),
+            (f) => matchesProjectPattern(
+              f,
+              info.projectPatterns,
+              executionRoot: info.executionRoot,
+            ),
           )
           .toList();
     }
@@ -170,6 +166,42 @@ class FilterPipeline {
       if (_matchesRelativePath(relativePath, patterns)) return true;
     }
     return false;
+  }
+
+  /// The subset of [patterns] that matches none of [folders].
+  ///
+  /// A `--project` pattern may be an id, a name, a folder-name glob, or a path,
+  /// and only the last of those names a directory that can be existence-checked
+  /// up front. For every other form — and for glob paths, which are exempt from
+  /// the existence check because they *may* legitimately match zero — the only
+  /// way to tell a real selector from a typo is to try it against the projects
+  /// that were actually scanned. A pattern that matches nothing selected
+  /// nothing, and a selection of nothing is a mistake worth reporting rather
+  /// than a no-op worth performing.
+  ///
+  /// [folders] must be the **scanned** folders with their natures already
+  /// detected, before the exclude filters run: matching is by id and name as
+  /// well as by path, and "select A then exclude A" is a coherent request in
+  /// which A is not mistyped. Order follows [patterns], and each pattern
+  /// appears at most once.
+  List<String> unmatchedProjectPatterns(
+    List<FsFolder> folders,
+    List<String> patterns, {
+    required String executionRoot,
+  }) {
+    final unmatched = <String>[];
+    for (final pattern in patterns) {
+      if (unmatched.contains(pattern)) continue;
+      final matched = folders.any(
+        (f) => matchesProjectPattern(
+          f,
+          [pattern],
+          executionRoot: executionRoot,
+        ),
+      );
+      if (!matched) unmatched.add(pattern);
+    }
+    return unmatched;
   }
 
   /// Whether a pattern is path-based (contains directory separators).

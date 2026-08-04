@@ -154,6 +154,10 @@ const List<OptionDefinition> projectTraversalOptions = [
     valueName: 'name',
   ),
   OptionDefinition.flag(
+    name: 'allow-empty',
+    description: 'Succeed even if a --project selector matches nothing',
+  ),
+  OptionDefinition.flag(
     name: 'build-order',
     abbr: 'b',
     description: 'Sort by dependency order (default)',

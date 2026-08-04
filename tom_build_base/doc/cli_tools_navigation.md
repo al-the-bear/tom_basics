@@ -115,6 +115,33 @@ astgen -i                    # Inner-first git mode
 | `--build-order` | `-b` | Sort projects in dependency build order (includes `dev_dependencies` by default) |
 | `--exclude-dev` | | Exclude `dev_dependencies` from build-order sorting |
 | `--project=<pattern>` | `-p` | Project(s) to run (comma-separated, globs supported) |
+| `--allow-empty` | | Succeed even if a `--project` selector matches nothing |
+
+#### A `--project` selector that matches nothing is an error
+
+Every `--project` pattern — whether it names a project id, a project name, a
+folder-name glob, or a path — is checked against the projects that were actually
+scanned. A pattern that matches none of them fails the run with a non-zero exit
+code, naming both the pattern and the root it was searched under:
+
+```text
+Error: --project selector matched no project: 'core/tom_core_d4rt' (scanned /ws)
+Use --allow-empty if matching nothing is intended.
+```
+
+Nothing is executed in that case, not even the projects that *did* match: the
+selection is not the one that was asked for, so a partial run would be worse
+than none. Each unmatched pattern is reported individually, so a typo hidden in
+an otherwise valid list is caught rather than silently dropped.
+
+The check looks at the **scanned** projects, before `--exclude-projects` and the
+other filters are applied. `--project a --exclude-projects a` is therefore an
+empty selection but not an unmatched selector: `a` exists and was named
+correctly, and the run succeeds having done nothing.
+
+Pass `--allow-empty` when matching nothing is intended — typically a shared
+script that uses a selector as an "if present" filter across workspaces that do
+not all contain the project.
 
 ### Workspace Root
 

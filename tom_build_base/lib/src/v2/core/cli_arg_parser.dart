@@ -81,6 +81,13 @@ class CliArgs {
   final List<String> recursionExclude;
   final List<String> projectPatterns;
 
+  /// Accept `--project` selectors that match no project (`--allow-empty`).
+  ///
+  /// Off by default: an unmatched selector is normally a typo and fails the
+  /// run. Scripts that share one invocation across differing workspaces and
+  /// use a selector as an "if present" filter set this to opt out.
+  final bool allowEmpty;
+
   // Mode options
   final List<String> modes;
 
@@ -142,6 +149,7 @@ class CliArgs {
     this.excludeProjects = const [],
     this.recursionExclude = const [],
     this.projectPatterns = const [],
+    this.allowEmpty = false,
     this.modes = const [],
     this.modules = const [],
     this.skipModules = const [],
@@ -312,6 +320,7 @@ class CliArgs {
       excludeProjects: excludeProjects,
       recursionExclude: recursionExclude,
       projectPatterns: projectPatterns,
+      allowEmpty: allowEmpty,
       modes: modes,
       modules: modules,
       skipModules: skipModules,
@@ -591,6 +600,9 @@ class CliArgParser {
       case 'p':
         if (value != null) state.projectPatterns.addAll(_splitValue(value));
         break;
+      case 'allow-empty':
+        state.allowEmpty = true;
+        break;
       case 'modes':
         if (value != null) state.modes.addAll(_splitValue(value));
         break;
@@ -706,6 +718,7 @@ class CliArgParser {
       'outer-first-git', 'o',
       'top-repo', 'T',
       'recursion-exclude',
+      'allow-empty',
       'modes',
       'modules', 'm',
       'skip-modules',
@@ -939,6 +952,7 @@ class _ParseState {
   final List<String> excludeProjects = [];
   final List<String> recursionExclude = [];
   final List<String> projectPatterns = [];
+  bool allowEmpty = false;
   final List<String> modes = [];
   final List<String> modules = [];
   final List<String> skipModules = [];
@@ -982,6 +996,7 @@ class _ParseState {
       excludeProjects: excludeProjects,
       recursionExclude: recursionExclude,
       projectPatterns: projectPatterns,
+      allowEmpty: allowEmpty,
       modes: modes,
       modules: modules,
       skipModules: skipModules,

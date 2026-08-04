@@ -1,3 +1,49 @@
+## 2.7.0
+
+### Changed
+
+- **A `--project` selector that matches no project now fails the run.**
+  Previously any selector that matched nothing — a mistyped id or name, a
+  partial id such as `core/tom_core_d4rt` instead of the full
+  `tom_ai/core/tom_core_d4rt`, or a glob like `./*` — produced a silent,
+  successful no-op: nothing selected, nothing executed, exit 0. A mistyped
+  selector was therefore indistinguishable from a run that did its job. Such
+  patterns are now reported individually and the run exits non-zero, naming the
+  pattern and the root it was searched under. Nothing is executed, so a
+  selection containing one bad selector never runs half of itself.
+
+  The two existing path guards (out-of-workspace absolute paths, and non-glob
+  paths naming a missing directory) only covered the *path* shape of a
+  selector; ids, names and globs were exempt by design because they "may match
+  zero". The audit replaces that shape-based exemption with the general rule:
+  whatever its form, a selector is checked against the projects that were
+  actually scanned.
+
+  The check runs against the scanned projects, *before* the exclude filters, so
+  `--project a --exclude-projects a` remains a coherent (empty, successful)
+  request rather than an unmatched selector. Covered by BB-RUN-69..74.
+
+### Added
+
+- **`--allow-empty`** — opts out of the rule above for callers that use a
+  selector as an "if present" filter, e.g. a shared script run across
+  workspaces that do not all contain the project. Available on every tool with
+  project traversal.
+- **`FilterPipeline.unmatchedProjectPatterns(folders, patterns, executionRoot:)`**
+  — the audit primitive: the subset of `patterns` matching none of `folders`,
+  in pattern order, each at most once.
+- **`ProcessingResult.unmatchedProjectPatterns`** plus
+  `BuildBase.traverse`'s `additionalProjectPatterns` and
+  `allowUnmatchedProjectPatterns` parameters, so callers that apply further
+  `--project` selectors of their own (per-command patterns in `ToolRunner`) get
+  them audited by the same rule.
+
+### Fixed
+
+- `FilterPipeline.applyProjectFilters` inlined a duplicate of
+  `matchesProjectPattern`'s five-way match; it now calls the method, so filter
+  and audit cannot disagree about what a pattern matches.
+
 ## 2.6.32
 
 ### Added
