@@ -11,31 +11,29 @@ dependencies:
   
   # Build/Dev tools
   tom_build_cli:
-    path: ../tom/devops/tom_build_cli
+    path: ../tom_ai/devops/tom_build_cli
   tom_build_common:
-    path: ../tom/devops/tom_build_common
+    path: ../tom_ai/devops/tom_build_common
   tom_deploy_tools:
-    path: ../tom/devops/tom_deploy_tools
-  tom_dartscript_bridges:
-    path: ../tom/dartscript/tom_dartscript_bridges
-  
+    path: ../tom_ai/devops/tom_deploy_tools
+
   # D4rt and reflection generators
   tom_d4rt:
   tom_d4rt_dcli:
   tom_d4rt_generator:
-  
+
   # Basics
   tom_basics_network:
-  
+
   # VS Code bridge
   tom_vscode_bridge:
-    path: ../tom/xternal/tom_module_vscode/tom_vscode_bridge
-  
+    path: ../tom_ai/vscode/tom_vscode_bridge
+
   # Distributed tools
   tom_dist_ledger_tool:
-    path: ../tom/xternal/tom_module_distributed/tom_dist_ledger_tool
+    path: ../tom_ai/distributed/tom_dist_ledger_tool
   tom_process_monitor_tool:
-    path: ../tom/xternal/tom_module_distributed/tom_process_monitor_tool
+    path: ../tom_ai/distributed/tom_process_monitor_tool
 
 dev_dependencies:
   build_runner: ^2.4.14

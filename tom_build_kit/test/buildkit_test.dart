@@ -115,10 +115,10 @@ void main() {
       final result = await ws.runPipeline(
         ':versioner',
         [],
-        globalArgs: ['--project', 'basics/tom_build_kit', '--dry-run'],
+        globalArgs: ['--project', 'tom_ai/basics/tom_build_kit', '--dry-run'],
       );
       log.capture(
-        'buildkit --project basics/tom_build_kit --dry-run :versioner',
+        'buildkit --project tom_ai/basics/tom_build_kit --dry-run :versioner',
         result,
       );
 
@@ -133,10 +133,10 @@ void main() {
       final result = await ws.runPipeline(
         'test-simple',
         [],
-        globalArgs: ['--project', 'basics/tom_build_kit'],
+        globalArgs: ['--project', 'tom_ai/basics/tom_build_kit'],
       );
       log.capture(
-        'buildkit --project basics/tom_build_kit test-simple',
+        'buildkit --project tom_ai/basics/tom_build_kit test-simple',
         result,
       );
 
@@ -218,11 +218,11 @@ void main() {
       // Use runPipeline with --dry-run as "pipeline" arg for correct ordering.
       final result = await ws.runPipeline('--dry-run', [
         '--project',
-        'basics/tom_build_kit',
+        'tom_ai/basics/tom_build_kit',
         'test-simple',
       ]);
       log.capture(
-        'buildkit --dry-run --project basics/tom_build_kit test-simple',
+        'buildkit --dry-run --project tom_ai/basics/tom_build_kit test-simple',
         result,
       );
 
@@ -271,10 +271,10 @@ void main() {
       final result = await ws.runPipeline(
         ':versioner',
         ['-s-'],
-        globalArgs: ['--project', 'basics/tom_build_kit', '--dry-run'],
+        globalArgs: ['--project', 'tom_ai/basics/tom_build_kit', '--dry-run'],
       );
       log.capture(
-        'buildkit --project basics/tom_build_kit --dry-run :versioner -s-',
+        'buildkit --project tom_ai/basics/tom_build_kit --dry-run :versioner -s-',
         result,
       );
 
@@ -293,9 +293,12 @@ void main() {
       final result = await ws.runPipeline(
         'test-shell',
         [],
-        globalArgs: ['--project', 'basics/tom_build_kit'],
+        globalArgs: ['--project', 'tom_ai/basics/tom_build_kit'],
       );
-      log.capture('buildkit --project basics/tom_build_kit test-shell', result);
+      log.capture(
+        'buildkit --project tom_ai/basics/tom_build_kit test-shell',
+        result,
+      );
 
       final stdout = (result.stdout as String);
       expect(result.exitCode, equals(0));
@@ -504,9 +507,12 @@ void main() {
       final result = await ws.runPipeline(
         'test-stdin',
         [],
-        globalArgs: ['--project', 'basics/tom_build_kit'],
+        globalArgs: ['--project', 'tom_ai/basics/tom_build_kit'],
       );
-      log.capture('buildkit --project basics/tom_build_kit test-stdin', result);
+      log.capture(
+        'buildkit --project tom_ai/basics/tom_build_kit test-stdin',
+        result,
+      );
 
       final combined = '${result.stdout}\n${result.stderr}';
       expect(
