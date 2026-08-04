@@ -61,6 +61,21 @@ class ProcessingResult {
       'ProcessingResult(success: $successCount, failed: $failureCount, total: $total)';
 }
 
+/// The error message for [ProcessingResult.unmatchedProjectPatterns].
+///
+/// Names both the patterns and [scanRoot], because the same selector is right
+/// or wrong depending on where the tool was pointed — "no such project" is only
+/// actionable together with "looked here". Shared so that every caller that
+/// turns unmatched selectors into a failure words it identically.
+String describeUnmatchedProjectPatterns(
+  List<String> patterns, {
+  required String scanRoot,
+}) {
+  final quoted = patterns.map((pattern) => "'$pattern'").join(', ');
+  final label = patterns.length == 1 ? 'selector' : 'selectors';
+  return '--project $label matched no project: $quoted (scanned $scanRoot)';
+}
+
 /// Main entry point for workspace traversal.
 ///
 /// Provides static methods for scanning, filtering, and executing

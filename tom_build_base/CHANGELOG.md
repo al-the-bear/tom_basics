@@ -1,3 +1,21 @@
+## 2.7.1
+
+### Fixed
+
+- **A pipeline `shell-scan` step no longer passes for having run nowhere.** The
+  unmatched-selector rule added in 2.7.0 covered the tool paths but not
+  `shell-scan`, which reported success whenever every selected folder
+  succeeded — trivially true of no folders. It now reports the unmatched
+  selector and fails the step, and honours `--allow-empty` like everything
+  else. Covered by BB-PLX-8.
+
+### Added
+
+- **`describeUnmatchedProjectPatterns(patterns, scanRoot:)`** and
+  **`ProjectTraversalInfo.absoluteScanRoot`** — the message wording and the
+  "where did it look" resolution, shared so every caller that rejects an
+  unmatched selector words it identically.
+
 ## 2.7.0
 
 ### Changed

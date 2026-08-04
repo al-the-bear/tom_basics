@@ -390,7 +390,22 @@ class ToolPipelineExecutor {
         return exitCode == 0;
       },
       verbose: verbose,
+      allowUnmatchedProjectPatterns: cliArgs.allowEmpty,
     );
+
+    // A shell-scan over a selection that was never found ran the command
+    // nowhere. Report the selector rather than let the step pass for having
+    // done nothing.
+    if (result.unmatchedProjectPatterns.isNotEmpty && !cliArgs.allowEmpty) {
+      output.writeln(
+        'Error: ${describeUnmatchedProjectPatterns(
+          result.unmatchedProjectPatterns,
+          scanRoot: traversal.absoluteScanRoot,
+        )}',
+      );
+      output.writeln('Use --allow-empty if matching nothing is intended.');
+      return false;
+    }
 
     return result.allSucceeded;
   }

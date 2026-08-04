@@ -1,3 +1,5 @@
+import 'package:path/path.dart' as p;
+
 /// Git traversal order mode.
 enum GitTraversalMode {
   /// Process inner git repos first (submodules before parent).
@@ -116,6 +118,15 @@ class ProjectTraversalInfo extends BaseTraversalInfo {
       ignoreSkipMarkers: ignoreSkipMarkers ?? this.ignoreSkipMarkers,
     );
   }
+
+  /// [scan] resolved against [executionRoot], as an absolute normalized path.
+  ///
+  /// The directory the scan actually started from — what to name when telling
+  /// the user where a project was looked for, since [scan] on its own is
+  /// usually the bare default `.` and says nothing.
+  String get absoluteScanRoot => p.normalize(
+    p.isAbsolute(scan) ? scan : p.join(executionRoot, scan),
+  );
 
   @override
   String toString() =>

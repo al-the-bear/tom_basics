@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:path/path.dart' as p;
 import 'package:yaml/yaml.dart';
 
 import '../../console_encoding.dart';
@@ -982,16 +981,12 @@ class ToolRunner {
     final unmatched = result.unmatchedProjectPatterns;
     if (unmatched.isEmpty || allowEmpty) return null;
 
-    final quoted = unmatched.map((pattern) => "'$pattern'").join(', ');
-    final label = unmatched.length == 1 ? 'selector' : 'selectors';
-    final scan = traversalInfo is ProjectTraversalInfo
-        ? traversalInfo.scan
-        : '.';
-    final scanRoot = p.normalize(
-      p.isAbsolute(scan) ? scan : p.join(traversalInfo.executionRoot, scan),
+    final message = describeUnmatchedProjectPatterns(
+      unmatched,
+      scanRoot: traversalInfo is ProjectTraversalInfo
+          ? traversalInfo.absoluteScanRoot
+          : traversalInfo.executionRoot,
     );
-    final message =
-        '--project $label matched no project: $quoted (scanned $scanRoot)';
     output.writeln('Error: $message');
     output.writeln('Use --allow-empty if matching nothing is intended.');
     return message;

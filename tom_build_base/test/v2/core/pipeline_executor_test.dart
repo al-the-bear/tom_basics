@@ -333,5 +333,84 @@ void main() {
         await tempRoot.delete(recursive: true);
       }
     });
+
+    // A shell-scan step runs its command once per selected project. With a
+    // selector that matches nothing it ran the command nowhere — and used to
+    // report the step as passed, because "every folder succeeded" is trivially
+    // true of no folders. Same rule as the tool path: name the selector, fail.
+    test(
+      'BB-PLX-8: shell-scan over an unmatched --project selector fails '
+      '[2026-08-04]',
+      () async {
+        final tempRoot = await Directory.systemTemp.createTemp('bb_plx_empty_');
+        final workspace = Directory('${tempRoot.path}/ws')..createSync();
+        File('${workspace.path}/testtool_master.yaml')
+          ..createSync()
+          ..writeAsStringSync('required-environment:\n  pipelines: {}\n');
+        Directory('${workspace.path}/a_proj').createSync();
+        File('${workspace.path}/a_proj/pubspec.yaml')
+          ..createSync()
+          ..writeAsStringSync('name: a_proj\n');
+
+        final tool = ToolDefinition(
+          name: 'testtool',
+          description: 'Test tool',
+          version: '1.0.0',
+          mode: ToolMode.multiCommand,
+        );
+        final config = ToolPipelineConfig(
+          sourcePath: '${workspace.path}/testtool_master.yaml',
+          pipelines: {
+            'scan': PipelineDefinition(
+              executable: true,
+              core: const [
+                PipelineStepConfig(
+                  commands: [
+                    PipelineCommandSpec(
+                      raw: 'shell-scan echo scanned-probe',
+                      prefix: PipelineCommandPrefix.shellScan,
+                      body: 'echo scanned-probe',
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          },
+        );
+
+        final output = StringBuffer();
+        final ok = await ToolPipelineExecutor(tool: tool, output: output)
+            .executeInvocation(
+          pipelineName: 'scan',
+          config: config,
+          cliArgs: CliArgs(
+            root: workspace.path,
+            projectPatterns: const ['typo_proj'],
+          ),
+        );
+
+        expect(ok, isFalse);
+        expect(output.toString(), contains('typo_proj'));
+
+        // ...and --allow-empty keeps the step passing for callers that mean it.
+        final allowedOutput = StringBuffer();
+        final allowedOk =
+            await ToolPipelineExecutor(tool: tool, output: allowedOutput)
+                .executeInvocation(
+          pipelineName: 'scan',
+          config: config,
+          cliArgs: CliArgs(
+            root: workspace.path,
+            projectPatterns: const ['typo_proj'],
+            allowEmpty: true,
+          ),
+        );
+        expect(allowedOk, isTrue);
+
+        if (tempRoot.existsSync()) {
+          await tempRoot.delete(recursive: true);
+        }
+      },
+    );
   });
 }
