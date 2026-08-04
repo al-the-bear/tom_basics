@@ -1,0 +1,15 @@
+# Source unification, not a version workaround.
+#
+# This sample takes both of its subjects from path, because it exists to
+# exercise the local tom_build_base and tom_analyzer_shared sources side by
+# side. Since 0.7.5 tom_analyzer_shared declares `tom_build_base: ">=2.6.32"`
+# from hosted, so the resolution saw tom_build_base from two sources at once —
+# path here, hosted there — which pub forbids outright ("tom_analyzer_shared
+# from path is forbidden"), regardless of versions.
+#
+# The override picks the path source for every reference, which is the one the
+# sample means. Removing it does not fall back to something workable; it makes
+# the sample unresolvable.
+dependency_overrides:
+  tom_build_base:
+    path: ../../tom_build_base

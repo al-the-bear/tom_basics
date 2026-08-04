@@ -15,6 +15,11 @@ void main() {
   /// partition segment that only the default path appends. Passing an explicit
   /// `cacheDirectory` would bypass that resolution and drop the segment, which
   /// the analyzer-major partitioning tests depend on.
+  ///
+  /// The override is the tool-cache *root*; the manager appends its own
+  /// `analyzer-cache/` below it. `<root>/.tom` is therefore what
+  /// [ToolCacheLocator] branch 2 resolves to in production, so the fixture
+  /// mirrors the real layout.
   SummaryCacheManager makeCacheManager(
     String root, {
     int? analyzerMajor,
@@ -24,7 +29,7 @@ void main() {
       root,
       dartSdkVersion: dartSdkVersion,
       analyzerMajor: analyzerMajor,
-      environment: {'TOM_TOOL_CACHE': p.join(root, '.tom', 'tom_tool_cache')},
+      environment: {'TOM_TOOL_CACHE': p.join(root, '.tom')},
     );
   }
 

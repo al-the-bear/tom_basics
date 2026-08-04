@@ -25,7 +25,10 @@ void main() {
     return SummaryCacheManager(
       root,
       dartSdkVersion: '3.10.4',
-      environment: {'TOM_TOOL_CACHE': p.join(root, '.tom', 'tom_tool_cache')},
+      // The override is the tool-cache *root*; the manager appends its own
+      // `analyzer-cache/` below it. `<root>/.tom` is therefore what branch 2
+      // resolves to in production, so the fixture mirrors the real layout.
+      environment: {'TOM_TOOL_CACHE': p.join(root, '.tom')},
     );
   }
 
