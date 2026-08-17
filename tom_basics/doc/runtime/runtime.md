@@ -478,12 +478,12 @@ class MyWorkerContext extends TomWorkerContext {
   ) : super(tomEnvironment, tomPlatform, args, namePrefix);
 
   @override
-  Future<bool> initializeIsolate() async {
+  Future<void> initializeIsolate() async {
     TomPlatformUtils.setCurrentPlatform(myPlatformUtils);
     initializeReflection();
     initializeRuntime();
-    // ... continue initialization
-    return true;
+    // ... continue initialization. A failure here throws, which aborts the
+    // spawn rather than yielding a worker with an unconfigured platform.
   }
 }
 ```
