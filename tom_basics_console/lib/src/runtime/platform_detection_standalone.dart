@@ -73,7 +73,7 @@ class TomStandalonePlatformUtils extends TomFallbackPlatformUtils {
   }
 
   @override
-  String toString() => "TomPlatformUtis: standalone/server";
+  String toString() => "TomStandalonePlatformUtils: standalone/server";
 }
 
 TomPlatformUtils get standalonePlatformUtils =>
