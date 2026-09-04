@@ -1,0 +1,7 @@
+# Local-development override: tom_doc_specs (a path dependency here) declares
+# its tom_doc_scanner dependency as hosted for publishing; resolve it to the
+# same workspace checkout so version solving succeeds against the unpublished
+# sibling. Same mechanism as tom_som_dart_v0's generated overrides file.
+dependency_overrides:
+  tom_doc_scanner:
+    path: ../../ai_build/tom_doc_scanner
