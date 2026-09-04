@@ -11,8 +11,8 @@ DCli provides Dart equivalents for Unix commands: `cp`, `mv`, `rm`, `mkdir`, `ca
 
 | Document | Purpose |
 |----------|----------|
-| [DCli Overview](/_copilot_guidelines/d4rt/dcli_overview.md) | Introduction, command equivalents table, examples |
-| [DCli Scripting Guide](/_copilot_guidelines/d4rt/dcli_scripting_guide.md) | Complete API reference |
+| [DCli Overview](../../../../_copilot_guidelines/d4rt/dcli_overview.md) | Introduction, command equivalents table, examples |
+| [DCli Scripting Guide](../../../../_copilot_guidelines/d4rt/dcli_scripting_guide.md) | Complete API reference |
 | [dcli_usage.md](dcli_usage.md) | Project-specific DCli patterns |
 
 **Quick Start:**
@@ -37,19 +37,19 @@ final output = 'ls -la'.toList();
 
 | Document | Purpose |
 |----------|---------|
-| [Documentation Guidelines](/_copilot_guidelines/documentation_guidelines.md) | Where to place user docs vs development docs |
+| [Documentation Guidelines](../../../../_copilot_guidelines/documentation_guidelines.md) | Where to place user docs vs development docs |
 
 ## Dart Guidelines
 
 | Document | Purpose |
 |----------|---------|
-| [Coding Guidelines](/_copilot_guidelines/dart/coding_guidelines.md) | Naming conventions, error handling, patterns |
-| [Unit Tests](/_copilot_guidelines/dart/unit_tests.md) | Test structure, matchers, mocking patterns |
-| [Examples](/_copilot_guidelines/dart/examples.md) | Example file creation guidelines |
+| [Coding Guidelines](../../../../_copilot_guidelines/dart/coding_guidelines.md) | Naming conventions, error handling, patterns |
+| [Unit Tests](../../../../_copilot_guidelines/dart/unit_tests.md) | Test structure, matchers, mocking patterns |
+| [Examples](../../../../_copilot_guidelines/dart/examples.md) | Example file creation guidelines |
 
 ## Publishing
 
-This package is published to pub.dev. See [Project Republishing](/_copilot_guidelines/dart/project_republishing.md) for the complete publishing workflow.
+This package is published to pub.dev. See [Project Republishing](../../../../_copilot_guidelines/dart/project_republishing.md) for the complete publishing workflow.
 
 ## Project-Specific Guidelines
 
