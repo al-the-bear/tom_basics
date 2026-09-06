@@ -1,3 +1,26 @@
+## 2.0.0
+
+- **Breaking: `TomBaseException.stack` is `StackTrace?`, not `Object?`.** The
+  field promised a width the very next line refused: the constructor hands it
+  straight to `_getStackTrace`, which opened `s as StackTrace?` — an unchecked
+  downcast throwing `TypeError` for any non-null value that was not a trace. So
+  a value the field's type invited could only ever fail, and fail *while
+  reporting some other failure*, which is the one path where a thrown error
+  costs the most: the report dies and the original error goes unrecorded.
+
+  `_getStackTrace`'s parameter narrows with it and the cast is gone. Rejecting a
+  wrong argument at compile time costs a caller nothing; the cast cost them the
+  failure they were trying to report.
+
+  **Major rather than minor**, though nothing in the Tom framework can observe
+  the difference. Every exception in `tom_core_kernel` and `tom_core_server`
+  reaches this class by forwarding `super.stack` from a constructor that already
+  declared `StackTrace?`, so the wide field was unreachable through any of them
+  and the cast never fired. The break is real only for code that constructs
+  `TomBaseException` directly with a non-trace, assigns one to `.stack` after
+  construction, or overrides the field — and a caller pinned to `^1.0.3` is not
+  moved onto this release, which is what the major bump is for.
+
 ## 1.0.3
 
 - **Fixed `TomRuntime.setCurrentEnvironment` to apply its fallback

@@ -85,8 +85,15 @@ class TomBaseException implements Exception {
   /// Include relevant values that help diagnose the error.
   Map<String, Object?>? parameters;
 
-  /// Original stack trace object for processing.
-  Object? stack;
+  /// The trace captured where this exception was created, if there is one.
+  ///
+  /// `StackTrace?` rather than `Object?`, which is what the very next thing to
+  /// touch it always required: the constructor hands this straight to
+  /// [_getStackTrace], and `Chain.forTrace` takes a `StackTrace`. A wider field
+  /// promised a width nothing downstream accepted, and — being public and
+  /// mutable — let an unformattable value be assigned after construction, where
+  /// it surfaced as a `TypeError` thrown *while reporting some other failure*.
+  StackTrace? stack;
 
   /// The underlying exception that caused this error, if any.
   Object? rootException;
@@ -130,8 +137,14 @@ class TomBaseException implements Exception {
   }
 
   /// Core implementation for processing stack trace frames.
-  static String _getStackTrace([Object? s, int depth = -1]) {
-    final trace = s as StackTrace? ?? StackTrace.current;
+  ///
+  /// The parameter is `StackTrace?` rather than `Object?` for the same reason
+  /// the field is: this line used to read `s as StackTrace?`, an unchecked
+  /// downcast that threw for any non-null value that was not a trace. Rejecting
+  /// such a value at compile time costs the caller nothing, whereas the cast
+  /// cost the failure being reported.
+  static String _getStackTrace([StackTrace? s, int depth = -1]) {
+    final trace = s ?? StackTrace.current;
     final frames = Chain.forTrace(trace)
         .foldFrames(
           (frame) => frame.isCore,
