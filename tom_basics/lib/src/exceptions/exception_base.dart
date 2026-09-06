@@ -9,7 +9,7 @@
 /// ```dart
 /// // Create and throw a tracked exception
 /// throw TomBaseException(
-///   'USER_NOT_FOUND',
+///   'users.fetch.not_found',
 ///   'The requested user could not be found',
 ///   parameters: {'userId': userId},
 /// );
@@ -49,11 +49,11 @@ import 'package:stack_trace/stack_trace.dart';
 ///
 /// ```dart
 /// // Basic exception
-/// throw TomBaseException('ERROR_CODE', 'Something went wrong');
+/// throw TomBaseException('orders.submit.no_positions', 'The order is empty');
 ///
 /// // Exception with parameters for context
 /// throw TomBaseException(
-///   'VALIDATION_ERROR',
+///   'users.validate.invalid_email',
 ///   'Invalid email format',
 ///   parameters: {'field': 'email', 'value': userInput},
 /// );
@@ -72,9 +72,18 @@ class TomBaseException implements Exception {
   /// When this exception was created.
   DateTime timeStamp = DateTime.timestamp();
 
-  /// Error key/code for programmatic error handling.
+  /// Error key for programmatic error handling.
   ///
-  /// Use consistent keys like 'USER_NOT_FOUND', 'VALIDATION_ERROR', etc.
+  /// Dotted lowercase, `lower_snake_case` within each segment, reading
+  /// `<area>.<operation>.<condition>` — `users.fetch.not_found`,
+  /// `orders.submit.no_positions`. The **first segment names the module or
+  /// subsystem**, which is what keeps keys from unrelated code from colliding
+  /// and lets a handler match a whole area with a prefix test.
+  ///
+  /// The key is not a message: it is the value callers switch on and the
+  /// natural lookup key for a translated message, so it should stay stable even
+  /// when the wording it accompanies changes. `tom_core_kernel` documents the
+  /// convention in full, and every key in the Tom framework follows it.
   String key;
 
   /// User-friendly error message suitable for display.

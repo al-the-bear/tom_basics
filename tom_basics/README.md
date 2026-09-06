@@ -138,7 +138,7 @@ void main() {
   tomLog.info('Application starting...');
 
   try {
-    throw TomBaseException('EXAMPLE_ERROR', 'Something went wrong');
+    throw TomBaseException('example.run.failed', 'Something went wrong');
   } on TomBaseException catch (e) {
     tomLog.error('Caught: ${e.key} - ${e.defaultUserMessage}');
     print('Exception UUID: ${e.uuid}'); // e.g. aceec92a-90ab-4f7b-896e-...
@@ -152,7 +152,7 @@ Running it prints (timestamps and the UUID vary per run):
 
 ```
 2026-06-16 21:27:22.128328 - INFO    Application starting...   [main]
-2026-06-16 21:27:22.140356 - ERROR   Caught: EXAMPLE_ERROR - Something went wrong   [main]
+2026-06-16 21:27:22.140356 - ERROR   Caught: example.run.failed - Something went wrong   [main]
 Exception UUID: aceec92a-90ab-4f7b-896e-595d7f1a94ca
 2026-06-16 21:27:22.140927 - INFO    Application finished.   [main]
 ```
@@ -176,19 +176,27 @@ run it with `dart run example/tom_basics_example.dart`.
 ### Exception handling with UUID tracking
 
 The constructor takes a **key** (a stable, machine-readable code) and a
-**default user message** (human-readable), with everything else optional:
+**default user message** (human-readable), with everything else optional.
+
+A key is dotted lowercase, `lower_snake_case` within each segment, and reads
+`<area>.<operation>.<condition>` — `users.fetch.not_found`,
+`orders.submit.no_positions`. The **first segment names the module or
+subsystem**, which is what keeps keys from unrelated code from colliding and
+lets a handler match a whole area with a prefix test. `tom_core_kernel`
+documents the convention in full; every key in the Tom framework follows it,
+and this package's base class is where it starts.
 
 ```dart
 import 'package:tom_basics/tom_basics.dart';
 
 void main() {
   final ex = TomBaseException(
-    'VALIDATION_ERROR',
+    'users.validate.invalid_email',
     'The email address is not valid',
     parameters: {'field': 'email', 'value': 'not-an-email'},
   );
 
-  print(ex.key);                  // VALIDATION_ERROR
+  print(ex.key);                  // users.validate.invalid_email
   print(ex.defaultUserMessage);   // The email address is not valid
   print(ex.parameters?['field']); // email
   print(ex.uuid.length);          // 36  (a UUIDv4 string)
@@ -206,7 +214,7 @@ in a handler can be matched back to the inbound call that triggered it:
 
 ```dart
 TomBaseException(
-  'DB_TIMEOUT',
+  'orders.query.timeout',
   'The database did not respond in time',
   requestUuid: incomingRequestId,
   parameters: {'table': 'orders', 'timeoutMs': 5000},
@@ -222,7 +230,7 @@ try {
   await db.query(sql);
 } catch (e, s) {
   throw TomBaseException(
-    'ORDER_LOAD_FAILED',
+    'orders.load.failed',
     'Could not load the order',
     rootException: e,
     stack: s,
@@ -236,7 +244,7 @@ use `printStackTrace()`:
 
 ```dart
 try {
-  throw TomBaseException('BOOM', 'demo');
+  throw TomBaseException('example.demo.failed', 'demo');
 } on TomBaseException catch (e) {
   e.printStackTrace();      // writes "<uuid>-<requestUuid> exception stacktrace:\n..."
   // or inspect the stored string:

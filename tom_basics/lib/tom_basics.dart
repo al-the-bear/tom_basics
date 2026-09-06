@@ -13,7 +13,7 @@
 /// ```dart
 /// import 'package:tom_basics/tom_basics.dart';
 ///
-/// throw TomBaseException('ERROR_CODE', 'Something went wrong');
+/// throw TomBaseException('orders.submit.no_positions', 'The order is empty');
 /// tomLog.info('Application started');
 /// ```
 library;

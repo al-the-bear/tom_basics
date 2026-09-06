@@ -4,9 +4,9 @@ import 'package:test/test.dart';
 void main() {
   group('TomBaseException', () {
     test('creates exception with key and message', () {
-      final exception = TomBaseException('TEST_ERROR', 'Test error message');
+      final exception = TomBaseException('test.error.key', 'Test error message');
 
-      expect(exception.key, equals('TEST_ERROR'));
+      expect(exception.key, equals('test.error.key'));
       expect(exception.defaultUserMessage, equals('Test error message'));
       expect(exception.uuid, isNotEmpty);
       expect(exception.timeStamp, isA<DateTime>());
@@ -14,7 +14,7 @@ void main() {
 
     test('creates exception with parameters', () {
       final exception = TomBaseException(
-        'VALIDATION_ERROR',
+        'users.validate.invalid_email',
         'Invalid input',
         parameters: {'field': 'email', 'value': 'invalid'},
       );
@@ -26,7 +26,7 @@ void main() {
 
     test('uses provided uuid when specified', () {
       final exception = TomBaseException(
-        'TEST_ERROR',
+        'test.error.key',
         'Test error',
         uuid: 'custom-uuid-123',
       );
@@ -37,7 +37,7 @@ void main() {
     test('captures rootException', () {
       final rootError = Exception('Original error');
       final exception = TomBaseException(
-        'WRAPPED_ERROR',
+        'test.wrap.rethrown',
         'Wrapped error message',
         rootException: rootError,
       );
@@ -46,15 +46,15 @@ void main() {
     });
 
     test('toString includes key information', () {
-      final exception = TomBaseException('ERROR_KEY', 'Error message');
+      final exception = TomBaseException('test.error.key', 'Error message');
       final str = exception.toString();
 
-      expect(str, contains('ERROR_KEY'));
+      expect(str, contains('test.error.key'));
       expect(str, contains('Error message'));
     });
 
     test('stackTrace is captured', () {
-      final exception = TomBaseException('ERROR', 'Test');
+      final exception = TomBaseException('test.error.bare', 'Test');
 
       expect(exception.stackTrace, isNotEmpty);
     });

@@ -1,3 +1,23 @@
+## 2.0.1
+
+- **Every exception key this package shows follows the framework convention.**
+  The keys were `UPPER_SNAKE` — `USER_NOT_FOUND`, `VALIDATION_ERROR`, `BOOM` —
+  while `tom_core_kernel`, which derives `TomException` from the class declared
+  here, uses dotted lowercase `<area>.<operation>.<condition>` and lists
+  `USER_NOT_FOUND` explicitly as a form to avoid. So the base class taught one
+  convention and the derived class taught the opposite, and a reader met
+  whichever came first.
+
+  Documentation only: this package raises no exception of its own, so all 18
+  literals were dartdoc examples, README samples, tests or sample apps. Nothing
+  a consumer switches on has changed.
+
+  `TomBaseException.key`'s own dartdoc now states the shape — the field is
+  declared here, so the contract for its values belongs here — and names
+  `tom_core_kernel` as where the convention is set out in full rather than
+  restating the reasoning. The README says the same where it introduces the
+  key.
+
 ## 2.0.0
 
 - **Breaking: `TomBaseException.stack` is `StackTrace?`, not `Object?`.** The
