@@ -15,7 +15,7 @@ void main() {
     } on FormatException catch (cause) {
       // Translate it into a domain failure, keeping the cause attached.
       throw TomBaseException(
-        'PRICE_PARSE_FAILED',
+        'catalog.parse_price.malformed',
         'The price could not be read.',
         rootException: cause,
         parameters: {'raw': 'not-a-number'},

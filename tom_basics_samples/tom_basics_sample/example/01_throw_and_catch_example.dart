@@ -11,7 +11,7 @@ void main() {
   try {
     // A service layer signals a domain failure with a stable key and a message
     // safe to show an end user.
-    throw TomBaseException('ORDER_NOT_FOUND', 'We could not find your order.');
+    throw TomBaseException('orders.fetch.not_found', 'We could not find your order.');
   } on TomBaseException catch (e) {
     print('key: ${e.key}');
     print('message: ${e.defaultUserMessage}');

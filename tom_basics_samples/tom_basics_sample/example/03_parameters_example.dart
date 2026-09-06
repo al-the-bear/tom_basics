@@ -9,7 +9,7 @@ import 'package:tom_basics/tom_basics.dart';
 
 void main() {
   final declined = TomBaseException(
-    'PAYMENT_DECLINED',
+    'payments.charge.declined',
     'Your card was declined.',
     parameters: {'orderId': 42, 'amount': 19.99, 'currency': 'EUR'},
   );

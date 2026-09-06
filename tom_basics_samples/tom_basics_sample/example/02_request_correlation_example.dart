@@ -13,12 +13,12 @@ void main() {
   const requestUuid = 'req-7f3a';
 
   final validation = TomBaseException(
-    'VALIDATION',
+    'orders.validate.invalid_quantity',
     'Bad input',
     requestUuid: requestUuid,
   );
   final dbTimeout = TomBaseException(
-    'DB_TIMEOUT',
+    'orders.persist.timeout',
     'Slow store',
     requestUuid: requestUuid,
   );
