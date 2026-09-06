@@ -33,3 +33,23 @@ export 'src/password_hashing.dart';
 export 'src/rsa_encryption.dart';
 export 'src/rsa_tools.dart';
 export 'src/secure_bytes.dart';
+
+// The types below belong to this package's dependencies but appear in *this*
+// package's public API, so a consumer that cannot name them cannot use the API
+// that mentions them. Every one of the four positional parameters of
+// `TomJwtConfiguration`'s constructor had this problem, which made the class
+// impossible to construct from outside — including in the way its own dartdoc
+// documents.
+//
+// The lists are deliberately narrow: exactly the names this package's own
+// surface mentions, and no more. Both packages declare an `RSAPrivateKey` and
+// an `RSAPublicKey`, so exporting either one wholesale would hand every
+// consumer an ambiguous name. The pointycastle pair wins because it is what
+// `TomJwtConfiguration.rsaPrivateKey`/`rsaPublicKey` are and what
+// `RsaKeyHelper.parsePrivateKeyFromPem` returns. A consumer who needs
+// dart_jsonwebtoken's own RSA/EC/EdDSA *signing* keys — which this package's
+// surface never names — imports that package directly.
+export 'package:dart_jsonwebtoken/dart_jsonwebtoken.dart'
+    show Audience, JWT, JWTAlgorithm, JWTKey, SecretKey;
+export 'package:pointycastle/asymmetric/api.dart'
+    show RSAPrivateKey, RSAPublicKey;

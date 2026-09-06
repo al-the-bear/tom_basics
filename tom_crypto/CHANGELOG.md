@@ -1,3 +1,27 @@
+## 1.2.0
+
+- **Fixed: `TomJwtConfiguration` could not be constructed by a consumer.** All
+  four positional parameters of its constructor are typed by this package's
+  dependencies — `JWTKey` and `JWTAlgorithm` from `dart_jsonwebtoken`,
+  `RSAPrivateKey` and `RSAPublicKey` from `pointycastle` — and none of the four
+  was exported, so no code outside this package could name them. The class's own
+  dartdoc documents the construction it made impossible. `TomClientJwtToken.token`
+  and `.audience` had the same problem: their values could be read but their
+  types could not be written down.
+- **Added: the barrel now exports the types this package's public API names** —
+  `Audience`, `JWT`, `JWTAlgorithm`, `JWTKey` and `SecretKey` from
+  `dart_jsonwebtoken`, and `RSAPrivateKey` and `RSAPublicKey` from
+  `pointycastle`. The lists are exactly the names this surface mentions. Both
+  dependencies declare an `RSAPrivateKey` and an `RSAPublicKey`, so exporting
+  either wholesale would give consumers an ambiguous name; the pointycastle pair
+  wins because it is what `TomJwtConfiguration` holds and what
+  `RsaKeyHelper.parsePrivateKeyFromPem` returns. Code needing
+  `dart_jsonwebtoken`'s own RSA/EC/EdDSA signing keys, which this surface never
+  names, imports that package directly.
+- **Added: `test/barrel_surface_test.dart`**, a compile-time guard. It imports
+  only the barrel and names each type in a declaration, so losing an export stops
+  the file compiling rather than failing an assertion inside it.
+
 ## 1.1.0
 
 - **Fixed: secure random bytes could never take the value `255`.** Both places
