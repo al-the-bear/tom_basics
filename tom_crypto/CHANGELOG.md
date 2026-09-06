@@ -1,3 +1,19 @@
+## 1.2.1
+
+- **Fixed: a token's validity window was never quite the width it was asked
+  for.** `TomServerJwtToken` wrote `validUntil` and `validFrom` as offsets from
+  `DateTime.now()`, calling it once for each, so the two claims were offsets
+  from two instants a few microseconds apart. The window came out marginally
+  narrower than `expiresIn - notBefore`, and with the default zero `notBefore`
+  the `validFrom` claim named an instant slightly after the issue it stands for.
+  Both are now offsets from a single clock read. The skew was sub-millisecond
+  and never wrongly expired a token, but it made the two claims impossible to
+  reason about as a pair — `validUntil.difference(validFrom)` did not equal the
+  duration the caller passed.
+- **Added: `test/jwt_validity_window_test.dart`**, which asserts that equality
+  directly, including for a one-millisecond window where the old skew could
+  exceed the window itself.
+
 ## 1.2.0
 
 - **Fixed: `TomJwtConfiguration` could not be constructed by a consumer.** All

@@ -381,8 +381,14 @@ class TomServerJwtToken {
         jsonEncode(encryptedData),
       );
     }
-    load["validUntil"] = DateTime.now().add(expiresIn).toIso8601String();
-    load["validFrom"] = DateTime.now().add(notBefore).toIso8601String();
+    // One clock read, not two. Both claims are offsets from the *same* moment
+    // of issue, and reading DateTime.now() twice made them offsets from two
+    // moments a few microseconds apart -- so the window between them was
+    // never quite `expiresIn - notBefore`, and `validFrom` for the default
+    // `notBefore` of zero landed just after the instant it is supposed to name.
+    final issuedAt = DateTime.now();
+    load["validUntil"] = issuedAt.add(expiresIn).toIso8601String();
+    load["validFrom"] = issuedAt.add(notBefore).toIso8601String();
     return load;
   }
 
