@@ -13,13 +13,12 @@ environment:
 dependencies:
   tom_crypto:
     path: ../../tom_crypto
-  # Imported directly to build a JWT signing configuration (JWTAlgorithm,
-  # SecretKey) and to name the verify exception (JWTException). tom_crypto uses
-  # these types in its public API but does not re-export the package.
+  # Imported directly to call JWT.verify and to name the JWTException it
+  # throws. Neither appears in tom_crypto's own public API, so neither is among
+  # the dart_jsonwebtoken names tom_crypto re-exports; the types that do appear
+  # there -- JWTAlgorithm, SecretKey, and the pointycastle RSA key pair -- now
+  # arrive through the tom_crypto barrel and need no direct dependency.
   dart_jsonwebtoken: ^3.1.1
-  # Imported directly for the RSA key types (RSAPublicKey / RSAPrivateKey) that
-  # tom_crypto's functions take and return.
-  pointycastle: ^3.9.1
 
 dev_dependencies:
   lints: ^6.0.0

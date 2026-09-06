@@ -1,4 +1,3 @@
-import 'package:pointycastle/asymmetric/api.dart';
 import 'package:tom_crypto/tom_crypto.dart';
 
 void main() async {

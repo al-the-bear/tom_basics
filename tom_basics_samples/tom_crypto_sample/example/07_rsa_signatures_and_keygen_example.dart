@@ -16,7 +16,6 @@ library;
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:pointycastle/export.dart';
 import 'package:tom_crypto/tom_crypto.dart';
 
 Future<void> main() async {

@@ -12,7 +12,6 @@
 /// without the library's "dummy configuration" warning.
 library;
 
-import 'package:dart_jsonwebtoken/dart_jsonwebtoken.dart';
 import 'package:tom_crypto/tom_crypto.dart';
 
 void main() {
