@@ -619,12 +619,6 @@ abstract class TomLoggable {
 /// }
 /// ```
 abstract class TomLogOutput {
-  /// Default endpoint path for remote logging.
-  static const String _defaultRemoteLogEndpoint = "/remotelog";
-
-  /// Configurable endpoint path for remote logging.
-  static String globalSettingRemoteLogEndpoint = _defaultRemoteLogEndpoint;
-
   /// Outputs a log message.
   ///
   /// Parameters:

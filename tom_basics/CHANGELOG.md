@@ -1,3 +1,23 @@
+## 3.0.0
+
+- **Removed: `TomLogOutput.globalSettingRemoteLogEndpoint`** and the private
+  `_defaultRemoteLogEndpoint` behind it. Nothing read either one. A
+  workspace-wide search over hand-written Dart found exactly two references: the
+  declaration, and a test asserting the default was `/remotelog` — a test of a
+  value no code consumed.
+
+  It was vestigial rather than merely unused. Remote logging is configured
+  through `TomRemoteLogOutput.remoteEndpoint`, a `TomServerEndpoint` carrying
+  the whole URI, so an endpoint *path* setting had nothing left to influence.
+  The harm was that it read as configuration: a settable global named
+  `globalSettingRemoteLogEndpoint` invites a caller to set it and expect remote
+  logging to change destination, which it never did, and nothing reported that.
+
+  Breaking only in the semver sense — the field was reachable, so removing it is
+  a major change; but no caller can have depended on its *effect*, because it
+  had none. A consumer that set it should delete the line and set
+  `TomRemoteLogOutput.remoteEndpoint` instead.
+
 ## 2.0.1
 
 - **Every exception key this package shows follows the framework convention.**
