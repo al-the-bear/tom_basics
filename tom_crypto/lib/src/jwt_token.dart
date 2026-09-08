@@ -455,7 +455,8 @@ class TomClientJwtToken {
   final bool decrypt;
 
   /// The signing configuration used for decryption.
-  TomJwtConfiguration signingConfiguration = TomJwtConfiguration.defaultSignConfiguration;
+  TomJwtConfiguration signingConfiguration =
+      TomJwtConfiguration.defaultSignConfiguration;
 
   /// The decoded JWT token.
   late jwt.JWT token;
@@ -482,8 +483,29 @@ class TomClientJwtToken {
   /// The "aud" (audience) claim.
   jwt.Audience? get audience => token.audience;
 
-  /// The full token payload as a map.
-  Map<String, dynamic>? get payload => token.payload as Map<String, dynamic>;
+  /// The full token payload as a map — an **unmodifiable view**.
+  ///
+  /// A copy rather than the decoded map itself, because the decoded map is the
+  /// token's own state and this getter is how every consumer reaches it. Handing
+  /// out the live map made editing a claim a single statement
+  /// (`token.payload!['role'] = 'admin'`), and a claim edited in place is
+  /// indistinguishable afterwards from one the issuer wrote — the object no
+  /// longer knows what it decoded.
+  ///
+  /// That is not, on its own, the thing that stops a client forging a claim:
+  /// only checking the signature does that, and on the server that is
+  /// `verifyBearerToken`'s job. This is the narrower guarantee that a *reader*
+  /// of a token cannot quietly become a writer of it, which is what makes the
+  /// signature check mean something for the whole lifetime of the value rather
+  /// than only at the moment it was checked.
+  ///
+  /// Shallow: a nested map reached through this one is still the decoded map's
+  /// own. Deep-copying every access would cost every reader for a hazard no
+  /// call site in this workspace has, and the shallow guarantee is the one that
+  /// matches the claims consumers actually read.
+  Map<String, dynamic>? get payload => token.payload is Map
+      ? Map<String, dynamic>.unmodifiable(token.payload as Map)
+      : token.payload as Map<String, dynamic>?;
 
   // ---------------------------------------------------------------------------
   // Constructors
@@ -498,13 +520,14 @@ class TomClientJwtToken {
   /// Throws [TomJwtTokenException] if decryption fails.
   TomClientJwtToken(
     String token, {
-        TomJwtConfiguration? signingConfiguration,
-        this.decrypt = true,
-      }) {
-    this.signingConfiguration = signingConfiguration ?? this.signingConfiguration;
+    TomJwtConfiguration? signingConfiguration,
+    this.decrypt = true,
+  }) {
+    this.signingConfiguration =
+        signingConfiguration ?? this.signingConfiguration;
     tokenString = token;
     this.token = jwt.JWT.decode(token);
-    if(decrypt) _unwrapToken();
+    if (decrypt) _unwrapToken();
   }
 
   // ---------------------------------------------------------------------------
@@ -523,7 +546,9 @@ class TomClientJwtToken {
         return;
       }
       try {
-        decrypted = signingConfiguration.decrypt(token.payload["encrypted"] as String);
+        decrypted = signingConfiguration.decrypt(
+          token.payload["encrypted"] as String,
+        );
         secretData = jsonDecode(decrypted);
       } catch (e, s) {
         throw TomJwtTokenException(
