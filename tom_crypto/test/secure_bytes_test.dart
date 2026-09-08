@@ -13,9 +13,9 @@ const int _sampleSize = 100000;
 
 /// Decodes the hex string [TomPasswordHasher.generateSalt] returns.
 List<int> _decodeHex(String hex) => [
-      for (int i = 0; i < hex.length; i += 2)
-        int.parse(hex.substring(i, i + 2), radix: 16),
-    ];
+  for (int i = 0; i < hex.length; i += 2)
+    int.parse(hex.substring(i, i + 2), radix: 16),
+];
 
 void main() {
   group('tccb1: secure bytes span the whole 0..255 range', () {
@@ -25,7 +25,8 @@ void main() {
       expect(
         seen,
         hasLength(256),
-        reason: 'A byte drawn as nextInt(255) lands in 0..254, so 255 can '
+        reason:
+            'A byte drawn as nextInt(255) lands in 0..254, so 255 can '
             'never appear. This is the generator behind both the Fortuna seed '
             'and the password salt, so a narrow bound here is inherited by '
             'every key and every hash the framework produces.',
@@ -48,24 +49,33 @@ void main() {
       expect(seen, contains(255));
     });
 
-    test('generate returns the requested length and a fresh list each call', () {
-      expect(TomSecureBytes.generate(0), isEmpty);
-      expect(TomSecureBytes.generate(1), hasLength(1));
-      expect(TomSecureBytes.generate(32), hasLength(32));
+    test(
+      'generate returns the requested length and a fresh list each call',
+      () {
+        expect(TomSecureBytes.generate(0), isEmpty);
+        expect(TomSecureBytes.generate(1), hasLength(1));
+        expect(TomSecureBytes.generate(32), hasLength(32));
 
-      // Two calls must not share storage — the seed of one FortunaRandom
-      // cannot be allowed to alias the salt of a password hashed later.
-      final first = TomSecureBytes.generate(32);
-      final second = TomSecureBytes.generate(32);
-      expect(identical(first, second), isFalse);
-      expect(first, isNot(equals(second)),
-          reason: 'two 32-byte secure draws colliding is a 2^-256 event; if '
-              'this fails the generator is not random at all');
-    });
+        // Two calls must not share storage — the seed of one FortunaRandom
+        // cannot be allowed to alias the salt of a password hashed later.
+        final first = TomSecureBytes.generate(32);
+        final second = TomSecureBytes.generate(32);
+        expect(identical(first, second), isFalse);
+        expect(
+          first,
+          isNot(equals(second)),
+          reason:
+              'two 32-byte secure draws colliding is a 2^-256 event; if '
+              'this fails the generator is not random at all',
+        );
+      },
+    );
 
-    test('a negative length is rejected rather than silently yielding empty',
-        () {
-      expect(() => TomSecureBytes.generate(-1), throwsArgumentError);
-    });
+    test(
+      'a negative length is rejected rather than silently yielding empty',
+      () {
+        expect(() => TomSecureBytes.generate(-1), throwsArgumentError);
+      },
+    );
   });
 }

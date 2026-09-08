@@ -382,13 +382,36 @@ class TomServerJwtToken {
       );
     }
     // One clock read, not two. Both claims are offsets from the *same* moment
-    // of issue, and reading DateTime.now() twice made them offsets from two
-    // moments a few microseconds apart -- so the window between them was
-    // never quite `expiresIn - notBefore`, and `validFrom` for the default
-    // `notBefore` of zero landed just after the instant it is supposed to name.
-    final issuedAt = DateTime.now();
-    load["validUntil"] = issuedAt.add(expiresIn).toIso8601String();
-    load["validFrom"] = issuedAt.add(notBefore).toIso8601String();
+    // of issue, and reading DateTime.now() twice makes them offsets from two
+    // moments a few microseconds apart -- so the window between them is never
+    // quite `expiresIn - notBefore`, and `validFrom` for the default
+    // `notBefore` of zero lands just after the instant it is supposed to name.
+    //
+    // UTC, and truncated to whole seconds. Both are what make `validUntil` and
+    // the registered `exp` claim the *same instant* rather than two spellings
+    // of nearly the same one:
+    //
+    //   * `exp` and `nbf` are epoch seconds, so anything finer than a second
+    //     cannot survive the encoding. Truncating here rather than letting the
+    //     two forms round independently is what keeps them equal.
+    //   * An ISO string without an offset means whatever the *reader's* zone
+    //     says it means, so a token minted in one zone and read in another was
+    //     off by the difference between them. `toUtc()` gives the string a `Z`
+    //     and takes the question away.
+    final issuedAt = DateTime.fromMillisecondsSinceEpoch(
+      (DateTime.now().toUtc().millisecondsSinceEpoch ~/ 1000) * 1000,
+      isUtc: true,
+    );
+    final validUntil = issuedAt.add(expiresIn);
+    final validFrom = issuedAt.add(notBefore);
+    load["validUntil"] = validUntil.toIso8601String();
+    load["validFrom"] = validFrom.toIso8601String();
+    // Written here rather than left to `sign`'s `expiresIn` / `notBefore`,
+    // which compute their own `DateTime.now()`. Two clock reads is exactly how
+    // the pair drifts apart, and a consumer choosing between them then has to
+    // know which one it is choosing.
+    load["exp"] = validUntil.millisecondsSinceEpoch ~/ 1000;
+    load["nbf"] = validFrom.millisecondsSinceEpoch ~/ 1000;
     return load;
   }
 
@@ -406,11 +429,14 @@ class TomServerJwtToken {
   /// ```
   String getJWT(String issuer) {
     final jwtToken = jwt.JWT(_generateLoad(), issuer: issuer);
+    // `expiresIn` / `notBefore` are deliberately not passed: the library would
+    // recompute `exp` and `nbf` from its own clock read, and the payload
+    // already carries them derived from the one `_generateLoad` took. Passing
+    // both would put the two claims a few microseconds apart again, which is
+    // the drift `_generateLoad` exists to remove.
     final token = jwtToken.sign(
       signingConfiguration.key,
       algorithm: signingConfiguration.algorithm,
-      expiresIn: expiresIn,
-      notBefore: notBefore,
       noIssueAt: noIssueAt,
     );
     return token;

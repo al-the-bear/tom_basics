@@ -197,9 +197,8 @@ class TomPasswordHasher {
   /// Returns a hex-encoded string of the salt.
   ///
   /// Uses [TomSecureBytes] for cryptographically strong randomness.
-  static String generateSalt(int length) => toHexString(
-        TomSecureBytes.generate(length),
-      );
+  static String generateSalt(int length) =>
+      toHexString(TomSecureBytes.generate(length));
 
   // ---------------------------------------------------------------------------
   // Key Derivation
