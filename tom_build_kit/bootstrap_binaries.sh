@@ -217,8 +217,10 @@ class BuildkitVersionInfo {
     static const int buildNumber = 0;
     static const String dartSdkVersion = 'unknown';
     static String get versionShort => '$version+$buildNumber';
-    static String get versionMedium => '$version+$buildNumber.$gitCommit ($buildTime)';
-    static String get versionLong => '$version+$buildNumber.$gitCommit ($buildTime) [Dart $dartSdkVersion]';
+    static String get versionMedium =>
+        '$version+$buildNumber.$gitCommit ($buildTime)';
+    static String get versionLong =>
+        '$version+$buildNumber.$gitCommit ($buildTime) [Dart $dartSdkVersion]';
 }
 EOF
 fi

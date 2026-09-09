@@ -277,7 +277,7 @@ class VersionerExecutor extends CommandExecutor {
       final buildTime = DateTime.now().toUtc().toIso8601String();
 
       // Generate content
-      final content = _generateVersionFileContent(
+      final content = generateVersionFileContent(
         packageName: packageName,
         version: version,
         buildTime: buildTime,
@@ -301,6 +301,7 @@ class VersionerExecutor extends CommandExecutor {
       final outputFile = File(outputPath);
       outputFile.parent.createSync(recursive: true);
       outputFile.writeAsStringSync(content);
+      _formatInPlace(outputPath);
 
       if (verbose) {
         print('  Generated: ${config.output}');
@@ -317,6 +318,26 @@ class VersionerExecutor extends CommandExecutor {
   }
 
   /// Get short git commit hash.
+  /// Runs `dart format` over the file just written, if a `dart` is reachable.
+  ///
+  /// [generateVersionFileContent] already emits the tall style, so this changes
+  /// nothing today. It is here because the template alone cannot cover the two
+  /// things that would reintroduce the defect: an SDK that changes the default
+  /// style, and a package whose class name is long enough to push a line past
+  /// the page width.
+  ///
+  /// Failure is ignored on purpose. A machine with no `dart` on PATH still gets
+  /// the template's own output, which is correct; refusing to write a version
+  /// file because a formatter is missing would break a build for a cosmetic
+  /// reason.
+  void _formatInPlace(String path) {
+    try {
+      Process.runSync('dart', ['format', path]);
+    } on ProcessException {
+      // No `dart` on PATH — the emitted template is already formatted.
+    }
+  }
+
   Future<String?> _getGitCommit(String projectPath) async {
     try {
       final result = await ProcessRunner.run('git', [
@@ -376,7 +397,20 @@ class VersionerExecutor extends CommandExecutor {
   }
 
   /// Generate the version.versioner.dart file content.
-  String _generateVersionFileContent({
+  /// The Dart source of a `version.versioner.dart` file.
+  ///
+  /// **Emitted already `dart format` clean, and that is a requirement rather
+  /// than a nicety.** This file is generated into packages that hold themselves
+  /// to a formatting gate, so a template the formatter would rewrite makes such
+  /// a gate unaddable: clean until the next version bump, red after it, and red
+  /// for something nobody did. That was the state until 2026-09-09 — two getter
+  /// lines ran past the page width and the tall formatter wrapped them after
+  /// `=>`.
+  ///
+  /// Static and public so `test/versioner_format_test.dart` can run the real
+  /// `dart format` over its output and require it to be unchanged. A template
+  /// nothing can call is a template nothing can check.
+  static String generateVersionFileContent({
     required String packageName,
     required String version,
     required String buildTime,
@@ -426,11 +460,13 @@ $sdkLine
 
   /// Medium version string: version + build number + git commit + build time
   /// Example: "1.0.0+42.abc1234 (2026-02-01T10:30:00.000Z)"
-  static String get versionMedium => '\$version+\$buildNumber.\$gitCommit (\$buildTime)';
+  static String get versionMedium =>
+      '\$version+\$buildNumber.\$gitCommit (\$buildTime)';
 
   /// Long version string: includes all available information including SDK version
   /// Example: "1.0.0+42.abc1234 (2026-02-01T10:30:00.000Z) [Dart 3.x.x]"
-  static String get versionLong => '\$version+\$buildNumber.\$gitCommit (\$buildTime) [Dart \$dartSdkVersion]';
+  static String get versionLong =>
+      '\$version+\$buildNumber.\$gitCommit (\$buildTime) [Dart \$dartSdkVersion]';
 }
 ''';
   }
