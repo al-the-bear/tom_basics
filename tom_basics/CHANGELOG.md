@@ -1,3 +1,23 @@
+## 3.1.1
+
+- **Fixed: `TomLogOutput.output` declared `origin` as a required positional
+  while calling it optional.** The parameter documentation says "Optional
+  caller information" and the class's own dartdoc example shows
+  `[String? origin,]`, but the abstract declaration required it — so the word
+  was true of the value and false of the signature.
+
+  It compiled both ways, which is why it went unnoticed: an override may widen
+  a required positional to optional, so implementations across the workspace
+  split between the two spellings with nothing in the base class to say which
+  was intended. Eleven files used the required form and roughly twice as many
+  the optional one.
+
+  `origin` is now optional in the declaration, matching the documentation.
+  **An implementation that declared it as a required positional no longer
+  compiles** — a required positional cannot override an optional one — and must
+  add the brackets. The workspace's ten such implementations were updated with
+  this change.
+
 ## 3.1.0
 
 - **Added: `TomBaseException.renderStackTrace(stack, depth)`** — the seam that

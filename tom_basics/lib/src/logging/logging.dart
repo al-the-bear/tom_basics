@@ -629,15 +629,23 @@ abstract class TomLogOutput {
   /// - [isolateName]: Name of the isolate generating the log
   /// - [timeStamp]: When the log was generated
   /// - [origin]: Optional caller information (class.method)
+  ///
+  /// [origin] is an optional positional parameter, which is what the parameter
+  /// list has to say for the word "optional" above to be true of the signature
+  /// as well as of the value. Declared required, it read as optional in the
+  /// documentation and in the class's own example while a caller had to pass
+  /// it — and because an override may widen a required positional to optional,
+  /// both spellings compiled, so implementations across the workspace split
+  /// between them with nothing to say which was intended.
   void output(
     TomLogLevel loggerLevel,
     TomLogLevel logLevel,
     String level,
     Object message,
     String isolateName,
-    DateTime timeStamp,
+    DateTime timeStamp, [
     String? origin,
-  );
+  ]);
 
   /// Converts a message object to its string representation.
   ///

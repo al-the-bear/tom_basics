@@ -65,6 +65,51 @@ void main() {
     });
   });
 
+  group('TomLogOutput.output', () {
+    test('origin is optional, as the parameter documentation says', () {
+      // Declared as a required positional, the word "optional" was true of the
+      // value and false of the signature — and because an override may widen a
+      // required positional to optional, both spellings compiled, so
+      // implementations across the workspace split between them with nothing
+      // to say which was intended.
+      final recorder = _RecordingLogOutput();
+      // Through the *base* type on purpose. Called on the concrete class this
+      // would only prove that implementation widened the parameter, which any
+      // override may do; six arguments type-check here only if the abstract
+      // declaration itself makes `origin` optional.
+      final TomLogOutput sink = recorder;
+
+      sink.output(
+        TomLogLevel.production,
+        TomLogLevel.info,
+        'INFO   ',
+        'no origin given',
+        'main',
+        DateTime(2026, 1, 2),
+      );
+
+      expect(recorder.lastMessage, equals('no origin given'));
+      expect(recorder.lastOrigin, isNull);
+    });
+
+    test('an origin still arrives when one is given', () {
+      final recorder = _RecordingLogOutput();
+      final TomLogOutput sink = recorder;
+
+      sink.output(
+        TomLogLevel.production,
+        TomLogLevel.info,
+        'INFO   ',
+        'with origin',
+        'main',
+        DateTime(2026, 1, 2),
+        'App.boot',
+      );
+
+      expect(recorder.lastOrigin, equals('App.boot'));
+    });
+  });
+
   group('the stack-trace renderer seam', () {
     // tom_basics sits at the bottom and has no view of what counts as noise in
     // the layers above it, so it ships a narrow default and lets a framework
@@ -392,5 +437,25 @@ class _RecordingException extends TomBaseException {
     lastStack = stack;
     lastDepth = depth;
     return 'RENDERED';
+  }
+}
+
+/// Minimal [TomLogOutput] used to check what the base signature permits.
+class _RecordingLogOutput extends TomLogOutput {
+  String? lastMessage;
+  String? lastOrigin;
+
+  @override
+  void output(
+    TomLogLevel loggerLevel,
+    TomLogLevel logLevel,
+    String level,
+    Object message,
+    String isolateName,
+    DateTime timeStamp, [
+    String? origin,
+  ]) {
+    lastMessage = convertToString(message);
+    lastOrigin = origin;
   }
 }
