@@ -123,7 +123,7 @@ class TomBaseException implements Exception {
     this.stack,
     String? uuid,
   }) {
-    stackTrace = _getStackTrace(stack);
+    stackTrace = renderStackTrace(stack, -1);
     if (uuid != null) {
       this.uuid = uuid;
     } else {
@@ -136,36 +136,78 @@ class TomBaseException implements Exception {
   String toString() =>
       "$uuid-$requestUuid, $runtimeType: $key, $defaultUserMessage, $parameters, $rootException";
 
-  /// Prints the stack trace to stderr.
+  /// Prints the stack trace to stdout.
   ///
-  /// The [depth] parameter limits how many stack frames to print.
-  /// Use -1 (default) to print all frames.
+  /// [depth] bounds the frames printed, counting from the throw site, so a
+  /// bounded trace keeps the frames nearest the failure. Any negative value
+  /// means all of them — -1 is the default and the conventional spelling, not a
+  /// required sentinel, so a computed -2 is unbounded too. A [depth] of 0 is a
+  /// genuine request for no frames and prints none.
+  ///
+  /// The bound is applied to the string [stackTrace] already holds rather than
+  /// by formatting the trace again. Re-formatting would have to decide what to
+  /// do about a null [stack] — falling back to `StackTrace.current` would
+  /// report the call path of the *report*, naming none of the code that failed,
+  /// and a wrong trace is worse than none because it looks right. The stored
+  /// string was captured where the exception was created, which is the moment
+  /// worth reporting.
+  ///
+  /// One frame per line is the contract every renderer here keeps, and is what
+  /// makes counting lines the same as counting frames.
   void printStackTrace([int depth = -1]) {
     // ignore: avoid_print
-    print("$uuid-$requestUuid exception stacktrace:\n$stackTrace");
+    print(
+      "$uuid-$requestUuid exception stacktrace:\n"
+      "${_limitFrames(stackTrace, depth)}",
+    );
   }
 
-  /// Core implementation for processing stack trace frames.
+  /// Renders [stack] into the string form [stackTrace] carries.
   ///
-  /// The parameter is `StackTrace?` rather than `Object?` for the same reason
-  /// the field is: this line used to read `s as StackTrace?`, an unchecked
-  /// downcast that threw for any non-null value that was not a trace. Rejecting
-  /// such a value at compile time costs the caller nothing, whereas the cast
-  /// cost the failure being reported.
-  static String _getStackTrace([StackTrace? s, int depth = -1]) {
-    final trace = s ?? StackTrace.current;
+  /// **The seam that lets one renderer serve a whole framework.** This class
+  /// ships a deliberately narrow default — core frames folded, each remaining
+  /// frame rendered with `Frame.toString()` — because tom_basics sits at the
+  /// bottom and has no view of what else counts as noise in the layers above
+  /// it. A framework that does have one overrides this, and then the string
+  /// stored here at construction and whatever that framework formats later are
+  /// produced by the same code rather than by two algorithms that quietly
+  /// disagree. `tom_core_kernel`'s `TomException` overrides it with
+  /// `tomGetStackTrace`.
+  ///
+  /// Called from the constructor body, so an override must not read state its
+  /// own class has not initialised yet. It needs none: [stack] and [depth] are
+  /// both arguments, and a renderer is a pure function of them.
+  ///
+  /// [depth] bounds the frames, counting from the throw site; any negative
+  /// value means all of them.
+  String renderStackTrace(StackTrace? stack, int depth) {
+    final trace = stack ?? StackTrace.current;
     final frames = Chain.forTrace(trace)
-        .foldFrames(
-          (frame) => frame.isCore,
-          terse: true,
-        )
+        .foldFrames((frame) => frame.isCore, terse: true)
         .traces
         .expand((trace) => trace.frames)
         .toList();
 
-    final selectedFrames =
-        depth > 0 && depth < frames.length ? frames.sublist(0, depth) : frames;
+    // `depth >= 0`, not `depth > 0`: a non-negative depth is a bound and every
+    // negative one is the absence of a bound. Read as `depth > 0`, a computed
+    // depth of 0 fell through to "all frames" — the opposite of what it asks
+    // for — and a caller driving the limit from configuration had to
+    // special-case zero.
+    final selected = depth >= 0 && depth < frames.length
+        ? frames.sublist(0, depth)
+        : frames;
 
-    return selectedFrames.map((frame) => frame.toString()).join('\n');
+    return selected.map((frame) => frame.toString()).join('\n');
+  }
+
+  /// The first [depth] lines of [trace], or all of it when [depth] is negative.
+  ///
+  /// One frame per line, so a line count is a frame count.
+  static String _limitFrames(String trace, int depth) {
+    if (depth < 0 || trace.isEmpty) {
+      return trace;
+    }
+    final lines = trace.split('\n');
+    return lines.length <= depth ? trace : lines.take(depth).join('\n');
   }
 }

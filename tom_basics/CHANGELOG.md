@@ -1,3 +1,50 @@
+## 3.1.0
+
+- **Added: `TomBaseException.renderStackTrace(stack, depth)`** — the seam that
+  lets one renderer serve a whole framework. The constructor now fills
+  `stackTrace` through it instead of through a private static, so a subclass
+  can supply the rendering.
+
+  It exists because a framework built on this class had two stack-trace
+  formatters and no way to reduce them to one. `tom_core_kernel` is the case:
+  `TomException.stackTrace` was produced here — core frames folded, each
+  remaining frame rendered with `Frame.toString()` — while
+  `TomException.printStackTrace()` formatted the same trace with the kernel's
+  own function, which folds a wider set and renders a different line. One
+  exception, two descriptions of its stack, differing in both which frames
+  appeared and how each was written. tom_basics cannot depend on the framework
+  above it, so the fix has to be a seam here rather than a shared function
+  somewhere; the kernel now overrides `renderStackTrace` with
+  `tomGetStackTrace` and the two agree by construction.
+
+  The default is unchanged in what it folds and how it renders. It is
+  deliberately narrow: this package sits at the bottom and has no view of what
+  counts as noise in the layers above it.
+
+  `renderStackTrace` is called from the constructor body, so an override must
+  not read state its own class has not initialised yet. It needs none — the
+  stack and the depth are both arguments.
+
+- **Fixed: `printStackTrace(depth)` ignored `depth`.** The parameter was
+  documented as limiting how many frames are printed and did nothing at all:
+  the method printed the whole stored `stackTrace` whatever it was given.
+
+  It now prints the first `depth` frames, counting from the throw site, so a
+  bounded trace keeps the frames nearest the failure. The bound is applied to
+  the string already captured at construction rather than by formatting the
+  trace again — re-formatting would have to decide what to do about a null
+  `stack`, and falling back to `StackTrace.current` there reports the call path
+  of the *report*, naming none of the code that failed. A wrong trace is worse
+  than no trace, because it looks right.
+
+- **Fixed: a `depth` of 0 meant "every frame".** The renderer's guard read
+  `depth > 0 && depth < frames.length`, so zero fell through to the unbounded
+  branch — the opposite of what it asks for, and a caller driving the limit
+  from configuration had to special-case it. The guard is now `depth >= 0`: a
+  non-negative depth is a bound, and *every* negative value is the absence of
+  one, so a computed -2 is unbounded like -1. This matches the rule
+  `tom_core_kernel` already documents for its own formatter.
+
 ## 3.0.0
 
 - **Removed: `TomLogOutput.globalSettingRemoteLogEndpoint`** and the private

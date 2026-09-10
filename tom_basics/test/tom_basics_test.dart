@@ -1,10 +1,15 @@
+import 'dart:async';
+
 import 'package:tom_basics/tom_basics.dart';
 import 'package:test/test.dart';
 
 void main() {
   group('TomBaseException', () {
     test('creates exception with key and message', () {
-      final exception = TomBaseException('test.error.key', 'Test error message');
+      final exception = TomBaseException(
+        'test.error.key',
+        'Test error message',
+      );
 
       expect(exception.key, equals('test.error.key'));
       expect(exception.defaultUserMessage, equals('Test error message'));
@@ -57,6 +62,150 @@ void main() {
       final exception = TomBaseException('test.error.bare', 'Test');
 
       expect(exception.stackTrace, isNotEmpty);
+    });
+  });
+
+  group('the stack-trace renderer seam', () {
+    // tom_basics sits at the bottom and has no view of what counts as noise in
+    // the layers above it, so it ships a narrow default and lets a framework
+    // that does have one override it. Without the seam the string this class
+    // stores at construction and whatever the framework formats later are
+    // produced by two algorithms that quietly disagree.
+
+    test('the constructor fills stackTrace through renderStackTrace', () {
+      final exception = _RecordingException('test.render.seam', 'Test');
+
+      expect(exception.renderCalls, 1);
+      expect(exception.stackTrace, 'RENDERED');
+      expect(exception.lastDepth, -1);
+    });
+
+    test('an override receives the stack the constructor was given', () {
+      final handed = StackTrace.fromString(
+        '#0      failing (package:my_app/a.dart:1:1)\n',
+      );
+
+      final exception = _RecordingException(
+        'test.render.given',
+        'Test',
+        stack: handed,
+      );
+
+      expect(exception.lastStack, same(handed));
+    });
+
+    test('the default renderer folds core frames and keeps the rest', () {
+      final exception = TomBaseException(
+        'test.render.default',
+        'Test',
+        stack: StackTrace.fromString(
+          '#0      failing (package:my_app/a.dart:1:1)\n'
+          '#1      calling (package:my_app/b.dart:2:2)\n',
+        ),
+      );
+
+      final lines = exception.stackTrace.split('\n');
+      expect(lines, hasLength(2));
+      expect(lines.first, contains('failing'));
+      expect(lines.last, contains('calling'));
+    });
+
+    test('a non-negative depth is a bound, counting from the throw site', () {
+      final exception = TomBaseException('test.render.depth', 'Test');
+      final trace = StackTrace.fromString(
+        '#0      failing (package:my_app/a.dart:1:1)\n'
+        '#1      calling (package:my_app/b.dart:2:2)\n'
+        '#2      main (package:my_app/c.dart:3:3)\n',
+      );
+
+      expect(exception.renderStackTrace(trace, 2).split('\n'), hasLength(2));
+      expect(exception.renderStackTrace(trace, 2), contains('failing'));
+      expect(exception.renderStackTrace(trace, 2), isNot(contains('main')));
+    });
+
+    test('depth 0 asks for no frames and every negative means all', () {
+      final exception = TomBaseException('test.render.zero', 'Test');
+      final trace = StackTrace.fromString(
+        '#0      failing (package:my_app/a.dart:1:1)\n'
+        '#1      calling (package:my_app/b.dart:2:2)\n',
+      );
+
+      // Read as `depth > 0`, a computed 0 fell through to "all frames" — the
+      // opposite of what it asks for.
+      expect(exception.renderStackTrace(trace, 0), isEmpty);
+      expect(exception.renderStackTrace(trace, -1).split('\n'), hasLength(2));
+      expect(exception.renderStackTrace(trace, -2).split('\n'), hasLength(2));
+      expect(exception.renderStackTrace(trace, 99).split('\n'), hasLength(2));
+    });
+  });
+
+  group('TomBaseException.printStackTrace', () {
+    final trace = StackTrace.fromString(
+      '#0      failing (package:my_app/a.dart:1:1)\n'
+      '#1      calling (package:my_app/b.dart:2:2)\n'
+      '#2      main (package:my_app/c.dart:3:3)\n',
+    );
+
+    String printed(TomBaseException e, [int depth = -1]) {
+      final lines = <String>[];
+      runZoned(
+        () => e.printStackTrace(depth),
+        zoneSpecification: ZoneSpecification(
+          print: (self, parent, zone, line) => lines.add(line),
+        ),
+      );
+      return lines.single;
+    }
+
+    test('bounds the frames it prints', () {
+      final exception = TomBaseException(
+        'test.print.depth',
+        'Test',
+        stack: trace,
+      );
+
+      final body = printed(exception, 2).split('\n').skip(1).toList();
+
+      expect(body, hasLength(2));
+      expect(body.first, contains('failing'));
+      expect(body.last, contains('calling'));
+    });
+
+    test('prints every frame by default', () {
+      final exception = TomBaseException(
+        'test.print.all',
+        'Test',
+        stack: trace,
+      );
+
+      expect(printed(exception).split('\n').skip(1), hasLength(3));
+    });
+
+    test('depth 0 prints the identifying line and no frames', () {
+      final exception = TomBaseException(
+        'test.print.zero',
+        'Test',
+        stack: trace,
+      );
+
+      final lines = printed(exception, 0).split('\n');
+
+      expect(lines, hasLength(2));
+      expect(lines.first, contains('exception stacktrace:'));
+      expect(lines.last, isEmpty);
+    });
+
+    test('bounds the trace captured at construction, never a fresh one', () {
+      // Re-formatting here would have to decide what to do about a null
+      // `stack`, and falling back to `StackTrace.current` would report the
+      // call path of the report rather than of the failure.
+      final exception = TomBaseException('test.print.stored', 'Test');
+      exception.stack = null;
+
+      final body = printed(exception).split('\n').skip(1).join('\n');
+
+      expect(body, exception.stackTrace);
+      expect(body, isNot(contains('printStackTrace')));
     });
   });
 
@@ -149,25 +298,28 @@ void main() {
       expect(TomRuntime.getCurrentEnvironment, throwsA(isA<Exception>()));
     });
 
-    test('a fresh registration after reset resolves the correct environment', () {
-      // A stale 'dev' registered before reset must not shadow the new one.
-      TomRuntime.addEnvironment(TomEnvironment('dev'));
-      TomRuntime.reset();
+    test(
+      'a fresh registration after reset resolves the correct environment',
+      () {
+        // A stale 'dev' registered before reset must not shadow the new one.
+        TomRuntime.addEnvironment(TomEnvironment('dev'));
+        TomRuntime.reset();
 
-      var initialized = false;
-      TomRuntime.addEnvironment(
-        TomEnvironment(
-          'dev',
-          isDevelopment: true,
-          initializer: (_) => initialized = true,
-        ),
-      );
-      TomRuntime.setCurrentEnvironment('dev');
-      TomRuntime.getCurrentEnvironment().initialize();
+        var initialized = false;
+        TomRuntime.addEnvironment(
+          TomEnvironment(
+            'dev',
+            isDevelopment: true,
+            initializer: (_) => initialized = true,
+          ),
+        );
+        TomRuntime.setCurrentEnvironment('dev');
+        TomRuntime.getCurrentEnvironment().initialize();
 
-      expect(TomRuntime.getEnvironments(), hasLength(1));
-      expect(initialized, isTrue);
-    });
+        expect(TomRuntime.getEnvironments(), hasLength(1));
+        expect(initialized, isTrue);
+      },
+    );
 
     test('clears registered platforms', () {
       TomRuntime.addPlatform(const TomPlatform('custom'));
@@ -191,10 +343,7 @@ void main() {
 
     test('unknown name with defaultRoot fallback resolves to the default', () {
       TomRuntime.setCurrentEnvironment('nonexistent', 'defaultRoot');
-      expect(
-        TomRuntime.getCurrentEnvironment(),
-        same(defaultTomEnvironment),
-      );
+      expect(TomRuntime.getCurrentEnvironment(), same(defaultTomEnvironment));
     });
 
     test('unknown name with a named fallback resolves to that fallback', () {
@@ -226,4 +375,22 @@ void main() {
       expect(TomRuntime.getCurrentEnvironment(), same(root));
     });
   });
+}
+
+/// Records what the constructor handed the renderer seam, and answers with a
+/// fixed string so the call is visible in `stackTrace`.
+class _RecordingException extends TomBaseException {
+  _RecordingException(super.key, super.defaultUserMessage, {super.stack});
+
+  int renderCalls = 0;
+  StackTrace? lastStack;
+  int? lastDepth;
+
+  @override
+  String renderStackTrace(StackTrace? stack, int depth) {
+    renderCalls++;
+    lastStack = stack;
+    lastDepth = depth;
+    return 'RENDERED';
+  }
 }
