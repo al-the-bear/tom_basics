@@ -27,9 +27,9 @@ class SimpleLogOutput extends TomLogOutput {
     String level,
     Object message,
     String isolateName,
-    DateTime timeStamp,
+    DateTime timeStamp, [
     String? origin,
-  ) {
+  ]) {
     if (logLevel.matches(loggerLevel)) {
       print('${level.trim()}: ${convertToString(message)}');
     }
