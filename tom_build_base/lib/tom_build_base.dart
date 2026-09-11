@@ -64,6 +64,7 @@ export 'src/v2/core/special_commands.dart';
 export 'src/v2/core/help_topic.dart';
 export 'src/v2/core/builtin_help_topics.dart';
 export 'src/v2/core/console_markdown_zone.dart';
+export 'src/v2/core/pub_cache_integrity.dart';
 export 'src/v2/core/tool_wiring_entry.dart';
 export 'src/v2/core/tool_definition_serializer.dart';
 export 'src/v2/core/pipeline_config.dart';

@@ -1,3 +1,29 @@
+## 2.9.0
+
+### Added — `PubCacheIntegrity`: a locked package missing from the cache is named, not left to the compiler (scd8_aicx)
+
+A hosted package whose `pubspec.lock` entry has no directory in the pub cache
+produces no resolution error. The lock is satisfiable, so `dart pub get`
+reports success, and the failure lands later as `Error: Undefined name
+'<Symbol>'` at every use site — followed by `AOT compilation failed` when
+compiling. That points at the file *using* the symbol, so it reads as an API
+renamed upstream, and nothing in the output mentions the cache. Measured twice
+in one session (`tom_build_base-2.7.1`, then `tom_d4rt-1.29.0`), and the
+misreading is deterministic: no compiler output can distinguish an absent cache
+directory from an absent symbol.
+
+`PubCacheIntegrity.checkProject(projectPath:)` stats every hosted lock entry
+and returns a `PubCacheProblem` per package the cache cannot supply —
+`missingDirectory` (repaired by `dart pub get`) or `missingPubspec`, the shape
+where the directory exists but is empty, which `dart pub get` walks straight
+past because pub treats the directory as installed. `describe()` renders them
+with the package, the expected path and the repair. `path` and `sdk` entries are
+not checked: they do not live in the cache and fail on their own terms.
+
+Consumers call it as a pre-flight — `tom_test_kit` runs it before launching the
+test runner, so the workspace regression gate names the package instead of
+reporting a compile error.
+
 ## 2.8.0
 
 ### Fixed

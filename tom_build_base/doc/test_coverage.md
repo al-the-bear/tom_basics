@@ -16,29 +16,41 @@ This document lists all testable features across `tom_build_base` and tracks tes
 | 1 | [Command Prefix Matching](#1-command-prefix-matching) | 24 | 24✅ | `v2/command_prefix_test.dart` | [→](#1-command-prefix-matching) |
 | 2 | [Execute Placeholder Resolver](#2-execute-placeholder-resolver) | 55 | 55✅ | `v2/execute_placeholder_test.dart` | [→](#2-execute-placeholder-resolver) |
 | 3 | [Macro Expansion](#3-macro-expansion) | 24 | 24✅ | `v2/macro_expansion_test.dart` | [→](#3-macro-expansion) |
-| 4 | [CLI Argument Parser](#4-cli-argument-parser) | 96 | 96✅ | `v2/core/cli_arg_parser_test.dart` | [→](#4-cli-argument-parser) |
+| 4 | [CLI Argument Parser](#4-cli-argument-parser) | 107 | 107✅ | `v2/core/cli_arg_parser_test.dart` | [→](#4-cli-argument-parser) |
 | 5 | [CommandDefinition](#5-commanddefinition) | 15 | 15✅ | `v2/core/command_definition_test.dart` | [→](#5-commanddefinition) |
 | 6 | [Completion Generator](#6-completion-generator) | 30 | 30✅ | `v2/core/completion_generator_test.dart` | [→](#6-completion-generator) |
-| 7 | [Features — Modes, Defines, Macros, Pipelines](#7-features--modes-defines-macros-pipelines) | 32 | 32✅ | `v2/core/features_test.dart` | [→](#7-features--modes-defines-macros-pipelines) |
+| 7 | [Features — Modes, Defines, Macros, Pipelines](#7-features--modes-defines-macros-pipelines) | 33 | 33✅ | `v2/core/features_test.dart` | [→](#7-features--modes-defines-macros-pipelines) |
 | 8 | [Help Generator](#8-help-generator) | 33 | 33✅ | `v2/core/help_generator_test.dart` | [→](#8-help-generator) |
 | 9 | [OptionDefinition](#9-optiondefinition) | 28 | 28✅ | `v2/core/option_definition_test.dart` | [→](#9-optiondefinition) |
 | 10 | [ToolDefinition](#10-tooldefinition) | 55 | 55✅ | `v2/core/tool_definition_test.dart` | [→](#10-tooldefinition) |
 | 11 | [ToolDefinition Serializer](#11-tooldefinition-serializer) | 19 | 19✅ | `v2/core/tool_definition_serializer_test.dart` | [→](#11-tooldefinition-serializer) |
 | 12 | [Wiring Loader](#12-wiring-loader) | 17 | 17✅ | `v2/core/wiring_loader_test.dart` | [→](#12-wiring-loader) |
-| 13 | [Pipeline Config](#13-pipeline-config) | 9 | 9✅ | `v2/core/pipeline_config_test.dart` | [→](#13-pipeline-config) |
-| 14 | [Pipeline Executor](#14-pipeline-executor) | 4 | 4✅ | `v2/core/pipeline_executor_test.dart` | [→](#14-pipeline-executor) |
-| 15 | [ToolRunner](#15-toolrunner) | 42 | 42✅ | `v2/core/tool_runner_test.dart` | [→](#15-toolrunner) |
+| 13 | [Pipeline Config](#13-pipeline-config) | 11 | 11✅ | `v2/core/pipeline_config_test.dart` | [→](#13-pipeline-config) |
+| 14 | [Pipeline Executor](#14-pipeline-executor) | 10 | 10✅ | `v2/core/pipeline_executor_test.dart` | [→](#14-pipeline-executor) |
+| 15 | [ToolRunner](#15-toolrunner) | 63 | 63✅ | `v2/core/tool_runner_test.dart` | [→](#15-toolrunner) |
 | 16 | [ToolRunner — Nested Tools](#16-toolrunner--nested-tools) | 20 | 20✅ | `v2/core/tool_runner_nested_test.dart` | [→](#16-toolrunner--nested-tools) |
-| 17 | [Nested Tool Executor](#17-nested-tool-executor) | 14 | 14✅ | `v2/core/nested_tool_executor_test.dart` | [→](#17-nested-tool-executor) |
-| 18 | [Folder Scanner](#18-folder-scanner) | 17 | 17✅ | `v2/traversal/folder_scanner_test.dart` | [→](#18-folder-scanner) |
+| 17 | [Nested Tool Executor](#17-nested-tool-executor) | 16 | 16✅ | `v2/core/nested_tool_executor_test.dart` | [→](#17-nested-tool-executor) |
+| 18 | [Folder Scanner](#18-folder-scanner) | 19 | 19✅ | `v2/traversal/folder_scanner_test.dart` | [→](#18-folder-scanner) |
 | 19 | [Nature Detector](#19-nature-detector) | 38 | 38✅ | `v2/traversal/nature_detector_test.dart` | [→](#19-nature-detector) |
 | 20 | [Nature Filter](#20-nature-filter) | 20 | 20✅ | `v2/traversal/nature_filter_test.dart` | [→](#20-nature-filter) |
-| 21 | [Filter Pipeline](#21-filter-pipeline) | 40 | 40✅ | `v2/traversal/filter_pipeline_test.dart` | [→](#21-filter-pipeline) |
-| 22 | [Build Order](#22-build-order) | 12 | 12✅ | `v2/traversal/build_order_test.dart` | [→](#22-build-order) |
+| 21 | [Filter Pipeline](#21-filter-pipeline) | 44 | 44✅ | `v2/traversal/filter_pipeline_test.dart` | [→](#21-filter-pipeline) |
+| 22 | [Build Order](#22-build-order) | 15 | 15✅ | `v2/traversal/build_order_test.dart` | [→](#22-build-order) |
 | 23 | [Traversal Info](#23-traversal-info) | 22 | 22✅ | `v2/traversal/traversal_info_test.dart` | [→](#23-traversal-info) |
 | 24 | [Build Base Integration](#24-build-base-integration) | 22 | 22✅ | `v2/traversal/build_base_integration_test.dart` | [→](#24-build-base-integration) |
 | 25 | [Comprehensive Traversal](#25-comprehensive-traversal) | 51 | 51✅ | `v2/traversal/traversal_comprehensive_test.dart` | [→](#25-comprehensive-traversal) |
-| — | **Total** | **718** | **718✅** | | |
+| 26 | [Pub Cache Integrity](#26-pub-cache-integrity) | 8 | 8✅ | `v2/core/pub_cache_integrity_test.dart` | [→](#26-pub-cache-integrity) |
+| 27 | Console Encoding | 9 | 9✅ | `console_encoding_test.dart` | — |
+| 28 | Output Format | 10 | 10✅ | `v2/core/output_format_test.dart` | — |
+| 29 | Run Summary | 13 | 13✅ | `v2/core/run_summary_test.dart` | — |
+| 30 | Mklink Executor | 3 | 3✅ | `v2/core/mklink_executor_test.dart` | — |
+| 31 | Repository Id Lookup | 4 | 4✅ | `v2/traversal/repository_id_lookup_test.dart` | — |
+| 32 | Workspace Utils | 21 | 21✅ | `v2/workspace_utils_test.dart` | — |
+| — | **Total** | **859** | **859✅** | | |
+
+> Rows 27–32 have no detail section yet: the overview had drifted 141 tests
+> behind the suite and listed 25 of the 32 test files. The counts above are
+> measured from `dart test --reporter json`, so the table is honest; writing
+> the per-test sections for those six files is outstanding.
 
 ---
 
@@ -505,6 +517,29 @@ Full integration test using filesystem fixtures — end-to-end workspace scannin
 
 ---
 
+## 26. Pub Cache Integrity
+
+**Test file:** `test/v2/core/pub_cache_integrity_test.dart`
+
+`PubCacheIntegrity` stats every hosted entry of a project's `pubspec.lock`
+against the pub cache. A locked package whose directory is missing produces no
+resolution error — `dart pub get` reports success, because the lock is
+satisfiable — and surfaces much later as `Undefined name` at every use site,
+which reads as an upstream rename (scd8_aicx).
+
+| ID | Feature | Status | Description |
+|----|---------|--------|-------------|
+| BB-PCI-1 | Complete cache | ✅ | Every locked package present reports nothing. |
+| BB-PCI-2 | Missing directory | ✅ | Reported with package, version and expected path. |
+| BB-PCI-3 | Directory without `pubspec.yaml` | ✅ | Reported; repair deletes it first, since pub walks past a directory that exists. |
+| BB-PCI-4 | Non-hosted sources | ✅ | `path` / `sdk` entries are not checked. |
+| BB-PCI-5 | Unusual host directory | ✅ | Found under any host directory, so pub's encoding is not reproduced. |
+| BB-PCI-6 | Unresolved project | ✅ | No lock file means nothing to check. |
+| BB-PCI-7 | Report content | ✅ | Names package, path and remedy, and says it is not an API change. |
+| BB-PCI-8 | `PUB_CACHE` | ✅ | The environment decides where the cache is. |
+
+---
+
 ## Test Gaps & Potential Additions
 
 The current test suite is comprehensive. Areas where additional tests could be valuable:
@@ -517,4 +552,4 @@ The current test suite is comprehensive. Areas where additional tests could be v
 | `--dump-definitions` output format | Tested in ToolRunner | Validate complete YAML structure | Low |
 | ConfigLoader with nested `@{...}` in `@[...]` | ✅ Recursive test exists | Additional nesting depth scenarios | Low |
 
-Overall coverage assessment: **Excellent — 718 tests covering all features.**
+Overall coverage assessment: **Excellent — 859 tests covering all features.**
