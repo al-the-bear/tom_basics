@@ -27,7 +27,7 @@ This document lists all testable features across `tom_build_base` and tracks tes
 | 12 | [Wiring Loader](#12-wiring-loader) | 17 | 17✅ | `v2/core/wiring_loader_test.dart` | [→](#12-wiring-loader) |
 | 13 | [Pipeline Config](#13-pipeline-config) | 11 | 11✅ | `v2/core/pipeline_config_test.dart` | [→](#13-pipeline-config) |
 | 14 | [Pipeline Executor](#14-pipeline-executor) | 10 | 10✅ | `v2/core/pipeline_executor_test.dart` | [→](#14-pipeline-executor) |
-| 15 | [ToolRunner](#15-toolrunner) | 63 | 63✅ | `v2/core/tool_runner_test.dart` | [→](#15-toolrunner) |
+| 15 | [ToolRunner](#15-toolrunner) | 64 | 64✅ | `v2/core/tool_runner_test.dart` | [→](#15-toolrunner) |
 | 16 | [ToolRunner — Nested Tools](#16-toolrunner--nested-tools) | 20 | 20✅ | `v2/core/tool_runner_nested_test.dart` | [→](#16-toolrunner--nested-tools) |
 | 17 | [Nested Tool Executor](#17-nested-tool-executor) | 16 | 16✅ | `v2/core/nested_tool_executor_test.dart` | [→](#17-nested-tool-executor) |
 | 18 | [Folder Scanner](#18-folder-scanner) | 19 | 19✅ | `v2/traversal/folder_scanner_test.dart` | [→](#18-folder-scanner) |
@@ -39,18 +39,28 @@ This document lists all testable features across `tom_build_base` and tracks tes
 | 24 | [Build Base Integration](#24-build-base-integration) | 22 | 22✅ | `v2/traversal/build_base_integration_test.dart` | [→](#24-build-base-integration) |
 | 25 | [Comprehensive Traversal](#25-comprehensive-traversal) | 51 | 51✅ | `v2/traversal/traversal_comprehensive_test.dart` | [→](#25-comprehensive-traversal) |
 | 26 | [Pub Cache Integrity](#26-pub-cache-integrity) | 8 | 8✅ | `v2/core/pub_cache_integrity_test.dart` | [→](#26-pub-cache-integrity) |
-| 27 | Console Encoding | 9 | 9✅ | `console_encoding_test.dart` | — |
-| 28 | Output Format | 10 | 10✅ | `v2/core/output_format_test.dart` | — |
-| 29 | Run Summary | 13 | 13✅ | `v2/core/run_summary_test.dart` | — |
-| 30 | Mklink Executor | 3 | 3✅ | `v2/core/mklink_executor_test.dart` | — |
-| 31 | Repository Id Lookup | 4 | 4✅ | `v2/traversal/repository_id_lookup_test.dart` | — |
-| 32 | Workspace Utils | 21 | 21✅ | `v2/workspace_utils_test.dart` | — |
-| — | **Total** | **859** | **859✅** | | |
+| 27 | [Console Encoding](#27-console-encoding) | 9 | 9✅ | `console_encoding_test.dart` | [→](#27-console-encoding) |
+| 28 | [Output Format](#28-output-format) | 10 | 10✅ | `v2/core/output_format_test.dart` | [→](#28-output-format) |
+| 29 | [Run Summary](#29-run-summary) | 13 | 13✅ | `v2/core/run_summary_test.dart` | [→](#29-run-summary) |
+| 30 | [Mklink Executor](#30-mklink-executor) | 3 | 3✅ | `v2/core/mklink_executor_test.dart` | [→](#30-mklink-executor) |
+| 31 | [Repository Id Lookup](#31-repository-id-lookup) | 4 | 4✅ | `v2/traversal/repository_id_lookup_test.dart` | [→](#31-repository-id-lookup) |
+| 32 | [Workspace Utils](#32-workspace-utils) | 21 | 21✅ | `v2/workspace_utils_test.dart` | [→](#32-workspace-utils) |
+| 33 | [Command Option Position](#33-command-option-position) | 6 | 6✅ | `v2/core/command_option_position_test.dart` | [→](#33-command-option-position) |
+| 34 | [Dry-run Contract](#34-dry-run-contract) | 14 | 14✅ | `v2/core/dry_run_contract_test.dart` | [→](#34-dry-run-contract) |
+| 35 | [Tool Origin](#35-tool-origin) | 4 | 4✅ | `v2/core/tool_origin_test.dart` | [→](#35-tool-origin) |
+| 36 | [Pub Cache Pre-flight](#36-pub-cache-pre-flight) | 6 | 6✅ | `v2/core/pub_cache_preflight_test.dart` | [→](#36-pub-cache-pre-flight) |
+| 37 | [Coverage Doc Guard](#37-coverage-doc-guard) | 2 | 2✅ | `test_coverage_doc_test.dart` | [→](#37-coverage-doc-guard) |
+| — | **Total** | **892** | **892✅** | | |
 
-> Rows 27–32 have no detail section yet: the overview had drifted 141 tests
-> behind the suite and listed 25 of the 32 test files. The counts above are
-> measured from `dart test --reporter json`, so the table is honest; writing
-> the per-test sections for those six files is outstanding.
+> Every row links to a section, and the counts are measured from
+> `dart test --reporter json -j 1` rather than maintained by hand. Run it
+> serially: several files in this suite share process state and report
+> spurious failures under `-j 4`.
+>
+> Three files — mklink executor, repository id lookup, workspace utils — carry
+> no ID in their test names, so their tables describe the tests by behaviour
+> and leave the ID column blank rather than invent identifiers the tests do
+> not have.
 
 ---
 
@@ -540,6 +550,253 @@ which reads as an upstream rename (scd8_aicx).
 
 ---
 
+## 27. Console Encoding
+
+**Test file:** `test/console_encoding_test.dart`
+
+`decodeProcessOutput` turns a subprocess's raw bytes into a String. The bug it
+exists for is double decoding: bytes already decoded once and decoded again
+render as mojibake, and ENC07 pins that the reported shape does not come back.
+
+| ID | Feature | Status | Description |
+|----|---------|--------|-------------|
+| ENC01 | UTF-8 with non-ASCII | ✅ | Non-ASCII bytes decode to the expected characters. |
+| ENC02 | Pure ASCII | ✅ | Round-trips unchanged. |
+| ENC03 | Already a String | ✅ | Passed through rather than decoded a second time. |
+| ENC04 | Null input | ✅ | Maps to the empty string. |
+| ENC05 | Empty byte list | ✅ | Decodes to the empty string. |
+| ENC06 | Malformed bytes | ✅ | Tolerated without throwing. |
+| ENC07 | The reported mojibake | ✅ | The double-decode shape from the bug report is not reproduced. |
+| ENC08 | `enableUtf8Console` | ✅ | Completes without throwing on this host. |
+| ENC09 | `enableUtf8Console` twice | ✅ | Idempotent, so calling it repeatedly is safe. |
+
+---
+
+## 28. Output Format
+
+**Test file:** `test/v2/core/output_format_test.dart`
+
+`OutputFormat` parses a format name; `OutputSpec` parses `format:file`, where
+the file half is optional and only the FIRST colon splits the two — a Windows
+path in the file half would otherwise be cut at its drive letter.
+
+| ID | Feature | Status | Description |
+|----|---------|--------|-------------|
+| BB-OUT-1 | Canonical names | ✅ | Parsed case-insensitively. |
+| BB-OUT-2 | Aliases | ✅ | `text` / `markdown` resolve to their canonical formats. |
+| BB-OUT-3 | Null, empty, unknown | ✅ | Return null rather than a default. |
+| BB-OUT-4 | Format-only spec | ✅ | Targets stdout. |
+| BB-OUT-5 | `format:file` | ✅ | The file path is captured. |
+| BB-OUT-6 | Aliases inside a spec | ✅ | Resolve as they do standalone. |
+| BB-OUT-7 | Trailing empty file part | ✅ | Yields no file, not an empty filename. |
+| BB-OUT-8 | Only the first colon splits | ✅ | The file half may itself contain colons. |
+| BB-OUT-9 | Null / empty / unknown format | ✅ | The whole spec returns null. |
+| BB-OUT-10 | `defaultSpec` | ✅ | Plain format to stdout. |
+
+---
+
+## 29. Run Summary
+
+**Test file:** `test/v2/core/run_summary_test.dart`
+
+A skipped item is a SUCCESS that is listed separately: it must not affect the
+exit code, and it must not be silently indistinguishable from work that ran.
+`renderRunSummary` is what the operator reads at the end of a traversal.
+
+| ID | Feature | Status | Description |
+|----|---------|--------|-------------|
+| SUMM01 | `ItemResult.skipped` | ✅ | A skip is a non-failing success. |
+| SUMM02 | Plain success | ✅ | Not marked skipped. |
+| SUMM03 | Failure | ✅ | Not marked skipped. |
+| SUMM04 | Skips in `fromItems` | ✅ | Do not count as failures. |
+| SUMM05 | Empty item list | ✅ | Renders nothing. |
+| SUMM06 | All success | ✅ | Renders the clean footer. |
+| SUMM07 | Any failure | ✅ | Renders an Errors section instead of the clean footer. |
+| SUMM08 | Error tally | ✅ | Counts distinct projects, not distinct failures. |
+| SUMM09 | A skip | ✅ | Renders a Skipped section above the footer. |
+| SUMM10 | Skips and errors | ✅ | Both sections render, skips first. |
+| SUMM11 | Skip without a message | ✅ | Falls back to a default label. |
+| SUMM12 | Item without a command name | ✅ | The colon segment is omitted. |
+| SUMM13 | Block whitespace | ✅ | No leading or trailing newline. |
+
+---
+
+## 30. Mklink Executor
+
+**Test file:** `test/v2/core/mklink_executor_test.dart`
+
+Creates a symbolic link from two positional arguments. Replacing an existing
+destination requires `--force`, so a link never silently overwrites something.
+
+| ID | Feature | Status | Description |
+|----|---------|--------|-------------|
+| — | Create a link | ✅ | Target and link are taken as positional arguments. |
+| — | `--force` | ✅ | An existing destination is replaced. |
+| — | Existing destination without `--force` | ✅ | Fails rather than overwriting. |
+
+---
+
+## 31. Repository Id Lookup
+
+**Test file:** `test/v2/traversal/repository_id_lookup_test.dart`
+
+Resolves a repository id from `tom_repository.yaml`, falling back to the folder
+name so a repository without a declared name still resolves to something
+stable.
+
+| ID | Feature | Status | Description |
+|----|---------|--------|-------------|
+| — | Resolution from metadata | ✅ | Ids come from `tom_repository.yaml`. |
+| — | Case-insensitive lookup | ✅ | Id matching ignores case. |
+| — | Unknown values | ✅ | Remain unchanged rather than being blanked. |
+| — | Missing `name` | ✅ | Falls back to the folder name. |
+
+---
+
+## 32. Workspace Utils
+
+**Test file:** `test/v2/workspace_utils_test.dart`
+
+Two concerns: which directories a scan descends into, and whether the paths a
+caller passed stay inside the execution root. The second is a containment
+check — an absolute path or a `..` that escapes the root is refused, so a tool
+cannot be pointed at the rest of the filesystem by argument.
+
+| ID | Feature | Status | Description |
+|----|---------|--------|-------------|
+| — | Always-skip directories | ✅ | A recursive scan skips `ztmp` and the other always-skip directories. |
+| — | `ztmp` registration | ✅ | Registered as an always-skip directory. |
+| — | No project patterns | ✅ | Validation returns null. |
+| — | Ids, names, globs | ✅ | Non-absolute patterns are accepted. |
+| — | Absolute path equal to the root | ✅ | Accepted. |
+| — | Absolute path within the root | ✅ | Accepted. |
+| — | Absolute path outside the root | ✅ | Rejected. |
+| — | Several patterns, one offending | ✅ | Rejected on the first offender. |
+| — | Scan equal to the root | ✅ | Accepted. |
+| — | Scan within the root | ✅ | Accepted. |
+| — | Scan outside the root | ✅ | Rejected. |
+| — | Relative scan inside the root | ✅ | Accepted, resolved against the cwd. |
+| — | Relative scan escaping via `..` | ✅ | Rejected. |
+| — | Existence: no patterns | ✅ | Returns null. |
+| — | Existence: id / name patterns | ✅ | Ignored — they are not paths. |
+| — | Existence: glob patterns | ✅ | Ignored, since a glob may legitimately match nothing. |
+| — | Existence: relative path present | ✅ | Accepted. |
+| — | Existence: relative non-glob absent | ✅ | Rejected. |
+| — | Existence: absolute present | ✅ | Accepted. |
+| — | Existence: absolute absent within the root | ✅ | Rejected. |
+| — | Existence: several, one missing | ✅ | Rejected on the first missing path. |
+
+---
+
+## 33. Command Option Position
+
+**Test file:** `test/v2/core/command_option_position_test.dart`
+
+The parser routes an option by WHERE it was written: before the command name it
+lands in `extraOptions`, after it in `commandArgs[<command>].options`. An
+executor reading only one silently ignored the other — and the documented form
+is the trailing one, so the form everyone is told to use was the one being
+dropped. `CliArgs.optionsFor` merges both.
+
+| ID | Feature | Status | Description |
+|----|---------|--------|-------------|
+| BB-OPTPOS-1 | Option before the command | ✅ | Found. |
+| BB-OPTPOS-2 | Option after the command | ✅ | Found — this is the case that was dropped. |
+| BB-OPTPOS-3 | Abbreviated option after the command | ✅ | Keeps its value. |
+| BB-OPTPOS-4 | Both positions | ✅ | The per-command one wins. |
+| BB-OPTPOS-5 | Aliases | ✅ | Options land under the name the caller typed, so a short form must be named; the lookup finds nothing without it. |
+| BB-OPTPOS-6 | Command with no options | ✅ | Yields the globals. |
+
+---
+
+## 34. Dry-run Contract
+
+**Test file:** `test/v2/core/dry_run_contract_test.dart`
+
+A tool that does not implement a dry run must REFUSE `-n` / `--dry-run` rather
+than accept the flag and do the work anyway — accepting it is the failure, not
+a convenience. Help follows the same feature flag, so a tool never advertises a
+mode it does not have, and the flag is forwarded to a nested tool only when
+that tool supports it.
+
+| ID | Feature | Status | Description |
+|----|---------|--------|-------------|
+| BB-DRYRUN-1 | `-n` and `--dry-run` refused | ✅ | A tool declaring `dryRun: false` refuses both spellings and writes nothing. |
+| BB-DRYRUN-2 | The refusal message | ✅ | Names the tool and says it has no dry-run mode. |
+| BB-DRYRUN-3 | Supporting tool | ✅ | The guard does not fire. |
+| BB-DRYRUN-4 | Without the flag | ✅ | The same tool still runs normally. |
+| BB-DRYRUN-5 | `-n` with `--help` | ✅ | Shows help rather than refusing. |
+| BB-DRYRUN-6 | Help, no dry-run mode | ✅ | The flag is not advertised. |
+| BB-DRYRUN-7 | Help, dry-run mode | ✅ | The flag is advertised. |
+| BB-DRYRUN-8 | `allGlobalOptions` | ✅ | Omits dry-run when the feature is off. |
+| BB-DRYRUN-9 | Nested, unsupported | ✅ | `--dry-run` is not forwarded. |
+| BB-DRYRUN-10 | Nested, supported | ✅ | `--dry-run` is forwarded. |
+| BB-DRYRUN-11 | Host dry run, unsupported nested tool | ✅ | Reported instead of being run. |
+| BB-DRYRUN-12 | Host dry run, supported nested tool | ✅ | Still run. |
+| BB-DRYRUN-13 | Command-scoped help | ✅ | Follows the flag too. |
+
+---
+
+## 35. Tool Origin
+
+**Test file:** `test/v2/core/tool_origin_test.dart`
+
+A version banner that does not say WHICH copy printed it cannot settle the
+question it is asked for. Under AOT the answer is the running executable; under
+JIT it is the SCRIPT, not the `dart` that ran it — reporting the interpreter
+would name the same path for every tool on the machine.
+
+| ID | Feature | Status | Description |
+|----|---------|--------|-------------|
+| BB-ORIGIN-1 | AOT binary | ✅ | Reports the executable that is running. |
+| BB-ORIGIN-2 | JIT run | ✅ | Reports the script, not the `dart` that ran it. |
+| BB-ORIGIN-3 | The three source origins | ✅ | Distinguishable from one another. |
+| BB-ORIGIN-4 | Windows `dart` | ✅ | Recognised as an interpreter. |
+
+---
+
+## 36. Pub Cache Pre-flight
+
+**Test file:** `test/v2/core/pub_cache_preflight_test.dart`
+
+The two shared entry points that let a caller act on §26's check in an `if`:
+`PubCacheIntegrity.preflight` for any tool, and
+`CommandExecutor.pubCachePreflight` for an executor, which returns a failure
+`ItemResult`. Every test injects a fake cache, so none can be perturbed by the
+state of the real `~/.pub-cache`.
+
+| ID | Feature | Status | Description |
+|----|---------|--------|-------------|
+| BB-PCPF-1 | Complete cache | ✅ | Returns null — nothing to stop for. |
+| BB-PCPF-2 | Missing package | ✅ | Names the package, its location and the repair, and does not name a package the cache can supply. |
+| BB-PCPF-3 | Unresolved project | ✅ | No lock means nothing can be missing from it, so this is not a finding. |
+| BB-PCPF-4 | Executor, complete cache | ✅ | The executor proceeds to its real work. |
+| BB-PCPF-5 | Executor, missing package | ✅ | Stopped with a failure naming the package, before its real work. |
+| BB-PCPF-6 | Failure content | ✅ | Carries the full report — expected path, repair, and that it is not an API change. |
+
+---
+
+## 37. Coverage Doc Guard
+
+**Test file:** `test/test_coverage_doc_test.dart`
+
+This document is the thing being tested. It had drifted 141 tests and seven
+files behind the suite before anyone measured it, and drifted the same way
+again afterwards — four files added since carried no row. The failure is quiet
+by construction: a stale document still reads as current.
+
+Only the two rot modes decidable WITHOUT running the suite are guarded, which
+is what keeps the check cheap. A row whose count disagrees with the tests that
+file really runs needs a live run, and is left to the instruction above:
+measure with `dart test --reporter json -j 1`.
+
+| ID | Feature | Status | Description |
+|----|---------|--------|-------------|
+| BB-COVDOC-1 | Every test file has a row | ✅ | A new test file with no row fails here — the drift that actually happened. |
+| BB-COVDOC-2 | The total matches its rows | ✅ | Catches a row updated without the footer, or the reverse. |
+
+---
+
 ## Test Gaps & Potential Additions
 
 The current test suite is comprehensive. Areas where additional tests could be valuable:
@@ -552,4 +809,4 @@ The current test suite is comprehensive. Areas where additional tests could be v
 | `--dump-definitions` output format | Tested in ToolRunner | Validate complete YAML structure | Low |
 | ConfigLoader with nested `@{...}` in `@[...]` | ✅ Recursive test exists | Additional nesting depth scenarios | Low |
 
-Overall coverage assessment: **Excellent — 859 tests covering all features.**
+Overall coverage assessment: **Excellent — 892 tests covering all features.**
