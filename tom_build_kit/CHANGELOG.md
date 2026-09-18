@@ -1,5 +1,29 @@
 ## 1.8.0
 
+### Fixed — `:bumpversion --minor=<x>` no longer does a silent PATCH bump when the selector matches nothing (sce10)
+
+A selector matched the traversal's project name and a path SUFFIX, and nothing
+else. So `--minor=tom_d4rt_generator` — the package's own pubspec name, and the
+obvious thing to type — selected nothing, the project took the default patch
+bump, and nothing said so.
+
+That is the one shape a release checklist cannot catch by eye, because nothing
+disagrees: the pubspec says a version, `--versioner` stamps the same version
+from it, the CHANGELOG section is written beside them. The release is
+internally consistent and numbered wrong.
+
+Two changes:
+
+* a selector may now name a project's pubspec `name:`, as well as its
+  traversal name or a suffix of its path (`.` being the project you are
+  standing in);
+* a selector that named NO project is printed and exits non-zero, listing the
+  projects that were processed so the correction does not cost a second run to
+  find the right name.
+
+A name must match whole. `tom_d4rt` and `tom_d4rt_generator` are different
+packages, and a prefix rule would bump the wrong one.
+
 ### Features
 
 - **Guided-mode is now testable** — `GuidedMode` renders its menus,
