@@ -178,6 +178,31 @@ class PubCacheIntegrity {
     return buffer.toString().trimRight();
   }
 
+  /// The report for [projectPath], or null when the cache can supply every
+  /// package the project's lock names.
+  ///
+  /// [checkProject] and [describe] in one call, shaped for the place that
+  /// actually needs it: a caller about to compile, analyze, or otherwise read
+  /// resolved package sources wants a message to print and a reason to stop,
+  /// not a list to inspect. Null means "carry on", so a call site is an `if`.
+  ///
+  /// Nothing calls this automatically. A tool that consumes resolved packages
+  /// calls it when it knows it has work to do — see
+  /// `CommandExecutor.pubCachePreflight` for the executor-shaped wrapper.
+  static String? preflight({
+    required String projectPath,
+    String? pubCachePath,
+    Map<String, String>? environment,
+  }) {
+    final problems = checkProject(
+      projectPath: projectPath,
+      pubCachePath: pubCachePath,
+      environment: environment,
+    );
+    if (problems.isEmpty) return null;
+    return describe(problems, projectPath: projectPath);
+  }
+
   /// The directory pub is expected to keep a hosted package under.
   ///
   /// Pub derives it from the host, encoding anything unusual. Reproducing that

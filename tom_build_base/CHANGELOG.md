@@ -1,3 +1,37 @@
+## 2.14.0
+
+### Added — the pub-cache pre-flight is now reachable from the tools that compile
+
+`PubCacheIntegrity` (2.9.0) turns "a locked package is missing from the cache"
+from `Undefined name` at every use site into one line naming the package. It
+shipped with one caller, testkit — but the sighting that motivated it was an
+AOT compile, where the same cause surfaces as `Bad state: Generating AOT kernel
+dill failed!` from inside the compiler and names nothing at all.
+
+Two entry points so a call site is an `if` rather than a paragraph:
+
+- `PubCacheIntegrity.preflight(projectPath:)` returns the report, or null when
+  the cache can supply everything. For any tool — the bridge and reflection
+  generators have no executor, they just open an analysis context.
+- `CommandExecutor.pubCachePreflight(context)` returns a failure `ItemResult`,
+  or null. For a buildkit-style executor:
+
+      final preflight = pubCachePreflight(context);
+      if (preflight != null) return preflight;
+
+**This is opt-in by design and is NOT called from `ToolRunner`.** Most commands
+read no package sources, would pay a stat per dependency for nothing, and a
+check that fires everywhere is a check that gets muted. An executor calls it
+once it knows it has real work to do.
+
+`src/v2/core/pub_cache_integrity.dart` is now exported from the
+`tom_build_base_v2.dart` barrel as well. `pubCachePreflight` is part of that
+barrel's surface, so a tool importing only v2 could call the helper but could
+not name the type to use it directly.
+
+An unresolved project stays silent: no lock means nothing is locked, so nothing
+can be missing from it. Reporting there would fire on every fresh checkout.
+
 ## 2.13.0
 
 ### Added — `CliArgs.optionsFor`, so an option means the same in either position

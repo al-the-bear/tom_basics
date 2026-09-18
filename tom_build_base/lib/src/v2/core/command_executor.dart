@@ -2,6 +2,7 @@ import 'dart:io';
 
 import '../../console_encoding.dart';
 import 'cli_arg_parser.dart';
+import 'pub_cache_integrity.dart';
 import 'tool_runner.dart';
 import '../traversal/command_context.dart';
 
@@ -23,6 +24,41 @@ abstract class CommandExecutor {
   /// Default implementation returns success.
   Future<ToolResult> executeWithoutTraversal(CliArgs args) async {
     return const ToolResult.success();
+  }
+
+  /// A failure [ItemResult] when [context]'s project locks packages the pub
+  /// cache cannot supply, or null when it can supply them all.
+  ///
+  /// A locked package missing from the cache is not a resolution error — the
+  /// lock is satisfiable, so `dart pub get` reports success — and the work
+  /// fails much later wearing someone else's face: `Undefined name` at every
+  /// use site, or `Bad state: Generating AOT kernel dill failed!` from inside
+  /// the AOT compiler. One stat per dependency names the package instead.
+  ///
+  /// This is opt-in BY DESIGN and is not called from ToolRunner. Most commands
+  /// read no package sources and would pay the sweep for nothing, and a check
+  /// that fires everywhere is a check that gets muted. Executors whose work
+  /// actually consumes resolved packages call it themselves, once they know
+  /// they have work to do:
+  ///
+  /// ```dart
+  /// final preflight = pubCachePreflight(context);
+  /// if (preflight != null) return preflight;
+  /// ```
+  ItemResult? pubCachePreflight(
+    CommandContext context, {
+    String? pubCachePath,
+  }) {
+    final report = PubCacheIntegrity.preflight(
+      projectPath: context.path,
+      pubCachePath: pubCachePath,
+    );
+    if (report == null) return null;
+    return ItemResult.failure(
+      path: context.path,
+      name: context.name,
+      error: report,
+    );
   }
 }
 

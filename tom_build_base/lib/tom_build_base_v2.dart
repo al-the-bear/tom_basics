@@ -53,6 +53,11 @@ export 'src/v2/core/tool_definition.dart';
 export 'src/v2/core/cli_arg_parser.dart';
 export 'src/v2/core/help_generator.dart';
 export 'src/v2/core/command_executor.dart';
+// sce38: `CommandExecutor.pubCachePreflight` is part of this barrel's surface,
+// so the type it checks with belongs here too — otherwise a tool importing
+// only the v2 barrel can call the helper but cannot name `PubCacheIntegrity`
+// to use it directly (which is what the generators do, having no executor).
+export 'src/v2/core/pub_cache_integrity.dart';
 export 'src/v2/core/tool_runner.dart';
 export 'src/v2/core/completion_generator.dart';
 export 'src/v2/core/output_format.dart';
