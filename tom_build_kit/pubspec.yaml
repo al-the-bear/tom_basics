@@ -1,6 +1,6 @@
 name: tom_build_kit
 description: Build orchestration tool with pipelines that integrates Tom build tools.
-version: 1.10.0
+version: 1.11.0
 publish_to: none
 
 environment:

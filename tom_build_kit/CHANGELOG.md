@@ -1,3 +1,32 @@
+## 1.11.0
+
+### Fixed — `:versioner` reports what it did, not what it intended
+
+The installed buildkit binary printed
+
+    Version file generated: tom_d4rt_generator v1.37.0 build 20
+    Status: SUCCESS
+
+over a `version.versioner.dart` that still read `0.0.1-STALE`. It advanced
+`tom_build_state.json` and wrote nothing else. The consequence is worse than a
+stale tool: `version_stamp_test.dart` fails with the remedy "run
+`buildkit -v -p . :versioner`", pointing the reader at the command that
+silently does nothing — so following the instruction loops.
+
+That message exists nowhere in current source; the binary was seven months old
+and ran a code path since removed, so the repair is a rebuild. The audit that
+went with it found the same CLASS of defect still live in two places, and both
+are fixed here:
+
+- A **dry run** returned success with the message `version file generated`,
+  having written nothing. It now reports `dry run — no version file written`.
+- A real run reported success on the strength of the write not throwing. It now
+  **reads the file back** and fails if the stamp on disk does not carry the
+  version just generated — so "generated" means the file says so, not that a
+  write was attempted. This covers the quieter half a thrown exception does
+  not: output landing somewhere other than where the caller will look, or being
+  undone by the in-place formatter that runs after it.
+
 ## 1.10.0
 
 ### Added — `:compiler` and `:runner` name a missing cached package

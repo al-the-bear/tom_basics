@@ -164,11 +164,17 @@ class VersionerExecutor extends CommandExecutor {
       dryRun: args.dryRun,
     );
 
+    // sce48: the message says what happened, not what was intended. A dry run
+    // writes nothing, and reporting 'version file generated' for it is the
+    // same failure as the one this todo is about, one step smaller: a reader
+    // who trusts the summary believes a stamp was refreshed when it was not.
     return success
         ? ItemResult.success(
             path: projectPath,
             name: projectName,
-            message: 'version file generated',
+            message: args.dryRun
+                ? 'dry run — no version file written'
+                : 'version file generated',
           )
         : ItemResult.failure(
             path: projectPath,
@@ -297,6 +303,27 @@ class VersionerExecutor extends CommandExecutor {
       outputFile.parent.createSync(recursive: true);
       outputFile.writeAsStringSync(content);
       _formatInPlace(outputPath);
+
+      // sce48: read back before reporting success, so "generated" means the
+      // file on disk carries this version rather than that a write was
+      // attempted. The installed binary that motivated this printed
+      // "Version file generated: … v1.37.0" over a stamp that still read
+      // 0.0.1 — a tool reporting intent instead of outcome sends the reader
+      // round the loop its own failure message names.
+      //
+      // `writeAsStringSync` throwing is already caught below; this covers the
+      // quieter half — a write that lands somewhere other than where the
+      // caller will look, or is undone by the formatter.
+      final written = outputFile.existsSync()
+          ? outputFile.readAsStringSync()
+          : '';
+      if (!written.contains("version = '$version'")) {
+        print(
+          '  Error: wrote ${config.output} but it does not carry version '
+          '$version. The stamp on disk is not what was generated.',
+        );
+        return false;
+      }
 
       if (verbose) {
         print('  Generated: ${config.output}');
