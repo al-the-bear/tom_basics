@@ -1,3 +1,26 @@
+## 1.10.0
+
+### Added — `:compiler` and `:runner` name a missing cached package
+
+A locked package the pub cache cannot supply is not a resolution error: the
+lock is satisfiable, so `dart pub get` reports success. The failure lands later
+and wearing someone else's face — from the AOT compiler as
+`Bad state: Generating AOT kernel dill failed!`, which names nothing at all,
+and from build_runner as `Undefined name` at every use site, which reads as an
+upstream rename.
+
+Both executors now call `pubCachePreflight` (tom_build_base 2.14.0) and stop
+with a report naming the package, its expected location and the repair.
+
+Placement is deliberate in both:
+
+- `:compiler` checks after its early returns, so a listing, a config dump, a
+  configured `skip-compile-with-buildkit` or a project with no compile sections
+  pays nothing. A dry run compiles nothing and is skipped too.
+- `:runner` checks after its dry-run return, which shells out to nothing.
+
+Requires tom_build_base >= 2.14.0.
+
 ## 1.9.0
 
 ### Changed — twelve private copies of the option lookup replaced by one

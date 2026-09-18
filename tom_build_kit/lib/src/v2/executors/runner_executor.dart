@@ -217,6 +217,13 @@ class RunnerExecutor extends CommandExecutor {
       );
     }
 
+    // sce38: build_runner resolves and reads every dependency's sources, so a
+    // package missing from the cache surfaces as `Undefined name` inside the
+    // builder rather than as the one missing directory it is. Checked after
+    // the dry-run return above, which shells out to nothing.
+    final preflight = pubCachePreflight(context);
+    if (preflight != null) return preflight;
+
     if (args.verbose) {
       print('  Running: dart ${dartArgs.join(' ')}');
       print('  Working directory: ${p.basename(projectPath)}');

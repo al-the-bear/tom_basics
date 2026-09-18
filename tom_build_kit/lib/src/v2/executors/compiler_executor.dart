@@ -241,6 +241,22 @@ class CompilerExecutor extends CommandExecutor {
       );
     }
 
+    // sce38: a locked package the pub cache cannot supply is not a resolution
+    // error — the lock is satisfiable, so `dart pub get` reports success — and
+    // the AOT compiler reports it as `Bad state: Generating AOT kernel dill
+    // failed!`, naming nothing. That is the second sighting in scd8, and it
+    // cost a session reading it as an upstream rename. One stat per dependency
+    // names the package instead.
+    //
+    // Placed after the early returns above on purpose: a listing, a config
+    // dump, a configured skip or a project with no compile sections reads no
+    // package sources and should not pay for the sweep. A dry run compiles
+    // nothing either.
+    if (!args.dryRun) {
+      final preflight = pubCachePreflight(context);
+      if (preflight != null) return preflight;
+    }
+
     final currentPlatform = PlatformUtils.getCurrentPlatform();
     if (args.verbose) print('  Current platform: $currentPlatform');
 
