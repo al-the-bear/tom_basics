@@ -28,15 +28,14 @@ Future<String?> _getCurrentBranch(String dir) async {
   return result.exitCode == 0 ? result.stdout.trim() : null;
 }
 
-/// Get per-command options for a git command.
+/// Get the options for a git command, written in EITHER position.
+///
+/// Was the ninth private copy of this lookup in this package. [commandNames]
+/// already carries the command and its aliases, so the first is the name and
+/// the rest are aliases.
 Map<String, dynamic> _getGitCmdOpts(CliArgs args, List<String> commandNames) {
-  for (final cmd in args.commands) {
-    if (commandNames.contains(cmd)) {
-      final cmdArgs = args.commandArgs[cmd];
-      if (cmdArgs != null) return cmdArgs.options;
-    }
-  }
-  return args.extraOptions;
+  if (commandNames.isEmpty) return args.extraOptions;
+  return args.optionsFor(commandNames.first, aliases: commandNames.skip(1).toList());
 }
 
 // =============================================================================

@@ -191,19 +191,14 @@ class VersionerExecutor extends CommandExecutor {
   }
 
   /// Get the per-command options for the versioner command.
-  Map<String, dynamic> _getCommandOptions(CliArgs args) {
-    // Check per-command args first (from :versioner --option syntax)
-    for (final cmdName in args.commands) {
-      if (cmdName == 'versioner' || cmdName == 'v' || cmdName == 'ver') {
-        final cmdArgs = args.commandArgs[cmdName];
-        if (cmdArgs != null && cmdArgs.options.isNotEmpty) {
-          return cmdArgs.options;
-        }
-      }
-    }
-    // Fall back to extra options (global position, for standalone mode)
-    return args.extraOptions;
-  }
+  /// The options for `:versioner`, written in EITHER position.
+  ///
+  /// Was a private copy of this lookup, one of eight in this package. The
+  /// copies also only CHOSE between the per-command and global maps;
+  /// `optionsFor` merges them, so an option given in both positions no
+  /// longer hides the other.
+  Map<String, dynamic> _getCommandOptions(CliArgs args) =>
+      args.optionsFor('versioner', aliases: const ['v', 'ver']);
 
   /// Print the versioner config for a project.
   void _printConfig(String projectPath, String executionRoot) {

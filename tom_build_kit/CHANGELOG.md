@@ -1,3 +1,23 @@
+## 1.9.0
+
+### Changed — twelve private copies of the option lookup replaced by one
+
+Eight executors carried their own "per-command options for this command, else
+global" helper (bumpversion, compiler, publisher, runner, cleanup, versioner,
+dependencies, buildsorter). A sweep found four more places doing it by hand,
+and two of those had the MIRROR-IMAGE defect: `bumppubspec` and `status` read
+`commandArgs` ONLY, so an option written BEFORE the command was dropped.
+`execute` rolled its own per-command-then-global and did not know its command's
+aliases, so `buildkit :x --condition=...` was lost. `git_executors` held a
+ninth copy.
+
+All now call `CliArgs.optionsFor` (tom_build_base 2.13.0), which also MERGES
+the two positions rather than choosing between them — the copies returned the
+per-command map whole, so an option given globally was hidden whenever any
+per-command option was present.
+
+Requires tom_build_base >=2.13.0.
+
 ## 1.8.0
 
 ### Fixed — `:bumpversion --minor=<x>` no longer does a silent PATCH bump when the selector matches nothing (sce10)

@@ -41,9 +41,10 @@ class BumpPubspecExecutor extends CommandExecutor {
     final showMode = args.dumpConfig;
     final root = args.scan ?? args.root ?? Directory.current.path;
 
-    // Extract per-command options
-    final perCmd = args.commandArgs['bumppubspec'];
-    final options = perCmd?.options ?? {};
+    // Options for this command, written in EITHER position. Reading only
+    // `commandArgs` dropped a globally placed one — the mirror image of
+    // the trailing-option defect this lookup exists for.
+    final options = args.optionsFor('bumppubspec', aliases: const ['bumprefs']);
 
     final refsOption = options['refs'] as String?;
     final replaceAny = options['replace-any'] == true;

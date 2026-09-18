@@ -189,17 +189,14 @@ class BumpVersionExecutor extends CommandExecutor {
   }
 
   /// Get the per-command options for the bumpversion command.
-  Map<String, dynamic> _getCommandOptions(CliArgs args) {
-    for (final cmdName in args.commands) {
-      if (cmdName == 'bumpversion' || cmdName == 'bump') {
-        final cmdArgs = args.commandArgs[cmdName];
-        if (cmdArgs != null && cmdArgs.options.isNotEmpty) {
-          return cmdArgs.options;
-        }
-      }
-    }
-    return args.extraOptions;
-  }
+  /// The options for `:bumpversion`, written in EITHER position.
+  ///
+  /// Was a private copy of this lookup, one of eight in this package. The
+  /// copies also only CHOSE between the per-command and global maps;
+  /// `optionsFor` merges them, so an option given in both positions no
+  /// longer hides the other.
+  Map<String, dynamic> _getCommandOptions(CliArgs args) =>
+      args.optionsFor('bumpversion', aliases: const ['bump']);
 
   /// Expand a list of project arguments, splitting comma-separated values.
   Set<String> _expandProjectList(dynamic value) {

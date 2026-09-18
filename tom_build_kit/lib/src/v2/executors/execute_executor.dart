@@ -37,15 +37,11 @@ class ExecuteExecutor extends CommandExecutor {
     String? condition;
 
     // Get condition from per-command options or extraOptions
-    final cmdName = args.commands.firstWhere(
-      (c) => c == 'execute',
-      orElse: () => 'execute',
-    );
-    final perCmd = args.commandArgs[cmdName];
-    if (perCmd != null) {
-      condition = perCmd.options['condition'] as String?;
-    }
-    condition ??= args.extraOptions['condition'] as String?;
+    // Hand-rolled per-command-then-global, and it did not know the command's
+    // own aliases, so `buildkit :x --condition=...` was dropped.
+    condition ??=
+        args.optionsFor('execute', aliases: const ['exec', 'x'])['condition']
+            as String?;
 
     // Get command template from positional args
     if (args.positionalArgs.isNotEmpty) {

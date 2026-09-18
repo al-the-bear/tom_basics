@@ -458,15 +458,14 @@ class CompilerExecutor extends CommandExecutor {
     }
   }
 
-  Map<String, dynamic> _getCmdOpts(CliArgs args) {
-    for (final cmd in args.commands) {
-      if (cmd == 'compiler' || cmd == 'c' || cmd == 'comp') {
-        final cmdArgs = args.commandArgs[cmd];
-        if (cmdArgs != null) return cmdArgs.options;
-      }
-    }
-    return args.extraOptions;
-  }
+  /// The options for `:compiler`, written in EITHER position.
+  ///
+  /// Was a private copy of this lookup, one of eight in this package. The
+  /// copies also only CHOSE between the per-command and global maps;
+  /// `optionsFor` merges them, so an option given in both positions no
+  /// longer hides the other.
+  Map<String, dynamic> _getCmdOpts(CliArgs args) =>
+      args.optionsFor('compiler', aliases: const ['c', 'comp']);
 
   Future<bool> _runCommandSection({
     required CommandSection section,
