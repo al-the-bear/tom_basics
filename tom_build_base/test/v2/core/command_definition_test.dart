@@ -72,67 +72,79 @@ void main() {
     });
 
     group('allOptions', () {
-      test('BB-CMD-4: Returns only command options when no traversal support [2026-02-12]', () {
-        const cmd = CommandDefinition(
-          name: 'version',
-          description: 'Show version',
-          supportsProjectTraversal: false,
-          supportsGitTraversal: false,
-          options: [
-            OptionDefinition.flag(name: 'json', description: 'JSON output'),
-          ],
-        );
+      test(
+        'BB-CMD-4: Returns only command options when no traversal support [2026-02-12]',
+        () {
+          const cmd = CommandDefinition(
+            name: 'version',
+            description: 'Show version',
+            supportsProjectTraversal: false,
+            supportsGitTraversal: false,
+            options: [
+              OptionDefinition.flag(name: 'json', description: 'JSON output'),
+            ],
+          );
 
-        expect(cmd.allOptions, hasLength(1));
-        expect(cmd.allOptions.first.name, equals('json'));
-      });
+          expect(cmd.allOptions, hasLength(1));
+          expect(cmd.allOptions.first.name, equals('json'));
+        },
+      );
 
-      test('BB-CMD-5: Includes project traversal options when supported [2026-02-12]', () {
-        const cmd = CommandDefinition(
-          name: 'compile',
-          description: 'Compile project',
-          supportsProjectTraversal: true,
-          supportsGitTraversal: false,
-        );
+      test(
+        'BB-CMD-5: Includes project traversal options when supported [2026-02-12]',
+        () {
+          const cmd = CommandDefinition(
+            name: 'compile',
+            description: 'Compile project',
+            supportsProjectTraversal: true,
+            supportsGitTraversal: false,
+          );
 
-        final allOptions = cmd.allOptions;
-        final names = allOptions.map((o) => o.name).toList();
+          final allOptions = cmd.allOptions;
+          final names = allOptions.map((o) => o.name).toList();
 
-        expect(names, contains('scan'));
-        expect(names, contains('recursive'));
-        expect(names, contains('project'));
-      });
+          expect(names, contains('scan'));
+          expect(names, contains('recursive'));
+          expect(names, contains('project'));
+        },
+      );
 
-      test('BB-CMD-6: Includes git traversal options when supported [2026-02-12]', () {
-        const cmd = CommandDefinition(
-          name: 'gitstatus',
-          description: 'Git status',
-          supportsProjectTraversal: false,
-          supportsGitTraversal: true,
-        );
+      test(
+        'BB-CMD-6: Includes git traversal options when supported [2026-02-12]',
+        () {
+          const cmd = CommandDefinition(
+            name: 'gitstatus',
+            description: 'Git status',
+            supportsProjectTraversal: false,
+            supportsGitTraversal: true,
+          );
 
-        final allOptions = cmd.allOptions;
-        final names = allOptions.map((o) => o.name).toList();
+          final allOptions = cmd.allOptions;
+          final names = allOptions.map((o) => o.name).toList();
 
-        expect(names, contains('modules'));
-        expect(names, contains('inner-first-git'));
-        expect(names, isNot(contains('scan')));
-      });
+          expect(names, contains('modules'));
+          expect(names, contains('inner-first-git'));
+          expect(names, isNot(contains('scan')));
+        },
+      );
 
-      test('BB-CMD-7: Includes both traversal types when supported [2026-02-12]', () {
-        const cmd = CommandDefinition(
-          name: 'status',
-          description: 'Show status',
-          supportsProjectTraversal: true,
-          supportsGitTraversal: true,
-        );
+      test(
+        'BB-CMD-7: Includes both traversal types when supported [2026-02-12]',
+        () {
+          const cmd = CommandDefinition(
+            name: 'status',
+            description: 'Show status',
+            supportsProjectTraversal: true,
+            supportsGitTraversal: true,
+          );
 
-        final allOptions = cmd.allOptions;
-        final names = allOptions.map((o) => o.name).toList();
+          final allOptions = cmd.allOptions;
+          final names = allOptions.map((o) => o.name).toList();
 
-        expect(names, contains('scan'));
-        expect(names, contains('modules'));
-      });
+          expect(names, contains('scan'));
+          expect(names, contains('modules'));
+        },
+      );
 
       test('BB-CMD-8: Command options come first [2026-02-12]', () {
         const cmd = CommandDefinition(
@@ -140,7 +152,10 @@ void main() {
           description: 'Run tests',
           supportsProjectTraversal: true,
           options: [
-            OptionDefinition.flag(name: 'coverage', description: 'Enable coverage'),
+            OptionDefinition.flag(
+              name: 'coverage',
+              description: 'Enable coverage',
+            ),
           ],
         );
 
@@ -151,10 +166,7 @@ void main() {
 
     group('usage', () {
       test('BB-CMD-9: Generates usage without aliases [2026-02-12]', () {
-        const cmd = CommandDefinition(
-          name: 'cleanup',
-          description: 'Clean',
-        );
+        const cmd = CommandDefinition(name: 'cleanup', description: 'Clean');
 
         expect(cmd.usage, equals(':cleanup'));
       });
@@ -182,10 +194,7 @@ void main() {
 
     group('toString', () {
       test('BB-CMD-12: Returns descriptive string [2026-02-12]', () {
-        const cmd = CommandDefinition(
-          name: 'cleanup',
-          description: 'Clean',
-        );
+        const cmd = CommandDefinition(name: 'cleanup', description: 'Clean');
 
         expect(cmd.toString(), equals('CommandDefinition(cleanup)'));
       });
@@ -215,15 +224,18 @@ void main() {
       expect(cmd.requiredNatures, isNull);
     });
 
-    test('BB-CMD-15: Empty required natures is different from null [2026-02-12]', () {
-      const cmd = CommandDefinition(
-        name: 'status',
-        description: 'Show status',
-        requiredNatures: {},
-      );
+    test(
+      'BB-CMD-15: Empty required natures is different from null [2026-02-12]',
+      () {
+        const cmd = CommandDefinition(
+          name: 'status',
+          description: 'Show status',
+          requiredNatures: {},
+        );
 
-      expect(cmd.requiredNatures, isNotNull);
-      expect(cmd.requiredNatures, isEmpty);
-    });
+        expect(cmd.requiredNatures, isNotNull);
+        expect(cmd.requiredNatures, isEmpty);
+      },
+    );
   });
 }

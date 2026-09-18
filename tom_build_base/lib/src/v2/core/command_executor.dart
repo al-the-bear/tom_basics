@@ -69,15 +69,12 @@ abstract class CommandExecutor {
 class CallbackExecutor extends CommandExecutor {
   /// Callback executed for each folder.
   final Future<ItemResult> Function(CommandContext context, CliArgs args)
-      onExecute;
+  onExecute;
 
   /// Callback for non-traversal execution.
   final Future<ToolResult> Function(CliArgs args)? onExecuteWithoutTraversal;
 
-  CallbackExecutor({
-    required this.onExecute,
-    this.onExecuteWithoutTraversal,
-  });
+  CallbackExecutor({required this.onExecute, this.onExecuteWithoutTraversal});
 
   @override
   Future<ItemResult> execute(CommandContext context, CliArgs args) {
@@ -184,10 +181,7 @@ class DartExecutor extends CommandExecutor {
   /// Success message generator.
   final String Function(CommandContext context)? successMessage;
 
-  DartExecutor({
-    required this.dartFunction,
-    this.successMessage,
-  });
+  DartExecutor({required this.dartFunction, this.successMessage});
 
   @override
   Future<ItemResult> execute(CommandContext context, CliArgs args) async {

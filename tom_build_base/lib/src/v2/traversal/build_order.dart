@@ -49,8 +49,7 @@ class BuildOrderComputer {
   static List<String>? computeBuildOrder(
     List<String> allProjectPaths, {
     bool includeDev = false,
-  }) =>
-      computeBuildOrderResult(allProjectPaths, includeDev: includeDev).order;
+  }) => computeBuildOrderResult(allProjectPaths, includeDev: includeDev).order;
 
   /// Compute build order and report cycle participants on failure.
   ///
@@ -119,9 +118,7 @@ class BuildOrderComputer {
     for (final path in allProjectPaths) {
       if (inDegree[path] == 0) queue.add(path);
     }
-    queue.sort(
-      (a, b) => (pathToName[a] ?? a).compareTo(pathToName[b] ?? b),
-    );
+    queue.sort((a, b) => (pathToName[a] ?? a).compareTo(pathToName[b] ?? b));
 
     final result = <String>[];
     while (queue.isNotEmpty) {
@@ -146,11 +143,12 @@ class BuildOrderComputer {
       // Circular dependency detected. The nodes whose in-degree never reached
       // zero are the ones participating in (or blocked by) the cycle; name
       // them so callers can produce an actionable diagnostic.
-      final unresolved = allProjectPaths
-          .where((path) => (inDegree[path] ?? 0) > 0)
-          .map((path) => pathToName[path] ?? path)
-          .toList()
-        ..sort();
+      final unresolved =
+          allProjectPaths
+              .where((path) => (inDegree[path] ?? 0) > 0)
+              .map((path) => pathToName[path] ?? path)
+              .toList()
+            ..sort();
       return BuildOrderResult(null, unresolved);
     }
 

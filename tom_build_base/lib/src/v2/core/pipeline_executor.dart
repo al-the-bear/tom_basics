@@ -332,10 +332,12 @@ class ToolPipelineExecutor {
     }
     await process.stdin.close();
 
-    final stdoutFuture =
-        process.stdout.transform(const Utf8Decoder(allowMalformed: true)).join();
-    final stderrFuture =
-        process.stderr.transform(const Utf8Decoder(allowMalformed: true)).join();
+    final stdoutFuture = process.stdout
+        .transform(const Utf8Decoder(allowMalformed: true))
+        .join();
+    final stderrFuture = process.stderr
+        .transform(const Utf8Decoder(allowMalformed: true))
+        .join();
     final exitCode = await process.exitCode;
     final out = await stdoutFuture;
     final err = await stderrFuture;
@@ -398,10 +400,7 @@ class ToolPipelineExecutor {
     // done nothing.
     if (result.unmatchedProjectPatterns.isNotEmpty && !cliArgs.allowEmpty) {
       output.writeln(
-        'Error: ${describeUnmatchedProjectPatterns(
-          result.unmatchedProjectPatterns,
-          scanRoot: traversal.absoluteScanRoot,
-        )}',
+        'Error: ${describeUnmatchedProjectPatterns(result.unmatchedProjectPatterns, scanRoot: traversal.absoluteScanRoot)}',
       );
       output.writeln('Use --allow-empty if matching nothing is intended.');
       return false;

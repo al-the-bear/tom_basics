@@ -36,21 +36,23 @@ class PubCacheProblem {
 
   /// What the reader has to do, which differs by shape.
   String get remedy => switch (kind) {
-        PubCacheProblemKind.missingDirectory => 'dart pub get',
-        // Pub skips a directory that exists, so resolving alone repairs
-        // nothing — it has to be gone before the resolve.
-        PubCacheProblemKind.missingPubspec =>
-          'rm -rf $expectedPath && dart pub get',
-      };
+    PubCacheProblemKind.missingDirectory => 'dart pub get',
+    // Pub skips a directory that exists, so resolving alone repairs
+    // nothing — it has to be gone before the resolve.
+    PubCacheProblemKind.missingPubspec =>
+      'rm -rf $expectedPath && dart pub get',
+  };
 
   String get _what => switch (kind) {
-        PubCacheProblemKind.missingDirectory => 'missing from the pub cache',
-        PubCacheProblemKind.missingPubspec => 'in the pub cache but empty '
-            '(no pubspec.yaml)',
-      };
+    PubCacheProblemKind.missingDirectory => 'missing from the pub cache',
+    PubCacheProblemKind.missingPubspec =>
+      'in the pub cache but empty '
+          '(no pubspec.yaml)',
+  };
 
   @override
-  String toString() => '$package $version is $_what\n'
+  String toString() =>
+      '$package $version is $_what\n'
       '    expected: $expectedPath\n'
       '    repair:   $remedy';
 }
@@ -92,12 +94,11 @@ class PubCacheIntegrity {
     required String projectPath,
     String? pubCachePath,
     Map<String, String>? environment,
-  }) =>
-      checkLockFile(
-        lockFilePath: p.join(projectPath, 'pubspec.lock'),
-        pubCachePath: pubCachePath,
-        environment: environment,
-      );
+  }) => checkLockFile(
+    lockFilePath: p.join(projectPath, 'pubspec.lock'),
+    pubCachePath: pubCachePath,
+    environment: environment,
+  );
 
   /// As [checkProject], for an explicit lock file path.
   static List<PubCacheProblem> checkLockFile({
@@ -133,27 +134,27 @@ class PubCacheIntegrity {
       final name = _hostedName(details) ?? entry.key.toString();
       final version = details['version']?.toString() ?? '';
       final folder = '$name-$version';
-      final expected = p.join(
-        hostedRoot.path,
-        _hostDirectory(details),
-        folder,
-      );
+      final expected = p.join(hostedRoot.path, _hostDirectory(details), folder);
 
       final found = _locate(hostedRoot, expected, folder);
       if (found == null) {
-        problems.add(PubCacheProblem(
-          package: name,
-          version: version,
-          expectedPath: expected,
-          kind: PubCacheProblemKind.missingDirectory,
-        ));
+        problems.add(
+          PubCacheProblem(
+            package: name,
+            version: version,
+            expectedPath: expected,
+            kind: PubCacheProblemKind.missingDirectory,
+          ),
+        );
       } else if (!File(p.join(found, 'pubspec.yaml')).existsSync()) {
-        problems.add(PubCacheProblem(
-          package: name,
-          version: version,
-          expectedPath: found,
-          kind: PubCacheProblemKind.missingPubspec,
-        ));
+        problems.add(
+          PubCacheProblem(
+            package: name,
+            version: version,
+            expectedPath: found,
+            kind: PubCacheProblemKind.missingPubspec,
+          ),
+        );
       }
     }
     return problems;
@@ -167,11 +168,15 @@ class PubCacheIntegrity {
     if (problems.isEmpty) return '';
     final where = projectPath == null ? '' : ' for $projectPath';
     final buffer = StringBuffer()
-      ..writeln('${problems.length} locked package(s)$where cannot be read '
-          'from the pub cache.')
-      ..writeln('This is NOT an API change: the compiler would report it as '
-          "`Undefined name` at every use site, because the package's code is "
-          'simply not on disk.');
+      ..writeln(
+        '${problems.length} locked package(s)$where cannot be read '
+        'from the pub cache.',
+      )
+      ..writeln(
+        'This is NOT an API change: the compiler would report it as '
+        "`Undefined name` at every use site, because the package's code is "
+        'simply not on disk.',
+      );
     for (final problem in problems) {
       buffer.writeln('  - $problem');
     }
@@ -225,11 +230,7 @@ class PubCacheIntegrity {
 
   /// [expected] if it exists, else the same `<name>-<version>` folder under
   /// any other host directory, else null.
-  static String? _locate(
-    Directory hostedRoot,
-    String expected,
-    String folder,
-  ) {
+  static String? _locate(Directory hostedRoot, String expected, String folder) {
     if (Directory(expected).existsSync()) return expected;
     if (!hostedRoot.existsSync()) return null;
     for (final host in hostedRoot.listSync().whereType<Directory>()) {

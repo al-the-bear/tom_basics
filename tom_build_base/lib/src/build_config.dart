@@ -5,7 +5,7 @@ import 'package:yaml/yaml.dart';
 import 'yaml_utils.dart';
 
 /// Configuration loaded from buildkit.yaml for a specific tool.
-/// 
+///
 /// This class provides shared CLI configuration options that are common
 /// across Tom build tools. Tool-specific options are accessible via
 /// [toolOptions].
@@ -15,21 +15,22 @@ class TomBuildConfig {
 
   /// Filename for the project-level build configuration.
   static const projectFilename = 'buildkit.yaml';
+
   /// Path to a single project directory.
   final String? project;
-  
+
   /// Glob patterns for projects to process.
   final List<String> projects;
-  
+
   /// Path to a specific config file.
   final String? config;
-  
+
   /// Directory to scan for projects.
   final String? scan;
-  
+
   /// Whether to process subprojects recursively.
   final bool recursive;
-  
+
   /// Glob patterns for projects to exclude from processing.
   final List<String> exclude;
 
@@ -41,10 +42,10 @@ class TomBuildConfig {
 
   /// Glob patterns to exclude from recursive traversal.
   final List<String> recursionExclude;
-  
+
   /// Whether to show detailed output.
   final bool verbose;
-  
+
   /// Tool-specific options as a raw map.
   /// Tools can extract additional options from this.
   final Map<String, dynamic> toolOptions;
@@ -63,18 +64,15 @@ class TomBuildConfig {
   });
 
   /// Load configuration from buildkit.yaml file for a specific tool.
-  /// 
+  ///
   /// [dir] - Directory containing buildkit.yaml
   /// [toolKey] - The tool's section key in the YAML (e.g., 'versioner')
-  /// 
+  ///
   /// Returns null if:
   /// - buildkit.yaml doesn't exist
   /// - The file is invalid YAML
   /// - The tool's section doesn't exist
-  static TomBuildConfig? load({
-    required String dir,
-    required String toolKey,
-  }) {
+  static TomBuildConfig? load({required String dir, required String toolKey}) {
     return _loadFromFile(
       filePath: p.join(dir, projectFilename),
       toolKey: toolKey,
@@ -82,10 +80,10 @@ class TomBuildConfig {
   }
 
   /// Load configuration from buildkit_master.yaml for a specific tool.
-  /// 
+  ///
   /// [dir] - Directory containing buildkit_master.yaml
   /// [toolKey] - The tool's section key in the YAML
-  /// 
+  ///
   /// Returns null if not found or invalid.
   static TomBuildConfig? loadMaster({
     required String dir,

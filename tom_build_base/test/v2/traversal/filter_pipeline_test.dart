@@ -56,8 +56,11 @@ void main() {
 
         // Should only include zom_test_* folders
         for (final folder in filtered) {
-          expect(folder.name, startsWith('zom_test'),
-              reason: 'Only zom_test_* should match');
+          expect(
+            folder.name,
+            startsWith('zom_test'),
+            reason: 'Only zom_test_* should match',
+          );
         }
         expect(filtered.length, greaterThan(0));
       });
@@ -105,44 +108,53 @@ void main() {
     });
 
     group('Project ID and Name filtering (--project, -p)', () {
-      test('BB-FLT-30: Filters by project short-id from tom_project.yaml [2026-02-14]', () {
-        final info = ProjectTraversalInfo(
-          executionRoot: zomTestRoot,
-          projectPatterns: ['ZTF'], // short-id for zom_test_flutter
-          includeTestProjects: true,
-        );
+      test(
+        'BB-FLT-30: Filters by project short-id from tom_project.yaml [2026-02-14]',
+        () {
+          final info = ProjectTraversalInfo(
+            executionRoot: zomTestRoot,
+            projectPatterns: ['ZTF'], // short-id for zom_test_flutter
+            includeTestProjects: true,
+          );
 
-        final filtered = filter.applyProjectFilters(allFolders, info);
+          final filtered = filter.applyProjectFilters(allFolders, info);
 
-        expect(filtered.length, equals(1));
-        expect(filtered.first.name, equals('zom_test_flutter'));
-      });
+          expect(filtered.length, equals(1));
+          expect(filtered.first.name, equals('zom_test_flutter'));
+        },
+      );
 
-      test('BB-FLT-31: Filters by project short-id case-insensitive [2026-02-14]', () {
-        final info = ProjectTraversalInfo(
-          executionRoot: zomTestRoot,
-          projectPatterns: ['ztf'], // lowercase
-          includeTestProjects: true,
-        );
+      test(
+        'BB-FLT-31: Filters by project short-id case-insensitive [2026-02-14]',
+        () {
+          final info = ProjectTraversalInfo(
+            executionRoot: zomTestRoot,
+            projectPatterns: ['ztf'], // lowercase
+            includeTestProjects: true,
+          );
 
-        final filtered = filter.applyProjectFilters(allFolders, info);
+          final filtered = filter.applyProjectFilters(allFolders, info);
 
-        expect(filtered.length, equals(1));
-        expect(filtered.first.name, equals('zom_test_flutter'));
-      });
+          expect(filtered.length, equals(1));
+          expect(filtered.first.name, equals('zom_test_flutter'));
+        },
+      );
 
-      test('BB-FLT-32: Filters by project name from tom_project.yaml [2026-02-14]', () {
-        final info = ProjectTraversalInfo(
-          executionRoot: zomTestRoot,
-          projectPatterns: ['test-flutter'], // name field
-          includeTestProjects: true,
-        );
+      test(
+        'BB-FLT-32: Filters by project name from tom_project.yaml [2026-02-14]',
+        () {
+          final info = ProjectTraversalInfo(
+            executionRoot: zomTestRoot,
+            projectPatterns: ['test-flutter'], // name field
+            includeTestProjects: true,
+          );
 
-        final filtered = filter.applyProjectFilters(allFolders, info);
+          final filtered = filter.applyProjectFilters(allFolders, info);
 
-        expect(filtered.length, equals(1));
-        expect(filtered.first.name, equals('zom_test_flutter'));
-      });
+          expect(filtered.length, equals(1));
+          expect(filtered.first.name, equals('zom_test_flutter'));
+        },
+      );
 
       test('BB-FLT-33: Filters by multiple project IDs [2026-02-14]', () {
         final info = ProjectTraversalInfo(
@@ -186,27 +198,32 @@ void main() {
       late FsFolder flutterFolder;
 
       setUp(() {
-        flutterFolder =
-            allFolders.firstWhere((f) => f.name == 'zom_test_flutter');
-      });
-
-      test('BB-FLT-41: native absolute path matches the project [2026-06-14]',
-          () {
-        final info = ProjectTraversalInfo(
-          executionRoot: zomTestRoot,
-          projectPatterns: [flutterFolder.path], // native separators
-          includeTestProjects: true,
+        flutterFolder = allFolders.firstWhere(
+          (f) => f.name == 'zom_test_flutter',
         );
-
-        final filtered = filter.applyProjectFilters(allFolders, info);
-
-        expect(filtered.map((f) => f.name), contains('zom_test_flutter'));
-        expect(filtered.length, equals(1),
-            reason: 'An absolute path should select exactly that project');
       });
 
       test(
-          'BB-FLT-42: forward-slash absolute path matches the project '
+        'BB-FLT-41: native absolute path matches the project [2026-06-14]',
+        () {
+          final info = ProjectTraversalInfo(
+            executionRoot: zomTestRoot,
+            projectPatterns: [flutterFolder.path], // native separators
+            includeTestProjects: true,
+          );
+
+          final filtered = filter.applyProjectFilters(allFolders, info);
+
+          expect(filtered.map((f) => f.name), contains('zom_test_flutter'));
+          expect(
+            filtered.length,
+            equals(1),
+            reason: 'An absolute path should select exactly that project',
+          );
+        },
+      );
+
+      test('BB-FLT-42: forward-slash absolute path matches the project '
           '[2026-06-14]', () {
         final forwardSlash = flutterFolder.path.replaceAll(r'\', '/');
         final info = ProjectTraversalInfo(
@@ -220,8 +237,7 @@ void main() {
         expect(filtered.map((f) => f.name), contains('zom_test_flutter'));
       });
 
-      test(
-          'BB-FLT-43: backslash absolute path matches the project '
+      test('BB-FLT-43: backslash absolute path matches the project '
           '[2026-06-14]', () {
         final backslash = flutterFolder.path.replaceAll('/', r'\');
         final info = ProjectTraversalInfo(
@@ -232,18 +248,19 @@ void main() {
 
         final filtered = filter.applyProjectFilters(allFolders, info);
 
-        expect(filtered.map((f) => f.name), contains('zom_test_flutter'),
-            reason: 'A backslash absolute path must still match the folder');
+        expect(
+          filtered.map((f) => f.name),
+          contains('zom_test_flutter'),
+          reason: 'A backslash absolute path must still match the folder',
+        );
       });
 
       test('BB-FLT-44: matchesProjectPattern accepts an absolute path '
           '[2026-06-14]', () {
         expect(
-          filter.matchesProjectPattern(
-            flutterFolder,
-            [flutterFolder.path],
-            executionRoot: zomTestRoot,
-          ),
+          filter.matchesProjectPattern(flutterFolder, [
+            flutterFolder.path,
+          ], executionRoot: zomTestRoot),
           isTrue,
         );
         // Separator-flipped variant must also match.
@@ -251,11 +268,9 @@ void main() {
             ? flutterFolder.path.replaceAll(r'\', '/')
             : flutterFolder.path.replaceAll('/', r'\');
         expect(
-          filter.matchesProjectPattern(
-            flutterFolder,
-            [flipped],
-            executionRoot: zomTestRoot,
-          ),
+          filter.matchesProjectPattern(flutterFolder, [
+            flipped,
+          ], executionRoot: zomTestRoot),
           isTrue,
         );
       });
@@ -301,8 +316,11 @@ void main() {
 
         // No flutter folders should remain
         for (final folder in filtered) {
-          expect(folder.path.contains('flutter'), isFalse,
-              reason: 'Flutter paths should be excluded');
+          expect(
+            folder.path.contains('flutter'),
+            isFalse,
+            reason: 'Flutter paths should be excluded',
+          );
         }
       });
 
@@ -332,8 +350,11 @@ void main() {
 
         final filtered = filter.applyProjectFilters(allFolders, info);
 
-        expect(filtered.any((f) => f.name == 'zom_test_flutter'), isFalse,
-            reason: 'zom_test_flutter should be excluded');
+        expect(
+          filtered.any((f) => f.name == 'zom_test_flutter'),
+          isFalse,
+          reason: 'zom_test_flutter should be excluded',
+        );
       });
 
       test('BB-FLT-8: Excludes with glob pattern [2026-02-12]', () {
@@ -346,8 +367,11 @@ void main() {
         final filtered = filter.applyProjectFilters(allFolders, info);
 
         for (final folder in filtered) {
-          expect(folder.name.startsWith('zom_test_'), isFalse,
-              reason: 'All zom_test_* should be excluded');
+          expect(
+            folder.name.startsWith('zom_test_'),
+            isFalse,
+            reason: 'All zom_test_* should be excluded',
+          );
         }
       });
     });
@@ -362,60 +386,94 @@ void main() {
         final filtered = filter.applyProjectFilters(allFolders, info);
 
         for (final folder in filtered) {
-          expect(folder.name.startsWith('zom_'), isFalse,
-              reason: 'zom_* should be excluded by default');
+          expect(
+            folder.name.startsWith('zom_'),
+            isFalse,
+            reason: 'zom_* should be excluded by default',
+          );
         }
       });
 
-      test('BB-FLT-10: Includes zom_* with includeTestProjects (--test) [2026-02-12]', () {
-        // Design spec: "--test: include them" (zom_* projects IN ADDITION to regular)
-        final info = ProjectTraversalInfo(
-          executionRoot: zomTestRoot,
-          includeTestProjects: true,
-        );
+      test(
+        'BB-FLT-10: Includes zom_* with includeTestProjects (--test) [2026-02-12]',
+        () {
+          // Design spec: "--test: include them" (zom_* projects IN ADDITION to regular)
+          final info = ProjectTraversalInfo(
+            executionRoot: zomTestRoot,
+            includeTestProjects: true,
+          );
 
-        final filtered = filter.applyProjectFilters(allFolders, info);
+          final filtered = filter.applyProjectFilters(allFolders, info);
 
-        expect(filtered.any((f) => f.name.startsWith('zom_')), isTrue,
-            reason: '--test should include zom_* projects');
-      });
+          expect(
+            filtered.any((f) => f.name.startsWith('zom_')),
+            isTrue,
+            reason: '--test should include zom_* projects',
+          );
+        },
+      );
 
-      test('BB-FLT-11: IncludeTestProjects keeps both regular AND test projects [2026-02-12]', () {
-        // Design spec: "--test: include them" means BOTH regular and test
-        final info = ProjectTraversalInfo(
-          executionRoot: zomTestRoot,
-          includeTestProjects: true,
-        );
+      test(
+        'BB-FLT-11: IncludeTestProjects keeps both regular AND test projects [2026-02-12]',
+        () {
+          // Design spec: "--test: include them" means BOTH regular and test
+          final info = ProjectTraversalInfo(
+            executionRoot: zomTestRoot,
+            includeTestProjects: true,
+          );
 
-        final filtered = filter.applyProjectFilters(allFolders, info);
-        final regularProjects = filtered.where((f) => !f.name.startsWith('zom_'));
-        final testProjects = filtered.where((f) => f.name.startsWith('zom_'));
+          final filtered = filter.applyProjectFilters(allFolders, info);
+          final regularProjects = filtered.where(
+            (f) => !f.name.startsWith('zom_'),
+          );
+          final testProjects = filtered.where((f) => f.name.startsWith('zom_'));
 
-        expect(regularProjects, isNotEmpty,
-            reason: '--test should ALSO keep regular (non-zom_*) projects');
-        expect(testProjects, isNotEmpty,
-            reason: '--test should include zom_* projects');
-      });
+          expect(
+            regularProjects,
+            isNotEmpty,
+            reason: '--test should ALSO keep regular (non-zom_*) projects',
+          );
+          expect(
+            testProjects,
+            isNotEmpty,
+            reason: '--test should include zom_* projects',
+          );
+        },
+      );
 
-      test('BB-FLT-12: TestProjectsOnly returns only zom_* folders (--test-only) [2026-02-12]', () {
-        // Design spec: "--test-only: only them" (ONLY zom_* projects, exclude regular)
-        final info = ProjectTraversalInfo(
-          executionRoot: zomTestRoot,
-          testProjectsOnly: true,
-        );
+      test(
+        'BB-FLT-12: TestProjectsOnly returns only zom_* folders (--test-only) [2026-02-12]',
+        () {
+          // Design spec: "--test-only: only them" (ONLY zom_* projects, exclude regular)
+          final info = ProjectTraversalInfo(
+            executionRoot: zomTestRoot,
+            testProjectsOnly: true,
+          );
 
-        final filtered = filter.applyProjectFilters(allFolders, info);
-        final regularProjects = filtered.where((f) => !f.name.startsWith('zom_'));
+          final filtered = filter.applyProjectFilters(allFolders, info);
+          final regularProjects = filtered.where(
+            (f) => !f.name.startsWith('zom_'),
+          );
 
-        for (final folder in filtered) {
-          expect(folder.name, startsWith('zom_'),
-              reason: '--test-only: only zom_* should be included');
-        }
-        expect(regularProjects, isEmpty,
-            reason: '--test-only should EXCLUDE regular projects');
-        expect(filtered.length, greaterThan(0),
-            reason: '--test-only should find at least some test projects');
-      });
+          for (final folder in filtered) {
+            expect(
+              folder.name,
+              startsWith('zom_'),
+              reason: '--test-only: only zom_* should be included',
+            );
+          }
+          expect(
+            regularProjects,
+            isEmpty,
+            reason: '--test-only should EXCLUDE regular projects',
+          );
+          expect(
+            filtered.length,
+            greaterThan(0),
+            reason: '--test-only should find at least some test projects',
+          );
+        },
+      );
     });
 
     group('Combined filters', () {
@@ -436,21 +494,24 @@ void main() {
         }
       });
 
-      test('BB-FLT-14: Path exclude + name include works together [2026-02-12]', () {
-        final info = ProjectTraversalInfo(
-          executionRoot: zomTestRoot,
-          projectPatterns: ['zom_*'],
-          excludePatterns: ['*flutter*'],
-          includeTestProjects: true,
-        );
+      test(
+        'BB-FLT-14: Path exclude + name include works together [2026-02-12]',
+        () {
+          final info = ProjectTraversalInfo(
+            executionRoot: zomTestRoot,
+            projectPatterns: ['zom_*'],
+            excludePatterns: ['*flutter*'],
+            includeTestProjects: true,
+          );
 
-        final filtered = filter.applyProjectFilters(allFolders, info);
+          final filtered = filter.applyProjectFilters(allFolders, info);
 
-        for (final folder in filtered) {
-          expect(folder.name, startsWith('zom_'));
-          expect(folder.path.contains('flutter'), isFalse);
-        }
-      });
+          for (final folder in filtered) {
+            expect(folder.name, startsWith('zom_'));
+            expect(folder.path.contains('flutter'), isFalse);
+          }
+        },
+      );
     });
   });
 
@@ -475,8 +536,11 @@ void main() {
 
         // All filtered folders should contain 'basics' in path
         for (final folder in filtered) {
-          expect(folder.path.contains('basics'), isTrue,
-              reason: 'Should only include basics module');
+          expect(
+            folder.path.contains('basics'),
+            isTrue,
+            reason: 'Should only include basics module',
+          );
         }
       });
 
@@ -492,9 +556,10 @@ void main() {
         // All filtered folders should contain basics OR d4rt
         for (final folder in filtered) {
           expect(
-              folder.path.contains('basics') || folder.path.contains('d4rt'),
-              isTrue,
-              reason: 'Should include basics or d4rt modules');
+            folder.path.contains('basics') || folder.path.contains('d4rt'),
+            isTrue,
+            reason: 'Should include basics or d4rt modules',
+          );
         }
       });
 
@@ -524,8 +589,11 @@ void main() {
 
         // No filtered folders should contain 'crypto' in path
         for (final folder in filtered) {
-          expect(folder.path.contains('crypto'), isFalse,
-              reason: 'Should exclude crypto module');
+          expect(
+            folder.path.contains('crypto'),
+            isFalse,
+            reason: 'Should exclude crypto module',
+          );
         }
       });
     });
@@ -541,8 +609,11 @@ void main() {
         final filtered = filter.applyGitFilters(gitFolders, info);
 
         for (final folder in filtered) {
-          expect(folder.path.contains('xternal'), isFalse,
-              reason: 'xternal should be excluded');
+          expect(
+            folder.path.contains('xternal'),
+            isFalse,
+            reason: 'xternal should be excluded',
+          );
         }
       });
     });
@@ -565,32 +636,41 @@ void main() {
   });
 
   group('FolderScanner', () {
-    test('BB-FLT-21: Scans recursively when recursive is true [2026-02-12]', () async {
-      final scanner = FolderScanner();
-      final folders = await scanner.scan(zomTestRoot, recursive: true);
-
-      // Should find subfolders
-      expect(folders.length, greaterThan(1),
-          reason: 'Should find multiple folders recursively');
-    });
-
-    test('BB-FLT-22: Scans only root when recursive is false [2026-02-12]', () async {
-      // The scanner enters container directories but stops at project
-      // directories, so a project root with a nested project yields just the
-      // root when recursive is false. (The zom fixture root is a *container*,
-      // which the scanner always descends into, so it is unsuitable here.)
-      final nestedRoot = installNestedProjectFixture();
-      try {
+    test(
+      'BB-FLT-21: Scans recursively when recursive is true [2026-02-12]',
+      () async {
         final scanner = FolderScanner();
-        final folders = await scanner.scan(nestedRoot, recursive: false);
+        final folders = await scanner.scan(zomTestRoot, recursive: true);
 
-        // Should only find the root folder
-        expect(folders.length, equals(1));
-        expect(folders.first.path, equals(nestedRoot));
-      } finally {
-        removeWorkspace(nestedRoot);
-      }
-    });
+        // Should find subfolders
+        expect(
+          folders.length,
+          greaterThan(1),
+          reason: 'Should find multiple folders recursively',
+        );
+      },
+    );
+
+    test(
+      'BB-FLT-22: Scans only root when recursive is false [2026-02-12]',
+      () async {
+        // The scanner enters container directories but stops at project
+        // directories, so a project root with a nested project yields just the
+        // root when recursive is false. (The zom fixture root is a *container*,
+        // which the scanner always descends into, so it is unsuitable here.)
+        final nestedRoot = installNestedProjectFixture();
+        try {
+          final scanner = FolderScanner();
+          final folders = await scanner.scan(nestedRoot, recursive: false);
+
+          // Should only find the root folder
+          expect(folders.length, equals(1));
+          expect(folders.first.path, equals(nestedRoot));
+        } finally {
+          removeWorkspace(nestedRoot);
+        }
+      },
+    );
 
     test('BB-FLT-23: Respects recursionExclude patterns [2026-02-12]', () async {
       final scanner = FolderScanner();
@@ -604,16 +684,23 @@ void main() {
       for (final folder in folders) {
         final folderName = p.basename(folder.path);
         // Check that no folder NAME matches the exclusion pattern
-        expect(folderName.contains('flutter'), isFalse,
-            reason: 'Should not include folders matching *flutter* pattern: $folderName');
+        expect(
+          folderName.contains('flutter'),
+          isFalse,
+          reason:
+              'Should not include folders matching *flutter* pattern: $folderName',
+        );
       }
 
       // Explicitly verify zom_test_flutter is excluded
       final flutterFolder = folders.where(
         (f) => p.basename(f.path) == 'zom_test_flutter',
       );
-      expect(flutterFolder, isEmpty,
-          reason: 'zom_test_flutter should be excluded');
+      expect(
+        flutterFolder,
+        isEmpty,
+        reason: 'zom_test_flutter should be excluded',
+      );
     });
 
     test('BB-FLT-24: Skips hidden directories [2026-02-12]', () async {
@@ -624,8 +711,11 @@ void main() {
         final parts = p.split(folder.path);
         for (final part in parts) {
           if (part != '.') {
-            expect(part.startsWith('.'), isFalse,
-                reason: 'Should not include hidden directories');
+            expect(
+              part.startsWith('.'),
+              isFalse,
+              reason: 'Should not include hidden directories',
+            );
           }
         }
       }
@@ -643,8 +733,11 @@ void main() {
       for (final folder in repos) {
         final gitDir = Directory(p.join(folder.path, '.git'));
         final gitFile = File(p.join(folder.path, '.git'));
-        expect(gitDir.existsSync() || gitFile.existsSync(), isTrue,
-            reason: '${folder.path} should have .git');
+        expect(
+          gitDir.existsSync() || gitFile.existsSync(),
+          isTrue,
+          reason: '${folder.path} should have .git',
+        );
       }
     });
 
@@ -654,59 +747,59 @@ void main() {
 
       // Should find repos in xternal/ (which are submodules)
       final xternalRepos = repos.where((r) => r.path.contains('xternal'));
-      expect(xternalRepos, isNotEmpty,
-          reason: 'Should find repos in xternal/ (submodules)');
+      expect(
+        xternalRepos,
+        isNotEmpty,
+        reason: 'Should find repos in xternal/ (submodules)',
+      );
     });
 
-    test('BB-FLT-27: Returns empty list for non-git folder [2026-02-12]', () async {
-      final tempDir = Directory.systemTemp.createTempSync('git_test_');
-      try {
-        final finder = GitRepoFinder();
-        final repos = await finder.findAll(tempDir.path);
+    test(
+      'BB-FLT-27: Returns empty list for non-git folder [2026-02-12]',
+      () async {
+        final tempDir = Directory.systemTemp.createTempSync('git_test_');
+        try {
+          final finder = GitRepoFinder();
+          final repos = await finder.findAll(tempDir.path);
 
-        expect(repos, isEmpty);
-      } finally {
-        tempDir.deleteSync();
-      }
-    });
+          expect(repos, isEmpty);
+        } finally {
+          tempDir.deleteSync();
+        }
+      },
+    );
   });
 
   group('FolderSorter', () {
-    test('BB-FLT-28: SortByInnerFirst orders deeper paths first [2026-02-12]', () {
-      final sorter = FolderSorter();
-      final items = [
-        '/a',
-        '/a/b',
-        '/a/b/c',
-        '/x',
-        '/x/y',
-      ];
+    test(
+      'BB-FLT-28: SortByInnerFirst orders deeper paths first [2026-02-12]',
+      () {
+        final sorter = FolderSorter();
+        final items = ['/a', '/a/b', '/a/b/c', '/x', '/x/y'];
 
-      final sorted = sorter.sortByInnerFirst(items, (s) => s);
+        final sorted = sorter.sortByInnerFirst(items, (s) => s);
 
-      // Deeper paths should come first
-      expect(sorted.indexOf('/a/b/c'), lessThan(sorted.indexOf('/a/b')));
-      expect(sorted.indexOf('/a/b'), lessThan(sorted.indexOf('/a')));
-      expect(sorted.indexOf('/x/y'), lessThan(sorted.indexOf('/x')));
-    });
+        // Deeper paths should come first
+        expect(sorted.indexOf('/a/b/c'), lessThan(sorted.indexOf('/a/b')));
+        expect(sorted.indexOf('/a/b'), lessThan(sorted.indexOf('/a')));
+        expect(sorted.indexOf('/x/y'), lessThan(sorted.indexOf('/x')));
+      },
+    );
 
-    test('BB-FLT-29: SortByOuterFirst orders shallower paths first [2026-02-12]', () {
-      final sorter = FolderSorter();
-      final items = [
-        '/a/b/c',
-        '/a/b',
-        '/a',
-        '/x/y',
-        '/x',
-      ];
+    test(
+      'BB-FLT-29: SortByOuterFirst orders shallower paths first [2026-02-12]',
+      () {
+        final sorter = FolderSorter();
+        final items = ['/a/b/c', '/a/b', '/a', '/x/y', '/x'];
 
-      final sorted = sorter.sortByOuterFirst(items, (s) => s);
+        final sorted = sorter.sortByOuterFirst(items, (s) => s);
 
-      // Shallower paths should come first
-      expect(sorted.indexOf('/a'), lessThan(sorted.indexOf('/a/b')));
-      expect(sorted.indexOf('/a/b'), lessThan(sorted.indexOf('/a/b/c')));
-      expect(sorted.indexOf('/x'), lessThan(sorted.indexOf('/x/y')));
-    });
+        // Shallower paths should come first
+        expect(sorted.indexOf('/a'), lessThan(sorted.indexOf('/a/b')));
+        expect(sorted.indexOf('/a/b'), lessThan(sorted.indexOf('/a/b/c')));
+        expect(sorted.indexOf('/x'), lessThan(sorted.indexOf('/x/y')));
+      },
+    );
   });
 
   group('RepositoryIdLookup', () {
@@ -726,43 +819,68 @@ void main() {
     });
 
     test('BB-FLT-37: Resolves known repository ID to name [2026-02-14]', () {
-      expect(RepositoryIdLookup.resolveToName('BSC', executionRoot: repoIdRoot),
-          equals('tom_module_basics'));
-      expect(RepositoryIdLookup.resolveToName('D4', executionRoot: repoIdRoot),
-          equals('tom_module_d4rt'));
-      expect(RepositoryIdLookup.resolveToName('CRPT', executionRoot: repoIdRoot),
-          equals('tom_module_crypto'));
+      expect(
+        RepositoryIdLookup.resolveToName('BSC', executionRoot: repoIdRoot),
+        equals('tom_module_basics'),
+      );
+      expect(
+        RepositoryIdLookup.resolveToName('D4', executionRoot: repoIdRoot),
+        equals('tom_module_d4rt'),
+      );
+      expect(
+        RepositoryIdLookup.resolveToName('CRPT', executionRoot: repoIdRoot),
+        equals('tom_module_crypto'),
+      );
     });
 
-    test('BB-FLT-38: Repository ID resolution is case-insensitive [2026-02-14]', () {
-      expect(RepositoryIdLookup.resolveToName('bsc', executionRoot: repoIdRoot),
-          equals('tom_module_basics'));
-      expect(RepositoryIdLookup.resolveToName('Bsc', executionRoot: repoIdRoot),
-          equals('tom_module_basics'));
-    });
+    test(
+      'BB-FLT-38: Repository ID resolution is case-insensitive [2026-02-14]',
+      () {
+        expect(
+          RepositoryIdLookup.resolveToName('bsc', executionRoot: repoIdRoot),
+          equals('tom_module_basics'),
+        );
+        expect(
+          RepositoryIdLookup.resolveToName('Bsc', executionRoot: repoIdRoot),
+          equals('tom_module_basics'),
+        );
+      },
+    );
 
     test('BB-FLT-39: Unknown ID returns unchanged [2026-02-14]', () {
       expect(
-          RepositoryIdLookup.resolveToName('unknown', executionRoot: repoIdRoot),
-          equals('unknown'));
+        RepositoryIdLookup.resolveToName('unknown', executionRoot: repoIdRoot),
+        equals('unknown'),
+      );
       expect(
-          RepositoryIdLookup.resolveToName('tom_module_basics',
-              executionRoot: repoIdRoot),
-          equals('tom_module_basics'));
+        RepositoryIdLookup.resolveToName(
+          'tom_module_basics',
+          executionRoot: repoIdRoot,
+        ),
+        equals('tom_module_basics'),
+      );
     });
 
     test('BB-FLT-40: isRepositoryId identifies known IDs [2026-02-14]', () {
-      expect(RepositoryIdLookup.isRepositoryId('BSC', executionRoot: repoIdRoot),
-          isTrue);
-      expect(RepositoryIdLookup.isRepositoryId('bsc', executionRoot: repoIdRoot),
-          isTrue); // case-insensitive
       expect(
-          RepositoryIdLookup.isRepositoryId('unknown', executionRoot: repoIdRoot),
-          isFalse);
+        RepositoryIdLookup.isRepositoryId('BSC', executionRoot: repoIdRoot),
+        isTrue,
+      );
       expect(
-          RepositoryIdLookup.isRepositoryId('tom_module_basics',
-              executionRoot: repoIdRoot),
-          isFalse);
+        RepositoryIdLookup.isRepositoryId('bsc', executionRoot: repoIdRoot),
+        isTrue,
+      ); // case-insensitive
+      expect(
+        RepositoryIdLookup.isRepositoryId('unknown', executionRoot: repoIdRoot),
+        isFalse,
+      );
+      expect(
+        RepositoryIdLookup.isRepositoryId(
+          'tom_module_basics',
+          executionRoot: repoIdRoot,
+        ),
+        isFalse,
+      );
     });
   });
 }

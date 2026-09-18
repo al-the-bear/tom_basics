@@ -46,10 +46,7 @@ void main() {
           abbr: 'h',
           description: 'Show help',
         ),
-        OptionDefinition.flag(
-          name: 'version',
-          description: 'Show version',
-        ),
+        OptionDefinition.flag(name: 'version', description: 'Show version'),
       ],
     );
   });
@@ -201,13 +198,17 @@ void main() {
 
       expect(script, contains('# Commands'));
       expect(
-          script,
-          contains(
-              'complete -c mytool -n "__fish_use_subcommand" -a ":build" -d "Build the project"'));
+        script,
+        contains(
+          'complete -c mytool -n "__fish_use_subcommand" -a ":build" -d "Build the project"',
+        ),
+      );
       expect(
-          script,
-          contains(
-              'complete -c mytool -n "__fish_use_subcommand" -a ":test" -d "Run tests"'));
+        script,
+        contains(
+          'complete -c mytool -n "__fish_use_subcommand" -a ":test" -d "Run tests"',
+        ),
+      );
     });
 
     test('BB-CMP-19: Includes global options [2026-02-12]', () {
@@ -215,11 +216,13 @@ void main() {
 
       expect(script, contains('# Global options'));
       expect(
-          script,
-          contains(
-              'complete -c mytool -s h -l help -d "Show help"'));
+        script,
+        contains('complete -c mytool -s h -l help -d "Show help"'),
+      );
       expect(
-          script, contains('complete -c mytool -l version -d "Show version"'));
+        script,
+        contains('complete -c mytool -l version -d "Show version"'),
+      );
     });
 
     test('BB-CMP-20: Includes command-specific options [2026-02-12]', () {
@@ -227,13 +230,17 @@ void main() {
 
       expect(script, contains('# :build options'));
       expect(
-          script,
-          contains(
-              'complete -c mytool -n "__fish_seen_subcommand_from :build" -s r -l release -d "Build in release mode"'));
+        script,
+        contains(
+          'complete -c mytool -n "__fish_seen_subcommand_from :build" -s r -l release -d "Build in release mode"',
+        ),
+      );
       expect(
-          script,
-          contains(
-              'complete -c mytool -n "__fish_seen_subcommand_from :build" -s t -l target -d "Build target"'));
+        script,
+        contains(
+          'complete -c mytool -n "__fish_seen_subcommand_from :build" -s t -l target -d "Build target"',
+        ),
+      );
     });
   });
 
@@ -286,34 +293,40 @@ void main() {
       final fish = CompletionGenerator.generateFish(tool);
 
       expect(bash, contains('--long-option'));
-      expect(zsh, contains("'--long-option[A long option without abbreviation]'"));
+      expect(
+        zsh,
+        contains("'--long-option[A long option without abbreviation]'"),
+      );
       expect(fish, contains('-l long-option'));
     });
 
-    test('BB-CMP-25: Handles descriptions with special characters [2026-02-12]', () {
-      final tool = ToolDefinition(
-        name: 'special',
-        version: '1.0.0',
-        description: "Tool with 'special' chars",
-        commands: [
-          CommandDefinition(
-            name: 'cmd',
-            description: "It's a \"command\" with special chars",
-            options: [],
-          ),
-        ],
-        globalOptions: [],
-      );
+    test(
+      'BB-CMP-25: Handles descriptions with special characters [2026-02-12]',
+      () {
+        final tool = ToolDefinition(
+          name: 'special',
+          version: '1.0.0',
+          description: "Tool with 'special' chars",
+          commands: [
+            CommandDefinition(
+              name: 'cmd',
+              description: "It's a \"command\" with special chars",
+              options: [],
+            ),
+          ],
+          globalOptions: [],
+        );
 
-      // Should not throw
-      final bash = CompletionGenerator.generateBash(tool);
-      final zsh = CompletionGenerator.generateZsh(tool);
-      final fish = CompletionGenerator.generateFish(tool);
+        // Should not throw
+        final bash = CompletionGenerator.generateBash(tool);
+        final zsh = CompletionGenerator.generateZsh(tool);
+        final fish = CompletionGenerator.generateFish(tool);
 
-      expect(bash.length, greaterThan(0));
-      expect(zsh.length, greaterThan(0));
-      expect(fish.length, greaterThan(0));
-    });
+        expect(bash.length, greaterThan(0));
+        expect(zsh.length, greaterThan(0));
+        expect(fish.length, greaterThan(0));
+      },
+    );
 
     test('BB-CMP-26: Handles multiple command aliases [2026-02-12]', () {
       final tool = ToolDefinition(
@@ -365,35 +378,44 @@ void main() {
   });
 
   group('Helper method tests', () {
-    test('BB-CMP-28: _getCommandsStr includes commands and aliases [2026-02-12]', () {
-      // Test internal method behavior through output
-      final bash = CompletionGenerator.generateBash(testTool);
+    test(
+      'BB-CMP-28: _getCommandsStr includes commands and aliases [2026-02-12]',
+      () {
+        // Test internal method behavior through output
+        final bash = CompletionGenerator.generateBash(testTool);
 
-      // Commands string should appear in completion setup
-      expect(bash, contains(':build'));
-      expect(bash, contains(':b'));
-      expect(bash, contains(':test'));
-    });
+        // Commands string should appear in completion setup
+        expect(bash, contains(':build'));
+        expect(bash, contains(':b'));
+        expect(bash, contains(':test'));
+      },
+    );
 
-    test('BB-CMP-29: _getGlobalOptsStr includes all global options [2026-02-12]', () {
-      final bash = CompletionGenerator.generateBash(testTool);
+    test(
+      'BB-CMP-29: _getGlobalOptsStr includes all global options [2026-02-12]',
+      () {
+        final bash = CompletionGenerator.generateBash(testTool);
 
-      // Global opts should include short and long versions
-      expect(bash, contains('-h'));
-      expect(bash, contains('--help'));
-      expect(bash, contains('--version'));
-    });
+        // Global opts should include short and long versions
+        expect(bash, contains('-h'));
+        expect(bash, contains('--help'));
+        expect(bash, contains('--version'));
+      },
+    );
 
-    test('BB-CMP-30: _getCommandOptsStr includes command options [2026-02-12]', () {
-      final bash = CompletionGenerator.generateBash(testTool);
+    test(
+      'BB-CMP-30: _getCommandOptsStr includes command options [2026-02-12]',
+      () {
+        final bash = CompletionGenerator.generateBash(testTool);
 
-      // Command-specific options should appear
-      expect(bash, contains('-r'));
-      expect(bash, contains('--release'));
-      expect(bash, contains('-t'));
-      expect(bash, contains('--target'));
-      expect(bash, contains('-v'));
-      expect(bash, contains('--verbose'));
-    });
+        // Command-specific options should appear
+        expect(bash, contains('-r'));
+        expect(bash, contains('--release'));
+        expect(bash, contains('-t'));
+        expect(bash, contains('--target'));
+        expect(bash, contains('-v'));
+        expect(bash, contains('--verbose'));
+      },
+    );
   });
 }

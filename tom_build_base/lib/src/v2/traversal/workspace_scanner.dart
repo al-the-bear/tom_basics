@@ -26,17 +26,14 @@ class ScanResults {
   /// var dartProjects = results.byNature<DartProjectFolder>();
   /// ```
   Iterable<T> byNature<T extends RunFolder>() {
-    return folders
-        .expand((f) => f.natures)
-        .whereType<T>();
+    return folders.expand((f) => f.natures).whereType<T>();
   }
 
   /// Get all FolderContexts that have a specific nature type.
   ///
   /// Useful when you need both the folder path and the nature object.
   Iterable<FolderContext> withNature<T extends RunFolder>() {
-    return folders.where(
-        (f) => f.natures.any((n) => n is T));
+    return folders.where((f) => f.natures.any((n) => n is T));
   }
 
   /// Get all folder paths.
@@ -51,10 +48,7 @@ class FolderContext {
   /// All natures detected for this folder.
   final List<RunFolder> natures;
 
-  FolderContext({
-    required this.fsFolder,
-    required this.natures,
-  });
+  FolderContext({required this.fsFolder, required this.natures});
 
   /// Path to the folder.
   String get path => fsFolder.path;
@@ -63,8 +57,7 @@ class FolderContext {
   String get name => p.basename(path);
 
   /// Check if this folder has a specific nature.
-  bool hasNature<T extends RunFolder>() =>
-      natures.any((n) => n is T);
+  bool hasNature<T extends RunFolder>() => natures.any((n) => n is T);
 
   /// Get a specific nature, or null if not present.
   T? getNature<T extends RunFolder>() {
@@ -104,8 +97,8 @@ class WorkspaceScanner {
     FolderScanner? scanner,
     NatureDetector? detector,
     this.verbose = false,
-  })  : _scanner = scanner ?? FolderScanner(verbose: verbose),
-        _detector = detector ?? NatureDetector();
+  }) : _scanner = scanner ?? FolderScanner(verbose: verbose),
+       _detector = detector ?? NatureDetector();
 
   /// Scan a directory for projects and detect their natures.
   ///
@@ -129,10 +122,7 @@ class WorkspaceScanner {
     for (final folder in fsFolders) {
       final natures = _detector.detectNatures(folder);
       folder.natures.addAll(natures);
-      contexts.add(FolderContext(
-        fsFolder: folder,
-        natures: natures,
-      ));
+      contexts.add(FolderContext(fsFolder: folder, natures: natures));
     }
 
     return ScanResults(contexts);

@@ -1,4 +1,5 @@
 #!/usr/bin/env dart
+
 /// Test traversal tool — spawned by integration tests to verify traversal
 /// behavior from an external process perspective.
 ///

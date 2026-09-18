@@ -41,7 +41,8 @@ void main() {
       // tool in the workspace, which is the opposite of an origin.
       expect(
         toolOriginLine(
-          resolvedExecutable: '/opt/homebrew/Cellar/dart/3.10.4/libexec/bin/dart',
+          resolvedExecutable:
+              '/opt/homebrew/Cellar/dart/3.10.4/libexec/bin/dart',
           script: Uri.file('/work/tom_d4rt_generator/bin/d4rtgen.dart'),
         ),
         'source: /work/tom_d4rt_generator/bin/d4rtgen.dart',
@@ -60,11 +61,15 @@ void main() {
       );
       final cache = toolOriginLine(
         resolvedExecutable: dart,
-        script: Uri.file('/home/d/.pub-cache/hosted/pub.dev/tom_d4rt_generator-1.26.2/bin/d4rtgen.dart'),
+        script: Uri.file(
+          '/home/d/.pub-cache/hosted/pub.dev/tom_d4rt_generator-1.26.2/bin/d4rtgen.dart',
+        ),
       );
       final snapshot = toolOriginLine(
         resolvedExecutable: dart,
-        script: Uri.file('/work/consumer/.dart_tool/pub/bin/tom_d4rt_generator/d4rtgen.dart-3.10.4.snapshot'),
+        script: Uri.file(
+          '/work/consumer/.dart_tool/pub/bin/tom_d4rt_generator/d4rtgen.dart-3.10.4.snapshot',
+        ),
       );
       expect({tree, cache, snapshot}, hasLength(3));
       expect(cache, contains('.pub-cache'));

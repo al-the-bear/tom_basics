@@ -30,83 +30,126 @@ void main() {
       file.writeAsStringSync(content);
     }
 
-    test('BB-V2-SCN-1: skips directory with tom_skip.yaml (global skip)', () async {
-      // Setup: root with two subdirectories, one with tom_skip.yaml
-      createDir('project_included');
-      createFile('project_included/pubspec.yaml');
-      createDir('project_skipped');
-      createFile('project_skipped/pubspec.yaml');
-      createFile('project_skipped/tom_skip.yaml', 'reason: Test skip');
+    test(
+      'BB-V2-SCN-1: skips directory with tom_skip.yaml (global skip)',
+      () async {
+        // Setup: root with two subdirectories, one with tom_skip.yaml
+        createDir('project_included');
+        createFile('project_included/pubspec.yaml');
+        createDir('project_skipped');
+        createFile('project_skipped/pubspec.yaml');
+        createFile('project_skipped/tom_skip.yaml', 'reason: Test skip');
 
-      final scanner = FolderScanner();
-      final results = await scanner.scan(tempPath, recursive: true);
+        final scanner = FolderScanner();
+        final results = await scanner.scan(tempPath, recursive: true);
 
-      final paths = results.map((f) => p.basename(f.path)).toList();
+        final paths = results.map((f) => p.basename(f.path)).toList();
 
-      expect(paths, contains('project_included'));
-      expect(paths, isNot(contains('project_skipped')),
-          reason: 'Directory with tom_skip.yaml should be skipped');
-    });
+        expect(paths, contains('project_included'));
+        expect(
+          paths,
+          isNot(contains('project_skipped')),
+          reason: 'Directory with tom_skip.yaml should be skipped',
+        );
+      },
+    );
 
-    test('BB-V2-SCN-2: skips directory with tool-specific skip file (buildkit_skip.yaml)', () async {
-      // Setup: root with two subdirectories, one with buildkit_skip.yaml
-      createDir('project_included');
-      createFile('project_included/pubspec.yaml');
-      createDir('project_skipped');
-      createFile('project_skipped/pubspec.yaml');
-      createFile('project_skipped/buildkit_skip.yaml', 'reason: Buildkit skip');
+    test(
+      'BB-V2-SCN-2: skips directory with tool-specific skip file (buildkit_skip.yaml)',
+      () async {
+        // Setup: root with two subdirectories, one with buildkit_skip.yaml
+        createDir('project_included');
+        createFile('project_included/pubspec.yaml');
+        createDir('project_skipped');
+        createFile('project_skipped/pubspec.yaml');
+        createFile(
+          'project_skipped/buildkit_skip.yaml',
+          'reason: Buildkit skip',
+        );
 
-      final scanner = FolderScanner(); // Default toolBasename = 'buildkit'
-      final results = await scanner.scan(tempPath, recursive: true);
+        final scanner = FolderScanner(); // Default toolBasename = 'buildkit'
+        final results = await scanner.scan(tempPath, recursive: true);
 
-      final paths = results.map((f) => p.basename(f.path)).toList();
+        final paths = results.map((f) => p.basename(f.path)).toList();
 
-      expect(paths, contains('project_included'));
-      expect(paths, isNot(contains('project_skipped')),
-          reason: 'Directory with buildkit_skip.yaml should be skipped');
-    });
+        expect(paths, contains('project_included'));
+        expect(
+          paths,
+          isNot(contains('project_skipped')),
+          reason: 'Directory with buildkit_skip.yaml should be skipped',
+        );
+      },
+    );
 
-    test('BB-V2-SCN-3: skips directory with custom tool skip file (issuekit_skip.yaml)', () async {
-      // Setup: root with two subdirectories, one with issuekit_skip.yaml
-      createDir('project_included');
-      createFile('project_included/pubspec.yaml');
-      createDir('project_skipped');
-      createFile('project_skipped/pubspec.yaml');
-      createFile('project_skipped/issuekit_skip.yaml', 'reason: Issuekit skip');
+    test(
+      'BB-V2-SCN-3: skips directory with custom tool skip file (issuekit_skip.yaml)',
+      () async {
+        // Setup: root with two subdirectories, one with issuekit_skip.yaml
+        createDir('project_included');
+        createFile('project_included/pubspec.yaml');
+        createDir('project_skipped');
+        createFile('project_skipped/pubspec.yaml');
+        createFile(
+          'project_skipped/issuekit_skip.yaml',
+          'reason: Issuekit skip',
+        );
 
-      // Use issuekit as tool basename
-      final scanner = FolderScanner(toolBasename: 'issuekit');
-      final results = await scanner.scan(tempPath, recursive: true);
+        // Use issuekit as tool basename
+        final scanner = FolderScanner(toolBasename: 'issuekit');
+        final results = await scanner.scan(tempPath, recursive: true);
 
-      final paths = results.map((f) => p.basename(f.path)).toList();
+        final paths = results.map((f) => p.basename(f.path)).toList();
 
-      expect(paths, contains('project_included'));
-      expect(paths, isNot(contains('project_skipped')),
-          reason: 'Directory with issuekit_skip.yaml should be skipped');
-    });
+        expect(paths, contains('project_included'));
+        expect(
+          paths,
+          isNot(contains('project_skipped')),
+          reason: 'Directory with issuekit_skip.yaml should be skipped',
+        );
+      },
+    );
 
-    test('BB-V2-SCN-4: tool-specific skip does not affect other tools', () async {
-      // Setup: directory with buildkit_skip.yaml
-      createDir('project');
-      createFile('project/pubspec.yaml');
-      createFile('project/buildkit_skip.yaml', 'reason: Buildkit only');
+    test(
+      'BB-V2-SCN-4: tool-specific skip does not affect other tools',
+      () async {
+        // Setup: directory with buildkit_skip.yaml
+        createDir('project');
+        createFile('project/pubspec.yaml');
+        createFile('project/buildkit_skip.yaml', 'reason: Buildkit only');
 
-      // Scan with issuekit - should NOT be skipped by buildkit_skip.yaml
-      final issuekitScanner = FolderScanner(toolBasename: 'issuekit');
-      final issuekitResults = await issuekitScanner.scan(tempPath, recursive: true);
+        // Scan with issuekit - should NOT be skipped by buildkit_skip.yaml
+        final issuekitScanner = FolderScanner(toolBasename: 'issuekit');
+        final issuekitResults = await issuekitScanner.scan(
+          tempPath,
+          recursive: true,
+        );
 
-      // Scan with buildkit - SHOULD be skipped
-      final buildkitScanner = FolderScanner(toolBasename: 'buildkit');
-      final buildkitResults = await buildkitScanner.scan(tempPath, recursive: true);
+        // Scan with buildkit - SHOULD be skipped
+        final buildkitScanner = FolderScanner(toolBasename: 'buildkit');
+        final buildkitResults = await buildkitScanner.scan(
+          tempPath,
+          recursive: true,
+        );
 
-      final issuekitPaths = issuekitResults.map((f) => p.basename(f.path)).toList();
-      final buildkitPaths = buildkitResults.map((f) => p.basename(f.path)).toList();
+        final issuekitPaths = issuekitResults
+            .map((f) => p.basename(f.path))
+            .toList();
+        final buildkitPaths = buildkitResults
+            .map((f) => p.basename(f.path))
+            .toList();
 
-      expect(issuekitPaths, contains('project'),
-          reason: 'issuekit should not be affected by buildkit_skip.yaml');
-      expect(buildkitPaths, isNot(contains('project')),
-          reason: 'buildkit should be skipped by buildkit_skip.yaml');
-    });
+        expect(
+          issuekitPaths,
+          contains('project'),
+          reason: 'issuekit should not be affected by buildkit_skip.yaml',
+        );
+        expect(
+          buildkitPaths,
+          isNot(contains('project')),
+          reason: 'buildkit should be skipped by buildkit_skip.yaml',
+        );
+      },
+    );
 
     test('BB-V2-SCN-5: tom_skip.yaml affects all tools', () async {
       // Setup: directory with tom_skip.yaml
@@ -119,20 +162,44 @@ void main() {
       final issuekitScanner = FolderScanner(toolBasename: 'issuekit');
       final testkitScanner = FolderScanner(toolBasename: 'testkit');
 
-      final buildkitResults = await buildkitScanner.scan(tempPath, recursive: true);
-      final issuekitResults = await issuekitScanner.scan(tempPath, recursive: true);
-      final testkitResults = await testkitScanner.scan(tempPath, recursive: true);
+      final buildkitResults = await buildkitScanner.scan(
+        tempPath,
+        recursive: true,
+      );
+      final issuekitResults = await issuekitScanner.scan(
+        tempPath,
+        recursive: true,
+      );
+      final testkitResults = await testkitScanner.scan(
+        tempPath,
+        recursive: true,
+      );
 
-      final buildkitPaths = buildkitResults.map((f) => p.basename(f.path)).toList();
-      final issuekitPaths = issuekitResults.map((f) => p.basename(f.path)).toList();
-      final testkitPaths = testkitResults.map((f) => p.basename(f.path)).toList();
+      final buildkitPaths = buildkitResults
+          .map((f) => p.basename(f.path))
+          .toList();
+      final issuekitPaths = issuekitResults
+          .map((f) => p.basename(f.path))
+          .toList();
+      final testkitPaths = testkitResults
+          .map((f) => p.basename(f.path))
+          .toList();
 
-      expect(buildkitPaths, isNot(contains('project')),
-          reason: 'buildkit should be skipped by tom_skip.yaml');
-      expect(issuekitPaths, isNot(contains('project')),
-          reason: 'issuekit should be skipped by tom_skip.yaml');
-      expect(testkitPaths, isNot(contains('project')),
-          reason: 'testkit should be skipped by tom_skip.yaml');
+      expect(
+        buildkitPaths,
+        isNot(contains('project')),
+        reason: 'buildkit should be skipped by tom_skip.yaml',
+      );
+      expect(
+        issuekitPaths,
+        isNot(contains('project')),
+        reason: 'issuekit should be skipped by tom_skip.yaml',
+      );
+      expect(
+        testkitPaths,
+        isNot(contains('project')),
+        reason: 'testkit should be skipped by tom_skip.yaml',
+      );
     });
 
     test('BB-V2-SCN-6: skip file in nested directory stops descent', () async {
@@ -151,10 +218,16 @@ void main() {
 
       expect(paths, contains('parent'));
       expect(paths, contains('child_included'));
-      expect(paths, isNot(contains('child_skipped')),
-          reason: 'child_skipped should be skipped');
-      expect(paths, isNot(contains('grandchild')),
-          reason: 'grandchild should be skipped (subtree of skipped folder)');
+      expect(
+        paths,
+        isNot(contains('child_skipped')),
+        reason: 'child_skipped should be skipped',
+      );
+      expect(
+        paths,
+        isNot(contains('grandchild')),
+        reason: 'grandchild should be skipped (subtree of skipped folder)',
+      );
     });
 
     test('BB-V2-SCN-7: skipFilename getter returns correct filename', () {
@@ -215,75 +288,87 @@ void main() {
         'tool_project/test/fixtures/build_project/_build/pubspec.yaml',
         'name: _build\n',
       );
-      createFile(
-        'tool_project/example/demo/pubspec.yaml',
-        'name: demo\n',
-      );
+      createFile('tool_project/example/demo/pubspec.yaml', 'name: demo\n');
     }
 
-    test(
-      'BB-V2-SCN-REC-1: non-recursive scan skips a project\'s test/example '
-      'fixture projects',
-      () async {
-        createProjectWithNestedFixtures();
+    test('BB-V2-SCN-REC-1: non-recursive scan skips a project\'s test/example '
+        'fixture projects', () async {
+      createProjectWithNestedFixtures();
 
-        final scanner = FolderScanner();
-        final results = await scanner.scan(tempPath); // recursive: false default
+      final scanner = FolderScanner();
+      final results = await scanner.scan(tempPath); // recursive: false default
 
-        final names = results.map((f) => p.basename(f.path)).toList();
+      final names = results.map((f) => p.basename(f.path)).toList();
 
-        expect(names, contains('tool_project'),
-            reason: 'the real project itself is always discovered');
-        expect(names, isNot(contains('_build')),
-            reason:
-                'a fixture project under test/ must NOT be entered by default; '
-                'this is what keeps `:compiler` from building test fixtures');
-        expect(names, isNot(contains('demo')),
-            reason: 'a fixture project under example/ must NOT be entered by '
-                'default');
-        expect(names, isNot(contains('test')),
-            reason: 'the scanner stops at the project boundary and never even '
-                'descends into the project\'s test/ container');
-      },
-    );
+      expect(
+        names,
+        contains('tool_project'),
+        reason: 'the real project itself is always discovered',
+      );
+      expect(
+        names,
+        isNot(contains('_build')),
+        reason:
+            'a fixture project under test/ must NOT be entered by default; '
+            'this is what keeps `:compiler` from building test fixtures',
+      );
+      expect(
+        names,
+        isNot(contains('demo')),
+        reason:
+            'a fixture project under example/ must NOT be entered by '
+            'default',
+      );
+      expect(
+        names,
+        isNot(contains('test')),
+        reason:
+            'the scanner stops at the project boundary and never even '
+            'descends into the project\'s test/ container',
+      );
+    });
 
-    test(
-      'BB-V2-SCN-REC-2: recursive (-r) is the only way to descend into a '
-      'project\'s nested fixture projects',
-      () async {
-        createProjectWithNestedFixtures();
+    test('BB-V2-SCN-REC-2: recursive (-r) is the only way to descend into a '
+        'project\'s nested fixture projects', () async {
+      createProjectWithNestedFixtures();
 
-        final scanner = FolderScanner();
-        final results = await scanner.scan(tempPath, recursive: true);
+      final scanner = FolderScanner();
+      final results = await scanner.scan(tempPath, recursive: true);
 
-        final names = results.map((f) => p.basename(f.path)).toList();
+      final names = results.map((f) => p.basename(f.path)).toList();
 
-        expect(names, contains('tool_project'));
-        expect(names, contains('_build'),
-            reason: '`-r` descends into the project and finds nested fixtures');
-        expect(names, contains('demo'),
-            reason: '`-r` also reaches example/ fixture projects');
-      },
-    );
+      expect(names, contains('tool_project'));
+      expect(
+        names,
+        contains('_build'),
+        reason: '`-r` descends into the project and finds nested fixtures',
+      );
+      expect(
+        names,
+        contains('demo'),
+        reason: '`-r` also reaches example/ fixture projects',
+      );
+    });
 
-    test(
-      'BB-V2-SCN-REC-3: container directories above a project are always '
-      'traversed regardless of recursion',
-      () async {
-        // A top-level container (no pubspec.yaml) holding a project — this is
-        // the normal workspace shape and must always be discovered.
-        createFile('container/app/pubspec.yaml', 'name: app\n');
+    test('BB-V2-SCN-REC-3: container directories above a project are always '
+        'traversed regardless of recursion', () async {
+      // A top-level container (no pubspec.yaml) holding a project — this is
+      // the normal workspace shape and must always be discovered.
+      createFile('container/app/pubspec.yaml', 'name: app\n');
 
-        final scanner = FolderScanner();
-        final nonRecursive = await scanner.scan(tempPath);
-        final names = nonRecursive.map((f) => p.basename(f.path)).toList();
+      final scanner = FolderScanner();
+      final nonRecursive = await scanner.scan(tempPath);
+      final names = nonRecursive.map((f) => p.basename(f.path)).toList();
 
-        expect(names, contains('app'),
-            reason: 'scanning descends through plain containers to find '
-                'projects even when non-recursive — only project boundaries '
-                'gate recursion');
-      },
-    );
+      expect(
+        names,
+        contains('app'),
+        reason:
+            'scanning descends through plain containers to find '
+            'projects even when non-recursive — only project boundaries '
+            'gate recursion',
+      );
+    });
   });
 
   group('BB-V2-SCN-WS: FolderScanner Workspace Boundaries [2026-02-14]', () {
@@ -311,46 +396,71 @@ void main() {
       file.writeAsStringSync(content);
     }
 
-    test('BB-V2-SCN-WS-2: stops at tool master config (buildkit_master.yaml)', () async {
-      createDir('project');
-      createFile('project/pubspec.yaml');
-      createDir('sub_workspace/project');
-      createFile('sub_workspace/buildkit_master.yaml');
-      createFile('sub_workspace/project/pubspec.yaml');
+    test(
+      'BB-V2-SCN-WS-2: stops at tool master config (buildkit_master.yaml)',
+      () async {
+        createDir('project');
+        createFile('project/pubspec.yaml');
+        createDir('sub_workspace/project');
+        createFile('sub_workspace/buildkit_master.yaml');
+        createFile('sub_workspace/project/pubspec.yaml');
 
-      final scanner = FolderScanner(); // toolBasename = 'buildkit'
-      final results = await scanner.scan(tempPath, recursive: true);
+        final scanner = FolderScanner(); // toolBasename = 'buildkit'
+        final results = await scanner.scan(tempPath, recursive: true);
 
-      final paths = results.map((f) => p.basename(f.path)).toList();
+        final paths = results.map((f) => p.basename(f.path)).toList();
 
-      expect(paths, contains('project'));
-      expect(paths, isNot(contains('sub_workspace')),
-          reason: 'Sub-workspace with buildkit_master.yaml should be skipped');
-    });
+        expect(paths, contains('project'));
+        expect(
+          paths,
+          isNot(contains('sub_workspace')),
+          reason: 'Sub-workspace with buildkit_master.yaml should be skipped',
+        );
+      },
+    );
 
-    test('BB-V2-SCN-WS-3: tool-specific master config for different tool', () async {
-      createDir('project');
-      createFile('project/pubspec.yaml');
-      createDir('sub_workspace/project');
-      createFile('sub_workspace/issuekit_master.yaml');
-      createFile('sub_workspace/project/pubspec.yaml');
+    test(
+      'BB-V2-SCN-WS-3: tool-specific master config for different tool',
+      () async {
+        createDir('project');
+        createFile('project/pubspec.yaml');
+        createDir('sub_workspace/project');
+        createFile('sub_workspace/issuekit_master.yaml');
+        createFile('sub_workspace/project/pubspec.yaml');
 
-      // Scan with issuekit - should stop at issuekit_master.yaml
-      final issuekitScanner = FolderScanner(toolBasename: 'issuekit');
-      final issuekitResults = await issuekitScanner.scan(tempPath, recursive: true);
+        // Scan with issuekit - should stop at issuekit_master.yaml
+        final issuekitScanner = FolderScanner(toolBasename: 'issuekit');
+        final issuekitResults = await issuekitScanner.scan(
+          tempPath,
+          recursive: true,
+        );
 
-      // Scan with buildkit - should NOT stop (different tool)
-      final buildkitScanner = FolderScanner(toolBasename: 'buildkit');
-      final buildkitResults = await buildkitScanner.scan(tempPath, recursive: true);
+        // Scan with buildkit - should NOT stop (different tool)
+        final buildkitScanner = FolderScanner(toolBasename: 'buildkit');
+        final buildkitResults = await buildkitScanner.scan(
+          tempPath,
+          recursive: true,
+        );
 
-      final issuekitPaths = issuekitResults.map((f) => p.basename(f.path)).toList();
-      final buildkitPaths = buildkitResults.map((f) => p.basename(f.path)).toList();
+        final issuekitPaths = issuekitResults
+            .map((f) => p.basename(f.path))
+            .toList();
+        final buildkitPaths = buildkitResults
+            .map((f) => p.basename(f.path))
+            .toList();
 
-      expect(issuekitPaths, isNot(contains('sub_workspace')),
-          reason: 'issuekit should stop at issuekit_master.yaml');
-      expect(buildkitPaths, contains('sub_workspace'),
-          reason: 'buildkit should not stop at issuekit_master.yaml');
-    });
+        expect(
+          issuekitPaths,
+          isNot(contains('sub_workspace')),
+          reason: 'issuekit should stop at issuekit_master.yaml',
+        );
+        expect(
+          buildkitPaths,
+          contains('sub_workspace'),
+          reason: 'buildkit should not stop at issuekit_master.yaml',
+        );
+      },
+    );
   });
 
   group('BB-V2-GIT: GitRepoFinder.findTopRepo [2026-02-14]', () {
@@ -378,8 +488,11 @@ void main() {
       final finder = GitRepoFinder();
       final result = finder.findTopRepo(p.join(tempPath, 'project'));
 
-      expect(result, isNull,
-          reason: 'Should return null when no .git found in path');
+      expect(
+        result,
+        isNull,
+        reason: 'Should return null when no .git found in path',
+      );
     });
 
     test('BB-V2-GIT-2: finds single git repo in path', () {
@@ -389,8 +502,11 @@ void main() {
       final finder = GitRepoFinder();
       final result = finder.findTopRepo(p.join(tempPath, 'repo/project'));
 
-      expect(result, equals(p.join(tempPath, 'repo')),
-          reason: 'Should find the repo containing .git');
+      expect(
+        result,
+        equals(p.join(tempPath, 'repo')),
+        reason: 'Should find the repo containing .git',
+      );
     });
 
     test('BB-V2-GIT-3: finds topmost git repo with nested repos', () {
@@ -401,27 +517,38 @@ void main() {
       createDir('outer/inner/project');
 
       final finder = GitRepoFinder();
-      final result = finder.findTopRepo(p.join(tempPath, 'outer/inner/project'));
+      final result = finder.findTopRepo(
+        p.join(tempPath, 'outer/inner/project'),
+      );
 
-      expect(result, equals(p.join(tempPath, 'outer')),
-          reason: 'Should find the topmost (outermost) repo');
+      expect(
+        result,
+        equals(p.join(tempPath, 'outer')),
+        reason: 'Should find the topmost (outermost) repo',
+      );
     });
 
-    test('BB-V2-GIT-4: finds topmost git repo with multiple nesting levels', () {
-      // Level 1 (topmost)
-      createDir('l1/.git');
-      // Level 2
-      createDir('l1/l2/.git');
-      // Level 3
-      createDir('l1/l2/l3/.git');
-      createDir('l1/l2/l3/project');
+    test(
+      'BB-V2-GIT-4: finds topmost git repo with multiple nesting levels',
+      () {
+        // Level 1 (topmost)
+        createDir('l1/.git');
+        // Level 2
+        createDir('l1/l2/.git');
+        // Level 3
+        createDir('l1/l2/l3/.git');
+        createDir('l1/l2/l3/project');
 
-      final finder = GitRepoFinder();
-      final result = finder.findTopRepo(p.join(tempPath, 'l1/l2/l3/project'));
+        final finder = GitRepoFinder();
+        final result = finder.findTopRepo(p.join(tempPath, 'l1/l2/l3/project'));
 
-      expect(result, equals(p.join(tempPath, 'l1')),
-          reason: 'Should find the topmost repo with deep nesting');
-    });
+        expect(
+          result,
+          equals(p.join(tempPath, 'l1')),
+          reason: 'Should find the topmost repo with deep nesting',
+        );
+      },
+    );
 
     test('BB-V2-GIT-5: works when starting from repo root', () {
       createDir('repo/.git');
@@ -429,21 +556,29 @@ void main() {
       final finder = GitRepoFinder();
       final result = finder.findTopRepo(p.join(tempPath, 'repo'));
 
-      expect(result, equals(p.join(tempPath, 'repo')),
-          reason: 'Should find repo when starting at repo root');
+      expect(
+        result,
+        equals(p.join(tempPath, 'repo')),
+        reason: 'Should find repo when starting at repo root',
+      );
     });
 
     test('BB-V2-GIT-6: handles .git file (submodule worktree)', () {
       // .git can be a file in submodules pointing to the real .git directory
       createDir('repo');
-      File(p.join(tempPath, 'repo/.git')).writeAsStringSync('gitdir: ../.git/modules/repo');
+      File(
+        p.join(tempPath, 'repo/.git'),
+      ).writeAsStringSync('gitdir: ../.git/modules/repo');
       createDir('repo/project');
 
       final finder = GitRepoFinder();
       final result = finder.findTopRepo(p.join(tempPath, 'repo/project'));
 
-      expect(result, equals(p.join(tempPath, 'repo')),
-          reason: 'Should detect .git file as well as .git directory');
+      expect(
+        result,
+        equals(p.join(tempPath, 'repo')),
+        reason: 'Should detect .git file as well as .git directory',
+      );
     });
   });
 }

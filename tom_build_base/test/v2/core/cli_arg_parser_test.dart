@@ -11,6 +11,130 @@ void main() {
     parser = CliArgParser();
   });
 
+  // BB-NEGFLAG (sce51): `negatable` and `defaultValue` were declared on
+  // OptionDefinition from the start and read by nothing. A tool could therefore
+  // not express a default-ON flag at all: `--no-x` landed in extraOptions under
+  // the key `no-x`, so the opt-out silently did nothing and the flag still read
+  // as unset. d4rtgen's --verify-output is the first flag that needs both.
+  group('negatable flags and flag defaults', () {
+    const verify = OptionDefinition.flag(
+      name: 'verify-output',
+      description: 'Verify generated output',
+      defaultValue: 'true',
+      negatable: true,
+    );
+    const plain = OptionDefinition.flag(
+      name: 'show',
+      description: 'Show configuration',
+    );
+
+    CliArgParser parserWith(List<OptionDefinition> options) =>
+        CliArgParser(allowedOptions: options);
+
+    test(
+      'BB-NEGFLAG-1: a declared default-on flag is on when nothing is passed '
+      '[2026-09-18]',
+      () {
+        final args = parserWith([verify, plain]).parse(['.']);
+
+        expect(args.extraOptions['verify-output'], isTrue);
+      },
+    );
+
+    test(
+      'BB-NEGFLAG-2: --no-<flag> turns a declared negatable flag off under its '
+      'own key [2026-09-18]',
+      () {
+        final args = parserWith([verify]).parse(['--no-verify-output']);
+
+        expect(args.extraOptions['verify-output'], isFalse);
+        expect(
+          args.extraOptions.containsKey('no-verify-output'),
+          isFalse,
+          reason:
+              'the opt-out must not land under a second key, which is how '
+              'it used to be silently ignored',
+        );
+      },
+    );
+
+    test('BB-NEGFLAG-3: passing the flag explicitly still turns it on '
+        '[2026-09-18]', () {
+      final args = parserWith([verify]).parse(['--verify-output']);
+
+      expect(args.extraOptions['verify-output'], isTrue);
+    });
+
+    test('BB-NEGFLAG-4: a flag with no declared default stays absent '
+        '[2026-09-18]', () {
+      final args = parserWith([verify, plain]).parse(['.']);
+
+      expect(args.extraOptions.containsKey('show'), isFalse);
+    });
+
+    test('BB-NEGFLAG-5: --no-<name> for an UNdeclared option keeps its old '
+        'meaning [2026-09-18]', () {
+      // Nothing declares `cache`, so `--no-cache` is an extra option named
+      // `no-cache` exactly as before. Narrowing the new behaviour to declared
+      // negatable flags is what keeps every existing tool unchanged.
+      final args = parserWith([verify]).parse(['--no-cache']);
+
+      expect(args.extraOptions['no-cache'], isTrue);
+      expect(args.extraOptions.containsKey('cache'), isFalse);
+    });
+
+    test(
+      'BB-NEGFLAG-6: --no-<name> for a declared NON-negatable flag keeps its '
+      'old meaning [2026-09-18]',
+      () {
+        final args = parserWith([plain]).parse(['--no-show']);
+
+        expect(args.extraOptions['no-show'], isTrue);
+        expect(args.extraOptions.containsKey('show'), isFalse);
+      },
+    );
+
+    test(
+      'BB-NEGFLAG-7: --no-skip stays the global navigation flag it always was '
+      '[2026-09-18]',
+      () {
+        // The one `no-` name the parser handles by name. It is resolved before
+        // the negation path, so a tool declaring a negatable `skip` cannot
+        // capture it.
+        const skip = OptionDefinition.flag(
+          name: 'skip',
+          description: 'Skip things',
+          negatable: true,
+        );
+        final args = parserWith([skip]).parse(['--no-skip']);
+
+        expect(args.noSkip, isTrue);
+        expect(args.extraOptions.containsKey('skip'), isFalse);
+      },
+    );
+
+    test(
+      'BB-NEGFLAG-8: a tool-definition global option gets the same treatment '
+      '[2026-09-18]',
+      () {
+        final tool = ToolDefinition(
+          name: 'gen',
+          description: 'Generator',
+          version: '1.0.0',
+          mode: ToolMode.singleCommand,
+          globalOptions: const [verify],
+        );
+        final parser = CliArgParser(toolDefinition: tool);
+
+        expect(parser.parse(['.']).extraOptions['verify-output'], isTrue);
+        expect(
+          parser.parse(['--no-verify-output']).extraOptions['verify-output'],
+          isFalse,
+        );
+      },
+    );
+  });
+
   group('CliArgs', () {
     group('constructor', () {
       test('BB-CLI-1: Creates args with defaults [2026-02-12]', () {

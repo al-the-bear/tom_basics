@@ -58,10 +58,12 @@ void main() {
       // These are filters resolved against the scanned tree; they can only
       // match inside the workspace, so they are never rejected.
       expect(
-        validateProjectPathsWithinRoot(
-          ['tom_build_kit', 'my_project', 'tom_*', 'sub/project'],
-          root,
-        ),
+        validateProjectPathsWithinRoot([
+          'tom_build_kit',
+          'my_project',
+          'tom_*',
+          'sub/project',
+        ], root),
         isNull,
       );
     });
@@ -87,16 +89,20 @@ void main() {
       expect(error, contains(outside));
     });
 
-    test('rejects on the first offending absolute path among many patterns', () {
-      final inside = p.join(root, 'ok_project');
-      final outside = p.normalize(p.absolute(p.join('elsewhere', 'bad')));
-      final error = validateProjectPathsWithinRoot(
-        ['some_id', inside, outside],
-        root,
-      );
-      expect(error, isNotNull);
-      expect(error, contains(outside));
-    });
+    test(
+      'rejects on the first offending absolute path among many patterns',
+      () {
+        final inside = p.join(root, 'ok_project');
+        final outside = p.normalize(p.absolute(p.join('elsewhere', 'bad')));
+        final error = validateProjectPathsWithinRoot([
+          'some_id',
+          inside,
+          outside,
+        ], root);
+        expect(error, isNotNull);
+        expect(error, contains(outside));
+      },
+    );
   });
 
   group('validateScanPathWithinRoot', () {
@@ -161,20 +167,21 @@ void main() {
     test('ignores id / name patterns (no separator)', () {
       // Non-path patterns may match zero projects legitimately — never errored.
       expect(
-        validateProjectPathsExist(
-          ['tom_core_kernel', 'does_not_exist_anywhere'],
-          tempRoot.path,
-        ),
+        validateProjectPathsExist([
+          'tom_core_kernel',
+          'does_not_exist_anywhere',
+        ], tempRoot.path),
         isNull,
       );
     });
 
     test('ignores glob path patterns (may match zero legitimately)', () {
       expect(
-        validateProjectPathsExist(
-          ['core/*', '**/tom_core_*', 'devops/**'],
-          tempRoot.path,
-        ),
+        validateProjectPathsExist([
+          'core/*',
+          '**/tom_core_*',
+          'devops/**',
+        ], tempRoot.path),
         isNull,
       );
     });
@@ -188,10 +195,9 @@ void main() {
     });
 
     test('rejects a non-glob relative path pattern that does not exist', () {
-      final error = validateProjectPathsExist(
-        ['_build/nonexistent'],
-        tempRoot.path,
-      );
+      final error = validateProjectPathsExist([
+        '_build/nonexistent',
+      ], tempRoot.path);
       expect(error, isNotNull);
       expect(error!.toLowerCase(), contains('not found'));
       expect(error, contains('_build/nonexistent'));
@@ -210,10 +216,11 @@ void main() {
     });
 
     test('rejects on the first missing path among several patterns', () {
-      final error = validateProjectPathsExist(
-        ['_build', 'core/missing_one', 'core/tom_core_kernel'],
-        tempRoot.path,
-      );
+      final error = validateProjectPathsExist([
+        '_build',
+        'core/missing_one',
+        'core/tom_core_kernel',
+      ], tempRoot.path);
       expect(error, isNotNull);
       expect(error, contains('core/missing_one'));
     });

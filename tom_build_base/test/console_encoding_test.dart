@@ -30,7 +30,10 @@ void main() {
 
     test('ENC02: round-trips a pure-ASCII byte list', () {
       final bytes = utf8.encode('compilation failed: 3 errors');
-      expect(decodeProcessOutput(bytes), equals('compilation failed: 3 errors'));
+      expect(
+        decodeProcessOutput(bytes),
+        equals('compilation failed: 3 errors'),
+      );
     });
 
     test('ENC03: passes an already-decoded String through unchanged', () {

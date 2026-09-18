@@ -14,12 +14,8 @@ library;
 import 'package:test/test.dart';
 import 'package:tom_build_base/tom_build_base_v2.dart';
 
-ItemResult _ok(String name, {String? cmd, String? message}) => ItemResult(
-  path: name,
-  name: name,
-  commandName: cmd,
-  message: message,
-);
+ItemResult _ok(String name, {String? cmd, String? message}) =>
+    ItemResult(path: name, name: name, commandName: cmd, message: message);
 
 ItemResult _skip(String name, {String? cmd, String? message}) =>
     ItemResult.skipped(
@@ -66,22 +62,26 @@ void main() {
     });
 
     test('SUMM06: all-success renders the clean footer', () {
-      final summary = ToolResult.fromItems([_ok('a'), _ok('b')])
-          .renderRunSummary();
+      final summary = ToolResult.fromItems([
+        _ok('a'),
+        _ok('b'),
+      ]).renderRunSummary();
       expect(summary, 'Done. No errors.');
     });
 
-    test('SUMM07: a failure renders an Errors section, not the clean footer',
-        () {
-      final summary = ToolResult.fromItems([
-        _ok('a'),
-        _fail('b', cmd: 'compiler', error: 'Compilation failed'),
-      ]).renderRunSummary();
-      expect(summary, contains('=== Errors ==='));
-      expect(summary, contains('b :compiler — Compilation failed'));
-      expect(summary, contains('1 error(s) in 1 project(s).'));
-      expect(summary, isNot(contains('Done. No errors.')));
-    });
+    test(
+      'SUMM07: a failure renders an Errors section, not the clean footer',
+      () {
+        final summary = ToolResult.fromItems([
+          _ok('a'),
+          _fail('b', cmd: 'compiler', error: 'Compilation failed'),
+        ]).renderRunSummary();
+        expect(summary, contains('=== Errors ==='));
+        expect(summary, contains('b :compiler — Compilation failed'));
+        expect(summary, contains('1 error(s) in 1 project(s).'));
+        expect(summary, isNot(contains('Done. No errors.')));
+      },
+    );
 
     test('SUMM08: the error tally counts distinct projects', () {
       final summary = ToolResult.fromItems([
@@ -99,10 +99,7 @@ void main() {
         _skip('b', cmd: 'compiler', message: 'compile skipped as configured'),
       ]).renderRunSummary();
       expect(summary, contains('=== Skipped ==='));
-      expect(
-        summary,
-        contains('b :compiler — compile skipped as configured'),
-      );
+      expect(summary, contains('b :compiler — compile skipped as configured'));
       expect(summary, contains('1 project(s) skipped.'));
       // No failures -> clean footer still present.
       expect(summary, contains('Done. No errors.'));
@@ -129,14 +126,16 @@ void main() {
     });
 
     test('SUMM11: a skip with no message falls back to a default label', () {
-      final summary = ToolResult.fromItems([_skip('b', cmd: 'compiler')])
-          .renderRunSummary();
+      final summary = ToolResult.fromItems([
+        _skip('b', cmd: 'compiler'),
+      ]).renderRunSummary();
       expect(summary, contains('b :compiler — skipped'));
     });
 
     test('SUMM12: an item without a command name omits the colon segment', () {
-      final summary =
-          ToolResult.fromItems([_fail('b', error: 'boom')]).renderRunSummary();
+      final summary = ToolResult.fromItems([
+        _fail('b', error: 'boom'),
+      ]).renderRunSummary();
       expect(summary, contains('  b — boom'));
       expect(summary, isNot(contains('b :')));
     });

@@ -124,9 +124,8 @@ class ProjectTraversalInfo extends BaseTraversalInfo {
   /// The directory the scan actually started from — what to name when telling
   /// the user where a project was looked for, since [scan] on its own is
   /// usually the bare default `.` and says nothing.
-  String get absoluteScanRoot => p.normalize(
-    p.isAbsolute(scan) ? scan : p.join(executionRoot, scan),
-  );
+  String get absoluteScanRoot =>
+      p.normalize(p.isAbsolute(scan) ? scan : p.join(executionRoot, scan));
 
   @override
   String toString() =>

@@ -1,3 +1,32 @@
+## 2.15.0
+
+### Added — negatable flags and flag defaults in the v2 CLI parser (sce51)
+
+`OptionDefinition` has carried `negatable` and `defaultValue` since v2, and the
+parser read neither. The consequence was not cosmetic: **a default-on flag was
+not expressible at all.** `--no-x` fell through to the generic branch and landed
+in `extraOptions` under the key `no-x`, so the opt-out silently did nothing and
+the flag still read as unset at every call site.
+
+Now:
+
+- `--no-<flag>` sets a DECLARED `negatable: true` flag to `false` under its own
+  key, so one read site answers both forms.
+- A declared flag with `defaultValue: 'true'` is seeded into `extraOptions`
+  when the command line does not mention it — a tool no longer has to invert
+  the test at each read site, which is the same bug waiting in each of them.
+- `--help` names the opt-out and the default, because a default the reader
+  cannot see is a trap.
+
+**Narrowed on purpose.** Only a declared negatable flag is recognised, so
+`--no-anything-else` keeps its old meaning — an extra option whose key starts
+with `no-`. The globals resolved by name (`--no-skip`) are matched before the
+negation path and are unchanged. Eight tests pin both the new behaviour and
+that narrowing; the suite is 900 passing.
+
+The first consumer is `d4rtgen --verify-output`, which becomes default-on with
+`--no-verify-output` to opt out.
+
 ## 2.14.0
 
 ### Added — the pub-cache pre-flight is now reachable from the tools that compile

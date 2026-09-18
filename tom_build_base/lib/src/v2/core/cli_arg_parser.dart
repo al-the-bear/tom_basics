@@ -553,6 +553,7 @@ class CliArgParser {
       i++;
     }
 
+    _applyFlagDefaults(result);
     return result.toCliArgs();
   }
 
@@ -780,7 +781,52 @@ class CliArgParser {
         state.testProjectsOnly = true;
         break;
       default:
-        state.extraOptions[name] = value ?? true;
+        final negated = _negatableFlagStem(name);
+        if (negated != null) {
+          state.extraOptions[negated] = false;
+        } else {
+          state.extraOptions[name] = value ?? true;
+        }
+    }
+  }
+
+  /// For `--no-x`, the name `x` when a DECLARED flag `x` is `negatable: true`.
+  ///
+  /// `OptionDefinition` has carried `negatable` since v2 and nothing read it,
+  /// so `--no-verify-output` landed in `extraOptions` under the key
+  /// `no-verify-output` and every tool saw its flag as unset. A default-on flag
+  /// was therefore not expressible at all: the opt-out silently did nothing.
+  ///
+  /// Only a declared negatable flag is recognised, so `--no-anything-else`
+  /// keeps its old meaning — an extra option whose key happens to start with
+  /// `no-`. The globals handled by name above (`--no-skip`) never reach here.
+  String? _negatableFlagStem(String name) {
+    if (!name.startsWith('no-') || name.length <= 3) return null;
+    final stem = name.substring(3);
+    for (final opt in _declaredGlobalFlags()) {
+      if (opt.name == stem && opt.negatable) return stem;
+    }
+    return null;
+  }
+
+  /// Every globally declared option, from both places a tool can declare one.
+  Iterable<OptionDefinition> _declaredGlobalFlags() sync* {
+    yield* allowedOptions;
+    final definition = toolDefinition;
+    if (definition != null) yield* definition.globalOptions;
+  }
+
+  /// Seed declared flag defaults for flags the command line did not mention.
+  ///
+  /// `OptionDefinition.defaultValue` was likewise declarative only. Without
+  /// this, a tool wanting a default-on flag has to invert the test at every
+  /// read site — which is the same bug waiting in each of them.
+  void _applyFlagDefaults(_ParseState state) {
+    for (final opt in _declaredGlobalFlags()) {
+      if (opt.type != OptionType.flag) continue;
+      if (opt.defaultValue == null) continue;
+      if (state.extraOptions.containsKey(opt.name)) continue;
+      state.extraOptions[opt.name] = opt.defaultValue == 'true';
     }
   }
 

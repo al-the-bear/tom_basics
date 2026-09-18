@@ -32,7 +32,8 @@ class BuildkitFolder extends RunFolder {
   }
 
   @override
-  String toString() => 'BuildkitFolder($path, id: $projectId, name: $projectName)';
+  String toString() =>
+      'BuildkitFolder($path, id: $projectId, name: $projectName)';
 }
 
 /// Build runner (build.yaml) nature.
@@ -42,10 +43,7 @@ class BuildRunnerFolder extends RunFolder {
   /// Raw config map from build.yaml.
   final Map<String, dynamic> config;
 
-  BuildRunnerFolder(
-    super.fsFolder, {
-    this.config = const {},
-  });
+  BuildRunnerFolder(super.fsFolder, {this.config = const {}});
 
   /// Check if a folder has build.yaml.
   static bool hasBuildYaml(String dirPath) {
@@ -82,7 +80,8 @@ class TomBuildFolder extends RunFolder {
   }
 
   @override
-  String toString() => 'TomBuildFolder($path, name: $projectName, id: $shortId)';
+  String toString() =>
+      'TomBuildFolder($path, name: $projectName, id: $shortId)';
 }
 
 /// Tom build master configuration nature.
@@ -92,10 +91,7 @@ class TomBuildMasterFolder extends RunFolder {
   /// Raw config map from buildkit_master.yaml.
   final Map<String, dynamic> config;
 
-  TomBuildMasterFolder(
-    super.fsFolder, {
-    this.config = const {},
-  });
+  TomBuildMasterFolder(super.fsFolder, {this.config = const {}});
 
   /// Check if a folder has buildkit_master.yaml.
   static bool hasTomMasterYaml(String dirPath) {

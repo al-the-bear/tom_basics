@@ -58,11 +58,11 @@ String get _packageRoot => _packageRootCache ?? Directory.current.path;
 
 /// Absolute path to the checked-in fixture inside this package.
 String get zomFixtureSource => p.join(
-      _packageRoot,
-      'test_fixtures',
-      'zom_workspaces',
-      'zom_analyzer_test',
-    );
+  _packageRoot,
+  'test_fixtures',
+  'zom_workspaces',
+  'zom_analyzer_test',
+);
 
 /// Copies the checked-in `zom_analyzer_test` fixture into a fresh temporary
 /// directory and returns the path to the copied `zom_analyzer_test` root.
@@ -106,10 +106,12 @@ String installMixedWorkspace() {
     'environment:\n'
     '  sdk: ">=3.0.0 <4.0.0"\n',
   );
-  File(p.join(regular.path, 'lib', 'src', 'tom_regular_demo_base.dart'))
-      .writeAsStringSync('const demo = true;\n');
-  File(p.join(regular.path, 'lib', 'tom_regular_demo.dart'))
-      .writeAsStringSync("export 'src/tom_regular_demo_base.dart';\n");
+  File(
+    p.join(regular.path, 'lib', 'src', 'tom_regular_demo_base.dart'),
+  ).writeAsStringSync('const demo = true;\n');
+  File(
+    p.join(regular.path, 'lib', 'tom_regular_demo.dart'),
+  ).writeAsStringSync("export 'src/tom_regular_demo_base.dart';\n");
 
   return tempRoot.path;
 }

@@ -261,7 +261,17 @@ class HelpGenerator {
 
       final optStr = '$shortPart$longPart$valuePart';
       buf.write('  ${optStr.padRight(28)}');
-      buf.writeln(opt.description);
+      // A default the reader cannot see in --help is a trap, and the opt-out
+      // form of a negatable flag is the only way to turn a default-on flag off.
+      final suffix = StringBuffer();
+      if (opt.type == OptionType.flag && opt.defaultValue != null) {
+        suffix.write(' (default: ${opt.defaultValue == 'true' ? 'on' : 'off'}');
+        if (opt.negatable) suffix.write('; --no-${opt.name} to disable');
+        suffix.write(')');
+      } else if (opt.type == OptionType.flag && opt.negatable) {
+        suffix.write(' (--no-${opt.name} to disable)');
+      }
+      buf.writeln('${opt.description}$suffix');
 
       if (opt.defaultValue != null) {
         buf.writeln('${' ' * 30}Default: ${opt.defaultValue}');

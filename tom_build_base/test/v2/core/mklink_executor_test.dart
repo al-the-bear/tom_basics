@@ -22,26 +22,32 @@ void main() {
       }
     });
 
-    test('creates symbolic link with target and link positional args', () async {
-      final target = File(p.join(tempDir.path, 'target.txt'))
-        ..writeAsStringSync('x');
-      final linkPath = p.join(tempDir.path, 'alias.txt');
+    test(
+      'creates symbolic link with target and link positional args',
+      () async {
+        final target = File(p.join(tempDir.path, 'target.txt'))
+          ..writeAsStringSync('x');
+        final linkPath = p.join(tempDir.path, 'alias.txt');
 
-      final result = await executor.executeWithoutTraversal(
-        CliArgs(positionalArgs: [target.path, linkPath]),
-      );
+        final result = await executor.executeWithoutTraversal(
+          CliArgs(positionalArgs: [target.path, linkPath]),
+        );
 
-      if (!canCreateSymlink) {
-        expect(result.success, isFalse);
-        expect(result.errorMessage, contains('Failed to create symbolic link'));
-        return;
-      }
+        if (!canCreateSymlink) {
+          expect(result.success, isFalse);
+          expect(
+            result.errorMessage,
+            contains('Failed to create symbolic link'),
+          );
+          return;
+        }
 
-      expect(result.success, isTrue);
-      final link = Link(linkPath);
-      expect(link.existsSync(), isTrue);
-      expect(link.targetSync(), equals(target.path));
-    });
+        expect(result.success, isTrue);
+        final link = Link(linkPath);
+        expect(link.existsSync(), isTrue);
+        expect(link.targetSync(), equals(target.path));
+      },
+    );
 
     test('replaces existing destination when --force is set', () async {
       final target = File(p.join(tempDir.path, 'target.txt'))

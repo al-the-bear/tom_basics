@@ -9,8 +9,9 @@ void main() {
     late Directory tempWorkspace;
 
     setUp(() {
-      tempWorkspace =
-          Directory.systemTemp.createTempSync('repo_lookup_workspace_');
+      tempWorkspace = Directory.systemTemp.createTempSync(
+        'repo_lookup_workspace_',
+      );
 
       final repoOne = Directory(p.join(tempWorkspace.path, 'repo_one'));
       repoOne.createSync(recursive: true);
@@ -88,11 +89,15 @@ name: repo-two
     });
 
     test('falls back to folder name when name is missing', () {
-      final fallbackRepo = Directory(p.join(tempWorkspace.path, 'repo_fallback'));
+      final fallbackRepo = Directory(
+        p.join(tempWorkspace.path, 'repo_fallback'),
+      );
       fallbackRepo.createSync(recursive: true);
-      File(p.join(fallbackRepo.path, 'tom_repository.yaml')).writeAsStringSync('''
+      File(p.join(fallbackRepo.path, 'tom_repository.yaml')).writeAsStringSync(
+        '''
 repository_id: RF
-''');
+''',
+      );
 
       RepositoryIdLookup.clearCache(executionRoot: tempWorkspace.path);
 

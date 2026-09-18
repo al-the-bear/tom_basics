@@ -70,13 +70,15 @@ void main() {
       expect(spec.filePath, 'C:/tmp/out.json');
     });
 
-    test('BB-OUT-9: null/empty/unknown-format specs return null [2026-07-05]',
-        () {
-      expect(OutputSpec.tryParse(null), isNull);
-      expect(OutputSpec.tryParse(''), isNull);
-      expect(OutputSpec.tryParse('xml:output.xml'), isNull);
-      expect(OutputSpec.tryParse('nope'), isNull);
-    });
+    test(
+      'BB-OUT-9: null/empty/unknown-format specs return null [2026-07-05]',
+      () {
+        expect(OutputSpec.tryParse(null), isNull);
+        expect(OutputSpec.tryParse(''), isNull);
+        expect(OutputSpec.tryParse('xml:output.xml'), isNull);
+        expect(OutputSpec.tryParse('nope'), isNull);
+      },
+    );
 
     test('BB-OUT-10: defaultSpec is plain to stdout [2026-07-05]', () {
       const spec = OutputSpec.defaultSpec;

@@ -16,7 +16,7 @@ This document lists all testable features across `tom_build_base` and tracks tes
 | 1 | [Command Prefix Matching](#1-command-prefix-matching) | 24 | 24✅ | `v2/command_prefix_test.dart` | [→](#1-command-prefix-matching) |
 | 2 | [Execute Placeholder Resolver](#2-execute-placeholder-resolver) | 55 | 55✅ | `v2/execute_placeholder_test.dart` | [→](#2-execute-placeholder-resolver) |
 | 3 | [Macro Expansion](#3-macro-expansion) | 24 | 24✅ | `v2/macro_expansion_test.dart` | [→](#3-macro-expansion) |
-| 4 | [CLI Argument Parser](#4-cli-argument-parser) | 107 | 107✅ | `v2/core/cli_arg_parser_test.dart` | [→](#4-cli-argument-parser) |
+| 4 | [CLI Argument Parser](#4-cli-argument-parser) | 115 | 115✅ | `v2/core/cli_arg_parser_test.dart` | [→](#4-cli-argument-parser) |
 | 5 | [CommandDefinition](#5-commanddefinition) | 15 | 15✅ | `v2/core/command_definition_test.dart` | [→](#5-commanddefinition) |
 | 6 | [Completion Generator](#6-completion-generator) | 30 | 30✅ | `v2/core/completion_generator_test.dart` | [→](#6-completion-generator) |
 | 7 | [Features — Modes, Defines, Macros, Pipelines](#7-features--modes-defines-macros-pipelines) | 33 | 33✅ | `v2/core/features_test.dart` | [→](#7-features--modes-defines-macros-pipelines) |
@@ -50,7 +50,7 @@ This document lists all testable features across `tom_build_base` and tracks tes
 | 35 | [Tool Origin](#35-tool-origin) | 4 | 4✅ | `v2/core/tool_origin_test.dart` | [→](#35-tool-origin) |
 | 36 | [Pub Cache Pre-flight](#36-pub-cache-pre-flight) | 6 | 6✅ | `v2/core/pub_cache_preflight_test.dart` | [→](#36-pub-cache-pre-flight) |
 | 37 | [Coverage Doc Guard](#37-coverage-doc-guard) | 2 | 2✅ | `test_coverage_doc_test.dart` | [→](#37-coverage-doc-guard) |
-| — | **Total** | **892** | **892✅** | | |
+| — | **Total** | **900** | **900✅** | | |
 
 > Every row links to a section, and the counts are measured from
 > `dart test --reporter json -j 1` rather than maintained by hand. Run it
@@ -187,6 +187,7 @@ Exhaustive tests for `CliArgs` — 96 tests covering option parsing, command ext
 | BB_CLI_81–84 | Conflicting abbreviations (`-c`) | ✅ | Abbreviation collision handling. |
 | BB_CLI_85–88 | Nested tool options | ✅ | Parent-child option passing. |
 | BB_CLI_89–92 | Macro/define greedy positional parsing, `--modes` | ✅ | Modes flag and define parsing. |
+| BB_NEGFLAG_1–8 | Negatable flags and flag defaults | ✅ | `--no-<flag>` for a declared negatable flag, declared flag defaults, and the narrowing that leaves every other `--no-` name alone. |
 
 ---
 

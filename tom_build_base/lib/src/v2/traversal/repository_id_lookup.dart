@@ -59,8 +59,7 @@ class RepositoryIdLookup {
     _cacheByRoot.remove(rootKey);
   }
 
-  static String _normalizeRoot(String root) =>
-      p.normalize(p.absolute(root));
+  static String _normalizeRoot(String root) => p.normalize(p.absolute(root));
 
   static Map<String, String> _loadIdToNameMap(String? executionRoot) {
     final rootPath = _normalizeRoot(executionRoot ?? Directory.current.path);
@@ -139,10 +138,9 @@ class RepositoryIdLookup {
 
       final configuredName = raw['name']?.toString().trim();
       final fallbackName = p.basename(p.dirname(metadataFile.path));
-      final resolvedName =
-          (configuredName == null || configuredName.isEmpty)
-              ? fallbackName
-              : configuredName;
+      final resolvedName = (configuredName == null || configuredName.isEmpty)
+          ? fallbackName
+          : configuredName;
 
       map[id.toUpperCase()] = resolvedName;
     } catch (_) {

@@ -177,31 +177,31 @@ environment:
 
   /// Project names that should be found in a recursive scan.
   List<String> get expectedProjectNames => [
-        'proj_alpha',
-        'proj_beta',
-        'proj_gamma',
-        'proj_delta',
-        'module_one',
-        'pkg_one_a',
-        'module_two',
-        'pkg_two_a',
-        'ts_project',
-      ];
+    'proj_alpha',
+    'proj_beta',
+    'proj_gamma',
+    'proj_delta',
+    'module_one',
+    'pkg_one_a',
+    'module_two',
+    'pkg_two_a',
+    'ts_project',
+  ];
 
   /// Project names that should be skipped.
   List<String> get expectedSkippedNames => [
-        'skipped_project',
-        'nested_in_skip',
-        'tom_skipped',
-        'inner_project', // behind workspace boundary
-      ];
+    'skipped_project',
+    'nested_in_skip',
+    'tom_skipped',
+    'inner_project', // behind workspace boundary
+  ];
 
   /// Git repo paths relative to root.
   List<String> get gitRepoPaths => [
-        '.', // root
-        'xternal/module_one',
-        'xternal/module_two',
-      ];
+    '.', // root
+    'xternal/module_one',
+    'xternal/module_two',
+  ];
 
   // Helpers
 

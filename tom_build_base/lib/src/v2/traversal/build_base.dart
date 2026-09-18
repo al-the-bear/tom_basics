@@ -159,11 +159,10 @@ abstract class BuildBase {
     // all is a typo the caller needs to hear about.
     if (info case ProjectTraversalInfo pi) {
       result.recordUnmatchedProjectPatterns(
-        filter.unmatchedProjectPatterns(
-          allScannedFolders,
-          [...pi.projectPatterns, ...additionalProjectPatterns],
-          executionRoot: pi.executionRoot,
-        ),
+        filter.unmatchedProjectPatterns(allScannedFolders, [
+          ...pi.projectPatterns,
+          ...additionalProjectPatterns,
+        ], executionRoot: pi.executionRoot),
       );
     }
 

@@ -28,7 +28,9 @@ class FsFolder {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is FsFolder && runtimeType == other.runtimeType && path == other.path;
+      other is FsFolder &&
+          runtimeType == other.runtimeType &&
+          path == other.path;
 
   @override
   int get hashCode => path.hashCode;

@@ -73,10 +73,14 @@ void enableUtf8Console() {
 void _setWindowsConsoleCodePages() {
   try {
     final kernel32 = DynamicLibrary.open('kernel32.dll');
-    final setConsoleOutputCp = kernel32.lookupFunction<Int32 Function(Uint32),
-        int Function(int)>('SetConsoleOutputCP');
-    final setConsoleCp = kernel32.lookupFunction<Int32 Function(Uint32),
-        int Function(int)>('SetConsoleCP');
+    final setConsoleOutputCp = kernel32
+        .lookupFunction<Int32 Function(Uint32), int Function(int)>(
+          'SetConsoleOutputCP',
+        );
+    final setConsoleCp = kernel32
+        .lookupFunction<Int32 Function(Uint32), int Function(int)>(
+          'SetConsoleCP',
+        );
     setConsoleOutputCp(_cpUtf8);
     setConsoleCp(_cpUtf8);
   } catch (_) {

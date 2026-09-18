@@ -193,11 +193,8 @@ class FilterPipeline {
     for (final pattern in patterns) {
       if (unmatched.contains(pattern)) continue;
       final matched = folders.any(
-        (f) => matchesProjectPattern(
-          f,
-          [pattern],
-          executionRoot: executionRoot,
-        ),
+        (f) =>
+            matchesProjectPattern(f, [pattern], executionRoot: executionRoot),
       );
       if (!matched) unmatched.add(pattern);
     }
@@ -357,15 +354,15 @@ class FilterPipeline {
   /// or path substrings.
   List<FsFolder> _applyModulesFilter(
     List<FsFolder> folders,
-    List<String> modules,
-    {required String executionRoot}
-  ) {
+    List<String> modules, {
+    required String executionRoot,
+  }) {
     // Resolve IDs to names
     final resolvedModules = modules
-        .map((x) => RepositoryIdLookup.resolveToName(
-              x,
-              executionRoot: executionRoot,
-            ))
+        .map(
+          (x) =>
+              RepositoryIdLookup.resolveToName(x, executionRoot: executionRoot),
+        )
         .toList();
 
     return folders.where((f) {
@@ -396,15 +393,15 @@ class FilterPipeline {
   /// or path substrings.
   List<FsFolder> _applySkipModulesFilter(
     List<FsFolder> folders,
-    List<String> skipModules,
-    {required String executionRoot}
-  ) {
+    List<String> skipModules, {
+    required String executionRoot,
+  }) {
     // Resolve IDs to names
     final resolvedModules = skipModules
-        .map((x) => RepositoryIdLookup.resolveToName(
-              x,
-              executionRoot: executionRoot,
-            ))
+        .map(
+          (x) =>
+              RepositoryIdLookup.resolveToName(x, executionRoot: executionRoot),
+        )
         .toList();
 
     return folders.where((f) {
