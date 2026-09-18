@@ -1,3 +1,37 @@
+## 2.10.0
+
+### Added — `--version` says WHERE the tool is running from (sce8)
+
+Every tom CLI's version banner gains a second line naming the copy that
+answered:
+
+    d4rtgen v1.26.2+7
+    binary: /Users/dev/.tom/bin/darwin_arm64/d4rtgen
+
+    d4rtgen v1.26.2+7
+    source: /work/tom_d4rt_generator/bin/d4rtgen.dart
+
+A version alone cannot distinguish a working tree carrying an unpublished fix
+from a pub-cache copy, or from a precompiled binary on `PATH` out of a
+DIFFERENT clone of the workspace — a real arrangement on at least one
+developer's machine. SCC70 discarded a whole bridge-regeneration batch because
+a stale binary and the working-tree source printed the same banner and nobody
+could attribute the output.
+
+`binary:` when the process IS the tool, `source:` when a Dart runtime is
+executing it — in which case the runtime is the same string for every tool in
+the workspace and the entry point is the thing worth naming. The source kind
+is not labelled: a working tree, a `.pub-cache` copy and a `.dart_tool/pub/bin`
+snapshot are told apart by their paths, which is what a reader needs and what
+cannot go out of date.
+
+**The first line is unchanged**, byte for byte, so anything parsing the banner
+is unaffected.
+
+It lives here rather than in each tool because the banner does — `ToolRunner`
+prints it, so every tom CLI gains the line at once and none of them can word
+it differently.
+
 ## 2.9.0
 
 ### Added — `PubCacheIntegrity`: a locked package missing from the cache is named, not left to the compiler (scd8_aicx)

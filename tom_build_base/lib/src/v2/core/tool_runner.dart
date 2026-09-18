@@ -16,6 +16,7 @@ import 'binary_helpers.dart';
 import 'pipeline_config.dart';
 import 'pipeline_executor.dart';
 import 'tool_definition.dart';
+import 'tool_origin.dart';
 import 'tool_definition_serializer.dart';
 import 'command_executor.dart';
 import 'wiring_loader.dart';
@@ -123,9 +124,7 @@ class ToolResult {
         lines.add(describe(item, item.error ?? 'unknown error'));
       }
       final failedProjects = failures.map((f) => f.name).toSet().length;
-      lines.add(
-        '${failures.length} error(s) in $failedProjects project(s).',
-      );
+      lines.add('${failures.length} error(s) in $failedProjects project(s).');
     } else {
       lines.add('Done. No errors.');
     }
@@ -313,40 +312,43 @@ class ToolRunner {
   }) async {
     final completer = Completer<ItemResult>();
 
-    runZonedGuarded(() async {
-      try {
-        final result = await action();
-        if (!completer.isCompleted) {
-          completer.complete(result);
+    runZonedGuarded(
+      () async {
+        try {
+          final result = await action();
+          if (!completer.isCompleted) {
+            completer.complete(result);
+          }
+        } catch (error, stackTrace) {
+          if (!completer.isCompleted) {
+            completer.complete(
+              ItemResult.failure(
+                path: context.path,
+                name: context.name,
+                error: 'Unhandled exception in :$commandName: $error',
+              ),
+            );
+          }
+          if (verbose) {
+            output.writeln('     STACK: $stackTrace');
+          }
         }
-      } catch (error, stackTrace) {
+      },
+      (error, stackTrace) {
         if (!completer.isCompleted) {
           completer.complete(
             ItemResult.failure(
               path: context.path,
               name: context.name,
-              error: 'Unhandled exception in :$commandName: $error',
+              error: 'Unhandled zone error in :$commandName: $error',
             ),
           );
         }
         if (verbose) {
           output.writeln('     STACK: $stackTrace');
         }
-      }
-    }, (error, stackTrace) {
-      if (!completer.isCompleted) {
-        completer.complete(
-          ItemResult.failure(
-            path: context.path,
-            name: context.name,
-            error: 'Unhandled zone error in :$commandName: $error',
-          ),
-        );
-      }
-      if (verbose) {
-        output.writeln('     STACK: $stackTrace');
-      }
-    });
+      },
+    );
 
     return completer.future;
   }
@@ -556,6 +558,13 @@ class ToolRunner {
           _effectiveTool.versionString ??
           '${_effectiveTool.name} v${_effectiveTool.version}';
       output.writeln(versionOutput);
+      // SCE8: which COPY answered, under the number. The first line is
+      // unchanged on purpose — anything parsing the banner reads that one —
+      // and the origin goes beneath it. A version alone cannot distinguish a
+      // working tree carrying an unpublished fix from a pub-cache copy or a
+      // binary on PATH out of another clone; SCC70 lost a regeneration batch
+      // to exactly that ambiguity.
+      output.writeln(currentToolOriginLine());
       return const ToolResult.success();
     }
 
@@ -665,8 +674,10 @@ class ToolRunner {
     );
 
     // Security boundary: reject a --scan path outside the workspace.
-    final scanPathError =
-        validateScanPathWithinRoot(traversalInfo.scan, executionRoot);
+    final scanPathError = validateScanPathWithinRoot(
+      traversalInfo.scan,
+      executionRoot,
+    );
     if (scanPathError != null) {
       output.writeln('Error: $scanPathError');
       return ToolResult.failure(scanPathError);
@@ -744,7 +755,8 @@ class ToolRunner {
           final result = await _executeItemGuarded(
             context: context,
             commandName: runEntry.cmd.name,
-            action: () => runEntry.executor.execute(context, runEntry.resolvedArgs),
+            action: () =>
+                runEntry.executor.execute(context, runEntry.resolvedArgs),
           );
           // Tag result with the command that produced it.
           final tagged = ItemResult(
@@ -933,10 +945,10 @@ class ToolRunner {
   /// tool operates on, so both must be guarded — otherwise the per-command form
   /// silently no-ops on a mistyped or out-of-workspace path.
   List<String> _allProjectPatterns(CliArgs cliArgs) => [
-        ...cliArgs.projectPatterns,
-        for (final cmdArgs in cliArgs.commandArgs.values)
-          ...cmdArgs.projectPatterns,
-      ];
+    ...cliArgs.projectPatterns,
+    for (final cmdArgs in cliArgs.commandArgs.values)
+      ...cmdArgs.projectPatterns,
+  ];
 
   /// Guard every `--project` path (global and per-command) against the
   /// workspace boundary and, for non-glob paths, existence.
@@ -948,8 +960,10 @@ class ToolRunner {
   String? _guardProjectPaths(CliArgs cliArgs, String executionRoot) {
     final patterns = _allProjectPatterns(cliArgs);
 
-    final withinRootError =
-        validateProjectPathsWithinRoot(patterns, executionRoot);
+    final withinRootError = validateProjectPathsWithinRoot(
+      patterns,
+      executionRoot,
+    );
     if (withinRootError != null) {
       output.writeln('Error: $withinRootError');
       return withinRootError;
@@ -1066,8 +1080,10 @@ class ToolRunner {
     // scanning happens. Only project traversal walks a --scan path; git
     // traversal uses the already-validated execution root.
     if (traversalInfo is ProjectTraversalInfo) {
-      final scanPathError =
-          validateScanPathWithinRoot(traversalInfo.scan, executionRoot);
+      final scanPathError = validateScanPathWithinRoot(
+        traversalInfo.scan,
+        executionRoot,
+      );
       if (scanPathError != null) {
         output.writeln('Error: $scanPathError');
         return ToolResult.failure(scanPathError);

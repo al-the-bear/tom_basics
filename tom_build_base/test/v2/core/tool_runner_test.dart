@@ -277,6 +277,36 @@ void main() {
         expect(output.toString(), contains('1.0.0'));
       });
 
+      test('BB-RUN-17b: the version banner names the copy that answered, on a '
+          'second line [2026-09-18] (PASS)', () async {
+        // SCE8. The FIRST line is held byte-identical because things parse it;
+        // the origin goes beneath. A version alone cannot tell a working tree
+        // carrying an unpublished fix from a pub-cache copy or a binary on
+        // PATH out of another clone, and SCC70 discarded a regeneration batch
+        // over exactly that ambiguity.
+        final output = StringBuffer();
+        final runner = ToolRunner(tool: testTool, output: output);
+
+        final result = await runner.run(['--version']);
+
+        expect(result.success, isTrue);
+        final lines = output.toString().trim().split('\n');
+        expect(lines, hasLength(2));
+        expect(lines.first, 'testtool v1.0.0');
+        // Running under `dart test`, so this run is a source run by
+        // construction — which is also the half a compiled binary cannot
+        // exercise from here.
+        //
+        // NOT asserted to end in `.dart`, which is what this expected first
+        // and got wrong: under the test harness the entry point is a kernel
+        // file in a temp directory (`…/dart_test.kernel.XXX/test.dart_1.dill`).
+        // That is the right answer — the line reports the entry point the
+        // RUNTIME was given, whatever form it takes — and it is worth knowing
+        // that a snapshot or a `.dill` is a shape a reader will meet.
+        expect(lines[1], startsWith('source: '));
+        expect(lines[1].substring('source: '.length), isNotEmpty);
+      });
+
       test(
         'BB-RUN-59: Emits bash completion for --completion bash [2026-07-05]',
         () async {
