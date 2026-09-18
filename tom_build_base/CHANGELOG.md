@@ -1,3 +1,28 @@
+## 2.11.0
+
+### Changed — `dcli` constraint widened to admit both majors
+
+`dcli` is now `>=8.4.2 <11.0.0` rather than `^8.4.2`, so a consumer may
+resolve either the 8.x or the 10.x line.
+
+The constraint was the binding reason no package in the workspace could move
+to `dcli` 10: `tom_build_base` is a transitive dependency of nearly every tom
+CLI, so its caret pin propagated a 8.x ceiling to all of them, and version
+solving failed for any package that asked for `^10.0.0`.
+
+A major bump to `^10.0.0` would have swapped the problem for its mirror —
+twelve packages still declare `dcli: ^8.4.2`, and forcing them off 8.x in one
+step is a migration, not a constraint fix. Widening unblocks the 10.x
+consumers without moving anyone who is not ready.
+
+The widening is safe because this package's dcli surface is four symbols —
+`exists`, `read`, `toParagraph` (`lib/src/build_config.dart`) and
+`createSymLink` (`lib/src/v2/core/mklink_executor.dart`) — and all four are
+unchanged between 8.4.2 and 10.0.0. The 9.0 removals were of deprecated APIs
+and entry-point libraries this package never imported, and 10.0's rename of
+`stacktrace` to `stackTrace` on `DCliException` touches no call site here.
+Verified against dcli 10.0.0: analyzer clean, suite 864/0/0.
+
 ## 2.10.0
 
 ### Added — `--version` says WHERE the tool is running from (sce8)

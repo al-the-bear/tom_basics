@@ -1,6 +1,6 @@
 name: tom_build_base
 description: Unified CLI framework for workspace traversal, tool definition, pipeline execution, and build configuration.
-version: 2.10.0
+version: 2.11.0
 repository: https://github.com/al-the-bear/tom_basics
 homepage: https://github.com/al-the-bear/tom_basics/tree/main/tom_build_base
 topics:
@@ -14,7 +14,7 @@ environment:
 dependencies:
   args: ^2.7.0
   console_markdown: ^0.0.3
-  dcli: ^8.4.2
+  dcli: '>=8.4.2 <11.0.0'
   glob: ^2.1.3
   path: ^1.9.0
   yaml: ^3.1.3
