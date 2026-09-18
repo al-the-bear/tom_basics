@@ -39,20 +39,43 @@ class NestedToolExecutor extends CommandExecutor {
   /// The host command name (may differ from nestedCommand due to renames).
   final String hostCommandName;
 
+  /// Whether the nested tool implements a dry-run mode.
+  ///
+  /// Read from the nested tool's own `--dump-definitions` output during
+  /// wiring. Defaults to false: forwarding `--dry-run` to a tool that ignores
+  /// it is what makes a host dry run write for real, so an unknown capability
+  /// is treated as "does not support it".
+  final bool supportsDryRun;
+
   NestedToolExecutor({
     required this.binary,
     required this.hostCommandName,
     this.nestedCommand,
     this.isStandalone = false,
+    this.supportsDryRun = false,
   });
 
   @override
   Future<ItemResult> execute(CommandContext context, CliArgs args) async {
+    // A dry run of a pipeline means "tell me what you would do". A nested tool
+    // with no dry-run mode cannot answer that, and forwarding the flag would
+    // make it do the work instead -- so report the step and skip it.
+    if (args.dryRun && !supportsDryRun) {
+      final label = isStandalone ? binary : '$binary :$nestedCommand';
+      return ItemResult.success(
+        path: context.path,
+        name: context.name,
+        commandName: hostCommandName,
+        message: '[DRY RUN] would run $label',
+      );
+    }
+
     final cmdArgs = buildNestedArgs(
       hostArgs: args,
       hostCommandName: hostCommandName,
       nestedCommand: nestedCommand ?? '',
       isStandalone: isStandalone,
+      nestedSupportsDryRun: supportsDryRun,
     );
 
     // Stream the nested tool's stdout/stderr live, so its own output (progress,
@@ -80,7 +103,8 @@ class NestedToolExecutor extends CommandExecutor {
   ///
   /// Forwards:
   /// - `--nested` (always)
-  /// - `--verbose` and `--dry-run` (behavioral globals)
+  /// - `--verbose` always, and `--dry-run` only when the nested tool
+  ///   declares a dry-run mode
   /// - The nested command name (for multi-command tools)
   /// - Command-specific options from the host invocation
   ///
@@ -92,12 +116,15 @@ class NestedToolExecutor extends CommandExecutor {
     required String hostCommandName,
     required String nestedCommand,
     required bool isStandalone,
+    bool nestedSupportsDryRun = false,
   }) {
     final args = <String>['--nested'];
 
-    // Forward behavioral globals
+    // Forward behavioral globals. `--dry-run` goes only to a tool that
+    // implements it; the nested tool would otherwise refuse the flag (or,
+    // before that refusal existed, silently do the work).
     if (hostArgs.verbose) args.add('--verbose');
-    if (hostArgs.dryRun) args.add('--dry-run');
+    if (hostArgs.dryRun && nestedSupportsDryRun) args.add('--dry-run');
 
     // For multi-command tools, add the nested command
     if (!isStandalone) {

@@ -318,7 +318,10 @@ void main() {
           expect(result.success, isTrue);
           final script = output.toString();
           expect(script, contains('# Bash completion for testtool'));
-          expect(script, contains('complete -F _testtool_completions testtool'));
+          expect(
+            script,
+            contains('complete -F _testtool_completions testtool'),
+          );
           // Reflects the tool's actual commands/options.
           expect(script, contains(':simple'));
           expect(script, contains('--verbose'));
@@ -356,20 +359,17 @@ void main() {
         },
       );
 
-      test(
-        'BB-RUN-62: Fails with non-zero for unknown --completion shell '
-        '[2026-07-05]',
-        () async {
-          final output = StringBuffer();
-          final runner = ToolRunner(tool: testTool, output: output);
+      test('BB-RUN-62: Fails with non-zero for unknown --completion shell '
+          '[2026-07-05]', () async {
+        final output = StringBuffer();
+        final runner = ToolRunner(tool: testTool, output: output);
 
-          final result = await runner.run(['--completion', 'powershell']);
+        final result = await runner.run(['--completion', 'powershell']);
 
-          expect(result.success, isFalse);
-          expect(output.toString(), contains('unknown shell'));
-          expect(output.toString(), contains('bash, zsh, fish'));
-        },
-      );
+        expect(result.success, isFalse);
+        expect(output.toString(), contains('unknown shell'));
+        expect(output.toString(), contains('bash, zsh, fish'));
+      });
 
       test(
         'BB-RUN-18: Shows command help for :command --help [2026-02-12]',
@@ -544,11 +544,17 @@ void main() {
             'sub/nonexistent',
           ]);
 
-          expect(result.success, isFalse,
-              reason: 'a non-existent per-command --project path must fail');
+          expect(
+            result.success,
+            isFalse,
+            reason: 'a non-existent per-command --project path must fail',
+          );
           expect(output.toString().toLowerCase(), contains('not found'));
-          expect(executor.calls, isEmpty,
-              reason: 'traversal must not run when the guard rejects the path');
+          expect(
+            executor.calls,
+            isEmpty,
+            reason: 'traversal must not run when the guard rejects the path',
+          );
         } finally {
           Directory.current = previousCwd;
           if (tempRoot.existsSync()) {
@@ -585,8 +591,11 @@ void main() {
             outsideDir.path, // absolute path outside the workspace root
           ]);
 
-          expect(result.success, isFalse,
-              reason: 'an out-of-root per-command --project must fail');
+          expect(
+            result.success,
+            isFalse,
+            reason: 'an out-of-root per-command --project must fail',
+          );
           expect(output.toString().toLowerCase(), contains('outside'));
           expect(executor.calls, isEmpty);
         } finally {
@@ -637,12 +646,21 @@ void main() {
             'a_proj',
           ]);
 
-          expect(result.success, isTrue,
-              reason: 'a valid per-command --project must not be rejected');
-          expect(orderLog.any((e) => e.startsWith('a_proj|')), isTrue,
-              reason: 'traversal should run on the selected project a_proj');
-          expect(orderLog.any((e) => e.startsWith('b_proj|')), isFalse,
-              reason: 'per-command --project must still filter traversal');
+          expect(
+            result.success,
+            isTrue,
+            reason: 'a valid per-command --project must not be rejected',
+          );
+          expect(
+            orderLog.any((e) => e.startsWith('a_proj|')),
+            isTrue,
+            reason: 'traversal should run on the selected project a_proj',
+          );
+          expect(
+            orderLog.any((e) => e.startsWith('b_proj|')),
+            isFalse,
+            reason: 'per-command --project must still filter traversal',
+          );
         } finally {
           Directory.current = previousCwd;
           if (tempRoot.existsSync()) {
@@ -685,8 +703,11 @@ void main() {
             'sub/nonexistent',
           ]);
 
-          expect(result.success, isFalse,
-              reason: 'the multi-command guard must reject the bad path too');
+          expect(
+            result.success,
+            isFalse,
+            reason: 'the multi-command guard must reject the bad path too',
+          );
           expect(output.toString().toLowerCase(), contains('not found'));
           expect(orderLog, isEmpty);
         } finally {
@@ -747,12 +768,21 @@ void main() {
             ':first',
           ]);
 
-          expect(result.success, isFalse,
-              reason: 'a selector that matches nothing is a typo, not a no-op');
-          expect(output.toString(), contains('typo_proj'),
-              reason: 'the message must name the offending selector');
-          expect(orderLog, isEmpty,
-              reason: 'nothing should run when the selection is a mistake');
+          expect(
+            result.success,
+            isFalse,
+            reason: 'a selector that matches nothing is a typo, not a no-op',
+          );
+          expect(
+            output.toString(),
+            contains('typo_proj'),
+            reason: 'the message must name the offending selector',
+          );
+          expect(
+            orderLog,
+            isEmpty,
+            reason: 'nothing should run when the selection is a mistake',
+          );
         } finally {
           Directory.current = previousCwd;
           if (tempRoot.existsSync()) {
@@ -794,9 +824,13 @@ void main() {
             ':first',
           ]);
 
-          expect(result.success, isFalse,
-              reason: "'./*' is the form the CLI guide documented; it selects "
-                  'nothing and must say so');
+          expect(
+            result.success,
+            isFalse,
+            reason:
+                "'./*' is the form the CLI guide documented; it selects "
+                'nothing and must say so',
+          );
           expect(orderLog, isEmpty);
         } finally {
           Directory.current = previousCwd;
@@ -845,8 +879,11 @@ void main() {
           // run does real work, so nothing looks wrong.
           expect(result.success, isFalse);
           expect(output.toString(), contains('typo_proj'));
-          expect(output.toString(), isNot(contains('a_proj')),
-              reason: 'a selector that did match must not be blamed');
+          expect(
+            output.toString(),
+            isNot(contains('a_proj')),
+            reason: 'a selector that did match must not be blamed',
+          );
         } finally {
           Directory.current = previousCwd;
           if (tempRoot.existsSync()) {
@@ -891,11 +928,18 @@ void main() {
             ':first',
           ]);
 
-          expect(result.success, isTrue,
-              reason: 'a shared script may legitimately use an "if present" '
-                  'selector across differing workspaces');
-          expect(orderLog.any((e) => e.startsWith('a_proj|')), isTrue,
-              reason: 'the matching selector must still do its work');
+          expect(
+            result.success,
+            isTrue,
+            reason:
+                'a shared script may legitimately use an "if present" '
+                'selector across differing workspaces',
+          );
+          expect(
+            orderLog.any((e) => e.startsWith('a_proj|')),
+            isTrue,
+            reason: 'the matching selector must still do its work',
+          );
         } finally {
           Directory.current = previousCwd;
           if (tempRoot.existsSync()) {
@@ -937,8 +981,11 @@ void main() {
             'typo_proj',
           ]);
 
-          expect(result.success, isFalse,
-              reason: 'the same silence, one flag position away');
+          expect(
+            result.success,
+            isFalse,
+            reason: 'the same silence, one flag position away',
+          );
           expect(output.toString(), contains('typo_proj'));
           expect(orderLog, isEmpty);
         } finally {
@@ -1155,7 +1202,15 @@ required-environment:
         final output = StringBuffer();
         try {
           Directory.current = workspace.path;
-          final runner = ToolRunner(tool: testTool, output: output);
+          // A tool must declare a dry-run mode to be asked for one; buildkit,
+          // the real pipeline tool, sets `dryRun: true`. `testTool` is built on
+          // `NavigationFeatures.projectTool`, which does not.
+          final runner = ToolRunner(
+            tool: testTool.copyWith(
+              features: const NavigationFeatures(dryRun: true),
+            ),
+            output: output,
+          );
 
           final result = await runner.run(['--dry-run', 'ci']);
 
@@ -1913,9 +1968,9 @@ testtool:
         final previousCwd = Directory.current.path;
         final output = StringBuffer();
         try {
-          File('${tempRoot.path}/testtool_master.yaml').writeAsStringSync(
-            'testtool:\n  defines:\n    mode: PROD\n',
-          );
+          File(
+            '${tempRoot.path}/testtool_master.yaml',
+          ).writeAsStringSync('testtool:\n  defines:\n    mode: PROD\n');
           Directory.current = tempRoot.path;
           final runner = ToolRunner(tool: testTool, output: output);
 
@@ -1935,101 +1990,105 @@ testtool:
     });
 
     group('normalizeArgs', () {
-      test(
-        'BB-RUN-67: converts single-dash -help/-version at any position, '
-        'leaves other args untouched [2026-07-05]',
-        () {
-          // Canonical conversions.
-          expect(ToolRunner.normalizeArgs(['-help']), ['--help']);
-          expect(ToolRunner.normalizeArgs(['-version']), ['--version']);
+      test('BB-RUN-67: converts single-dash -help/-version at any position, '
+          'leaves other args untouched [2026-07-05]', () {
+        // Canonical conversions.
+        expect(ToolRunner.normalizeArgs(['-help']), ['--help']);
+        expect(ToolRunner.normalizeArgs(['-version']), ['--version']);
 
-          // Converts at any position, not just the first token.
-          expect(
-            ToolRunner.normalizeArgs([':test', '-help']),
-            [':test', '--help'],
-          );
-          expect(
-            ToolRunner.normalizeArgs(['create', '--foo', '-version']),
-            ['create', '--foo', '--version'],
-          );
+        // Converts at any position, not just the first token.
+        expect(ToolRunner.normalizeArgs([':test', '-help']), [
+          ':test',
+          '--help',
+        ]);
+        expect(ToolRunner.normalizeArgs(['create', '--foo', '-version']), [
+          'create',
+          '--foo',
+          '--version',
+        ]);
 
-          // Non-legacy forms and bare positionals are passed through as-is.
-          expect(
-            ToolRunner.normalizeArgs(['--help', 'help', 'version', '-v']),
-            ['--help', 'help', 'version', '-v'],
-          );
+        // Non-legacy forms and bare positionals are passed through as-is.
+        expect(ToolRunner.normalizeArgs(['--help', 'help', 'version', '-v']), [
+          '--help',
+          'help',
+          'version',
+          '-v',
+        ]);
 
-          // Empty is returned unchanged (identity).
-          final empty = <String>[];
-          expect(identical(ToolRunner.normalizeArgs(empty), empty), isTrue);
+        // Empty is returned unchanged (identity).
+        final empty = <String>[];
+        expect(identical(ToolRunner.normalizeArgs(empty), empty), isTrue);
 
-          // Idempotent: applying twice yields the same result.
-          final once = ToolRunner.normalizeArgs([':test', '-help', '-version']);
-          expect(ToolRunner.normalizeArgs(once), once);
-        },
-      );
+        // Idempotent: applying twice yields the same result.
+        final once = ToolRunner.normalizeArgs([':test', '-help', '-version']);
+        expect(ToolRunner.normalizeArgs(once), once);
+      });
     });
 
     group('runToCompletion', () {
-      test(
-        'BB-RUN-68: prints the run summary and sets exitCode per the shared '
-        'entrypoint contract [2026-07-05]',
-        () async {
-          final savedExit = exitCode;
+      test('BB-RUN-68: prints the run summary and sets exitCode per the shared '
+          'entrypoint contract [2026-07-05]', () async {
+        final savedExit = exitCode;
+        try {
+          // Success, single-shot (empty summary): returns success, no summary
+          // block is printed, and the exit code is left untouched at 0.
+          exitCode = 0;
+          final okOut = StringBuffer();
+          final okResult = await ToolRunner(
+            tool: _singleExecuteTool,
+            output: okOut,
+          ).runToCompletion(['--version']);
+          expect(okResult.success, isTrue);
+          expect(okOut.toString(), contains('1.0.0'));
+          expect(okOut.toString(), isNot(contains('error(s) in')));
+          expect(
+            exitCode,
+            0,
+            reason: 'a successful run must not set a failure exit code',
+          );
+
+          // Failure via traversal (non-empty summary): returns failure, the
+          // summary is printed with a leading blank line, and exitCode = 1.
+          // Uses a command whose nature is a DartProjectFolder so the temp
+          // project is actually processed (and the executor is invoked).
+          exitCode = 0;
+          final tempRoot = await Directory.systemTemp.createTemp(
+            'bb_runtocomp_',
+          );
+          final previousCwd = Directory.current.path;
           try {
-            // Success, single-shot (empty summary): returns success, no summary
-            // block is printed, and the exit code is left untouched at 0.
-            exitCode = 0;
-            final okOut = StringBuffer();
-            final okResult =
-                await ToolRunner(tool: _singleExecuteTool, output: okOut)
-                    .runToCompletion(['--version']);
-            expect(okResult.success, isTrue);
-            expect(okOut.toString(), contains('1.0.0'));
-            expect(okOut.toString(), isNot(contains('error(s) in')));
-            expect(exitCode, 0,
-                reason: 'a successful run must not set a failure exit code');
+            final proj = Directory('${tempRoot.path}/a_proj')..createSync();
+            File('${proj.path}/pubspec.yaml').writeAsStringSync(
+              'name: a_proj\nversion: 1.0.0\nenvironment:\n  sdk: ^3.0.0\n',
+            );
 
-            // Failure via traversal (non-empty summary): returns failure, the
-            // summary is printed with a leading blank line, and exitCode = 1.
-            // Uses a command whose nature is a DartProjectFolder so the temp
-            // project is actually processed (and the executor is invoked).
-            exitCode = 0;
-            final tempRoot =
-                await Directory.systemTemp.createTemp('bb_runtocomp_');
-            final previousCwd = Directory.current.path;
-            try {
-              final proj = Directory('${tempRoot.path}/a_proj')..createSync();
-              File('${proj.path}/pubspec.yaml').writeAsStringSync(
-                'name: a_proj\nversion: 1.0.0\nenvironment:\n  sdk: ^3.0.0\n',
-              );
+            final failOut = StringBuffer();
+            final runner = ToolRunner(
+              tool: _singleExecuteTool,
+              output: failOut,
+              executors: {'execute': TrackingExecutor(shouldSucceed: false)},
+            );
 
-              final failOut = StringBuffer();
-              final runner = ToolRunner(
-                tool: _singleExecuteTool,
-                output: failOut,
-                executors: {'execute': TrackingExecutor(shouldSucceed: false)},
-              );
+            Directory.current = tempRoot.path;
+            final failResult = await runner.runToCompletion([
+              '--root',
+              tempRoot.path,
+              ':execute',
+            ]);
 
-              Directory.current = tempRoot.path;
-              final failResult = await runner
-                  .runToCompletion(['--root', tempRoot.path, ':execute']);
-
-              expect(failResult.success, isFalse);
-              expect(failOut.toString(), contains('error(s) in'));
-              expect(exitCode, 1,
-                  reason: 'a failed run must set exitCode = 1');
-            } finally {
-              Directory.current = previousCwd;
-              if (tempRoot.existsSync()) {
-                await tempRoot.delete(recursive: true);
-              }
-            }
+            expect(failResult.success, isFalse);
+            expect(failOut.toString(), contains('error(s) in'));
+            expect(exitCode, 1, reason: 'a failed run must set exitCode = 1');
           } finally {
-            exitCode = savedExit;
+            Directory.current = previousCwd;
+            if (tempRoot.existsSync()) {
+              await tempRoot.delete(recursive: true);
+            }
           }
-        },
-      );
+        } finally {
+          exitCode = savedExit;
+        }
+      });
     });
   });
 

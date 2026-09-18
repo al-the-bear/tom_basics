@@ -304,23 +304,28 @@ void main() {
         expect(allOptions.any((o) => o.name == 'dry-run'), isTrue);
       });
 
-      test(
-        'BB-TDF-20: Dry-run is always present via commonOptions [2026-02-12]',
-        () {
-          // Note: dry-run is part of commonOptions, so it's always included.
-          // The NavigationFeatures.dryRun flag controls whether an additional
-          // feature-specific dry-run is added (which would be redundant).
-          const tool = ToolDefinition(
-            name: 'buildkit',
-            description: 'Build toolkit',
-            features: NavigationFeatures(dryRun: false),
-          );
+      test('BB-TDF-20: Dry-run is offered only by a tool that declares it '
+          '[2026-02-12]', () {
+        // `--dry-run` is filtered out of commonOptions when the tool has no
+        // dry-run mode: ToolRunner refuses the flag for such a tool, so
+        // offering it would promise a mode that does not exist.
+        const without = ToolDefinition(
+          name: 'buildkit',
+          description: 'Build toolkit',
+          features: NavigationFeatures(dryRun: false),
+        );
+        const with_ = ToolDefinition(
+          name: 'buildkit',
+          description: 'Build toolkit',
+          features: NavigationFeatures(dryRun: true),
+        );
 
-          final allOptions = tool.allGlobalOptions;
-          // dry-run comes from commonOptions regardless of dryRun feature flag
-          expect(allOptions.any((o) => o.name == 'dry-run'), isTrue);
-        },
-      );
+        expect(
+          without.allGlobalOptions.any((o) => o.name == 'dry-run'),
+          isFalse,
+        );
+        expect(with_.allGlobalOptions.any((o) => o.name == 'dry-run'), isTrue);
+      });
 
       test('BB-TDF-21: Includes json when feature enabled [2026-02-12]', () {
         const tool = ToolDefinition(

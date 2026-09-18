@@ -28,19 +28,24 @@ void main() {
         expect(args, equals(['--nested']));
       });
 
-      test('BB-NTE-3: Forwards verbose and dry-run [2026-02-27]', () {
-        final args = NestedToolExecutor.buildNestedArgs(
-          hostArgs: const CliArgs(verbose: true, dryRun: true),
-          hostCommandName: 'buildkittest',
-          nestedCommand: 'test',
-          isStandalone: false,
-        );
+      test(
+        'BB-NTE-3: Forwards verbose always, and dry-run to a nested tool that '
+        'supports it [2026-02-27]',
+        () {
+          final args = NestedToolExecutor.buildNestedArgs(
+            hostArgs: const CliArgs(verbose: true, dryRun: true),
+            hostCommandName: 'buildkittest',
+            nestedCommand: 'test',
+            isStandalone: false,
+            nestedSupportsDryRun: true,
+          );
 
-        expect(args, contains('--nested'));
-        expect(args, contains('--verbose'));
-        expect(args, contains('--dry-run'));
-        expect(args, contains(':test'));
-      });
+          expect(args, contains('--nested'));
+          expect(args, contains('--verbose'));
+          expect(args, contains('--dry-run'));
+          expect(args, contains(':test'));
+        },
+      );
 
       test('BB-NTE-4: Forwards command-specific flag options [2026-02-27]', () {
         final args = NestedToolExecutor.buildNestedArgs(
@@ -263,16 +268,18 @@ void main() {
       String writeScript(String name, int exitCode) {
         final file = File('${tmp.path}/$name');
         // Ignores all forwarded args (--nested, …) and just exits.
-        file.writeAsStringSync('#!/bin/sh\necho "NESTED_RAN"\nexit $exitCode\n');
+        file.writeAsStringSync(
+          '#!/bin/sh\necho "NESTED_RAN"\nexit $exitCode\n',
+        );
         Process.runSync('chmod', ['+x', file.path]);
         return file.path;
       }
 
       CommandContext contextAt(String path) => CommandContext(
-            fsFolder: FsFolder(path: path),
-            natures: const [],
-            executionRoot: path,
-          );
+        fsFolder: FsFolder(path: path),
+        natures: const [],
+        executionRoot: path,
+      );
 
       test(
         'BB-NTE-15: exit 0 → ItemResult.success [2026-06-30]',

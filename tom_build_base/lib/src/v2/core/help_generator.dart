@@ -169,7 +169,9 @@ class HelpGenerator {
     buf.writeln('<dim>**Common Options**</dim>');
     buf.writeln('  -h, --help                  Show this help');
     buf.writeln('  -v, --verbose               Verbose output');
-    buf.writeln('  -n, --dry-run               Show what would be done');
+    if (tool?.features.dryRun ?? false) {
+      buf.writeln('  -n, --dry-run               Show what would be done');
+    }
     buf.writeln();
 
     // Examples

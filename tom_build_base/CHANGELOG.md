@@ -1,3 +1,43 @@
+## 2.12.0
+
+### Fixed — `-n` / `--dry-run` is refused by tools that do not implement it
+
+Every tool built on `tom_build_base` accepted `-n` and `--dry-run`, because
+`cli_arg_parser` parses them as global flags for all tools. A tool's
+`NavigationFeatures.dryRun` did not gate that, or anything else: the only read
+of the field in the package was the serializer that writes `dry_run:` into
+`--dump-definitions` output. The declaration was decorative, so a tool that
+declared `dryRun: false` still ran normally when asked for a preview -- which
+is how `d4rtgen -n` used to regenerate files for real.
+
+It was also advertised. The help text offered `-n, --dry-run  Show what would
+be done` for every tool, from a hardcoded line in the command-help generator
+and from `commonOptions`, so a tool that ignored the flag also promised it.
+
+Four changes make the declaration load-bearing:
+
+- `ToolRunner` refuses a run whose args carry `dryRun` while the tool declares
+  `dryRun: false`, naming the tool, before any wiring, traversal or executor
+  runs. `--help` and `--version` are unaffected, so `-n --help` still prints
+  help rather than an error.
+- `allGlobalOptions` filters `--dry-run` out of `commonOptions` for such a
+  tool, and the command-help generator gates its own Common Options line.
+- `NestedToolExecutor` forwards `--dry-run` only to a nested tool that declares
+  a dry-run mode, and a host dry run reports `[DRY RUN] would run <tool>` for
+  one that does not, rather than running it. The capability is read from the
+  nested tool's own `--dump-definitions`, which the wiring already queries.
+
+**This changes behaviour for callers.** `<tool> -n` on a tool with
+`dryRun: false` now exits non-zero instead of doing the work. That is the
+point -- the caller asked for a preview -- but a script that passed `-n` and
+relied on the work happening will now fail. The tools declaring `dryRun: false`
+at this release are `testkit`, `issuekit`, the reflection generator, and the
+`tom_reflector` analyzer / reflection-analyzer / reflector tools.
+
+Two tests that pinned the old behaviour were rewritten to the new contract:
+`BB-TDF-20` asserted dry-run was present "regardless of the dryRun feature
+flag", and `BB-NTE-3` asserted unconditional forwarding.
+
 ## 2.11.0
 
 ### Changed — `dcli` constraint widened to admit both majors

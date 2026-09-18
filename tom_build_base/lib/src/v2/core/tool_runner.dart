@@ -447,6 +447,22 @@ class ToolRunner {
       return _handleCompletion(cliArgs.completion!);
     }
 
+    // A tool whose `features.dryRun` is false has no dry-run mode. Accepting
+    // `-n` and running anyway is the dangerous default: the caller asked for a
+    // preview and got a real run, which is how `d4rtgen -n` used to regenerate
+    // files. Refuse here -- after the informational intercepts above and
+    // `isHelpMode` below, so `-n --help` still prints help, but before any
+    // wiring, traversal or executor runs.
+    if (cliArgs.dryRun && !tool.features.dryRun && !cliArgs.isHelpMode) {
+      output.writeln(
+        'Error: ${tool.name} has no dry-run mode, so -n / --dry-run is not '
+        'supported. Re-run without the flag to do the work for real.',
+      );
+      return ToolResult.failure(
+        '${tool.name} has no dry-run mode (-n / --dry-run not supported)',
+      );
+    }
+
     final doctorRequested = _isDoctorRequested(cliArgs);
     final bypassRequiredEnvironmentChecks =
         !doctorRequested && _isRequiredEnvironmentCheckBypassed();

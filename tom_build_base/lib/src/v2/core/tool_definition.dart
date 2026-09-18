@@ -312,8 +312,15 @@ class ToolDefinition {
       result.addAll(gitTraversalOptions);
     }
 
-    // Add common options (includes standard options like --help, --version, --dry-run)
-    result.addAll(commonOptions);
+    // Add common options (standard options like --help, --version).
+    // `--dry-run` is offered only by tools that implement it: ToolRunner
+    // refuses the flag when `features.dryRun` is false, so advertising it
+    // there would promise a mode the tool does not have.
+    result.addAll(
+      features.dryRun
+          ? commonOptions
+          : commonOptions.where((o) => o.name != 'dry-run'),
+    );
 
     // Add feature-specific options (not in commonOptions)
     if (features.jsonOutput) {

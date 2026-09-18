@@ -296,6 +296,7 @@ class WiringLoader {
         binary: wiring.binary,
         hostCommandName: hostName,
         isStandalone: true,
+        supportsDryRun: dumpResult.features.dryRun,
       );
     } else {
       // Multi-command tool: create one host command per mapping
@@ -327,6 +328,7 @@ class WiringLoader {
           binary: wiring.binary,
           hostCommandName: hostName,
           nestedCommand: nestedName,
+          supportsDryRun: dumpResult.features.dryRun,
         );
       }
     }
