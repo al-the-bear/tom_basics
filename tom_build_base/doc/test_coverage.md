@@ -47,10 +47,10 @@ This document lists all testable features across `tom_build_base` and tracks tes
 | 32 | [Workspace Utils](#32-workspace-utils) | 21 | 21✅ | `v2/workspace_utils_test.dart` | [→](#32-workspace-utils) |
 | 33 | [Command Option Position](#33-command-option-position) | 6 | 6✅ | `v2/core/command_option_position_test.dart` | [→](#33-command-option-position) |
 | 34 | [Dry-run Contract](#34-dry-run-contract) | 14 | 14✅ | `v2/core/dry_run_contract_test.dart` | [→](#34-dry-run-contract) |
-| 35 | [Tool Origin](#35-tool-origin) | 4 | 4✅ | `v2/core/tool_origin_test.dart` | [→](#35-tool-origin) |
+| 35 | [Tool Origin](#35-tool-origin) | 11 | 11✅ | `v2/core/tool_origin_test.dart` | [→](#35-tool-origin) |
 | 36 | [Pub Cache Pre-flight](#36-pub-cache-pre-flight) | 6 | 6✅ | `v2/core/pub_cache_preflight_test.dart` | [→](#36-pub-cache-pre-flight) |
 | 37 | [Coverage Doc Guard](#37-coverage-doc-guard) | 2 | 2✅ | `test_coverage_doc_test.dart` | [→](#37-coverage-doc-guard) |
-| — | **Total** | **900** | **900✅** | | |
+| — | **Total** | **907** | **907✅** | | |
 
 > Every row links to a section, and the counts are measured from
 > `dart test --reporter json -j 1` rather than maintained by hand. Run it
@@ -753,6 +753,7 @@ would name the same path for every tool on the machine.
 | BB-ORIGIN-2 | JIT run | ✅ | Reports the script, not the `dart` that ran it. |
 | BB-ORIGIN-3 | The three source origins | ✅ | Distinguishable from one another. |
 | BB-ORIGIN-4 | Windows `dart` | ✅ | Recognised as an interpreter. |
+| BB-DARTEXE-1–7 | `resolveDartExecutable` | ✅ | The same question asked where getting it wrong re-enters the tool: an AOT tool must never resolve to itself. DART_SDK, FLUTTER_ROOT, PATH, and the bare-name last resort. |
 
 ---
 

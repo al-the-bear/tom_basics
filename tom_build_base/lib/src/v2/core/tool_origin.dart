@@ -50,3 +50,59 @@ String currentToolOriginLine() => toolOriginLine(
   resolvedExecutable: Platform.resolvedExecutable,
   script: Platform.script,
 );
+
+/// The `dart` executable to use when a tool needs to spawn an SDK command.
+///
+/// SCE51. [Platform.resolvedExecutable] is the Dart runtime ONLY when the tool
+/// runs under `dart run`. An AOT-compiled tom CLI *is* its own
+/// `resolvedExecutable`, so spawning `Platform.resolvedExecutable analyze ...`
+/// re-invokes the tool with arguments it does not understand. d4rtgen did
+/// exactly that for `--verify-output`: the child parsed `analyze` as a
+/// positional, generated bridges in the working directory, printed nothing the
+/// parent recognised as a diagnostic, and exited 0 — so the parent reported
+/// "analysed clean" having analysed nothing. The verification was a silent
+/// no-op in every compiled run, and only became visible when the flag was made
+/// default-on, at which point the child verified too and it turned into a fork
+/// bomb.
+///
+/// Resolution order, first hit wins:
+///
+///   1. `resolvedExecutable` itself, when it IS the Dart runtime.
+///   2. `DART_SDK/bin/dart`.
+///   3. `FLUTTER_ROOT/bin/cache/dart-sdk/bin/dart`.
+///   4. The first `dart` on `PATH`.
+///   5. The bare name `dart`, for the OS to resolve.
+///
+/// The last resort is deliberately a bare name rather than the current
+/// executable: a command that cannot be found fails loudly, where one that
+/// re-enters the tool does not fail at all.
+String resolveDartExecutable({
+  String? resolvedExecutable,
+  Map<String, String>? environment,
+  bool Function(String path)? exists,
+}) {
+  final executable = resolvedExecutable ?? Platform.resolvedExecutable;
+  final env = environment ?? Platform.environment;
+  final isFile = exists ?? (path) => File(path).existsSync();
+  final dartName = Platform.isWindows ? 'dart.exe' : 'dart';
+
+  final name = executable.split(RegExp(r'[/\\]')).last.toLowerCase();
+  if (name == 'dart' || name == 'dart.exe') return executable;
+
+  for (final candidate in [
+    if (env['DART_SDK'] case final sdk?) '$sdk/bin/$dartName',
+    if (env['FLUTTER_ROOT'] case final root?)
+      '$root/bin/cache/dart-sdk/bin/$dartName',
+  ]) {
+    if (isFile(candidate)) return candidate;
+  }
+
+  final separator = Platform.isWindows ? ';' : ':';
+  for (final entry in (env['PATH'] ?? '').split(separator)) {
+    if (entry.isEmpty) continue;
+    final candidate = '$entry/$dartName';
+    if (isFile(candidate)) return candidate;
+  }
+
+  return dartName;
+}

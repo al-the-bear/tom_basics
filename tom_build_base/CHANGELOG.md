@@ -1,3 +1,32 @@
+## 2.16.0
+
+### Added — `resolveDartExecutable`, so a compiled tool can spawn `dart` (sce51)
+
+`Platform.resolvedExecutable` is the Dart runtime ONLY under `dart run`. An
+AOT-compiled tom CLI **is** its own `resolvedExecutable`, so
+`Process.run(Platform.resolvedExecutable, ['analyze', ...])` re-invokes the
+tool.
+
+That is not hypothetical. d4rtgen's `--verify-output` did exactly this: the
+child parsed `analyze` as a positional, generated bridges in the working
+directory, printed nothing the parent recognised as a diagnostic and exited 0 —
+so the parent reported "N generated file(s) analysed clean" having analysed
+nothing. **The verification was a silent no-op in every compiled run.** It only
+became visible when the flag was made default-on, at which point the child
+verified too and it became a fork bomb; 69 processes made the point that three
+years of green "analysed clean" lines had not.
+
+`resolveDartExecutable` answers the same "is this process the Dart runtime?"
+question `toolOriginLine` already asks, and lives beside it. Order: the
+executable itself when it IS `dart`, then `DART_SDK`, then `FLUTTER_ROOT`'s
+bundled SDK, then `PATH`, then the bare name `dart`. The last resort is
+deliberately a bare name rather than the current executable — a command that
+cannot be found fails loudly, where one that re-enters the tool does not fail
+at all.
+
+Seven tests; the load-bearing one asserts only that an AOT tool never resolves
+to ITSELF, because every other answer is survivable and that one is not.
+
 ## 2.15.0
 
 ### Added — negatable flags and flag defaults in the v2 CLI parser (sce51)

@@ -95,4 +95,117 @@ void main() {
       );
     });
   });
+
+  // SCE51: the same "is this process the Dart runtime?" question the origin
+  // line answers, asked where getting it wrong is not cosmetic.
+  //
+  // d4rtgen spawned `Platform.resolvedExecutable analyze ...` for
+  // `--verify-output`. Under `dart run` that is the Dart runtime and it works;
+  // as an AOT binary it is d4rtgen itself, which parsed `analyze` as a
+  // positional, generated bridges in the working directory, printed nothing
+  // the parent recognised and exited 0 — so the parent reported "analysed
+  // clean" having analysed nothing. Silent in every compiled run, and a fork
+  // bomb once the flag became default-on.
+  group('resolveDartExecutable', () {
+    test(
+      'BB-DARTEXE-1: the Dart runtime resolves to itself [2026-09-18] (PASS)',
+      () {
+        expect(
+          resolveDartExecutable(
+            resolvedExecutable: '/sdk/bin/dart',
+            environment: const {},
+            exists: (_) => false,
+          ),
+          '/sdk/bin/dart',
+        );
+      },
+    );
+
+    test(
+      'BB-DARTEXE-2: an AOT tool never resolves to ITSELF [2026-09-18] (PASS)',
+      () {
+        // The whole point. Any answer but the tool's own path is survivable;
+        // this one re-enters the tool.
+        const tool = '/tom_binaries/tom/darwin-arm64/d4rtgen';
+
+        expect(
+          resolveDartExecutable(
+            resolvedExecutable: tool,
+            environment: const {},
+            exists: (_) => false,
+          ),
+          isNot(tool),
+        );
+      },
+    );
+
+    test(
+      'BB-DARTEXE-3: DART_SDK is used when it holds a dart [2026-09-18] (PASS)',
+      () {
+        expect(
+          resolveDartExecutable(
+            resolvedExecutable: '/bin/d4rtgen',
+            environment: const {'DART_SDK': '/opt/dart'},
+            exists: (path) => path == '/opt/dart/bin/dart',
+          ),
+          '/opt/dart/bin/dart',
+        );
+      },
+    );
+
+    test(
+      'BB-DARTEXE-4: FLUTTER_ROOT supplies the bundled SDK [2026-09-18] (PASS)',
+      () {
+        expect(
+          resolveDartExecutable(
+            resolvedExecutable: '/bin/d4rtgen',
+            environment: const {'FLUTTER_ROOT': '/flutter'},
+            exists: (path) => path == '/flutter/bin/cache/dart-sdk/bin/dart',
+          ),
+          '/flutter/bin/cache/dart-sdk/bin/dart',
+        );
+      },
+    );
+
+    test('BB-DARTEXE-5: PATH is searched in order [2026-09-18] (PASS)', () {
+      expect(
+        resolveDartExecutable(
+          resolvedExecutable: '/bin/d4rtgen',
+          environment: const {'PATH': '/empty:/usr/local/bin:/usr/bin'},
+          exists: (path) => path == '/usr/local/bin/dart',
+        ),
+        '/usr/local/bin/dart',
+      );
+    });
+
+    test('BB-DARTEXE-6: with nothing to find, the bare name is the answer '
+        '[2026-09-18] (PASS)', () {
+      // A command that cannot be found fails loudly; one that re-enters the
+      // tool does not fail at all, which is the failure being avoided.
+      expect(
+        resolveDartExecutable(
+          resolvedExecutable: '/bin/d4rtgen',
+          environment: const {'PATH': '/nowhere'},
+          exists: (_) => false,
+        ),
+        'dart',
+      );
+    });
+
+    test(
+      'BB-DARTEXE-7: an SDK named in the environment beats PATH [2026-09-18] '
+      '(PASS)',
+      () {
+        expect(
+          resolveDartExecutable(
+            resolvedExecutable: '/bin/d4rtgen',
+            environment: const {'DART_SDK': '/opt/dart', 'PATH': '/usr/bin'},
+            exists: (path) =>
+                path == '/opt/dart/bin/dart' || path == '/usr/bin/dart',
+          ),
+          '/opt/dart/bin/dart',
+        );
+      },
+    );
+  });
 }
