@@ -299,6 +299,34 @@ class CliArgs {
   /// Whether this is a help-related mode (help, version, list, guide).
   bool get isHelpMode => help || version || listOnly || guide;
 
+  /// The options that apply to [commandName], written in EITHER position.
+  ///
+  /// The parser routes an option by where it appears: one written before the
+  /// command name lands in [extraOptions], one written after it in
+  /// `commandArgs[<command>].options`. An executor that reads only one of
+  /// those silently ignores the other position — and the documented form is
+  /// the trailing one (`testkit :baseline --test-args="..."`), so the option
+  /// everyone is told to pass was the one being dropped.
+  ///
+  /// Both are merged here, with the per-command value winning, so an executor
+  /// asks what its options ARE rather than where they were typed.
+  ///
+  /// [aliases] matters because the parser keys per-command options by the name
+  /// the CALLER typed: `testkit :b --test-args=X` keys them under `b`, not
+  /// `baseline`. A command with short forms must name them, exactly as its
+  /// [CommandDefinition] declares them.
+  Map<String, dynamic> optionsFor(
+    String commandName, {
+    List<String> aliases = const [],
+  }) {
+    final merged = <String, dynamic>{...extraOptions};
+    for (final key in [commandName, ...aliases]) {
+      final perCommand = commandArgs[key];
+      if (perCommand != null) merged.addAll(perCommand.options);
+    }
+    return merged;
+  }
+
   /// Create a copy of this instance with the given fields replaced.
   ///
   /// Every field defaults to the current value, so a caller only names what it

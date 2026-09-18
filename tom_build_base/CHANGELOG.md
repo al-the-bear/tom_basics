@@ -1,3 +1,30 @@
+## 2.13.0
+
+### Added — `CliArgs.optionsFor`, so an option means the same in either position
+
+The parser routes an option by WHERE it is written: before the command name it
+lands in `extraOptions`, after it in `commandArgs[<command>].options`. An
+executor reading only one silently ignored the other, and the documented form
+is the trailing one — `CLAUDE.md` shows `testkit :test --test-args="..."` and
+testkit's own help prints `testkit :baseline --test-args="--tags e2e"`. So the
+form everyone is told to use was the one being dropped:
+`testkit :baseline --test-args="--name nomatch"` ran the whole suite and
+reported on tests the caller never asked about.
+
+`optionsFor(commandName, {aliases})` merges both, per-command winning, so an
+executor asks what its options ARE rather than where they were typed.
+
+`aliases` is not optional in practice: the parser keys per-command options by
+the name the CALLER typed, so `testkit :b --test-args=X` keys them under `b`.
+A command with short forms must name them. BB-OPTPOS-5 pins that, including
+that the lookup finds nothing without them.
+
+This belongs here rather than in each tool. buildkit had already worked around
+it privately in EIGHT executors — bumpversion, compiler, publisher, runner,
+cleanup, versioner, dependencies and buildsorter — each carrying its own copy
+of "per-command options for this command, else global". Those copies also only
+chose between the two rather than merging them.
+
 ## 2.12.0
 
 ### Fixed — `-n` / `--dry-run` is refused by tools that do not implement it
