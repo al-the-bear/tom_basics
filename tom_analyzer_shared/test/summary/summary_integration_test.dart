@@ -199,26 +199,40 @@ void main() {
 
   group('Edge cases with real filesystem', () {
     test('handles package directory with no lib/ folder', () async {
-      // Create a fake "package" directory with no lib/
-      final fakePkgDir = Directory('${tempDir.path}/fake_pkg');
-      fakePkgDir.createSync();
+      // A real package directory with no lib/: nothing to summarise, so no
+      // summary and no failure. Reachable only since SCF32, which takes the
+      // package's location from package_config.json — before that the test
+      // could not point the generator at its fixture, and measured a
+      // NONEXISTENT path instead, which is now a failure of its own.
+      final project = Directory('${tempDir.path}/project')..createSync();
+      final fakePkgDir = Directory('${tempDir.path}/fake_pkg')..createSync();
       File('${fakePkgDir.path}/pubspec.yaml')
           .writeAsStringSync('name: fake_pkg\n');
-
-      // The generator checks for lib/ directory — should return false
-      const dep = PackageDependency(
-        name: 'fake_pkg',
-        version: '1.0.0',
-        source: 'hosted',
-        hostedUrl: 'https://pub.dev',
+      File('${project.path}/pubspec.lock').writeAsStringSync('''
+packages:
+  fake_pkg:
+    dependency: "direct main"
+    description:
+      name: fake_pkg
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.0.0"
+''');
+      File('${project.path}/.dart_tool/package_config.json')
+        ..createSync(recursive: true)
+        ..writeAsStringSync(
+          '{"configVersion": 2, "packages": [{"name": "fake_pkg", '
+          '"rootUri": "${fakePkgDir.uri}", "packageUri": "lib/"}]}',
+        );
+      final resolver = DependencyResolver();
+      final deps = await resolver.resolveVersionedDependencies(project.path);
+      final dep = deps.singleWhere((d) => d.name == 'fake_pkg');
+      final localGenerator = SummaryGenerator(
+        cacheManager: cacheManager,
+        dependencyResolver: resolver,
       );
 
-      // generateSummary resolves via getHostedPackagePath which won't
-      // point to our fake dir. Instead test _findPublicLibraries behavior
-      // indirectly by verifying no summary is produced for
-      // a nonexistent path
-      final result = await generator.generateSummary(dep);
-      expect(result, isFalse);
+      expect(await localGenerator.generateSummary(dep), isFalse);
     });
 
     test('cache stats reflect real summary files', () async {

@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
@@ -26,6 +27,55 @@ import 'package_dependency.dart';
 /// final cacheable = deps.where((d) => d.isCacheable).toList();
 /// ```
 class DependencyResolver {
+  /// Package roots as the project's `.dart_tool/package_config.json` records
+  /// them, by package name. Filled by [resolveVersionedDependencies].
+  ///
+  /// SCF32. This is the authoritative answer to "where is package X": pub
+  /// writes it for exactly that purpose, on every platform, whatever
+  /// `PUB_CACHE` or hosted URL is in play. The guesses in
+  /// [getHostedPackagePath] and [getSdkPackagePath] — `$HOME/.pub-cache` and
+  /// `which flutter` — are wrong on Windows, where the pub cache lives under
+  /// `%LOCALAPPDATA%\Pub\Cache` and `which` is not a command. There every
+  /// hosted package resolved to nothing, so no hosted summary was built, while
+  /// the Flutter SDK packages (found through `FLUTTER_ROOT`) still were —
+  /// linked against a `vector_math` the analyzer could not see, with `Matrix4`
+  /// recorded in the cached `flutter` summary as an invalid type.
+  final Map<String, String> _packageRoots = {};
+
+  /// The root recorded for [packageName] in the last project resolved, or null.
+  String? packageRootFromConfig(String packageName) =>
+      _packageRoots[packageName];
+
+  /// Reads [projectRoot]'s `.dart_tool/package_config.json` into
+  /// [_packageRoots]. A missing or unreadable file leaves the map empty and
+  /// the lookups fall back to their guesses.
+  void _loadPackageRoots(String projectRoot) {
+    _packageRoots.clear();
+    final config = File(
+      p.join(projectRoot, '.dart_tool', 'package_config.json'),
+    );
+    if (!config.existsSync()) return;
+    try {
+      final json = jsonDecode(config.readAsStringSync());
+      final packages = (json as Map<String, dynamic>)['packages'] as List?;
+      if (packages == null) return;
+      final base = Uri.file(p.normalize(p.absolute(config.path)));
+      for (final entry in packages) {
+        if (entry is! Map) continue;
+        final name = entry['name'];
+        final rootUri = entry['rootUri'];
+        if (name is! String || rootUri is! String) continue;
+        final root = base.resolve(rootUri);
+        if (root.scheme != 'file') continue;
+        _packageRoots[name] = p.normalize(root.toFilePath());
+      }
+    } on FormatException {
+      _packageRoots.clear();
+    } on FileSystemException {
+      _packageRoots.clear();
+    }
+  }
+
   /// Gets the Dart SDK version.
   ///
   /// Extracts the version from `Platform.version` which has format:
@@ -76,6 +126,7 @@ class DependencyResolver {
     String projectRoot,
   ) async {
     final lockFile = File(p.join(projectRoot, 'pubspec.lock'));
+    _loadPackageRoots(projectRoot);
 
     if (!await lockFile.exists()) {
       throw FileSystemException(
@@ -269,12 +320,11 @@ class DependencyResolver {
   String? getHostedPackagePath(PackageDependency dependency) {
     if (dependency.source != 'hosted') return null;
 
+    final fromConfig = _packageRoots[dependency.name];
+    if (fromConfig != null) return fromConfig;
+
     // Standard pub cache location
-    final pubCache = Platform.environment['PUB_CACHE'] ??
-        p.join(
-          Platform.environment['HOME'] ?? '',
-          '.pub-cache',
-        );
+    final pubCache = Platform.environment['PUB_CACHE'] ?? _defaultPubCache();
 
     // Hosted packages are in pub-cache/hosted/pub.dev/
     final hostDir = dependency.hostedUrl?.replaceAll('https://', '') ?? 'pub.dev';
@@ -286,11 +336,24 @@ class DependencyResolver {
     );
   }
 
+  /// Where pub keeps its cache when `PUB_CACHE` is unset — per platform, as
+  /// pub itself decides it.
+  static String _defaultPubCache() {
+    final env = Platform.environment;
+    if (Platform.isWindows) {
+      return p.join(env['LOCALAPPDATA'] ?? '', 'Pub', 'Cache');
+    }
+    return p.join(env['HOME'] ?? '', '.pub-cache');
+  }
+
   /// Gets the package location for an SDK dependency.
   ///
   /// Returns the path in the Flutter/Dart SDK where the package is located.
   Future<String?> getSdkPackagePath(PackageDependency dependency) async {
     if (dependency.source != 'sdk') return null;
+
+    final fromConfig = _packageRoots[dependency.name];
+    if (fromConfig != null) return fromConfig;
 
     if (dependency.sdkName == 'flutter') {
       final sdkPath = await getFlutterSdkPath();

@@ -64,9 +64,12 @@ void main() {
         expect(result, isFalse);
       });
 
-      test('returns false for package without public libraries', () async {
-        // A hosted package that resolves to a path but has no lib/ directory
-        // getHostedPackagePath constructs a path regardless of existence
+      test('throws for a hosted package that is not on disk (SCF32)',
+          () async {
+        // This used to return false as though the package were EMPTY. That is
+        // the answer every hosted package got on Windows, where the pub-cache
+        // guess was wrong, and it let dependents be summarised without them.
+        // A package that is not where the lookup points is a failure.
         const dep = PackageDependency(
           name: 'nonexistent_pkg_xyz_abc',
           version: '99.99.99',
@@ -74,8 +77,14 @@ void main() {
           hostedUrl: 'https://pub.dev',
         );
 
-        final result = await generator.generateSummary(dep);
-        expect(result, isFalse);
+        expect(
+          () => generator.generateSummary(dep),
+          throwsA(isA<StateError>().having(
+            (e) => e.message,
+            'message',
+            contains('not found at'),
+          )),
+        );
       });
 
       test('throws for SDK package without resolvable path', () async {
@@ -130,9 +139,10 @@ void main() {
         expect(result.failed, equals(0));
       });
 
-      test('skips hosted package without public libraries', () async {
+      test('counts a hosted package missing from disk as failed (SCF32)',
+          () async {
         // getHostedPackagePath returns a path, but the package doesn't exist
-        // on disk, so no public libraries are found and it's skipped
+        // on disk: that is a failure, not a package with no libraries.
         final deps = [
           const PackageDependency(
             name: 'nonexistent_xyz',
@@ -143,9 +153,10 @@ void main() {
         ];
 
         final result = await generator.generateMissingSummaries(deps);
-        expect(result.skipped, equals(1));
+        expect(result.skipped, equals(0));
         expect(result.generated, equals(0));
-        expect(result.failed, equals(0));
+        expect(result.failed, equals(1));
+        expect(result.errors['nonexistent_xyz'], contains('not found at'));
       });
 
       test('calls progress callback', () async {
@@ -193,8 +204,9 @@ void main() {
 
         final result = await generator.generateMissingSummaries(deps);
         // cached_a: hasSummary=true → skipped
-        // missing_xyz: hasSummary=false → generateSummary returns false (no libs) → skipped
-        expect(result.skipped, equals(2));
+        // missing_xyz: hasSummary=false → not on disk → failed (SCF32)
+        expect(result.skipped, equals(1));
+        expect(result.failed, equals(1));
         expect(result.generated, equals(0));
       });
 

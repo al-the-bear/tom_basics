@@ -115,6 +115,17 @@ class SummaryGenerator {
       );
     }
 
+    // SCF32: a package that is not where the lookup says is a FAILURE, not
+    // an empty package. Reporting it as "no public libraries" hid every
+    // hosted package on Windows, and let its dependents be summarised
+    // without it.
+    if (!Directory(packagePath).existsSync()) {
+      throw StateError(
+        'Package ${dependency.name}@${dependency.version} not found at '
+        '$packagePath',
+      );
+    }
+
     // Find all library files (public and internal)
     final libraryFiles = _findAllLibraries(packagePath);
     if (libraryFiles.isEmpty) {
@@ -233,7 +244,15 @@ class SummaryGenerator {
     final cacheable = dependencies.where((d) => d.isCacheable).toList();
 
     // Build topological generation order so dependencies come first
-    final ordered = await _buildGenerationOrder(cacheable);
+    final graph = await buildDirectDependencyGraph(cacheable);
+    final ordered = await _buildGenerationOrder(
+      cacheable,
+      directDependencyGraph: graph,
+    );
+
+    // Packages whose summary could not be built in this pass, and so cannot
+    // be linked against. See the check before each generation below.
+    final unavailable = <String>{};
 
     // Collect already-cached summary paths as available for new generations
     final availableSummaries = <String>[];
@@ -260,6 +279,25 @@ class SummaryGenerator {
         continue;
       }
 
+      // SCF32: never link a summary against a dependency that has none. The
+      // analyzer would resolve that dependency from nowhere, record every
+      // type it contributes as invalid, and the cache would keep the result
+      // as a fresh, complete-looking bundle — which is how `Matrix4` became
+      // an invalid type in Windows' `flutter` summary. Leaving this package
+      // unsummarised costs speed, not correctness: its source is analysed
+      // directly.
+      final blocking = (graph[dep.name] ?? const <String>{})
+          .where(unavailable.contains)
+          .toList()
+        ..sort();
+      if (blocking.isNotEmpty) {
+        failed++;
+        unavailable.add(dep.name);
+        errors[dep.name] = 'not generated: depends on ${blocking.join(', ')}, '
+            'whose summary could not be built';
+        continue;
+      }
+
       try {
         final success = await generateSummary(
           dep,
@@ -279,6 +317,7 @@ class SummaryGenerator {
         }
       } catch (e) {
         failed++;
+        unavailable.add(dep.name);
         errors[dep.name] = e.toString();
       }
     }
@@ -290,6 +329,21 @@ class SummaryGenerator {
       errors: errors,
     );
   }
+
+  /// The first line of every fingerprint, naming the rules the bundle was
+  /// built under.
+  ///
+  /// SCF32. A bundle's fingerprint records WHICH closure it was linked
+  /// against, never WHETHER every member of that closure had a summary at the
+  /// time. On Windows the hosted packages had none, and `flutter@3.44.6.sum`
+  /// was linked anyway: `Matrix4` became an invalid type inside a bundle
+  /// whose fingerprint matched perfectly, so no later run could tell it from
+  /// a sound one. [generateMissingSummaries] now refuses such a link; this
+  /// line makes every bundle built before it — which may carry the damage —
+  /// stale once, fleet-wide, so the cache is rebuilt under the new rule.
+  ///
+  /// Change it only when bundles built under the old rules must not be trusted.
+  static const fingerprintFormat = 'fingerprint-format: 2';
 
   /// Computes, for each cacheable package, a fingerprint of the exact
   /// versioned dependency closure its summary is linked against.
@@ -346,7 +400,7 @@ class SummaryGenerator {
       final closure = closureOf(
         dep.name,
       ).map((n) => '$n@${nameToDep[n]!.version}').toList()..sort();
-      fingerprints[dep.name] = closure.join('\n');
+      fingerprints[dep.name] = [fingerprintFormat, ...closure].join('\n');
     }
     return fingerprints;
   }
@@ -606,15 +660,17 @@ class SummaryGenerator {
   /// Packages with circular dependencies (rare but possible) are appended
   /// at the end after all acyclic packages.
   Future<List<PackageDependency>> _buildGenerationOrder(
-    List<PackageDependency> deps,
-  ) async {
+    List<PackageDependency> deps, {
+    Map<String, Set<String>>? directDependencyGraph,
+  }) async {
     final nameToDepMap = <String, PackageDependency>{};
     for (final dep in deps) {
       nameToDepMap[dep.name] = dep;
     }
 
     // Build dependency graph: dependsOn[A] = {B, C} means A depends on B and C
-    final dependsOn = await buildDirectDependencyGraph(deps);
+    final dependsOn =
+        directDependencyGraph ?? await buildDirectDependencyGraph(deps);
     // Reverse graph: dependedBy[B] = {A} means A depends on B
     final dependedBy = <String, Set<String>>{};
     for (final entry in dependsOn.entries) {

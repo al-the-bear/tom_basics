@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.7.6
+
+- **Package locations come from `.dart_tool/package_config.json` (scf32).**
+  `DependencyResolver` guessed a hosted package at `$HOME/.pub-cache/…` and
+  the Flutter SDK through `which flutter`. On Windows the pub cache is under
+  `%LOCALAPPDATA%\Pub\Cache` and `which` is not a command, so every hosted
+  package reported "no public libraries" and got no summary. The roots pub
+  records in the package config are now read first (`resolveVersionedDependencies`
+  loads them; `packageRootFromConfig` exposes them). The fallback guess also
+  knows Windows' pub-cache location.
+- **A summary is never linked against a dependency that has none.** On
+  Windows the Flutter SDK packages were still found, so `flutter@3.44.6.sum`
+  was built against a `vector_math` with no summary and no resolvable source:
+  `Matrix4` went into it as an invalid type, and a bridge generator reading it
+  lost every API that mentions `Matrix4`. `generateMissingSummaries` now skips a
+  package whose cacheable dependency failed in the same pass, reporting it in
+  `errors`; its source is analysed directly instead.
+- **A package that is not on disk is a failure, not an empty package.**
+  `generateSummary` throws when the resolved package directory does not exist,
+  where it used to report "no public libraries" and return `false`.
+- **Fingerprints carry a format line** (`SummaryGenerator.fingerprintFormat`).
+  A bundle's fingerprint names the closure it was linked against, not whether
+  every member of it had a summary, so a poisoned bundle looked fresh. Every
+  bundle built before this release is therefore stale once and rebuilt.
+
 ## 0.7.5
 
 - **Summary-cache invalidation is now closure-complete, so a poisoned cache
