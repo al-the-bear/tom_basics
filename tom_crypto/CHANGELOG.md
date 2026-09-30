@@ -1,3 +1,24 @@
+## 1.2.2
+
+- **Changed: `TomClientJwtToken.payload` is read-only.** It returned the live
+  decoded map, so a reader of a token could edit a claim with one statement and
+  the token afterwards could not tell what it decoded from what somebody
+  assigned. It now returns an unmodifiable view; assigning, inserting, removing
+  or clearing throws `UnsupportedError`, and a refused edit leaves the next read
+  unchanged. `test/jwt_payload_readonly_test.dart` pins each case.
+- **Fixed: `validUntil` and `exp` are the same instant, in UTC.** A token
+  carried both, written from two clock reads in two encodings: `exp` in epoch
+  seconds and `validUntil` as an offset-less local ISO string, which means
+  whatever the *reader's* zone says it means. A token minted in one zone and
+  read in another was out by the difference. Issue now takes one clock read,
+  in UTC, truncated to whole seconds; `validUntil`/`validFrom` end in `Z`, and
+  `exp`/`nbf` are written into the payload from that same instant instead of
+  being recomputed by `sign`. `test/jwt_validity_window_test.dart` asserts
+  `exp == validUntil` and `nbf == validFrom` to the second.
+- **Changed: requires `tom_basics` 3.0.0 or later.**
+- **Removed: the unused `lib/src/version.versioner.dart` stamp.** Nothing
+  exported or read it.
+
 ## 1.2.1
 
 - **Fixed: a token's validity window was never quite the width it was asked
