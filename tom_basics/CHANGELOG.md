@@ -1,3 +1,15 @@
+## 3.1.2
+
+- **Documented: why a console line names two isolates.**
+  `TomConsoleLogOutput.output` writes `<rendering>-<originating>`: the isolate
+  the output runs in, read at format time, then the `isolateName` the entry
+  carries. Logged and printed in the same isolate they are one name, which is
+  why an ordinary line reads `main-main`; the pair is kept for an entry
+  rendered somewhere other than where it was logged. Behaviour is unchanged.
+- **Added: `test/console_log_line_test.dart`**, the first test of the rendered
+  line — timestamp, the isolate pair, level, message, the bracketed origin, and
+  the stderr/stdout split.
+
 ## 3.1.1
 
 - **Fixed: `TomLogOutput.output` declared `origin` as a required positional

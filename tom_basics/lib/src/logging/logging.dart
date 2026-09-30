@@ -703,6 +703,15 @@ class TomConsoleLogOutput extends TomLogOutput {
   /// Whether to use extended format with additional details.
   bool useExtendedFormat = false;
 
+  /// Writes one line: `<timestamp> <rendering>-<originating> <level> <message>`,
+  /// then ` [<origin>]` when [origin] is given.
+  ///
+  /// The two isolate names are different questions. `<rendering>` is the
+  /// isolate this output runs in, read now; `<originating>` is [isolateName],
+  /// the isolate the entry says it came from. For an entry logged and printed
+  /// in the same isolate they are the same name, so an ordinary line reads
+  /// `main-main`; the pair is kept for an entry rendered somewhere other than
+  /// where it was logged, where it is the only record of both.
   @override
   void output(
     TomLogLevel loggerLevel,
