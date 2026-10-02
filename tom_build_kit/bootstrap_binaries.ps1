@@ -17,7 +17,7 @@ function Write-Warn($msg) {
 # Prompts interactively when stdin is a console. When stdin is redirected (e.g.
 # run over SSH with no interactive console, as the fleet build does) it does not
 # block: it applies $default ('y' or 'n', default 'n') and reports the
-# auto-decision. This keeps a non-interactive build from hanging — Read-Host on
+# auto-decision. This keeps a non-interactive build from hanging - Read-Host on
 # a redirected/EOF stdin would otherwise loop forever returning empty.
 function Ask-YesNo($prompt, $default = 'n') {
   if ([Console]::IsInputRedirected) {
@@ -44,7 +44,7 @@ function Detect-Platform {
   return 'win32-x64'
 }
 
-# Always use the real system git — never a buildkit-compiled wrapper that may
+# Always use the real system git - never a buildkit-compiled wrapper that may
 # have been placed in TOM_BINARY_PATH (which this script adds to PATH below).
 # Check well-known install locations first, then fall back to PATH.
 function Resolve-SystemGit {
@@ -73,26 +73,44 @@ $workspaceHint = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..')).Path
 $envChanged = $false
 $pathChanged = $false
 
-if (-not (Test-Path $tacLink)) {
-  Write-Warn "No $tacLink symlink exists."
-  if ([Console]::IsInputRedirected) {
-    $target = $workspaceHint
-  } else {
-    $target = Read-Host "Enter workspace directory for $tacLink [$workspaceHint]"
-    if (-not $target) { $target = $workspaceHint }
-  }
-  New-Item -ItemType SymbolicLink -Path $tacLink -Target $target | Out-Null
-  Write-Host "Created symlink: $tacLink -> $target"
+# When TOM_BINARY_PATH is already set (the fleet build always pins it), the
+# tom_binaries repository is simply its parent directory, so the ~/tac junction
+# is not needed and must not be relied on. Over SSH, Windows logs the session on
+# as a NETWORK logon, and in such a session the ~/tac junction cannot be
+# traversed at all ("file not found" inside it, while the junction itself
+# exists). Looking for tom_binaries through ~/tac therefore failed on every
+# fleet build on legiondary01 and fell through to a doomed `git clone` into it.
+$pinnedRepo = $null
+if ($env:TOM_BINARY_PATH) {
+  $candidate = Split-Path -Parent $env:TOM_BINARY_PATH
+  if ($candidate -and (Test-Path (Join-Path $candidate '.git'))) { $pinnedRepo = $candidate }
 }
 
-$tomBinaries = Join-Path $tacLink 'tom_binaries'
-if (-not (Test-Path $tomBinaries)) {
-  Write-Warn "No tom_binaries directory found in $tacLink"
-  if (Ask-YesNo "Clone tom_binaries into $tomBinaries?" 'y') {
-    & $systemGit clone https://github.com/al-the-bear/tom_binaries.git $tomBinaries
-    if ($LASTEXITCODE -ne 0) { throw 'git clone of tom_binaries failed.' }
-  } else {
-    throw 'Aborted: tom_binaries repository is required.'
+if ($pinnedRepo) {
+  $tomBinaries = $pinnedRepo
+  Write-Host "Using tom_binaries repository from TOM_BINARY_PATH: $tomBinaries"
+} else {
+  if (-not (Test-Path $tacLink)) {
+    Write-Warn "No $tacLink symlink exists."
+    if ([Console]::IsInputRedirected) {
+      $target = $workspaceHint
+    } else {
+      $target = Read-Host "Enter workspace directory for $tacLink [$workspaceHint]"
+      if (-not $target) { $target = $workspaceHint }
+    }
+    New-Item -ItemType SymbolicLink -Path $tacLink -Target $target | Out-Null
+    Write-Host "Created symlink: $tacLink -> $target"
+  }
+
+  $tomBinaries = Join-Path $tacLink 'tom_binaries'
+  if (-not (Test-Path $tomBinaries)) {
+    Write-Warn "No tom_binaries directory found in $tacLink"
+    if (Ask-YesNo "Clone tom_binaries into $tomBinaries?" 'y') {
+      & $systemGit clone https://github.com/al-the-bear/tom_binaries.git $tomBinaries
+      if ($LASTEXITCODE -ne 0) { throw 'git clone of tom_binaries failed.' }
+    } else {
+      throw 'Aborted: tom_binaries repository is required.'
+    }
   }
 }
 
@@ -116,7 +134,7 @@ if (-not $tomBinaryPath) {
 $platformDir = Join-Path $tomBinaryPath $Platform
 if (-not (Test-Path $platformDir)) {
   Write-Warn "Missing platform directory: $platformDir"
-  # Required output dir → auto-yes when non-interactive.
+  # Required output dir -> auto-yes when non-interactive.
   if (Ask-YesNo "Create $platformDir?" 'y') {
     New-Item -ItemType Directory -Path $platformDir -Force | Out-Null
   } else {
