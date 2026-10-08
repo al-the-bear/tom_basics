@@ -42,9 +42,9 @@ dependencies:
     path: ../../basics/tom_tools
 ```
 
-It depends (by path) on [`tom_crypto`](../tom_crypto) for `RsaKeyHelper`, plus
-`pointycastle` / `asn1lib` / `cryptography` for the underlying RSA primitives.
-Requires the Dart SDK `^3.9.2`.
+Its one dependency is [`tom_crypto`](../tom_crypto) (by path), which supplies
+`RsaKeyHelper` and the RSA primitives underneath it. Requires the Dart SDK
+`^3.9.2`.
 
 In practice you rarely *depend* on `tom_tools` — you run its tool from a checkout
 of the package (see [Running the key generator](#running-the-key-generator)).

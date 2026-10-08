@@ -8,14 +8,6 @@ publish_to: none
 environment:
   sdk: ^3.9.2
 
-# Add regular dependencies here.
 dependencies:
-  path: ^1.9.0
-  asn1lib:
-  cryptography: ^2.9.0
   tom_crypto:
     path: ../tom_crypto
-
-dev_dependencies:
-  lints: ^6.0.0
-  test: ^1.25.6
