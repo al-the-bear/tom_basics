@@ -245,6 +245,71 @@ void main() {
     });
   });
 
+  group('BB-V2-SCN-ALWAYS: FolderScanner honours kAlwaysSkipDirectories [2026-10-08]', () {
+    // buildkit's pipelines walk with FolderScanner, which ignored the
+    // always-skip list (only scanForDartProjects used it): a recursive scan
+    // descended into nested ztmp/ scratch copies, build/ outputs and the _ai
+    // state mount (it built _ai/quests/tom_brain/bench). al_the_bear binbuild2.
+    late Directory tempDir;
+    late String tempPath;
+
+    setUp(() {
+      tempDir = Directory.systemTemp.createTempSync('folder_scanner_always_');
+      tempPath = tempDir.path;
+    });
+
+    tearDown(() {
+      if (tempDir.existsSync()) tempDir.deleteSync(recursive: true);
+    });
+
+    void createFile(String relativePath, [String content = '']) {
+      final file = File(p.join(tempPath, relativePath));
+      file.parent.createSync(recursive: true);
+      file.writeAsStringSync(content);
+    }
+
+    test('BB-V2-SCN-ALWAYS-1: nested ztmp, build, node_modules and _ai are not scanned', () async {
+      createFile('pkg/real/pubspec.yaml');
+      createFile('pkg/real/ztmp/copy/pubspec.yaml');
+      createFile('pkg/real/build/out/pubspec.yaml');
+      createFile('tools/ztmp/doc_blocks/pubspec.yaml');
+      createFile('web/node_modules/dep/pubspec.yaml');
+      createFile('_ai/quests/q/bench/pubspec.yaml');
+
+      final results = await FolderScanner().scan(tempPath, recursive: true);
+      final rel = results.map((f) => p.relative(f.path, from: tempPath)).toList();
+
+      expect(rel, contains(p.join('pkg', 'real')));
+      for (final skipped in ['ztmp', 'build', 'node_modules', '_ai']) {
+        expect(
+          rel.where((r) => p.split(r).contains(skipped)),
+          isEmpty,
+          reason: '$skipped must never be scanned (found: $rel)',
+        );
+      }
+    });
+
+    test('BB-V2-SCN-ALWAYS-2: a symlinked _ai mount is not scanned either', () async {
+      createFile('state/quests/q/bench/pubspec.yaml');
+      createFile('container/app/pubspec.yaml');
+      Link(p.join(tempPath, 'container', '_ai')).createSync(p.join(tempPath, 'state'));
+
+      final results =
+          await FolderScanner().scan(p.join(tempPath, 'container'), recursive: true);
+      final rel = results
+          .map((f) => p.relative(f.path, from: p.join(tempPath, 'container')))
+          .toList();
+
+      expect(rel, contains('app'));
+      expect(rel.where((r) => p.split(r).contains('_ai')), isEmpty,
+          reason: 'the _ai link must not be followed (found: $rel)');
+    });
+
+    test('BB-V2-SCN-ALWAYS-3: _ai is in kAlwaysSkipDirectories', () {
+      expect(kAlwaysSkipDirectories, containsAll(<String>['ztmp', '_ai', 'build']));
+    });
+  });
+
   group('BB-V2-SCN-REC: FolderScanner Project Recursion [2026-06-15]', () {
     // These tests pin the recursion contract that keeps `:compiler` (and every
     // other scanning tool) from building a project's test/example *fixture*

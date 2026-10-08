@@ -4,6 +4,7 @@ import 'package:glob/glob.dart';
 import 'package:path/path.dart' as p;
 
 import '../folder/fs_folder.dart';
+import '../workspace_utils.dart' show kAlwaysSkipDirectories;
 
 /// Global skip file that blocks all tools.
 const kTomSkipYaml = 'tom_skip.yaml';
@@ -130,6 +131,11 @@ class FolderScanner {
 
           // Skip hidden directories
           if (name.startsWith('.')) continue;
+
+          // Build outputs, caches, scratch copies (ztmp) and the AI state
+          // mount (_ai) never hold projects to process — the same list
+          // scanForDartProjects honours.
+          if (kAlwaysSkipDirectories.contains(name)) continue;
 
           // Apply recursion exclusions
           if (_matchesAny(entity.path, name, recursionExclude)) continue;

@@ -1,3 +1,16 @@
+## 2.16.1
+
+### Fixed — `FolderScanner` honours `kAlwaysSkipDirectories`; `_ai` added (binbuild2)
+
+buildkit's pipelines walk with `FolderScanner`, but only `scanForDartProjects`
+applied the always-skip list. A recursive scan therefore descended into nested
+`ztmp/` scratch copies, `build/` outputs and the AI state mount: on
+tom_agent_container it processed 15 non-projects, among them
+`_ai/quests/tom_brain/bench` and 14 packages under nested `ztmp/` folders
+(one of them a `build/` dir). `FolderScanner` now skips every directory in
+`kAlwaysSkipDirectories`, and `_ai` (tom_agent_state) joins the list — quests
+park experiment packages there that must never be versioned or built.
+
 ## 2.16.0
 
 ### Added — `resolveDartExecutable`, so a compiled tool can spawn `dart` (sce51)

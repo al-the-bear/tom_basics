@@ -34,6 +34,10 @@ const kAlwaysSkipDirectories = <String>{
   // accumulate here for debugging; they carry stale dependency constraints and
   // must never be discovered, pub-updated, or built.
   'ztmp',
+  // AI state mount (tom_agent_state: quests, trails, notes). Quests park
+  // experiment packages there (e.g. _ai/quests/tom_brain/bench); they are
+  // not workspace projects and must not be versioned or built.
+  '_ai',
 };
 
 /// Find the workspace root by traversing upwards looking for workspace markers.
