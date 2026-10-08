@@ -154,7 +154,7 @@ Run summary: 20 ok · 0 skipped · 0 errors
 | [`bin/buildkit.dart`](bin/buildkit.dart) | The v2 entry point: `ToolRunner(tool: buildkitTool, executors: createBuildkitExecutors())`. |
 | [`bin/findproject.dart`](bin/findproject.dart) | A standalone project-resolver tool wrapped by a shell `goto()` function. |
 | [`test/`](test/) | 182 tests covering executors, pipelines, project scanning and git commands — each is a runnable usage example. |
-| [`tom_build_kit_sample`](../tom_devops_samples/tom_build_kit_sample/) | Authoring a small build tool / pipeline with buildkit against a fixture workspace *(planned — forward reference until the samples build-out lands)*. |
+| [`tom_build_kit_sample`](../../devops/tom_devops_samples/tom_build_kit_sample/) | Authoring a small build tool / pipeline with buildkit against a fixture workspace *(planned — forward reference until the samples build-out lands)*. |
 
 ---
 
@@ -399,8 +399,8 @@ and reusing the workspace understanding from `tom_build`.
 The shared CLI framework `tom_build_base` lives in the basics layer
 ([`tom_ai/basics/tom_build_base`](../../basics/tom_build_base/)) and is taken as
 a **hosted** dependency — buildkit consumes a published version, never a path
-override. The sibling kits [`tom_test_kit`](../tom_test_kit/) and
-[`tom_issue_kit`](../tom_issue_kit/) follow the same pattern.
+override. The sibling kits [`tom_test_kit`](../../devops/tom_test_kit/) and
+[`tom_issue_kit`](../../devops/tom_issue_kit/) follow the same pattern.
 
 ---
 
@@ -422,9 +422,9 @@ Related packages (don't duplicate — follow the link):
 | Package | Relationship |
 | ------- | ------------ |
 | [`tom_build_base`](../../basics/tom_build_base/) | The CLI / build framework buildkit is built on (`ToolRunner`, traversal, pipelines). |
-| [`tom_build`](../tom_build/) | The workspace analyzer + metadata buildkit's traversal builds on. |
-| [`tom_test_kit`](../tom_test_kit/) | Sibling kit — test tracking, same framework. |
-| [`tom_issue_kit`](../tom_issue_kit/) | Sibling kit — issue tracking, same framework. |
+| [`tom_build`](../../devops/tom_build/) | The workspace analyzer + metadata buildkit's traversal builds on. |
+| [`tom_test_kit`](../../devops/tom_test_kit/) | Sibling kit — test tracking, same framework. |
+| [`tom_issue_kit`](../../devops/tom_issue_kit/) | Sibling kit — issue tracking, same framework. |
 | [Tom DevOps map](../README.md) | The repository-level index for the whole devops toolchain. |
 
 ---

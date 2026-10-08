@@ -74,17 +74,17 @@ final output = 'ls -la'.toList();
 - [BuildKit User Guide](../doc/buildkit_user_guide.md) — Pipeline orchestrator
 - [Git Guide Mode](../doc/git_guide_mode.md) — Guided mode flows for git commands
 - [Standalone Guided Mode](../doc/standalone_guided_mode.md) — Guided mode for Docker, Dart, Flutter tools
-- [BuildKit Guided](../doc/buildkit_guided.md) — `bk -g` workspace build flow proposal
-- [Flutter Commands](../doc/flutter_buildkit_commands.md) — Proposed Flutter-specific BuildKit commands
-- [REPL Integration](../doc/tom_buildkit_repls.md) — Tom CLI / BuildKit REPL assessment
-- [Console UI Libraries](../doc/console_ui_libraries.md) — Library recommendations for interactive CLI
+- [BuildKit Guided](../doc/proposals/buildkit_guided.md) — `bk -g` workspace build flow proposal
+- [Flutter Commands](../doc/proposals/flutter_buildkit_commands.md) — Proposed Flutter-specific BuildKit commands
+- [REPL Integration](../doc/proposals/tom_buildkit_repls.md) — Tom CLI / BuildKit REPL assessment
+- [Console UI Libraries](../doc/proposals/console_ui_libraries.md) — Library recommendations for interactive CLI
 - [README](../README.md) — Quick start guide
 
 ## Related Packages
 
 - [tom_build_base](../../tom_build_base/) — Shared CLI infrastructure (navigation, project discovery)
-- [tom_d4rt_astgen](../../tom_d4rt_astgen/) — AST generator tool
-- [tom_analyzer](../../tom_analyzer/) — Code analysis tool
+- [tom_ast_generator](../../../d4rt/tom_ast_generator/) — AST generator tool
+- [tom_reflector](../../../reflection/tom_reflector/) — Code analysis tool
 
 ## Dependencies
 

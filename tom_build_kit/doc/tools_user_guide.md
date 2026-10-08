@@ -8,11 +8,11 @@ For the BuildKit pipeline orchestrator, see [buildkit_user_guide.md](buildkit_us
 
 This package extends the shared infrastructure from **tom_build_base**:
 
-- [CLI Tools Navigation](../../basics/tom_build_base/doc/cli_tools_navigation.md) — Standard CLI commands, execution modes, and navigation options
-- [Build Base User Guide](../../basics/tom_build_base/doc/build_base_user_guide.md) — V2 Tool Framework, configuration loading, project discovery
-- [Modes and Placeholders](../../basics/tom_build_base/doc/modes_and_placeholders.md) — Placeholder types, resolution order, and mode-specific defines
-- [Multi-Workspace Pipelines, Macros, and Defines](../../basics/tom_build_base/doc/multiws_pipelines_macros_defines.md) — Pipeline system, runtime macros, persistent defines
-- [Tool Inheritance and Nesting](../../basics/tom_build_base/doc/tool_inheritance_and_nesting.md) — copyWith patterns and nested tool wiring
+- [CLI Tools Navigation](../../tom_build_base/doc/cli_tools_navigation.md) — Standard CLI commands, execution modes, and navigation options
+- [Build Base User Guide](../../tom_build_base/doc/build_base_user_guide.md) — V2 Tool Framework, configuration loading, project discovery
+- [Modes and Placeholders](../../tom_build_base/doc/modes_and_placeholders.md) — Placeholder types, resolution order, and mode-specific defines
+- [Multi-Workspace Pipelines, Macros, and Defines](../../tom_build_base/doc/multiws_pipelines_macros_defines.md) — Pipeline system, runtime macros, persistent defines
+- [Tool Inheritance and Nesting](../../tom_build_base/doc/tool_inheritance_and_nesting.md) — copyWith patterns and nested tool wiring
 
 ---
 
@@ -1003,7 +1003,7 @@ buildkit :publisher
 
 Executes Dart scripts or expressions via the dcli runtime. Unlike other built-in commands, dcli spawns an external process.
 
-> **Note:** DCli is not a `ToolBase` subclass. It is only available as a BuildKit command (`:dcli`), not as a standalone binary within tom_build_kit. The dcli binary must be installed separately (see [tom_d4rt_dcli](../../xternal/tom_module_d4rt/tom_d4rt_dcli/)).
+> **Note:** DCli is not a `ToolBase` subclass. It is only available as a BuildKit command (`:dcli`), not as a standalone binary within tom_build_kit. The dcli binary must be installed separately (see [tom_d4rt_dcli](../../../d4rt/tom_d4rt_dcli/)).
 
 **Usage:**
 

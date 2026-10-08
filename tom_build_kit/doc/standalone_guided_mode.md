@@ -491,7 +491,7 @@ Step 5/5: Finalizing image...
 
 ### Library Dependencies
 
-See [console_ui_libraries.md](console_ui_libraries.md) for recommended packages:
+See [console_ui_libraries.md](proposals/console_ui_libraries.md) for recommended packages:
 - `interact` - Menus, spinners, confirmations
 - `chalkdart` - Terminal styling
 - `mason_logger` - Progress indicators

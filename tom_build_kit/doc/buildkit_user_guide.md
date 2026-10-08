@@ -838,8 +838,8 @@ buildkit help wiring         # Nested tool wiring via tom_master.yaml
 Help topics are automatically injected from `tom_master.yaml` configuration. The `placeholders` topic is always available as a default built-in topic.
 
 > For detailed documentation on these features, see:
-> - [Modes and Placeholders](../../basics/tom_build_base/doc/modes_and_placeholders.md) for placeholder types and resolution
-> - [Multi-Workspace Pipelines, Macros, and Defines](../../basics/tom_build_base/doc/multiws_pipelines_macros_defines.md) for the full pipeline, macro, and define system
+> - [Modes and Placeholders](../../tom_build_base/doc/modes_and_placeholders.md) for placeholder types and resolution
+> - [Multi-Workspace Pipelines, Macros, and Defines](../../tom_build_base/doc/multiws_pipelines_macros_defines.md) for the full pipeline, macro, and define system
 
 ---
 
@@ -888,7 +888,7 @@ buildkit -v -n test
 ```
 
 > For complete details on the design and implementation of tool wiring, see
-> [Tool Inheritance and Nesting](../../basics/tom_build_base/doc/tool_inheritance_and_nesting.md).
+> [Tool Inheritance and Nesting](../../tom_build_base/doc/tool_inheritance_and_nesting.md).
 
 ---
 
@@ -921,7 +921,7 @@ defines:
 When `--modes=DEV` is specified, both the global defines and the `DEV`-specific defines are active and available via `@{key}` placeholders. Mode names are case-sensitive.
 
 > For complete documentation on modes and defines, see
-> [Modes and Placeholders](../../basics/tom_build_base/doc/modes_and_placeholders.md).
+> [Modes and Placeholders](../../tom_build_base/doc/modes_and_placeholders.md).
 
 ---
 

@@ -69,7 +69,7 @@ flutterbuild -p ios --split-debug --obfuscate
 ```bash
 flutterbuild -g
 ```
-See [standalone_guided_mode.md](standalone_guided_mode.md#flutterbuild--g-proposed) for flow.
+See [standalone_guided_mode.md](../standalone_guided_mode.md#flutterbuild--g-proposed) for flow.
 
 ---
 

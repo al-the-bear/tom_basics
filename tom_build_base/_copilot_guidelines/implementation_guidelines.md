@@ -68,7 +68,7 @@ Before writing any code, understand **what** the code should do:
 - Note edge cases and error conditions
 - If the spec is unclear, clarify before proceeding
 
-For tom_build_base v2, the authoritative specification is [cli_v2_design.md](../doc/cli_v2_design.md).
+For tom_build_base v2, the authoritative specification is [cli_v2_design.md](cli_v2_design.md).
 
 ### 2. Tests First (TDD)
 
@@ -319,6 +319,6 @@ Before marking any implementation task complete:
 
 ## Related Documents
 
-- [cli_v2_design.md](../doc/cli_v2_design.md) — Authoritative specification for v2 API
+- [cli_v2_design.md](cli_v2_design.md) — Authoritative specification for v2 API
 - [build_base_user_guide.md](../doc/build_base_user_guide.md) — API documentation
 - [index.md](index.md) — Guidelines index

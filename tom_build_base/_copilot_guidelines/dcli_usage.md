@@ -76,4 +76,4 @@ final parentDir = dirname(filePath);
 
 - [DCli Overview](../../../../_copilot_guidelines/d4rt/dcli_overview.md) - General DCli documentation
 - [DCli Scripting Guide](../../../../_copilot_guidelines/d4rt/dcli_scripting_guide.md) - Complete API reference
-- [DCli Repository](../../dcli/) - Source code and examples
+- [DCli on pub.dev](https://pub.dev/packages/dcli) - Source code and examples
