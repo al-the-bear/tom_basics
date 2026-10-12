@@ -214,6 +214,14 @@ MCowBQYDK2VwAyEAEi7MNW0Q9T83UA3Rw+8DbspMgqeuxCqa2wXaWS+tHqY=
   /// The algorithm used for token signing.
   jwt.JWTAlgorithm algorithm;
 
+  /// The id of the signing [key], written as the `kid` header of every token
+  /// signed with this configuration; `null` writes none.
+  ///
+  /// A verifier that holds several keys — one being retired beside its
+  /// successor — uses it to pick the key a token was signed with, and a JSON
+  /// Web Key Set publishes each key under the same id.
+  String? keyId;
+
   // ---------------------------------------------------------------------------
   // Constructors
   // ---------------------------------------------------------------------------
@@ -339,6 +347,10 @@ class TomServerJwtToken {
   /// Whether to omit the "issued at" claim.
   bool noIssueAt;
 
+  /// The `aud` claim: the service this token is meant for, or `null` for
+  /// none.
+  String? audience;
+
   // ---------------------------------------------------------------------------
   // Constructors
   // ---------------------------------------------------------------------------
@@ -350,6 +362,7 @@ class TomServerJwtToken {
   /// [expiresIn] is how long until the token expires (default: 2 hours).
   /// [notBefore] is the delay before the token becomes valid (default: 0).
   /// [noIssueAt] whether to omit the "iat" claim (default: false).
+  /// [audience] the `aud` claim, when the token is meant for one service.
   /// [signingConfiguration] optional custom configuration for signing.
   TomServerJwtToken(
     this.publicData, {
@@ -357,6 +370,7 @@ class TomServerJwtToken {
     this.expiresIn = const Duration(hours: 2),
     this.notBefore = const Duration(seconds: 0),
     this.noIssueAt = false,
+    this.audience,
     TomJwtConfiguration? signingConfiguration,
   }) {
     this.signingConfiguration =
@@ -428,7 +442,13 @@ class TomServerJwtToken {
   /// final jwt = token.getJWT('my-auth-server');
   /// ```
   String getJWT(String issuer) {
-    final jwtToken = jwt.JWT(_generateLoad(), issuer: issuer);
+    final keyId = signingConfiguration.keyId;
+    final jwtToken = jwt.JWT(
+      _generateLoad(),
+      issuer: issuer,
+      audience: audience == null ? null : jwt.Audience.one(audience!),
+      header: keyId == null ? null : {'kid': keyId},
+    );
     // `expiresIn` / `notBefore` are deliberately not passed: the library would
     // recompute `exp` and `nbf` from its own clock read, and the payload
     // already carries them derived from the one `_generateLoad` took. Passing

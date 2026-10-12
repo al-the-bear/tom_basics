@@ -89,6 +89,8 @@ import 'package:pointycastle/export.dart';
 | Read public claims | `.payload`, `.issuer`, `.subject`, `.audience`, `.jwtId` | Standard JWT accessors |
 | Read decrypted claims | `.secretData` | Populated when `decrypt: true` |
 | Configure keys/algorithm | `TomJwtConfiguration(...)`, `defaultSignConfiguration` | Swap dummy keys for production keys |
+| Name the signing key | `TomJwtConfiguration.keyId` | Written as the `kid` header, for verifiers holding several keys |
+| Name the audience | `audience:` constructor argument | Written as the `aud` claim |
 
 ### RSA encryption & signatures — top-level functions
 
@@ -251,6 +253,25 @@ TomJwtConfiguration.defaultSignConfiguration = TomJwtConfiguration(
   myRsaPublicKey,
   false,                       // isDummy = false → no warning
 );
+```
+
+For asymmetric signing, pass the private key and an RS/ES algorithm, and name
+the key so a verifier holding several keys — during a rotation — can pick it.
+A token meant for one service names it as its audience:
+
+```dart
+final configuration = TomJwtConfiguration(
+  RSAPrivateKey.raw(mySigningKey), // from package:dart_jsonwebtoken
+  JWTAlgorithm.RS256,
+  myRsaPrivateKey,
+  myRsaPublicKey,
+  false,
+)..keyId = 'signing-2026-10';
+final jwtString = TomServerJwtToken(
+  {'userId': '123'},
+  audience: 'orders-api',
+  signingConfiguration: configuration,
+).getJWT('my-auth-server'); // header carries kid, payload carries aud
 ```
 
 ### RSA encryption

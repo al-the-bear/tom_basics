@@ -1,3 +1,14 @@
+## 1.3.0
+
+- **Added: `TomJwtConfiguration.keyId`.** When set, every token signed with the
+  configuration carries it as the `kid` header, so a verifier holding several
+  keys — one being retired beside its successor — picks the right one, and a
+  JSON Web Key Set can publish each key under the same id.
+- **Added: `TomServerJwtToken.audience`.** When given, the token carries it as
+  the `aud` claim, so a verifier can refuse a token minted for another service.
+- `test/jwt_key_id_audience_test.dart` covers both, and an RS256 token verified
+  against the public key.
+
 ## 1.2.2
 
 - **Changed: `TomClientJwtToken.payload` is read-only.** It returned the live
