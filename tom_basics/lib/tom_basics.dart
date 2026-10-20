@@ -9,6 +9,9 @@
 ///   [TomDiagnosticsLogOutput], which sends `TomLogger` lines into a sink
 /// - [TomPlatformUtils] - Cross-platform utility abstractions
 /// - [TomEnvironment] - Runtime environment configuration
+/// - utilities: [TomCancellationSource], [tomSha256Hex], [tomSlugify],
+///   [tomDecodeTextBytes], [TomGlob] / [TomGitignore], and YAML writing
+///   ([tomEmitYamlDocument], [tomYamlEntry], [TomYamlConfigWriter])
 ///
 /// ## Usage
 ///
@@ -23,6 +26,7 @@ library;
 export 'src/diagnostics/diagnostics.dart';
 export 'src/diagnostics/log_output.dart';
 export 'src/exceptions/exception_base.dart';
+export 'utilities.dart';
 export 'src/logging/logging.dart';
 export 'src/runtime/platform_neutral.dart';
 export 'src/runtime/platform_environment_runtime.dart';

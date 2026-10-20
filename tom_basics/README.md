@@ -114,6 +114,18 @@ native or Flutter requirement.
 | Failures | `TomStructuredFailure`, `tomFailureFields` | A failure is logged by its type and structural facts, never its text. |
 | Sinks | `TomNullDiagnostics`, `TomInMemoryDiagnostics`, `TomFileDiagnostics` | Discard; bounded ring; rolling JSON-lines file (`diagnostics_io.dart`). |
 
+### Utilities
+
+| Capability | Type / member | Notes |
+| ---------- | ------------- | ----- |
+| Cancellation | `TomCancellationToken`, `TomCancellationSource`, `TomOperationCancelled` | The first reason wins; `TomCancellationToken.none` never cancels. |
+| Hash and names | `tomSha256Hex`, `tomSha256OfText`, `tomSlugify`, `tomShortId` | One SHA-256 for content addressing; a filename-safe slug with a fallback. |
+| Text codec | `tomDecodeTextBytes`, `tomEncodeText`, `TomTextEncoding` | Encoding and BOM detected and written back unchanged. |
+| Glob and gitignore | `TomGlob`, `TomGitignore`, `TomGitignoreSet` | Git's rules, including escapes and folder ancestry. |
+| Canonical YAML | `tomEmitYamlDocument`, `tomEmitLiteralBlock`, `tomEmitCanonicalFragment`, `tomOrderedMapping`, `tomSortedById` | Deterministic output for files a program owns. |
+| Hand-edited YAML | `tomYamlScalar`, `tomYamlEntry`, `tomYamlListItem`, `tomNewlineOf` | Key-level writes into files people also edit. |
+| Comment-preserving edits | `TomYamlConfigWriter` | Set and remove values without losing comments (`yaml_edit`). |
+
 ### Platform abstraction
 
 | Capability | Type / member | Notes |
@@ -459,6 +471,28 @@ A `TomLogger` line's text is already rendered, so the bridge cannot redact it;
 what it keeps is the level, the time, the isolate and the sink's bounds — and a
 program that logs both ways has one log.
 
+### Utilities
+
+```dart
+import 'package:tom_basics/utilities.dart';
+
+final source = TomCancellationSource();
+source.token.whenCancelled.then((reason) => print('stopped: $reason'));
+source.cancel('deadline');
+
+final ignore = TomGitignoreSet()
+  ..add(TomGitignore.parse('', 'build/\n*.log\n!keep.log\n'));
+ignore.isIgnored('build/out/app.js', isDirectory: false); // true
+
+tomSlugify('Chapter 2: Design'); // chapter-2-design
+tomEmitYamlDocument({'title': 'Fix: the parser'}); // title: "Fix: the parser"
+```
+
+`utilities.dart` imports no `dart:io` and no HTTP stack. The two YAML styles
+are deliberate: the canonical emitter is for files a program owns and always
+writes the same bytes; the hand-edited style changes only the keys it is asked
+to change in a file a person also edits.
+
 ### Platform abstraction
 
 Library code that must not import `dart:io` or `dart:html` directly talks to
@@ -577,7 +611,7 @@ print(TomRuntime.printReport());
 
 ## Architecture
 
-`tom_basics` is four small, independent modules behind a single barrel export
+`tom_basics` is a set of small, independent modules behind a single barrel export
 ([`lib/tom_basics.dart`](lib/tom_basics.dart)):
 
 ```
@@ -604,6 +638,11 @@ The only internal coupling is that `logging` writes through the platform seam
 (`TomConsoleLogOutput` calls `TomPlatformUtils.current.out/outError`) and reads
 the isolate name from it. Exceptions and the environment model stand alone.
 
+Two further modules have entry points of their own and depend on nothing
+else in the package: `diagnostics/` (`diagnostics.dart`, with the file sink in
+`diagnostics_io.dart`) and `utilities/` (`utilities.dart`). The barrel
+re-exports both.
+
 ### Key types
 
 | Type | Responsibility |
@@ -617,6 +656,9 @@ the isolate name from it. Exceptions and the environment model stand alone.
 | `TomDiagnostics` | Structured sink port; `TomNullDiagnostics`, `TomInMemoryDiagnostics`, `TomFileDiagnostics`. |
 | `TomDiagnosticEvent` / `TomDiagnosticNotice` | A structured entry; a finding that is both logged and shown. |
 | `TomDiagnosticsLogOutput` | `TomLogOutput` that writes `TomLogger` lines into a `TomDiagnostics` sink. |
+| `TomCancellationToken` / `TomCancellationSource` | Cooperative cancellation with a reason. |
+| `TomGitignoreSet` | Gitignore matching across several files. |
+| `TomYamlConfigWriter` | Comment-preserving YAML edits. |
 | `TomPlatformUtils` | Injectable platform seam: detection, console output, HTTP client, env vars. |
 | `TomFallbackPlatformUtils` | Default impl: console output works, detection throws until configured. |
 | `TomEnvironment` | A named runtime environment with optional parent + initializer. |

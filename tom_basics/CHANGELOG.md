@@ -1,3 +1,32 @@
+## 3.3.0
+
+- **Added: `package:tom_basics/utilities.dart`**, small utilities that two or
+  more workspace applications had each written, now one implementation each.
+  The entry point imports no `dart:io` and no HTTP stack, so a web-linkable
+  package can take it; the `tom_basics.dart` barrel re-exports it.
+  - **Cancellation:** `TomCancellationToken` (with `none`), `TomCancellationSource`
+    (the first reason wins) and `TomOperationCancelled`.
+  - **Hash and names:** `tomSha256Hex`, `tomSha256OfText`, `tomSlugify` (with a
+    fallback when nothing is left), `tomShortId`.
+  - **Text codec:** `tomDecodeTextBytes` / `tomEncodeText` with
+    `TomTextEncoding` and `TomDecodedText` — UTF-8 with or without a BOM,
+    UTF-16 LE/BE and Latin-1 detected and written back byte for byte.
+  - **Glob and gitignore:** `TomGlob` (`*`, `**`, `?`, classes, braces, `\x`
+    escapes), `TomGitignore` (one file: negation, folder-only and anchored
+    rules, `\#`/`\!` escapes, trailing spaces dropped unless escaped, a path
+    inside an ignored folder ignored through its ancestors) and
+    `TomGitignoreSet` (several files, the deeper one overriding).
+  - **Two YAML styles.** The canonical emitter `tomEmitYamlDocument`,
+    `tomEmitLiteralBlock`, `tomEmitCanonicalFragment`, `tomDeepSortKeys` and
+    the ordering helpers `tomOrderedMapping`, `tomSortedRemainder`,
+    `tomSortedById` write deterministic YAML (a narrow plain-scalar set,
+    `\uXXXX` escapes). The hand-edited style `tomYamlScalar`, `tomYamlEntry`,
+    `tomYamlListItem` and `tomNewlineOf` writes keys into files people also
+    edit, quoting what YAML 1.1 would read back as something else.
+  - **`TomYamlConfigWriter`**, a comment-preserving YAML editor over
+    `yaml_edit`.
+- **Dependencies:** `crypto`, `yaml_edit`.
+
 ## 3.2.0
 
 - **Added: structured diagnostics.** A sink port, `TomDiagnostics`, with
