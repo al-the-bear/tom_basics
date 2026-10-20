@@ -125,6 +125,7 @@ native or Flutter requirement.
 | Canonical YAML | `tomEmitYamlDocument`, `tomEmitLiteralBlock`, `tomEmitCanonicalFragment`, `tomOrderedMapping`, `tomSortedById` | Deterministic output for files a program owns. |
 | Hand-edited YAML | `tomYamlScalar`, `tomYamlEntry`, `tomYamlListItem`, `tomNewlineOf` | Key-level writes into files people also edit. |
 | Comment-preserving edits | `TomYamlConfigWriter` | Set and remove values without losing comments (`yaml_edit`). |
+| Protected clipboard | `TomProtectedClipboard`, `TomClipboardPort`, `TomProtectedClipboardState` | A copied secret is cleared after a delay, only while the clipboard still holds it; the port is the application's (Flutter bindings in `tom_reusable_ui`). |
 
 ### Platform abstraction
 
@@ -659,6 +660,7 @@ re-exports both.
 | `TomCancellationToken` / `TomCancellationSource` | Cooperative cancellation with a reason. |
 | `TomGitignoreSet` | Gitignore matching across several files. |
 | `TomYamlConfigWriter` | Comment-preserving YAML edits. |
+| `TomProtectedClipboard` | Copies a secret and clears it again through an application-bound `TomClipboardPort`. |
 | `TomPlatformUtils` | Injectable platform seam: detection, console output, HTTP client, env vars. |
 | `TomFallbackPlatformUtils` | Default impl: console output works, detection throws until configured. |
 | `TomEnvironment` | A named runtime environment with optional parent + initializer. |

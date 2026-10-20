@@ -1,7 +1,7 @@
 ## 3.3.0
 
-- **Added: `package:tom_basics/utilities.dart`**, small utilities that two or
-  more workspace applications had each written, now one implementation each.
+- **Added: `package:tom_basics/utilities.dart`**, small utilities that
+  workspace applications had each written, now one implementation each.
   The entry point imports no `dart:io` and no HTTP stack, so a web-linkable
   package can take it; the `tom_basics.dart` barrel re-exports it.
   - **Cancellation:** `TomCancellationToken` (with `none`), `TomCancellationSource`
@@ -25,6 +25,12 @@
     edit, quoting what YAML 1.1 would read back as something else.
   - **`TomYamlConfigWriter`**, a comment-preserving YAML editor over
     `yaml_edit`.
+  - **Protected clipboard:** `TomProtectedClipboard` copies a password,
+    token or key through a `TomClipboardPort` the application binds, and
+    clears it after a delay asked for at copy time (default 30 s) — only while
+    the clipboard still holds it, with a later copy superseding an earlier
+    one. Its `states` stream (`TomProtectedClipboardState`) drives a countdown
+    without carrying the value.
 - **Dependencies:** `crypto`, `yaml_edit`.
 
 ## 3.2.0
