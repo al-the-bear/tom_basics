@@ -102,6 +102,17 @@ native or Flutter requirement.
 | Level stack | `pushLogLevel` / `popLogLevel` | Temporary, scoped verbosity. |
 | Pluggable output | `logOutput`, `TomLogOutput` | Swap in file / remote / custom sinks. |
 | Custom rendering | `TomLoggable` | Control how your objects appear in logs. |
+| Into the structured sink | `TomDiagnosticsLogOutput` | `TomLogger` lines go to a `TomDiagnostics` sink, so a program keeps one log. |
+
+### Structured diagnostics
+
+| Capability | Type / member | Notes |
+| ---------- | ------------- | ----- |
+| The sink port | `TomDiagnostics` | `log(TomDiagnosticEvent)`. |
+| An entry | `TomDiagnosticEvent` | Operation name, level, UTC time, JSON-shaped field map — never a rendered sentence. |
+| Shown and logged | `TomDiagnosticNotice` | One producer emits the field map for the log and the sentence for a person. |
+| Failures | `TomStructuredFailure`, `tomFailureFields` | A failure is logged by its type and structural facts, never its text. |
+| Sinks | `TomNullDiagnostics`, `TomInMemoryDiagnostics`, `TomFileDiagnostics` | Discard; bounded ring; rolling JSON-lines file (`diagnostics_io.dart`). |
 
 ### Platform abstraction
 
@@ -406,6 +417,48 @@ void main() {
 }
 ```
 
+### Structured diagnostics
+
+A rendered log line has already interpolated whatever its caller had, and no
+sink downstream can tell a locator from a password. The structured port keeps
+the payload as data until the sink renders it, which is what lets a rule like
+"secrets never reach the log" hold by construction:
+
+```dart
+import 'package:tom_basics/diagnostics.dart';
+
+final TomDiagnostics log = TomInMemoryDiagnostics();
+log.log(TomDiagnosticEvent(
+  operation: 'sync.commit',
+  level: TomDiagnosticLevel.warn,
+  fields: {'locator': 'notes/a.md', 'status': 409},
+));
+```
+
+Three entry points, by what they pull in:
+
+- `package:tom_basics/diagnostics.dart` — the port, the events, notices and
+  failure fields, the null and in-memory sinks. **Imports nothing**, so a
+  web-linkable or dependency-light package can take it.
+- `package:tom_basics/diagnostics_io.dart` — adds `TomFileDiagnostics`, a
+  rolling JSON-lines file: one object per line, a byte ceiling checked before
+  each append, a fixed number of generations, a settable path and level, and a
+  value that is not JSON-shaped written as `<non-JSON TypeName>` rather than
+  through `toString()`. A refused write stops the sink and is kept in
+  `failure`, so a full disk is not a stall on every line.
+- `package:tom_basics/tom_basics.dart` — all of the port, plus
+  `TomDiagnosticsLogOutput`, which sends `TomLogger` lines into a sink:
+
+```dart
+final file = TomFileDiagnostics(path: 'logs/app.log');
+tomLog.logOutput = TomDiagnosticsLogOutput(file);
+tomLog.warn('disk almost full'); // one JSON line, operation "log"
+```
+
+A `TomLogger` line's text is already rendered, so the bridge cannot redact it;
+what it keeps is the level, the time, the isolate and the sink's bounds — and a
+program that logs both ways has one log.
+
 ### Platform abstraction
 
 Library code that must not import `dart:io` or `dart:html` directly talks to
@@ -561,6 +614,9 @@ the isolate name from it. Exceptions and the environment model stand alone.
 | `TomLogLevel` | Bitwise log-level value with `+`, `-`, `matches`, and named presets. |
 | `TomLogOutput` | Abstract log sink; `TomConsoleLogOutput` is the default stdout/stderr impl. |
 | `TomLoggable` | Interface for objects that supply their own `logRepresentation`. |
+| `TomDiagnostics` | Structured sink port; `TomNullDiagnostics`, `TomInMemoryDiagnostics`, `TomFileDiagnostics`. |
+| `TomDiagnosticEvent` / `TomDiagnosticNotice` | A structured entry; a finding that is both logged and shown. |
+| `TomDiagnosticsLogOutput` | `TomLogOutput` that writes `TomLogger` lines into a `TomDiagnostics` sink. |
 | `TomPlatformUtils` | Injectable platform seam: detection, console output, HTTP client, env vars. |
 | `TomFallbackPlatformUtils` | Default impl: console output works, detection throws until configured. |
 | `TomEnvironment` | A named runtime environment with optional parent + initializer. |

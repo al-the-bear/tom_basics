@@ -5,6 +5,8 @@
 ///
 /// - [TomBaseException] - Base exception class with UUID tracking
 /// - [TomLogger] - Lightweight logging with configurable outputs
+/// - [TomDiagnostics] - Structured diagnostics: events, notices, sinks; and
+///   [TomDiagnosticsLogOutput], which sends `TomLogger` lines into a sink
 /// - [TomPlatformUtils] - Cross-platform utility abstractions
 /// - [TomEnvironment] - Runtime environment configuration
 ///
@@ -18,6 +20,8 @@
 /// ```
 library;
 
+export 'src/diagnostics/diagnostics.dart';
+export 'src/diagnostics/log_output.dart';
 export 'src/exceptions/exception_base.dart';
 export 'src/logging/logging.dart';
 export 'src/runtime/platform_neutral.dart';

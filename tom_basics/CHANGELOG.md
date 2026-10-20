@@ -1,3 +1,21 @@
+## 3.2.0
+
+- **Added: structured diagnostics.** A sink port, `TomDiagnostics`, with
+  `TomDiagnosticEvent` (operation, level, UTC time, JSON-shaped fields — never
+  a rendered sentence), `TomDiagnosticNotice` (a finding both logged and shown,
+  emitted by one producer), `TomStructuredFailure` and `tomFailureFields` (a
+  failure logged by its type and structure, never its text), and three sinks:
+  `TomNullDiagnostics`, the bounded `TomInMemoryDiagnostics`, and the rolling
+  JSON-lines `TomFileDiagnostics`. Two new entry points:
+  `package:tom_basics/diagnostics.dart` imports nothing, so a web-linkable
+  package can take it; `package:tom_basics/diagnostics_io.dart` adds the file
+  sink. The port came from the Webwork app, where it was
+  `WebworkDiagnostics`.
+- **Added: `TomDiagnosticsLogOutput`**, a `TomLogOutput` that writes
+  `TomLogger` lines into a `TomDiagnostics` sink, so a program that logs both
+  ways keeps one log.
+- **Dependency:** `meta` (for `@visibleForTesting` on the file sink's limits).
+
 ## 3.1.2
 
 - **Documented: why a console line names two isolates.**
