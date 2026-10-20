@@ -13,6 +13,8 @@ dependencies:
   stack_trace: ^1.12.1
   http: ^1.4.0
   yaml_edit: ^2.2.0
+  # Reading YAML back as plain values (tomYamlToPlain).
+  yaml: ^3.1.0
 
 dev_dependencies:
   lints: ^6.0.0

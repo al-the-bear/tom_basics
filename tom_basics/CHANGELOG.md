@@ -25,13 +25,15 @@
     edit, quoting what YAML 1.1 would read back as something else.
   - **`TomYamlConfigWriter`**, a comment-preserving YAML editor over
     `yaml_edit`.
+  - **`tomYamlToPlain`** reads a `package:yaml` value back as plain maps,
+    lists and scalars.
   - **Protected clipboard:** `TomProtectedClipboard` copies a password,
     token or key through a `TomClipboardPort` the application binds, and
     clears it after a delay asked for at copy time (default 30 s) — only while
     the clipboard still holds it, with a later copy superseding an earlier
     one. Its `states` stream (`TomProtectedClipboardState`) drives a countdown
     without carrying the value.
-- **Dependencies:** `crypto`, `yaml_edit`.
+- **Dependencies:** `crypto`, `yaml`, `yaml_edit`.
 
 ## 3.2.0
 

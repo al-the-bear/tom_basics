@@ -124,6 +124,20 @@ the password salt both draw from it. Use it directly when you need secret bytes
 of your own (a TOTP shared secret, an API key) rather than reaching for
 `Random.secure()` at the call site.
 
+### Secrets in memory — `TomProtectedValue`
+
+| Capability | API | Notes |
+| ---------- | --- | ----- |
+| Hold a secret | `TomProtectedValue.of(secret)` | XOR-ed with a per-instance salt from `TomSecureBytes` |
+| Read it | `reveal()` | The one accessor — every read is a call a reader can find |
+| Compare it | `digest`, `==` | SHA-256 of the plaintext; two values of one secret are equal |
+| Show it | `toString()`, `TomProtectedValue.mask` | Always the mask, never the secret |
+
+`jsonEncode` refuses a protected value rather than writing it. The class has
+an entry point of its own, `package:tom_crypto/protected_value.dart`, which
+needs only `tom_basics`, so a package holding secrets in memory need not link
+the JWT and RSA libraries; the `tom_crypto.dart` barrel exports it too.
+
 ---
 
 ## Quick start
@@ -337,7 +351,7 @@ final pemPrivate = RsaKeyHelper.encodePrivateKeyToPemPKCS1(privateKey);
 ## Architecture
 
 ```text
-package:tom_crypto/tom_crypto.dart   (single export surface)
+package:tom_crypto/tom_crypto.dart   (the barrel; protected_value.dart is a second entry point)
 │
 ├── password_hashing.dart   TomPasswordHasher          → Argon2 (pointycastle)
 │
@@ -351,6 +365,9 @@ package:tom_crypto/tom_crypto.dart   (single export surface)
 │
 ├── rsa_tools.dart          RsaKeyHelper                → pointycastle + asn1lib
 │                           getRsaKeyPair (top-level)      (key gen, PEM I/O)
+│
+├── protected_value.dart    TomProtectedValue           → secure_bytes + tom_basics
+│                                                          (tomSha256Hex)
 │
 └── secure_bytes.dart       TomSecureBytes              → dart:math
                                                            (Random.secure)
@@ -367,9 +384,10 @@ package:tom_crypto/tom_crypto.dart   (single export surface)
 | `rsaSign` / `rsaVerify` | RSA-SHA-256 signatures |
 | `RsaKeyHelper` | Key generation and PEM parse/encode |
 | `TomSecureBytes` | The package's only draw of raw random bytes |
+| `TomProtectedValue` | A secret in memory, read only through `reveal()` |
 
-The JWT layer is the only part that reaches into `tom_basics` (for
-`TomBaseException` and `tomLog`); the password and RSA layers depend only on
+The JWT layer and the protected value are the parts that reach into
+`tom_basics` (for `TomBaseException` and `tomLog`, and for `tomSha256Hex`); the password and RSA layers depend only on
 `pointycastle` and `asn1lib`.
 
 `secure_bytes.dart` is the one internal edge in the diagram above: both

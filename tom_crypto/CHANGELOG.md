@@ -1,3 +1,17 @@
+## 1.4.0
+
+- **Added: `TomProtectedValue`** — a secret held in memory, XOR-ed with a
+  per-instance salt drawn from `TomSecureBytes`, read only through `reveal()`,
+  identified by a SHA-256 `digest` that equality compares, shown as
+  `TomProtectedValue.mask` by `toString()`, and refused by `jsonEncode`. It came
+  from the Webwork app, where it was `WebworkProtectedValue`. A second entry
+  point, `package:tom_crypto/protected_value.dart`, holds it alone and needs
+  only `tom_basics`; the barrel exports it too.
+- **Dependencies:** `dart_jsonwebtoken` ^3.4.1 and `pointycastle` ^4.0.0, so
+  the package resolves beside the other shared packages that use pointycastle
+  4; `tom_basics` by path, and `publish_to: none`, until the extracted
+  packages are published together.
+
 ## 1.3.0
 
 - **Added: `TomJwtConfiguration.keyId`.** When set, every token signed with the

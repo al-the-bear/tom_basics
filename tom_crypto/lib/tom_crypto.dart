@@ -30,6 +30,7 @@ library;
 
 export 'src/jwt_token.dart';
 export 'src/password_hashing.dart';
+export 'src/protected_value.dart';
 export 'src/rsa_encryption.dart';
 export 'src/rsa_tools.dart';
 export 'src/secure_bytes.dart';

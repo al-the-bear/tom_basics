@@ -493,6 +493,7 @@ tomEmitYamlDocument({'title': 'Fix: the parser'}); // title: "Fix: the parser"
 are deliberate: the canonical emitter is for files a program owns and always
 writes the same bytes; the hand-edited style changes only the keys it is asked
 to change in a file a person also edits.
+`tomYamlToPlain` reads either kind back as plain maps, lists and scalars.
 
 ### Platform abstraction
 

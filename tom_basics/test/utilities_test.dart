@@ -6,23 +6,26 @@ import 'dart:convert';
 
 import 'package:test/test.dart';
 import 'package:tom_basics/utilities.dart';
+import 'package:yaml/yaml.dart';
 
 void main() {
   group('UTIL-C cancellation', () {
-    test('UTIL-C1: the first reason wins and the token stays cancelled',
-        () async {
-      final source = TomCancellationSource();
-      final token = source.token;
-      expect(token.isCancelled, isFalse);
-      expect(token.reason, isNull);
+    test(
+      'UTIL-C1: the first reason wins and the token stays cancelled',
+      () async {
+        final source = TomCancellationSource();
+        final token = source.token;
+        expect(token.isCancelled, isFalse);
+        expect(token.reason, isNull);
 
-      source.cancel('deadline');
-      source.cancel('user');
+        source.cancel('deadline');
+        source.cancel('user');
 
-      expect(token.isCancelled, isTrue);
-      expect(token.reason, 'deadline');
-      expect(await token.whenCancelled, 'deadline');
-    });
+        expect(token.isCancelled, isTrue);
+        expect(token.reason, 'deadline');
+        expect(await token.whenCancelled, 'deadline');
+      },
+    );
 
     test('UTIL-C2: the none token is never cancelled', () async {
       expect(TomCancellationToken.none.isCancelled, isFalse);
@@ -67,8 +70,11 @@ void main() {
       final rules = parse('build/\n');
       expect(rules.verdict('build', isDirectory: true), isTrue);
       expect(rules.verdict('build/out/app.js', isDirectory: false), isTrue);
-      expect(rules.verdict('build', isDirectory: false), isNull,
-          reason: 'a folder-only rule says nothing about a file named build');
+      expect(
+        rules.verdict('build', isDirectory: false),
+        isNull,
+        reason: 'a folder-only rule says nothing about a file named build',
+      );
     });
 
     test('UTIL-G2: escapes — a literal first character and a kept trailing '
@@ -96,8 +102,11 @@ void main() {
       expect(set.isIgnored('x.tmp', isDirectory: false), isTrue);
       expect(set.isIgnored('sub/wanted.tmp', isDirectory: false), isFalse);
       expect(set.isIgnored('other/wanted.tmp', isDirectory: false), isTrue);
-      expect(set.isIgnored(r'sub\other.tmp', isDirectory: false), isTrue,
-          reason: 'backslashes are read as separators');
+      expect(
+        set.isIgnored(r'sub\other.tmp', isDirectory: false),
+        isTrue,
+        reason: 'backslashes are read as separators',
+      );
       expect(set.isIgnored('', isDirectory: true), isFalse);
     });
 
@@ -134,8 +143,13 @@ void main() {
     });
 
     test('UTIL-Y2: a canonical fragment sorts every key', () {
-      expect(tomEmitCanonicalFragment({'b': 1, 'a': {'d': 2, 'c': 3}}),
-          'a:\n  c: 3\n  d: 2\nb: 1\n');
+      expect(
+        tomEmitCanonicalFragment({
+          'b': 1,
+          'a': {'d': 2, 'c': 3},
+        }),
+        'a:\n  c: 3\n  d: 2\nb: 1\n',
+      );
     });
 
     test('UTIL-Y3: the hand-edited style writes plain what YAML 1.1 reads '
@@ -175,6 +189,33 @@ void main() {
       final decoded = tomDecodeTextBytes(bytes);
       expect(decoded.text, 'héllo');
       expect(tomEncodeText(decoded.text, decoded.encoding), bytes);
+    });
+  });
+
+  group('UTIL-P reading YAML back as plain values', () {
+    test('UTIL-P1: nested YAML maps and lists become plain Dart, keys as '
+        'strings', () {
+      final plain = tomYamlToPlain(
+        loadYaml('a: 1\nb: [x, {c: true}]\n2: two\n'),
+      );
+      expect(plain, isA<Map<String, Object?>>());
+      expect(plain, {
+        'a': 1,
+        'b': [
+          'x',
+          {'c': true},
+        ],
+        '2': 'two',
+      });
+      final list = (plain as Map)['b'] as List;
+      expect(list, isNot(isA<YamlList>()));
+      expect(list[1], isNot(isA<YamlMap>()));
+    });
+
+    test('UTIL-P2: scalars and null pass through', () {
+      expect(tomYamlToPlain(null), isNull);
+      expect(tomYamlToPlain('text'), 'text');
+      expect(tomYamlToPlain(loadYaml('3.5')), 3.5);
     });
   });
 }

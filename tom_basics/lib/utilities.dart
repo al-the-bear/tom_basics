@@ -18,3 +18,4 @@ export 'src/utilities/yaml_config_writer.dart';
 export 'src/utilities/yaml_emit.dart';
 export 'src/utilities/yaml_lines.dart';
 export 'src/utilities/yaml_order.dart';
+export 'src/utilities/yaml_plain.dart';
