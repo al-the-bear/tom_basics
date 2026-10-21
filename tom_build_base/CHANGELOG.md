@@ -1,3 +1,31 @@
+## 2.17.0
+
+### Added — `ci.dart`, a framework for a CI run by hand
+
+`CiRun` runs a repository's stages strictly in order, past any red, each
+step's child processes under the workspace flutter lock (`CiLock`) with every
+output line written to its log as it arrives (`CiProcessRunner`), every log
+kept in one timestamped folder with a `summary.txt`, and one summary line at
+the end naming every red step and its log (`ciSummaryLine`). What a stage does
+is the repository's: a `CiStageRunner` callback. `ciToolDefinition` and
+`ciToolRunner` put the stages on the tool framework (one command per stage
+plus `all`). It came from Webwork's manual CI, which keeps only its stage
+list.
+
+### Added — `seams.dart`, the engine of a package-boundary audit
+
+Reading source without a parser (`directiveUris`, `stripDartComments`,
+`dartCodeWithoutComments`, `topLevelDeclarations`, `callArgumentsFrom`), the
+import graph (`importClosureOf`, `siblingImportClosureOf`, `reachableNamesOf`,
+`packageImportsUnder`, `exportedDeclarationsOf`), the package graph (`Pubspec`,
+`packagesIn`, `prefixedPackagesIn`, `resolvedPackagesOf`, `dependencyReach`,
+`declaredTypeNamesUnder`), entry-point rules (`EntryPointRule`,
+`auditEntryPointRules`), the counted-root detector (`upwardPathDerivations`)
+and the runner (`SeamAudit`, `runSeamAudits`, `resolveRepositoryRoot`,
+`resolveWorkspaceRoot`). It came from Webwork's seam audit, which keeps its
+rules. A one-line `/* … */` comment before the directives no longer ends the
+directive scan.
+
 ## 2.16.1
 
 ### Fixed — `FolderScanner` honours `kAlwaysSkipDirectories`; `_ai` added (binbuild2)

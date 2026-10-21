@@ -46,11 +46,14 @@ of that into one framework with four cooperating layers:
   macros, and persistent defines automatically; `TomBuildConfig` reads the
   two-tier `…_master.yaml` / project-level YAML configuration.
 
-The package ships two entry points. `package:tom_build_base/tom_build_base.dart`
+The package ships four entry points. `package:tom_build_base/tom_build_base.dart`
 is the full surface (tool framework + traversal + config + utilities);
 `package:tom_build_base/tom_build_base_v2.dart` is the same modern surface
 without the few legacy utility exports, for tools that only need the v2
-framework.
+framework. Two more are separate because a tool takes one or the other:
+`package:tom_build_base/ci.dart` is a framework for a CI run by hand from the
+repository, and `package:tom_build_base/seams.dart` the engine of a
+source-level package-boundary audit.
 
 ---
 
@@ -58,7 +61,7 @@ framework.
 
 ```yaml
 dependencies:
-  tom_build_base: ^2.6.0
+  tom_build_base: ^2.17.0
 ```
 
 Or from the command line:
@@ -124,6 +127,32 @@ server, and CLI hosts, not the web.
 | `HelpGenerator` / `CompletionGenerator` | class | Auto-generated help and shell completion |
 | `yamlToMap` / `yamlListToList` / `toStringList` | function | YAML-node conversion helpers |
 | `MkLinkExecutor` / `createSymLink` | API | Cross-platform symlink creation for tool commands |
+
+### CI run by hand (`ci.dart`)
+
+| API | Kind | Purpose |
+| --- | --- | --- |
+| `CiRun` | class | Runs stages in order past any red, one log per step in a timestamped folder, `summary.txt`, Ctrl-C handled |
+| `CiStageRunner` | typedef | What a stage does: calls `step`, `fail` and `skip` on the run |
+| `CiProcessRunner` / `CiCommand` / `CiStepResult` | class | Child processes under the lock, every output line written to the log as it arrives |
+| `CiLock` | class | The workspace flutter lock (`ztmp/flutter.lock`), taken with `mkdir` the way sessions take it |
+| `ciSummaryLine` / `CiOutcome` | function / class | The one line a run ends with: green, or every red step and its log |
+| `CiPackage` / `ciIsFlutterPackage` / `ciTestTagsOf` | class / function | A package a stage runs over; Flutter detection; tags read from test annotations |
+| `resolveCiStages` / `ciFlutterLockPath` / `ciFlutterExecutable` | function | `all` expansion, the lock path, finding `flutter` |
+| `ciToolDefinition` / `ciToolRunner` | function | One command per stage plus `all`, on this package's tool framework |
+
+### Package-boundary audits (`seams.dart`)
+
+| API | Kind | Purpose |
+| --- | --- | --- |
+| `SeamAudit` / `SeamViolation` / `runSeamAudits` | typedef / class / function | A list of audits, run in order, printed `ok` / `FAIL`, with an exit code |
+| `EntryPointRule` / `auditEntryPointRules` | class / function | What an entry point may not reach — a package, a library URI — and what it must |
+| `importClosureOf` / `siblingImportClosureOf` / `reachableNamesOf` / `packageImportsUnder` | function | The import graph from an entry point, or of a whole directory |
+| `exportedDeclarationsOf` / `topLevelDeclarations` | function | The public names an entry point exports, `show`/`hide` and parts applied |
+| `Pubspec` / `packagesIn` / `prefixedPackagesIn` / `resolvedPackagesOf` / `dependencyReach` | class / function | Declared and resolved dependencies, and which banned package a package reaches through which chain |
+| `directiveUris` / `stripDartComments` / `dartCodeWithoutComments` / `callArgumentsFrom` | function | Reading source without a parser |
+| `upwardPathDerivations` | function | Where a source derives a directory by counting `..` |
+| `resolveRepositoryRoot` / `resolveWorkspaceRoot` | function | The roots, by their landmarks |
 
 ---
 
@@ -191,6 +220,8 @@ list — all derived from the definition, none of it hand-written.
 | Example | What it shows |
 | --- | --- |
 | [`example/tom_build_base_example.dart`](example/tom_build_base_example.dart) | A two-command (`hello`, `list`) `ToolRunner` tool |
+| [`example/ci_example.dart`](example/ci_example.dart) | A two-stage CI (`:analyze`, `:test`) on `ci.dart`, one log per step and one summary line |
+| [`example/seams_example.dart`](example/seams_example.dart) | A two-rule boundary audit on `seams.dart` over this package |
 | [`tom_build_base_introduction_sample`](../tom_basics_samples/tom_build_base_introduction_sample/) | A simple single-command build tool, built from one `ToolDefinition` and run over a fixture workspace — the introductory article. |
 | [`tom_build_base_advanced_sample`](../tom_basics_samples/tom_build_base_advanced_sample/) | A nestable, multi-command tool: per-command options, audit/exit codes, sequencing and nested invocation — the advanced article. |
 | [`tom_build_base_advanced_analyzer_sample`](../tom_basics_samples/tom_build_base_advanced_analyzer_sample/) | A nestable single-command tool whose traversal feeds an analyzer-summary cache (`tom_analyzer_shared`) — the caching article. |
@@ -200,6 +231,8 @@ Run the local example with:
 ```sh
 dart run example/tom_build_base_example.dart --help
 dart run example/tom_build_base_example.dart :list
+dart run example/ci_example.dart :analyze
+dart run example/seams_example.dart
 ```
 
 For full worked tutorials, start with the
@@ -557,10 +590,10 @@ See also [`../README.md`](../README.md), the `tom_ai/basics` package map, and
 
 ## Status
 
-- **Version:** 2.6.25
+- **Version:** 2.17.0
 - **Tests:** an extensive suite under `test/` (`dart test` / `testkit :test`)
   covering tool definition, argument parsing, help and completion generation,
-  traversal, filtering and build-order, pipelines, macros and defines, and
-  configuration loading.
+  traversal, filtering and build-order, pipelines, macros and defines,
+  configuration loading, the CI framework and the seam engine.
 - **Analysis:** clean under `package:lints` (`dart analyze` — no issues).
 - **Platforms:** any Dart runtime with `dart:io` (desktop, server, CLI).

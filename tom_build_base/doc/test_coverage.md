@@ -50,7 +50,11 @@ This document lists all testable features across `tom_build_base` and tracks tes
 | 35 | [Tool Origin](#35-tool-origin) | 11 | 11✅ | `v2/core/tool_origin_test.dart` | [→](#35-tool-origin) |
 | 36 | [Pub Cache Pre-flight](#36-pub-cache-pre-flight) | 6 | 6✅ | `v2/core/pub_cache_preflight_test.dart` | [→](#36-pub-cache-pre-flight) |
 | 37 | [Coverage Doc Guard](#37-coverage-doc-guard) | 2 | 2✅ | `test_coverage_doc_test.dart` | [→](#37-coverage-doc-guard) |
-| — | **Total** | **907** | **907✅** | | |
+| 38 | [Seam Engine](#38-seam-engine) | 24 | 24✅ | `seams/seams_test.dart` | [→](#38-seam-engine) |
+| 39 | [CI Lock](#39-ci-lock) | 4 | 4✅ | `ci/ci_lock_test.dart` | [→](#39-ci-lock) |
+| 40 | [CI Process Runner](#40-ci-process-runner) | 4 | 4✅ | `ci/ci_process_test.dart` | [→](#40-ci-process-runner) |
+| 41 | [CI Run, Summary and Tool](#41-ci-run-summary-and-tool) | 14 | 14✅ | `ci/ci_run_test.dart` | [→](#41-ci-run-summary-and-tool) |
+| — | **Total** | **953** | **953✅** | | |
 
 > Every row links to a section, and the counts are measured from
 > `dart test --reporter json -j 1` rather than maintained by hand. Run it
@@ -796,6 +800,73 @@ measure with `dart test --reporter json -j 1`.
 |----|---------|--------|-------------|
 | BB-COVDOC-1 | Every test file has a row | ✅ | A new test file with no row fails here — the drift that actually happened. |
 | BB-COVDOC-2 | The total matches its rows | ✅ | Catches a row updated without the footer, or the reverse. |
+
+---
+
+## 38. Seam Engine
+
+**Test file:** `test/seams/seams_test.dart`
+
+The engine of `package:tom_build_base/seams.dart`. Each primitive is held on
+the shapes that make a naive scan wrong, each walk on a fixture tree written
+under the package's `ztmp/`, and each rule with a case that must fail beside
+one that must pass.
+
+| ID | Feature | Status | Description |
+|----|---------|--------|-------------|
+| SEAMS-SRC-1 | Directives | ✅ | Read up to the first declaration; a commented-out or quoted directive is not one; a one-line block comment does not end the scan; a conditional alternative is one. |
+| SEAMS-SRC-2 | Comment stripping | ✅ | Strings (raw ones too) are kept whole and line breaks survive. |
+| SEAMS-SRC-3 | Interpolation | ✅ | A quote inside `${…}` does not end the string. |
+| SEAMS-SRC-4 | Top-level declarations | ✅ | Classified by keyword, including a return type on its own line and a record return type. |
+| SEAMS-SRC-5 | Call arguments | ✅ | End at the matching parenthesis, past one inside a string. |
+| SEAMS-GRAPH-1–3 | Import closures | ✅ | Package, sibling and per-directory walks, and what an entry point reaches. |
+| SEAMS-GRAPH-4–5 | Pubspecs and packages | ✅ | Three blocks with path, runtime and SDK dependencies apart; packages by directory and by prefix, never in hidden folders. |
+| SEAMS-GRAPH-6–7 | Dependency reach | ✅ | Path dependencies followed with the chain named; an unresolved hosted dependency reported; a resolved one followed through `package_config.json`. |
+| SEAMS-GRAPH-8 | Exported declarations | ✅ | `show`, `hide` and parts applied; declared type names. |
+| SEAMS-RULE-1–3 | Entry-point rules | ✅ | A banned package, a banned URI, a missing required package and a missing entry point each fail; a conforming entry point passes. |
+| SEAMS-UP-1–5 | Climbing to a root | ✅ | Upward literals in path calls and `.parent` climbs are reported with their line; directives, data and comments are not. |
+| SEAMS-RUN-1–3 | Running audits | ✅ | Exit 0 with the given sentence, quiet output, exit 1 naming every violation; roots found by their landmarks. |
+
+---
+
+## 39. CI Lock
+
+**Test file:** `test/ci/ci_lock_test.dart`
+
+| ID | Feature | Status | Description |
+|----|---------|--------|-------------|
+| CI-LOCK-1 | Take and release | ✅ | A free lock is taken at once; release is idempotent. |
+| CI-LOCK-2 | One holder | ✅ | A second holder waits, and the wait is reported. |
+| CI-LOCK-3 | A session's mkdir | ✅ | A lock taken with a plain `mkdir` is honoured. |
+| CI-LOCK-4 | Released on failure | ✅ | The runner releases the lock when a child fails. |
+
+---
+
+## 40. CI Process Runner
+
+**Test file:** `test/ci/ci_process_test.dart`
+
+| ID | Feature | Status | Description |
+|----|---------|--------|-------------|
+| CI-STEP-1 | Whole logs | ✅ | Every line of every command goes to the log, in order. |
+| CI-STEP-2 | First failure stops | ✅ | A failing command stops the step. |
+| CI-STEP-3 | Cannot start | ✅ | A missing executable is a red, not a crash. |
+| CI-STEP-4 | Test counts | ✅ | Read from the last progress line, through colours and carriage returns. |
+
+---
+
+## 41. CI Run, Summary and Tool
+
+**Test file:** `test/ci/ci_run_test.dart`
+
+| ID | Feature | Status | Description |
+|----|---------|--------|-------------|
+| CI-SUMMARY-1–4 | The summary line | ✅ | Green names the stages and logs; red names every red step and its log; nothing run is red; skips are counted apart. |
+| CI-STAGES-1–2 | Stage resolution | ✅ | `all` expands in order, repeats dropped, unknown names throw; `inAll` leaves a stage out of `all` only. |
+| CI-STAGES-3 | Test tags | ✅ | Counted only from an annotation in a test file. |
+| CI-STAGES-4–5 | Packages and the lock path | ✅ | Named relative to the root, Flutter detected; the lock path's three cases. |
+| CI-RUN-1–3 | A whole run | ✅ | Stages past a red with one log per step and `summary.txt`; a step needing a missing flutter is red without running; a step that does not produce its file is red. |
+| CI-TOOL-1–2 | The command line | ✅ | One command per stage plus `all`; the named stages run once, in order; a red summary is a failed result. |
 
 ---
 
