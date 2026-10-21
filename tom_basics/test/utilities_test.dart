@@ -181,6 +181,17 @@ void main() {
         ],
       );
     });
+
+    test('UTIL-Y5: the schema a file names is read from its '
+        'yaml-language-server comment, as written', () {
+      expect(
+        tomYamlSchemaRefOf(
+          'quest: q\n# yaml-language-server: \$schema=../../schemas/t.json\n',
+        ),
+        '../../schemas/t.json',
+      );
+      expect(tomYamlSchemaRefOf('# a comment\ntodos: []\n'), isNull);
+    });
   });
 
   group('UTIL-T text codec', () {

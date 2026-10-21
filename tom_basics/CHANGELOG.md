@@ -22,7 +22,9 @@
     `tomSortedById` write deterministic YAML (a narrow plain-scalar set,
     `\uXXXX` escapes). The hand-edited style `tomYamlScalar`, `tomYamlEntry`,
     `tomYamlListItem` and `tomNewlineOf` writes keys into files people also
-    edit, quoting what YAML 1.1 would read back as something else.
+    edit, quoting what YAML 1.1 would read back as something else;
+    `tomYamlSchemaRefOf` reads the schema such a file names in its
+    `# yaml-language-server: $schema=` comment.
   - **`TomYamlConfigWriter`**, a comment-preserving YAML editor over
     `yaml_edit`.
   - **`tomYamlToPlain`** reads a `package:yaml` value back as plain maps,

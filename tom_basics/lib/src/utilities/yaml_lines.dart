@@ -142,3 +142,14 @@ String tomYamlListItem(Object? item, int indent, String nl) {
   _value(out, item, indent, nl);
   return out.toString();
 }
+
+final RegExp _schemaComment = RegExp(
+  r'^#\s*yaml-language-server:\s*\$schema=(\S+)',
+  multiLine: true,
+);
+
+/// The schema [text] names in a `# yaml-language-server: $schema=` comment,
+/// or null when it names none. The reference is returned as written, to be
+/// resolved against the file's own folder.
+String? tomYamlSchemaRefOf(String text) =>
+    _schemaComment.firstMatch(text)?.group(1);

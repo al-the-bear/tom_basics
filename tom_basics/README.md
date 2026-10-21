@@ -123,7 +123,7 @@ native or Flutter requirement.
 | Text codec | `tomDecodeTextBytes`, `tomEncodeText`, `TomTextEncoding` | Encoding and BOM detected and written back unchanged. |
 | Glob and gitignore | `TomGlob`, `TomGitignore`, `TomGitignoreSet` | Git's rules, including escapes and folder ancestry. |
 | Canonical YAML | `tomEmitYamlDocument`, `tomEmitLiteralBlock`, `tomEmitCanonicalFragment`, `tomOrderedMapping`, `tomSortedById` | Deterministic output for files a program owns. |
-| Hand-edited YAML | `tomYamlScalar`, `tomYamlEntry`, `tomYamlListItem`, `tomNewlineOf` | Key-level writes into files people also edit. |
+| Hand-edited YAML | `tomYamlScalar`, `tomYamlEntry`, `tomYamlListItem`, `tomNewlineOf`, `tomYamlSchemaRefOf` | Key-level writes into files people also edit, and the schema such a file names. |
 | Comment-preserving edits | `TomYamlConfigWriter` | Set and remove values without losing comments (`yaml_edit`). |
 | Protected clipboard | `TomProtectedClipboard`, `TomClipboardPort`, `TomProtectedClipboardState` | A copied secret is cleared after a delay, only while the clipboard still holds it; the port is the application's (Flutter bindings in `tom_reusable_ui`). |
 
