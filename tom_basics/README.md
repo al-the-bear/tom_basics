@@ -660,6 +660,7 @@ re-exports both.
 | `TomDiagnosticsLogOutput` | `TomLogOutput` that writes `TomLogger` lines into a `TomDiagnostics` sink. |
 | `TomCancellationToken` / `TomCancellationSource` | Cooperative cancellation with a reason. |
 | `TomGitignoreSet` | Gitignore matching across several files. |
+| `TomOutputTranscript` / `TomOutputRecorder` | A bounded, interleaved stdout/stderr transcript that states how many lines it dropped. |
 | `TomYamlConfigWriter` | Comment-preserving YAML edits. |
 | `TomProtectedClipboard` | Copies a secret and clears it again through an application-bound `TomClipboardPort`. |
 | `TomPlatformUtils` | Injectable platform seam: detection, console output, HTTP client, env vars. |

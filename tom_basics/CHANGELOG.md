@@ -25,6 +25,10 @@
     edit, quoting what YAML 1.1 would read back as something else;
     `tomYamlSchemaRefOf` reads the schema such a file names in its
     `# yaml-language-server: $schema=` comment.
+  - **Output transcript:** `TomOutputStream`, `TomOutputLine`,
+    `TomOutputTranscript` (interleaved stdout/stderr lines, a line and a
+    length ceiling, the dropped count stated) and `TomOutputRecorder`, which
+    keeps lines up to the bound and counts the rest.
   - **`TomYamlConfigWriter`**, a comment-preserving YAML editor over
     `yaml_edit`.
   - **`tomYamlToPlain`** reads a `package:yaml` value back as plain maps,

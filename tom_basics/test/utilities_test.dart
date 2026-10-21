@@ -229,4 +229,45 @@ void main() {
       expect(tomYamlToPlain(loadYaml('3.5')), 3.5);
     });
   });
+
+  group('UTIL-O the output transcript', () {
+    test('UTIL-O1: a recorder keeps the oldest lines up to its bound and '
+        'counts the rest', () {
+      final recorder = TomOutputRecorder(maxLines: 2);
+      expect(recorder.add(TomOutputStream.stdout, 'one'), isNotNull);
+      expect(recorder.add(TomOutputStream.stderr, 'two'), isNotNull);
+      expect(recorder.add(TomOutputStream.stdout, 'three'), isNull);
+      recorder.countDropped(4);
+      final transcript = recorder.settle();
+      expect([for (final l in transcript.lines) l.text], ['one', 'two']);
+      expect(
+        [for (final l in transcript.lines) l.stream],
+        [TomOutputStream.stdout, TomOutputStream.stderr],
+      );
+      expect(transcript.droppedLines, 5);
+      expect(transcript.truncated, isTrue);
+    });
+
+    test('UTIL-O2: a long line is clipped and says so; a short one is not', () {
+      const short = 'fine';
+      expect(TomOutputTranscript.clip(short), short);
+      final long = 'x' * (TomOutputTranscript.maxLineLength + 7);
+      final clipped = TomOutputTranscript.clip(long);
+      expect(clipped, endsWith('(7 more characters)'));
+      expect(clipped.length, lessThan(long.length + 30));
+    });
+
+    test('UTIL-O3: a line survives a map round trip, time and stream kept', () {
+      final line = TomOutputLine(
+        stream: TomOutputStream.stderr,
+        text: 'boom',
+        at: DateTime.utc(2026, 10, 21, 12),
+      );
+      final back = TomOutputLine.fromMap(line.toMap());
+      expect(back.stream, TomOutputStream.stderr);
+      expect(back.text, 'boom');
+      expect(back.at, DateTime.utc(2026, 10, 21, 12));
+      expect(TomOutputTranscript.empty.isEmpty, isTrue);
+    });
+  });
 }
