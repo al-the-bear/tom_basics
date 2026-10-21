@@ -1,3 +1,18 @@
+## 1.12.0
+
+### Added — `:unreferenced`, the unreferenced-export audit
+
+Every public symbol a set of packages exports from `lib/` that no other `lib/`
+or `bin/` file names, configured by the `unreferenced:` section of a project's
+`buildkit.yaml` (root, package prefix, exclusions, consumer repositories, and
+an allowlist whose every entry carries a reason). A `@visibleForTesting` seam
+passes while a test names it; a stale allowlist entry, a malformed section or
+an audit that checked nothing fails the project. The engine is also a library,
+`package:tom_build_kit/unreferenced_exports.dart`. It came from Webwork's
+`tool/unreferenced_exports.dart`, whose allowlist is now its configuration.
+Requires `tom_build_base` 2.17.0 (the seam engine's declaration scanner) and
+adds `analyzer`.
+
 ## 1.11.0
 
 ### Fixed — `:versioner` reports what it did, not what it intended

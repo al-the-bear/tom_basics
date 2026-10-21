@@ -689,6 +689,23 @@ const buildsorterCommand = CommandDefinition(
   examples: ['buildkit :buildsorter'],
 );
 
+const unreferencedCommand = CommandDefinition(
+  name: 'unreferenced',
+  description:
+      'Audit exported symbols that no lib/ or bin/ file names, per the '
+      '`unreferenced:` section of buildkit.yaml',
+  aliases: ['unref'],
+  worksWithNatures: {DartProjectFolder},
+  supportsProjectTraversal: true,
+  supportsGitTraversal: false,
+  requiresTraversal: true,
+  canRunStandalone: true,
+  examples: [
+    'buildkit -p . :unreferenced',
+    'buildkit -p . :unreferenced --verbose   # list the allowlisted symbols',
+  ],
+);
+
 const executeCommand = CommandDefinition(
   name: 'execute',
   description:
@@ -1053,6 +1070,7 @@ final buildkitTool = ToolDefinition(
     publisherCommand,
     statusCommand,
     buildsorterCommand,
+    unreferencedCommand,
     executeCommand,
     // Pub commands
     pubgetCommand,

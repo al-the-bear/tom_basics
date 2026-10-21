@@ -13,6 +13,13 @@
 
 include: package:lints/recommended.yaml
 
+analyzer:
+  exclude:
+    # Hermetic test fixtures copied into a workspace per run: their pubspecs
+    # name sibling packages by paths that exist only there, so analysing them
+    # in place reports only that the paths are missing.
+    - test/fixtures/**
+
 # Uncomment the following section to specify additional rules.
 
 # linter:

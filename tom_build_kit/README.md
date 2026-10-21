@@ -186,6 +186,38 @@ Options:
 | `:status` | Show tool/repo status across the workspace. |
 | `:buildsorter` | Compute the dependency build order. |
 | `:execute` | Execute a shell command in each traversed folder. |
+| `:unreferenced` | Audit the exported symbols no `lib/` or `bin/` file names, per the project's `unreferenced:` section. |
+
+### Unreferenced-export audit
+
+`:unreferenced` reports every public symbol a set of packages exports from
+`lib/` that no other `lib/` or `bin/` file names — a feature only its tests
+build, a getter nothing reads, a setting saved and never acted on. A test seam
+marked `@visibleForTesting` passes while a test names it; a symbol
+unreferenced by design is allowlisted with its reason, and an entry that
+stops matching a finding fails the audit. The project's `buildkit.yaml` says
+what is audited:
+
+```yaml
+unreferenced:
+  root: ..                    # holds the audited packages
+  package-prefix: my_         # which of them are audited
+  exclude: [my_testkit]
+  consumer-repositories: [../../other_repo]   # consumers only
+  allow:
+    - package: my_core
+      symbol: Store.reserved  # `Name` or `Type.member`; a type covers its members
+      reason: the later release that reads it
+```
+
+```bash
+buildkit -p . :unreferenced            # exit code is the verdict
+buildkit -p . :unreferenced --verbose  # also lists the allowlisted symbols
+```
+
+The audit is also a library, `package:tom_build_kit/unreferenced_exports.dart`
+(`UnreferencedExportsConfig.load(dir).audit()`), for a suite that holds its
+repository to it.
 
 ### Dependency commands
 

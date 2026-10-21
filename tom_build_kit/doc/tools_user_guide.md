@@ -41,6 +41,7 @@ This package extends the shared infrastructure from **tom_build_base**:
   - [Publisher](#publisher)
   - [DCli](#dcli)
   - [Execute](#execute)
+  - [Unreferenced](#unreferenced)
 - [Git Tools](#git-tools)
   - [Git Traversal Modes](#git-traversal-modes)
   - [GitStatus](#gitstatus)
@@ -1180,6 +1181,47 @@ buildkit -i :execute --condition dart.exists "echo ${dart.name} v${dart.version}
 # Dry-run to preview commands
 buildkit -i --dry-run :execute "echo Processing ${folder.name}"
 ```
+
+---
+
+### Unreferenced
+
+`:unreferenced` audits every public symbol a set of packages exports from
+`lib/` that no other `lib/` or `bin/` file names: a feature only its tests
+build, a getter nothing reads, a setting saved and never acted on. It works on
+a project whose `buildkit.yaml` has an `unreferenced:` section, and skips any
+other.
+
+```yaml
+unreferenced:
+  root: ..                    # the directory holding the audited packages
+  package-prefix: my_         # which of them are audited
+  exclude: [my_testkit]       # audited by name
+  consumer-repositories:      # packages here are consumers only
+    - ../../other_repo
+  allow:
+    - package: my_core
+      symbol: Store.reserved  # `Name` or `Type.member`; a type covers its members
+      reason: the later release that reads it
+```
+
+A consumer is any `lib/` or `bin/` of an audited package, the `lib/` of an
+audited package's runnable `example/` application, and the `lib/` of every
+package in a consumer repository — anywhere outside the symbol's own
+declaration. Tests, READMEs, `example/` and `tool/` are not consumers; a
+finding says whether a test names the symbol. A member marked
+`@visibleForTesting` passes while a test names it. A symbol unreferenced by
+design goes in `allow:` with a reason; an entry that stops matching fails the
+audit, and so does an entry without a reason.
+
+```bash
+buildkit -p . :unreferenced            # exit code is the verdict
+buildkit -p . :unreferenced --verbose  # also lists the allowlisted symbols
+```
+
+The engine is also a library, `package:tom_build_kit/unreferenced_exports.dart`
+(`UnreferencedExportsConfig.load(dir).audit()`), for a suite that holds its
+repository to the audit.
 
 ---
 

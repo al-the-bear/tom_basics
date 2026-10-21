@@ -24,6 +24,7 @@ import 'executors/findproject_executor.dart';
 import 'executors/publisher_executor.dart';
 import 'executors/runner_executor.dart';
 import 'executors/status_executor.dart';
+import 'executors/unreferenced_executor.dart';
 import 'executors/versioner_executor.dart';
 
 // =============================================================================
@@ -308,6 +309,7 @@ Map<String, CommandExecutor> createBuildkitExecutors() {
     'publisher': PublisherExecutor(),
     'status': StatusExecutor(),
     'buildsorter': BuildSorterExecutor(),
+    'unreferenced': UnreferencedExecutor(),
     'execute': ExecuteExecutor(),
 
     // Pub commands (have their own non-ToolBase API)

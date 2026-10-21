@@ -29,7 +29,8 @@ For the testing strategy, safety protocol, and test infrastructure, see [_copilo
 | 12 | [Execute Command — Placeholder Resolution](#12-execute-command--placeholder-resolution) | 14 | 14✅ | `execute_command_test.dart` | [→](#12-execute-command--placeholder-resolution) |
 | 13 | [Script Utilities — Multi-Line & Stdin](#13-script-utilities--multi-line--stdin) | 12 | 12✅ | `script_utils_test.dart` | [→](#13-script-utilities--multi-line--stdin) |
 | 14 | [Built-in Commands — Parsing & Resolution](#14-built-in-commands--parsing--resolution) | 19 | 19✅ | `builtin_commands_test.dart` | [→](#14-built-in-commands--parsing--resolution) |
-| — | **Total** | **146** | **146✅** | | |
+| 15 | [Unreferenced — Export Audit](#15-unreferenced--export-audit) | 9 | 9✅ | `unreferenced_exports_test.dart` | [→](#15-unreferenced--export-audit) |
+| — | **Total** | **155** | **155✅** | | |
 
 ---
 
@@ -400,3 +401,25 @@ Unit tests for argument parsing and command shorthand resolution.
 | BIC_ISB02 | Command with arguments recognized | ✅ | Check `isBuiltin(:versioner --list)`. Verify true. |
 | BIC_ISB03 | Unique shorthand recognized | ✅ | Check `isBuiltin(:vers)`. Verify true. |
 | BIC_ISB04 | Ambiguous/unknown rejected | ✅ | Check `isBuiltin(:xyz)`. Verify false. |
+
+---
+
+## 15. Unreferenced — Export Audit
+
+**Test file:** `test/unreferenced_exports_test.dart`
+
+Drives the engine over planted trees under the package's `ztmp/`, and the
+executor directly over a project with an `unreferenced:` section — no
+workspace protocol, so it runs whatever the state of the workspace.
+
+| ID | Feature | Status | How to Test |
+|----|---------|--------|-------------|
+| UNREF-1 | Findings, with whether a test names them | ✅ | A planted tree: dead members, a symbol used only inside its type (make it private), and uses in another lib, the declaring file and an example application. |
+| UNREF-2 | Declared test seams | ✅ | A `@visibleForTesting` member passes while a test names it and is a finding once none does. |
+| UNREF-3 | The allowlist | ✅ | An entry excuses its symbol, a type entry its members; a stale entry fails the audit. |
+| UNREF-4 | Nothing exported | ✅ | A tree with nothing exported proves nothing. |
+| UNREF-5 | The section | ✅ | Read with its paths resolved against the project; no section is no configuration. |
+| UNREF-6 | An entry without a reason | ✅ | Refused, naming the entry. |
+| UNREF-7 | The command fails on findings | ✅ | And names them; a project without the section is skipped. |
+| UNREF-8 | The command passes when everything is allowlisted | ✅ | And says how much it checked. |
+| UNREF-9 | A prefix that matches nothing | ✅ | NOT MEASURED, a failure. |
