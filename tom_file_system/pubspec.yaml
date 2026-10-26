@@ -1,0 +1,23 @@
+name: tom_file_system
+description: >-
+  One file-system contract for every Tom application — atomic writes,
+  revision-checked saves, delete to the platform's trash, links that never
+  leave the root, values instead of dart:io objects — with an in-memory and a
+  local implementation (watching, freedesktop.org trash, Windows Recycle Bin).
+version: 0.1.0
+publish_to: none
+repository: https://github.com/al-the-bear/tom_basics
+
+environment:
+  sdk: ^3.10.8
+
+dependencies:
+  # SHA-256 for file revisions.
+  crypto: ^3.0.0
+  # The Windows Recycle Bin call of the local file system.
+  ffi: ^2.1.0
+  path: ^1.9.0
+
+dev_dependencies:
+  lints: ^6.0.0
+  test: ^1.25.6

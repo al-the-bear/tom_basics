@@ -70,9 +70,11 @@ component tables so the inventory makes sense:
   runtime libraries that storage backends and the devops tools build on.
 - **Test support** — `tom_test_support`, the dev dependency the test suites of
   every tier share.
-- **Query and LLM** — two contracts with no workspace dependency: querying
-  records by their properties (`tom_query`), and the one LLM provider contract
-  with its run trail (`tom_llm`).
+- **Shared contracts** — contracts with no workspace dependency that
+  applications and tools across the tiers share: querying records by their
+  properties (`tom_query`), the one LLM provider contract with its run trail
+  (`tom_llm`), the undo/redo stack (`tom_undo`) and the file-system contract
+  with its in-memory and local implementations (`tom_file_system`).
 - **Doc / workspace tooling** — utilities that operate on the workspace itself:
   Markdown merge, package scanning, key generation.
 
@@ -87,13 +89,13 @@ component tables so the inventory makes sense:
        ┌───────────────┬───────────────┬───────────────┼───────────────┬───────────────┬───────────────┐
        │               │               │               │               │               │               │
 ┌──────┴──────┐ ┌──────┴──────┐ ┌──────┴──────┐ ┌──────┴──────┐ ┌──────┴──────┐ ┌──────┴──────┐ ┌──────┴──────┐
-│ Build       │ │ Crypto      │ │ Messaging   │ │ GitHub, git,│ │ Query, LLM  │ │ Doc / WS    │ │ (downstream │
-│ framework   │ │ tom_crypto  │ │ tom_        │ │ tests       │ │ tom_query   │ │ tooling     │ │ Tom repos:  │
-│ tom_build_  │ │             │ │ chattools   │ │ tom_git     │ │ tom_llm     │ │ tom_md_merge│ │ d4rt,       │
-│ base        │ │             │ │             │ │ tom_github_ │ │             │ │ tom_pkg_scan│ │ devops,     │
-│ tom_analyzer│ │             │ │             │ │ api         │ │             │ │ tom_tools   │ │ vscode …)   │
-│ _shared     │ │             │ │             │ │ tom_test_   │ │             │ │             │ │             │
-│             │ │             │ │             │ │ support     │ │             │ │             │ │             │
+│ Build       │ │ Crypto      │ │ Messaging   │ │ GitHub, git,│ │ Shared      │ │ Doc / WS    │ │ (downstream │
+│ framework   │ │ tom_crypto  │ │ tom_        │ │ tests       │ │ contracts   │ │ tooling     │ │ Tom repos:  │
+│ tom_build_  │ │             │ │ chattools   │ │ tom_git     │ │ tom_query   │ │ tom_md_merge│ │ d4rt,       │
+│ base        │ │             │ │             │ │ tom_github_ │ │ tom_llm     │ │ tom_pkg_scan│ │ devops,     │
+│ tom_analyzer│ │             │ │             │ │ api         │ │ tom_undo    │ │ tom_tools   │ │ vscode …)   │
+│ _shared     │ │             │ │             │ │ tom_test_   │ │ tom_file_   │ │             │ │             │
+│             │ │             │ │             │ │ support     │ │ system      │ │             │ │             │
 └─────────────┘ └─────────────┘ └─────────────┘ └─────────────┘ └─────────────┘ └─────────────┘ └─────────────┘
 ```
 
@@ -147,12 +149,14 @@ the consuming CLI tools, not from here), so their **Binary** column is `—`.
 | ------- | ---------- | ------ |
 | [`tom_test_support`](tom_test_support/) | Test support for any Tom package's suite — repository and workspace roots found by landmark, the Dart CLI a test may spawn, a wait for a network-backed action, the live-GitHub credential contract, a disposable Gitea in Docker. A dev dependency only. | — |
 
-### Query and LLM
+### Shared contracts
 
 | Package | What it is | Binary |
 | ------- | ---------- | ------ |
 | [`tom_query`](tom_query/) | Querying records by their properties — a condition evaluator over a property lookup, a deterministic sort, one index contract, and a reverse index of references across documents. | — |
 | [`tom_llm`](tom_llm/) | The one LLM provider contract — a request, a provider that runs it as a typed event stream, capabilities and availability — with its run trail: event model, sessions, the trail fold, the live-trail and summary-trail files, and Node runtime discovery for agent servers. | — |
+| [`tom_undo`](tom_undo/) | The undo/redo stack every undo history runs on — an entry is applied before it is moved, and composite steps put back what they applied when one part fails. No dependencies. | — |
+| [`tom_file_system`](tom_file_system/) | One file-system contract — atomic, revision-checked writes, delete to the platform's trash, links that never leave the root — with an in-memory implementation and, behind `io.dart`, a local one with per-folder watching, the freedesktop.org trash and the Windows Recycle Bin. | — |
 
 ### Doc / workspace tooling
 
@@ -272,6 +276,8 @@ tom_ai/basics/
 ├── tom_query/                # property conditions, sort, index contract, backlink index
 ├── tom_llm/                  # the LLM provider contract and its run trail
 │   └── doc/                  # the contract in detail
+├── tom_undo/                 # the undo/redo stack every history runs on
+├── tom_file_system/          # the file-system contract, in-memory and local (+ platform check)
 │
 ├── tom_markdown_merge/       # non-destructive Markdown region merge
 ├── tom_package_scanner/      # workspace package publication scanner
