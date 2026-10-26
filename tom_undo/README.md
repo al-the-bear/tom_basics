@@ -37,6 +37,20 @@ void main() {
 Forge's undo contract (`ForgeUndoManager`) and its default implementation stay
 in `tom_forge_core`, built on this stack.
 
+## One stack, kept one
+
+`_bin/check_undo_stacks.py` at the workspace root finds an undo or redo
+history written by hand anywhere else — a field or local named like `_undo` or
+`_redoStack` that starts as an empty list or queue — and its fix is this
+package, not a rename:
+
+```bash
+./_bin/check_undo_stacks.py --strict   # exit 1 on a hand-rolled stack
+python3 _bin/test_check_undo_stacks.py # the check's own tests
+```
+
+It is started by hand, like every check in the workspace.
+
 ## License
 
 BSD-3-Clause — See [LICENSE](LICENSE) for details.
