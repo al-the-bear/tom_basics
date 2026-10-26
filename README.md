@@ -53,7 +53,7 @@ and is the gentlest on-ramp into the ecosystem. From there, the
 
 ## How the packages fit together
 
-Tom Basics splits into seven concern areas. Read this framing before the
+Tom Basics splits into eight concern areas. Read this framing before the
 component tables so the inventory makes sense:
 
 - **Core utilities** — the universally-imported primitives: error model,
@@ -70,28 +70,31 @@ component tables so the inventory makes sense:
   runtime libraries that storage backends and the devops tools build on.
 - **Test support** — `tom_test_support`, the dev dependency the test suites of
   every tier share.
+- **Query and LLM** — two contracts with no workspace dependency: querying
+  records by their properties (`tom_query`), and the one LLM provider contract
+  with its run trail (`tom_llm`).
 - **Doc / workspace tooling** — utilities that operate on the workspace itself:
   Markdown merge, package scanning, key generation.
 
 ```
-                                ┌─────────────────────────────┐
-                                │        Core utilities       │
-                                │  tom_basics                 │
-                                │  tom_basics_console         │
-                                │  tom_basics_network         │
-                                └──────────────┬──────────────┘
-                                               │ used by everything
-       ┌───────────────┬───────────────┬───────┼───────┬───────────────┬───────────────┐
-       │               │               │               │               │               │
-┌──────┴──────┐ ┌──────┴──────┐ ┌──────┴──────┐ ┌──────┴──────┐ ┌──────┴──────┐ ┌──────┴──────┐
-│ Build       │ │ Crypto      │ │ Messaging   │ │ GitHub, git,│ │ Doc / WS    │ │ (downstream │
-│ framework   │ │ tom_crypto  │ │ tom_        │ │ tests       │ │ tooling     │ │ Tom repos:  │
-│ tom_build_  │ │             │ │ chattools   │ │ tom_git     │ │ tom_md_merge│ │ d4rt,       │
-│ base        │ │             │ │             │ │ tom_github_ │ │ tom_pkg_scan│ │ devops,     │
-│ tom_analyzer│ │             │ │             │ │ api         │ │ tom_tools   │ │ vscode …)   │
-│ _shared     │ │             │ │             │ │ tom_test_   │ │             │ │             │
-│             │ │             │ │             │ │ support     │ │             │ │             │
-└─────────────┘ └─────────────┘ └─────────────┘ └─────────────┘ └─────────────┘ └─────────────┘
+                                        ┌─────────────────────────────┐
+                                        │        Core utilities       │
+                                        │  tom_basics                 │
+                                        │  tom_basics_console         │
+                                        │  tom_basics_network         │
+                                        └──────────────┬──────────────┘
+                                                       │ used by everything
+       ┌───────────────┬───────────────┬───────────────┼───────────────┬───────────────┬───────────────┐
+       │               │               │               │               │               │               │
+┌──────┴──────┐ ┌──────┴──────┐ ┌──────┴──────┐ ┌──────┴──────┐ ┌──────┴──────┐ ┌──────┴──────┐ ┌──────┴──────┐
+│ Build       │ │ Crypto      │ │ Messaging   │ │ GitHub, git,│ │ Query, LLM  │ │ Doc / WS    │ │ (downstream │
+│ framework   │ │ tom_crypto  │ │ tom_        │ │ tests       │ │ tom_query   │ │ tooling     │ │ Tom repos:  │
+│ tom_build_  │ │             │ │ chattools   │ │ tom_git     │ │ tom_llm     │ │ tom_md_merge│ │ d4rt,       │
+│ base        │ │             │ │             │ │ tom_github_ │ │             │ │ tom_pkg_scan│ │ devops,     │
+│ tom_analyzer│ │             │ │             │ │ api         │ │             │ │ tom_tools   │ │ vscode …)   │
+│ _shared     │ │             │ │             │ │ tom_test_   │ │             │ │             │ │             │
+│             │ │             │ │             │ │ support     │ │             │ │             │ │             │
+└─────────────┘ └─────────────┘ └─────────────┘ └─────────────┘ └─────────────┘ └─────────────┘ └─────────────┘
 ```
 
 ---
@@ -143,6 +146,13 @@ the consuming CLI tools, not from here), so their **Binary** column is `—`.
 | Package | What it is | Binary |
 | ------- | ---------- | ------ |
 | [`tom_test_support`](tom_test_support/) | Test support for any Tom package's suite — repository and workspace roots found by landmark, the Dart CLI a test may spawn, a wait for a network-backed action, the live-GitHub credential contract, a disposable Gitea in Docker. A dev dependency only. | — |
+
+### Query and LLM
+
+| Package | What it is | Binary |
+| ------- | ---------- | ------ |
+| [`tom_query`](tom_query/) | Querying records by their properties — a condition evaluator over a property lookup, a deterministic sort, one index contract, and a reverse index of references across documents. | — |
+| [`tom_llm`](tom_llm/) | The one LLM provider contract — a request, a provider that runs it as a typed event stream, capabilities and availability — with its run trail: event model, sessions, the trail fold, the live-trail and summary-trail files, and Node runtime discovery for agent servers. | — |
 
 ### Doc / workspace tooling
 
@@ -228,6 +238,7 @@ In-package guides beyond the package READMEs:
 | Test coverage | [`tom_build_base/doc/test_coverage.md`](tom_build_base/doc/test_coverage.md) |
 | Cryptography reference | [`tom_crypto/doc/crypto.md`](tom_crypto/doc/crypto.md) |
 | GitHub API specification | [`tom_github_api/doc/github_api_specification.md`](tom_github_api/doc/github_api_specification.md) |
+| LLM provider contract | [`tom_llm/doc/contract.md`](tom_llm/doc/contract.md) |
 
 ---
 
@@ -257,6 +268,10 @@ tom_ai/basics/
 ├── tom_github_api/           # typed GitHub API client (+ in-memory double)
 ├── tom_git/                  # git in pure Dart: objects, packs, smart HTTP (no git binary)
 ├── tom_test_support/         # test support: roots, Dart CLI, network wait, live-GitHub gate, Gitea
+│
+├── tom_query/                # property conditions, sort, index contract, backlink index
+├── tom_llm/                  # the LLM provider contract and its run trail
+│   └── doc/                  # the contract in detail
 │
 ├── tom_markdown_merge/       # non-destructive Markdown region merge
 ├── tom_package_scanner/      # workspace package publication scanner

@@ -1,0 +1,16 @@
+name: tom_query
+description: >-
+  Querying records by their properties: a facet-agnostic condition evaluator
+  over a property lookup, a deterministic sort with unset values last and a
+  total tie-break, one index contract (entries, a property lookup, a query
+  over it), and a reverse index of references across documents.
+version: 0.1.0
+publish_to: none
+repository: https://github.com/al-the-bear/tom_basics
+
+environment:
+  sdk: ^3.10.8
+
+dev_dependencies:
+  lints: ^6.0.0
+  test: ^1.25.6

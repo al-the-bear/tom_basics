@@ -1,0 +1,22 @@
+name: tom_llm
+description: >-
+  The one LLM provider contract for Tom applications — a request, a provider
+  that runs it as a typed event stream, capabilities and availability — with
+  the run trail it streams: the event model, sessions, the trail fold, the
+  live-trail and summary-trail files, and Node runtime discovery for agent
+  servers. Depends on no other Tom package, so every graph can take it.
+version: 0.1.0
+publish_to: none
+repository: https://github.com/al-the-bear/tom_basics
+
+environment:
+  sdk: ^3.10.0
+
+dependencies:
+  meta: ^1.15.0
+  # Joining the trail directory and a session's file name.
+  path: ^1.9.0
+
+dev_dependencies:
+  lints: ^6.0.0
+  test: ^1.25.0
