@@ -1,0 +1,15 @@
+{
+  "head": "3973e50a8fe02e29356964cca6e9b98b39f398b8",
+  "parent": "646973c7fe24f1adbc93573c013fb468b234844b",
+  "headTree": "f9af77fdf9bdf20023ff88a2a1960b29e808327f",
+  "docNew": "6bcccf50c001cbb161f34a8a523abaacc8f41975",
+  "docOld": "af854a3ea1ba17c3bfa06e7752f93dc5e4f73566",
+  "inner": "79c53955ef856f16f2107446bc721c8879a1bd2e",
+  "docOldLength": 19890,
+  "docNewLength": 19898,
+  "objectCount": 8,
+  "loose": "7fea509edae57dee76341126a8fa195b9450ce92",
+  "looseText": "a loose object written by git\n",
+  "headMessage": "second\n",
+  "author": "Fixture <fixture@example.com> 1700000100 +0000"
+}

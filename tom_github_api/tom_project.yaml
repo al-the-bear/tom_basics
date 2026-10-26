@@ -1,0 +1,5 @@
+project_id: GH
+name: github
+description: >-
+  GitHub API client.
+license: BSD-3-Clause

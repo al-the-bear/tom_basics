@@ -1,0 +1,32 @@
+name: tom_git
+description: >-
+  Git in pure Dart, for applications that must not need a git binary: the
+  object model, loose objects and packfiles (read with deltas, written
+  without), editing a tree without a working tree or index, and the smart
+  HTTP transport for fetch and push.
+version: 0.1.0
+publish_to: none
+repository: https://github.com/al-the-bear/tom_basics
+
+environment:
+  sdk: ^3.10.0
+
+dependencies:
+  # zlib in pure Dart: loose objects and packfile entries are zlib streams, and
+  # inflating one from inside a pack needs the consumed length, which only an
+  # inflater that reads from a stream reports.
+  archive: ^4.0.0
+  # SHA-1, the object id.
+  crypto: ^3.0.0
+  # The smart HTTP transport.
+  http: ^1.2.0
+  meta: ^1.15.0
+  # Paths of a repository on disk (io.dart).
+  path: ^1.9.0
+
+dev_dependencies:
+  lints: ^6.0.0
+  test: ^1.25.0
+  # The live suites' credential contract.
+  tom_test_support:
+    path: ../../devops/tom_test_support

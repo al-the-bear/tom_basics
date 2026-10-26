@@ -53,7 +53,7 @@ and is the gentlest on-ramp into the ecosystem. From there, the
 
 ## How the packages fit together
 
-Tom Basics splits into five concern areas. Read this framing before the
+Tom Basics splits into six concern areas. Read this framing before the
 component tables so the inventory makes sense:
 
 - **Core utilities** — the universally-imported primitives: error model,
@@ -66,27 +66,29 @@ component tables so the inventory makes sense:
 - **Crypto** — security primitives, isolated so non-security code never pulls
   in the crypto dependency tree.
 - **Messaging** — a transport-agnostic chat abstraction.
+- **GitHub and git** — a typed GitHub API client and git in pure Dart, the
+  runtime libraries that storage backends and the devops tools build on.
 - **Doc / workspace tooling** — utilities that operate on the workspace itself:
   Markdown merge, package scanning, key generation.
 
 ```
-                       ┌─────────────────────────────┐
-                       │        Core utilities       │
-                       │  tom_basics                 │
-                       │  tom_basics_console         │
-                       │  tom_basics_network         │
-                       └──────────────┬──────────────┘
-                                      │ used by everything
-        ┌───────────────┬─────────────┼──────────────┬──────────────┐
-        │               │             │              │              │
- ┌──────┴──────┐ ┌──────┴──────┐ ┌────┴─────┐ ┌──────┴──────┐ ┌─────┴───────┐
- │ Build       │ │ Crypto      │ │ Messaging│ │ Doc / WS    │ │ (downstream │
- │ framework   │ │ tom_crypto  │ │ tom_     │ │ tooling     │ │  Tom repos: │
- │ tom_build_  │ │             │ │ chattools│ │ tom_md_merge│ │  d4rt,      │
- │  base       │ │             │ │          │ │ tom_pkg_scan│ │  devops,    │
- │ tom_analyzer│ │             │ │          │ │ tom_tools   │ │  vscode …)  │
- │  _shared    │ │             │ │          │ │             │ │             │
- └─────────────┘ └─────────────┘ └──────────┘ └─────────────┘ └─────────────┘
+                                ┌─────────────────────────────┐
+                                │        Core utilities       │
+                                │  tom_basics                 │
+                                │  tom_basics_console         │
+                                │  tom_basics_network         │
+                                └──────────────┬──────────────┘
+                                               │ used by everything
+       ┌───────────────┬───────────────┬───────┼───────┬───────────────┬───────────────┐
+       │               │               │               │               │               │
+┌──────┴──────┐ ┌──────┴──────┐ ┌──────┴──────┐ ┌──────┴──────┐ ┌──────┴──────┐ ┌──────┴──────┐
+│ Build       │ │ Crypto      │ │ Messaging   │ │ GitHub / git│ │ Doc / WS    │ │ (downstream │
+│ framework   │ │ tom_crypto  │ │ tom_        │ │ tom_git     │ │ tooling     │ │ Tom repos:  │
+│ tom_build_  │ │             │ │ chattools   │ │ tom_github_ │ │ tom_md_merge│ │ d4rt,       │
+│ base        │ │             │ │             │ │ api         │ │ tom_pkg_scan│ │ devops,     │
+│ tom_analyzer│ │             │ │             │ │             │ │ tom_tools   │ │ vscode …)   │
+│ _shared     │ │             │ │             │ │             │ │             │ │             │
+└─────────────┘ └─────────────┘ └─────────────┘ └─────────────┘ └─────────────┘ └─────────────┘
 ```
 
 ---
@@ -125,6 +127,13 @@ the consuming CLI tools, not from here), so their **Binary** column is `—`.
 | Package | What it is | Binary |
 | ------- | ---------- | ------ |
 | [`tom_chattools`](tom_chattools/) | Unified chat API for Telegram, WhatsApp, Signal and other messaging platforms. | — |
+
+### GitHub and git
+
+| Package | What it is | Binary |
+| ------- | ---------- | ------ |
+| [`tom_github_api`](tom_github_api/) | Typed GitHub API client — issues, labels, comments, search, workflows, repositories, contents, the git data API and GraphQL; with an in-memory double in `testing.dart`. Backs `issuekit` and `tom_core_storage`'s GitHub backend. | — |
+| [`tom_git`](tom_git/) | Git in pure Dart — objects, packs, smart HTTP fetch and push — to clone, commit and push with no git binary; backs `tom_core_storage`'s git backend. BSD-3. | — |
 
 ### Doc / workspace tooling
 
@@ -209,6 +218,7 @@ In-package guides beyond the package READMEs:
 | Tool inheritance and nesting | [`tom_build_base/doc/tool_inheritance_and_nesting.md`](tom_build_base/doc/tool_inheritance_and_nesting.md) |
 | Test coverage | [`tom_build_base/doc/test_coverage.md`](tom_build_base/doc/test_coverage.md) |
 | Cryptography reference | [`tom_crypto/doc/crypto.md`](tom_crypto/doc/crypto.md) |
+| GitHub API specification | [`tom_github_api/doc/github_api_specification.md`](tom_github_api/doc/github_api_specification.md) |
 
 ---
 
@@ -234,6 +244,9 @@ tom_ai/basics/
 │   └── doc/                  # crypto reference
 │
 ├── tom_chattools/            # unified chat API (Telegram/WhatsApp/Signal/…)
+│
+├── tom_github_api/           # typed GitHub API client (+ in-memory double)
+├── tom_git/                  # git in pure Dart: objects, packs, smart HTTP (no git binary)
 │
 ├── tom_markdown_merge/       # non-destructive Markdown region merge
 ├── tom_package_scanner/      # workspace package publication scanner
