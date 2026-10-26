@@ -1,0 +1,26 @@
+name: tom_test_support
+description: >-
+  Test support any Tom package's suite can use: the repository and workspace
+  roots found by landmark, the Dart CLI a test may spawn located rather than
+  taken from the runner, a framework-free wait for a network-backed action,
+  the live-GitHub credential contract a live suite is gated on, and a
+  disposable Gitea server in Docker for live git suites.
+version: 0.1.0
+publish_to: none
+repository: https://github.com/al-the-bear/tom_basics
+
+environment:
+  sdk: ^3.10.0
+
+dependencies:
+  # Talking to the disposable Gitea server (gitea.dart).
+  http: ^1.2.0
+  # Joining and naming paths.
+  path: ^1.9.0
+  # The credential the live contract classifies (github_live.dart).
+  tom_github_api:
+    path: ../tom_github_api
+
+dev_dependencies:
+  lints: ^6.0.0
+  test: ^1.25.0

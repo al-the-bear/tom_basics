@@ -29,4 +29,4 @@ dev_dependencies:
   test: ^1.25.0
   # The live suites' credential contract.
   tom_test_support:
-    path: ../../devops/tom_test_support
+    path: ../tom_test_support

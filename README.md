@@ -53,7 +53,7 @@ and is the gentlest on-ramp into the ecosystem. From there, the
 
 ## How the packages fit together
 
-Tom Basics splits into six concern areas. Read this framing before the
+Tom Basics splits into seven concern areas. Read this framing before the
 component tables so the inventory makes sense:
 
 - **Core utilities** — the universally-imported primitives: error model,
@@ -68,6 +68,8 @@ component tables so the inventory makes sense:
 - **Messaging** — a transport-agnostic chat abstraction.
 - **GitHub and git** — a typed GitHub API client and git in pure Dart, the
   runtime libraries that storage backends and the devops tools build on.
+- **Test support** — `tom_test_support`, the dev dependency the test suites of
+  every tier share.
 - **Doc / workspace tooling** — utilities that operate on the workspace itself:
   Markdown merge, package scanning, key generation.
 
@@ -82,12 +84,13 @@ component tables so the inventory makes sense:
        ┌───────────────┬───────────────┬───────┼───────┬───────────────┬───────────────┐
        │               │               │               │               │               │
 ┌──────┴──────┐ ┌──────┴──────┐ ┌──────┴──────┐ ┌──────┴──────┐ ┌──────┴──────┐ ┌──────┴──────┐
-│ Build       │ │ Crypto      │ │ Messaging   │ │ GitHub / git│ │ Doc / WS    │ │ (downstream │
-│ framework   │ │ tom_crypto  │ │ tom_        │ │ tom_git     │ │ tooling     │ │ Tom repos:  │
-│ tom_build_  │ │             │ │ chattools   │ │ tom_github_ │ │ tom_md_merge│ │ d4rt,       │
-│ base        │ │             │ │             │ │ api         │ │ tom_pkg_scan│ │ devops,     │
-│ tom_analyzer│ │             │ │             │ │             │ │ tom_tools   │ │ vscode …)   │
-│ _shared     │ │             │ │             │ │             │ │             │ │             │
+│ Build       │ │ Crypto      │ │ Messaging   │ │ GitHub, git,│ │ Doc / WS    │ │ (downstream │
+│ framework   │ │ tom_crypto  │ │ tom_        │ │ tests       │ │ tooling     │ │ Tom repos:  │
+│ tom_build_  │ │             │ │ chattools   │ │ tom_git     │ │ tom_md_merge│ │ d4rt,       │
+│ base        │ │             │ │             │ │ tom_github_ │ │ tom_pkg_scan│ │ devops,     │
+│ tom_analyzer│ │             │ │             │ │ api         │ │ tom_tools   │ │ vscode …)   │
+│ _shared     │ │             │ │             │ │ tom_test_   │ │             │ │             │
+│             │ │             │ │             │ │ support     │ │             │ │             │
 └─────────────┘ └─────────────┘ └─────────────┘ └─────────────┘ └─────────────┘ └─────────────┘
 ```
 
@@ -134,6 +137,12 @@ the consuming CLI tools, not from here), so their **Binary** column is `—`.
 | ------- | ---------- | ------ |
 | [`tom_github_api`](tom_github_api/) | Typed GitHub API client — issues, labels, comments, search, workflows, repositories, contents, the git data API and GraphQL; with an in-memory double in `testing.dart`. Backs `issuekit` and `tom_core_storage`'s GitHub backend. | — |
 | [`tom_git`](tom_git/) | Git in pure Dart — objects, packs, smart HTTP fetch and push — to clone, commit and push with no git binary; backs `tom_core_storage`'s git backend. BSD-3. | — |
+
+### Test support
+
+| Package | What it is | Binary |
+| ------- | ---------- | ------ |
+| [`tom_test_support`](tom_test_support/) | Test support for any Tom package's suite — repository and workspace roots found by landmark, the Dart CLI a test may spawn, a wait for a network-backed action, the live-GitHub credential contract, a disposable Gitea in Docker. A dev dependency only. | — |
 
 ### Doc / workspace tooling
 
@@ -247,6 +256,7 @@ tom_ai/basics/
 │
 ├── tom_github_api/           # typed GitHub API client (+ in-memory double)
 ├── tom_git/                  # git in pure Dart: objects, packs, smart HTTP (no git binary)
+├── tom_test_support/         # test support: roots, Dart CLI, network wait, live-GitHub gate, Gitea
 │
 ├── tom_markdown_merge/       # non-destructive Markdown region merge
 ├── tom_package_scanner/      # workspace package publication scanner
