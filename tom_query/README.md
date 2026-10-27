@@ -1,7 +1,9 @@
 # tom_query
 
+Published on pub.dev as [`tom_query` 0.1.0](https://pub.dev/packages/tom_query).
+
 > **Attribution.** The Tom Framework is developed by Peter Nicolai Alexis Kyaw.
-> These packages are BSD-3-Clause licensed and internal (`publish_to: none`).
+> These packages are BSD-3-Clause licensed and published on pub.dev.
 
 Querying records that an application indexes: a facet-agnostic condition
 evaluator over a property lookup, a deterministic sorter, one index contract
@@ -49,12 +51,11 @@ and gets one way of deciding a condition everywhere it asks.
 
 ## Installation
 
-The package is consumed by path inside this workspace:
+Add it from pub.dev:
 
 ```yaml
 dependencies:
-  tom_query:
-    path: ../../tom_ai/basics/tom_query
+  tom_query: ^0.1.0
 ```
 
 Dart SDK `^3.10.8`. No dependencies, no Flutter, no `dart:io`: it links into a

@@ -5,7 +5,6 @@ description: >-
   without), editing a tree without a working tree or index, and the smart
   HTTP transport for fetch and push.
 version: 0.1.0
-publish_to: none
 repository: https://github.com/al-the-bear/tom_basics
 
 environment:

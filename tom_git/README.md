@@ -1,10 +1,12 @@
 # tom_git
 
+Published on pub.dev as [`tom_git` 0.1.0](https://pub.dev/packages/tom_git).
+
 Git in pure Dart: objects, packs and the smart HTTP protocol, enough to clone,
 commit and push with **no git binary** — for applications that ship to
 machines without one, and for the web.
 
-License: BSD-3-Clause. Internal (`publish_to: none`), consumed by path.
+License: BSD-3-Clause.
 
 ## What it does
 

@@ -1,5 +1,7 @@
 # tom_undo
 
+Published on pub.dev as [`tom_undo` 0.1.0](https://pub.dev/packages/tom_undo).
+
 One undo/redo stack, `TomUndoStack<E>`, that every undo history in the
 workspace runs on — Tom Forge's `DefaultUndoManager`, the text, Markdown, YAML
 and Dart editors, the file tabs' `ForgeFileSession`, and `tom_flutter_ui`'s

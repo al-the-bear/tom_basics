@@ -1,5 +1,7 @@
 # Tom Crypto
 
+Published on pub.dev as [`tom_crypto` 1.4.0](https://pub.dev/packages/tom_crypto).
+
 > Part of the **Tom framework** by al-the-bear.
 > © 2024–2026 Peter Nicolai Alexis Kyaw — BSD-3-Clause, see [LICENSE](LICENSE).
 > Portions of the RSA key handling are adapted from public examples (see

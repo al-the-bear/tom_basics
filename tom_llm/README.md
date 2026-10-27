@@ -1,7 +1,9 @@
 # tom_llm
 
+Published on pub.dev as [`tom_llm` 0.1.0](https://pub.dev/packages/tom_llm).
+
 > **Attribution.** The Tom Framework is developed by Peter Nicolai Alexis Kyaw.
-> These packages are BSD-3-Clause licensed and internal (`publish_to: none`).
+> These packages are BSD-3-Clause licensed and published on pub.dev.
 
 The one LLM provider contract for Tom applications — a request, a provider
 that runs it as a stream of typed events, capabilities and availability, and
@@ -60,12 +62,11 @@ provider keeps and the run model in detail.
 
 ## Installation
 
-The package is consumed by path inside this workspace:
+Add it from pub.dev:
 
 ```yaml
 dependencies:
-  tom_llm:
-    path: ../../tom_ai/basics/tom_llm
+  tom_llm: ^0.1.0
 ```
 
 Dart SDK `^3.10.0`. No Flutter dependency. The default entry point,

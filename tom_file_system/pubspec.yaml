@@ -5,7 +5,6 @@ description: >-
   leave the root, values instead of dart:io objects — with an in-memory and a
   local implementation (watching, freedesktop.org trash, Windows Recycle Bin).
 version: 0.1.0
-publish_to: none
 repository: https://github.com/al-the-bear/tom_basics
 
 environment:

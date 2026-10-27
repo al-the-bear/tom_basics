@@ -1,5 +1,7 @@
 # tom_test_support
 
+Published on pub.dev as [`tom_test_support` 0.1.0](https://pub.dev/packages/tom_test_support).
+
 Test support any Tom package's suite can use: the repository and workspace
 roots found by landmark, the Dart CLI a test may spawn, a wait for a
 network-backed action, the live-GitHub credential contract, a disposable

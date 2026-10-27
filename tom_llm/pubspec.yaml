@@ -6,7 +6,6 @@ description: >-
   live-trail and summary-trail files, and Node runtime discovery for agent
   servers. Depends on no other Tom package, so every graph can take it.
 version: 0.1.0
-publish_to: none
 repository: https://github.com/al-the-bear/tom_basics
 
 environment:

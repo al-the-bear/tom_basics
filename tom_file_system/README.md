@@ -1,5 +1,7 @@
 # tom_file_system
 
+Published on pub.dev as [`tom_file_system` 0.1.0](https://pub.dev/packages/tom_file_system).
+
 One file-system contract, `TomFileSystem`, that every read and write of a Tom
 application goes through — Tom Forge's editors and explorer, and Webwork's
 workspace browser — addressed by `Uri`. A file system has a `root`; `uriOf` and

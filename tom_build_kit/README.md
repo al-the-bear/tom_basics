@@ -1,5 +1,7 @@
 # Tom Build Kit
 
+Published on pub.dev as [`tom_build_kit` 1.12.0](https://pub.dev/packages/tom_build_kit).
+
 > Tom Build Kit is part of the **Tom framework** by al-the-bear.
 > Distributed under the terms in this package's license — see [LICENSE](LICENSE).
 
@@ -62,14 +64,15 @@ buildkit :pubget --project='tom_*'
 
 ## Installation
 
-`tom_build_kit` is a **workspace-internal package** (`publish_to: none`). It is
-not published to pub.dev — it lives inside the Tom devops repository and is
-consumed in place. There is no `dart pub add tom_build_kit`, and you should
-**never** add a manual `path:` override to reach it.
+`tom_build_kit` is on pub.dev. Activate its executables globally:
 
-It depends on the **hosted** `tom_build_base: ^2.6.25` from pub.dev (the shared
-CLI / build framework), plus `args`, `dcli`, `glob`, `yaml`, `yaml_edit` and
-`console_markdown`.
+```bash
+dart pub global activate tom_build_kit
+```
+
+It depends on the **hosted** `tom_build_base: ^2.17.0` from pub.dev (the shared
+CLI / build framework), plus `analyzer`, `args`, `dcli`, `glob`, `meta`,
+`path`, `yaml`, `yaml_edit` and `console_markdown`.
 
 The package declares two executables:
 
@@ -463,10 +466,10 @@ Related packages (don't duplicate — follow the link):
 
 ## Status
 
-- **Version:** 1.7.1 (`publish_to: none` — workspace-internal)
+- **Version:** 1.12.0 (on pub.dev)
 - **SDK:** Dart `^3.10.4`
-- **Base:** `tom_build_base: ^2.6.25` (hosted)
-- **Tests:** 182 tests across executor, pipeline, project-scan and git suites.
+- **Base:** `tom_build_base: ^2.17.0` (hosted)
+- **Tests:** `dart test` (executor, pipeline, project-scan and git suites).
 - **Binaries:** `buildkit` (primary), `findproject`.
 
 ---

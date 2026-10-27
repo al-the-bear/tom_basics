@@ -1,5 +1,7 @@
 # Tom GitHub API
 
+Published on pub.dev as [`tom_github_api` 1.3.0](https://pub.dev/packages/tom_github_api).
+
 > Tom GitHub API is part of the **Tom framework** by al-the-bear.
 > Distributed under the terms in this package's license — see
 > [LICENSE](LICENSE).

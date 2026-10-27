@@ -4,7 +4,6 @@ description: >-
   an entry before moving it, so a failing undo stays undoable, and composite
   steps that put back what they applied when one part fails. No dependencies.
 version: 0.1.0
-publish_to: none
 repository: https://github.com/al-the-bear/tom_basics
 
 environment:

@@ -1,17 +1,14 @@
 name: tom_crypto
 description: Cryptographic utilities for secure authentication and data protection including JWT tokens, password hashing, and RSA encryption.
 version: 1.4.0
-# Not published while the shared packages are extracted: tom_basics is depended
-# on by path until the extraction's packages are published together.
-publish_to: none
-repository: https://github.com/al-the-bear/tom_crypto
+repository: https://github.com/al-the-bear/tom_basics
 
 environment:
   sdk: ^3.10.0
 
 dependencies:
   # The content hash the protected value identifies a secret by.
-  tom_basics: ">=3.3.0"
+  tom_basics: ^3.3.0
   dart_jsonwebtoken: ^3.4.1
   pointycastle: ^4.0.0
   asn1lib: ^1.5.8

@@ -6,7 +6,6 @@ description: >-
   the live-GitHub credential contract a live suite is gated on, and a
   disposable Gitea server in Docker for live git suites.
 version: 0.1.0
-publish_to: none
 repository: https://github.com/al-the-bear/tom_basics
 
 environment:
