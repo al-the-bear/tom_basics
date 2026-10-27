@@ -2,8 +2,9 @@
 
 Test support any Tom package's suite can use: the repository and workspace
 roots found by landmark, the Dart CLI a test may spawn, a wait for a
-network-backed action, the live-GitHub credential contract, and a disposable
-Gitea in Docker for live git suites.
+network-backed action, the live-GitHub credential contract, a disposable
+Gitea in Docker for live git suites, and the driver that runs a Flutter
+package's browser-only tests on Chrome from its ordinary suite.
 
 License: BSD-3-Clause.
 
@@ -26,7 +27,8 @@ for the web; nothing here runs in a browser.
 | `pump_until.dart` | `tomPumpUntil`: ask a condition, let real time pass, pump a frame, until the condition holds or `TomPumpUntilTimeout` reports what was waited for and what the screen held. `pumpAndSettle` cannot wait for a load that finishes in real time while a progress indicator keeps scheduling frames. Framework-free; the `WidgetTester` binding is `tom_reusable_ui`'s. |
 | `github_live.dart` | The live-GitHub contract. A live suite runs only on **two** variables — `GITHUB_TEST_TOKEN` (it *may* reach the account) and `TOM_LIVE` (it should do so *now*) — so a credentialed `dart test` skips every live suite at once: `TomGitHubLiveConfig.fromEnvironment`, `tomLiveSkipTitle`, `tomLiveSkipReason`. A classic token carrying `repo` reaches every repository the account can, so a suite that writes refuses one unless `TOM_ALLOW_WIDE_TOKEN` is set (`tomGitHubCredentialRefusal`); creating and deleting repositories needs a token of its own (`GITHUB_TEST_ADMIN_TOKEN`, `tomGitHubRepoAdminRefusal`); a suite that deliberately earns a secondary rate limit needs `TOM_EARN_SECONDARY_LIMIT`. The credential's class is `tom_github_api`'s reading (`GitHubCredential`); the policy over it is here (`TomGitHubCredentialClass`). |
 | `gitea.dart` | `TomGiteaServer`: a disposable Gitea in Docker for a live git suite — `start` runs a container, makes an admin user, an access token and an initialised repository (`repositoryUrl`), `stop` removes it; `available` says whether `docker` answers, so a suite can skip without it. Gated by the suite on `TOM_LIVE` like the GitHub suites. |
-| `tom_test_support.dart` | All five. |
+| `browser_suite.dart` | `TomBrowserSuite`: a package's `@TestOn('browser')` files in `test/browser/` are skipped silently by an ordinary `flutter test`, so one VM test drives them with `flutter test --platform chrome` on the SDK it runs under (`FLUTTER_ROOT`). `skipReason` names what would make it run (`TOM_SKIP_BROWSER_TESTS=1`, no SDK, no directory); `failureOf` reports a failing exit, and a run that exited 0 without `All tests passed`, which is what a fully-skipped directory looks like. |
+| `tom_test_support.dart` | All six. |
 
 No token is held in a printable form: a `TomGitHubLiveConfig` prints its
 repositories and `<withheld>`, and every sentence the contract writes names a

@@ -8,3 +8,5 @@
 - A framework-free wait for a network-backed action (`pump_until.dart`).
 - The live-GitHub credential contract (`github_live.dart`).
 - A disposable Gitea in Docker for live git suites (`gitea.dart`).
+- The driver that runs a Flutter package's browser-only tests on Chrome from
+  its ordinary suite (`browser_suite.dart`).

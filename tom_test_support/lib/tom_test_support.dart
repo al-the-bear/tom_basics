@@ -5,6 +5,7 @@
 /// package: it is a dev dependency, of whichever package's suite uses it.
 library;
 
+export 'browser_suite.dart';
 export 'dart_cli.dart';
 export 'gitea.dart';
 export 'github_live.dart';
