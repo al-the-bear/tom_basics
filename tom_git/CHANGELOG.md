@@ -11,4 +11,11 @@
   (`report-status`, `side-band-64k`), with token credentials; `fetchBranch`,
   `pushBranch`, `deleteRemoteBranch`, a lost race measured against a fresh
   ref listing.
+- `GitLocalRepository` (`io.dart`): a repository somebody works in, opened
+  from the folder they picked — a working repository through its `.git`
+  folder or a linked worktree's `.git` file (objects and branches from its
+  `commondir`), a bare repository, or a `.git` folder itself. `headBranch()`
+  and `checkedOutBranches()` read `HEAD` when asked, so a caller can refuse to
+  move a branch some working tree has checked out.
+  `GitNotARepositoryException` is in the default entry point.
 - `package:tom_git/testing.dart`: `GitMemoryServer`.

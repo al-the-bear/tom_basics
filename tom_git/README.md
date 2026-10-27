@@ -31,6 +31,12 @@ License: BSD-3-Clause. Internal (`publish_to: none`), consumed by path.
   git's own layout — loose objects, packs with their indexes, loose refs over
   `packed-refs`, updates under git's `<ref>.lock` — which git can read and
   which reads what git wrote.
+- **The repository a person works in.** `GitLocalRepository.open` (`io.dart`)
+  takes the folder somebody picked — a working repository, a linked worktree
+  (its `.git` file and `commondir`), a bare repository or a `.git` folder —
+  and says which branches a working tree has checked out, because this
+  library never updates a working tree or the index: a commit moved onto a
+  checked-out branch would leave that tree describing the commit before.
 
 ## Supported subset
 
@@ -48,7 +54,7 @@ License: BSD-3-Clause. Internal (`publish_to: none`), consumed by path.
 | Import | Holds | Platforms |
 | --- | --- | --- |
 | `package:tom_git/tom_git.dart` | objects, packs, deltas, zlib, pkt-lines, the memory stores, `GitRepository`, `GitHttpRemote`, fetch and push | all, the web included (no `dart:io`) |
-| `package:tom_git/io.dart` | `gitOpenDirectory`, `GitDirectoryObjectStore`, `GitDirectoryRefStore` | desktop, server, mobile |
+| `package:tom_git/io.dart` | `gitOpenDirectory`, `GitLocalRepository`, `GitDirectoryObjectStore`, `GitDirectoryRefStore` | desktop, server, mobile |
 | `package:tom_git/testing.dart` | `GitMemoryServer`: a smart HTTP server in memory, reached through an `http.Client` — for suites that must not touch a network | all |
 
 ## Example

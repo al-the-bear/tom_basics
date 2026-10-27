@@ -2,6 +2,7 @@
 library;
 
 export 'src/delta.dart';
+export 'src/errors.dart';
 export 'src/object_id.dart';
 export 'src/object_store.dart';
 export 'src/objects.dart';
