@@ -66,7 +66,7 @@ On every implementation:
   start or end, cut at a whole line — how a growing log is followed.
 
 What builds on it lives elsewhere: the editing session, the tree filter and
-the `.env` codec are `tom_forge_files`; applying an editor's multi-file
+the `.env` codec are `tom_file_session`; applying an editor's multi-file
 workspace edit is `tom_forge_core`'s `forgeApplyWorkspaceEdit`.
 
 ## Checking it on Linux and Windows
