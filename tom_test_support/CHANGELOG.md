@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.0
+
+- The wait a live suite makes between a write and the read that depends on
+  it (`settle.dart`): `tomSettleUntil` reads until a condition holds or
+  `tomLiveSettleTimeout` passes, backing off between reads, and reports a
+  settle slower than `tomLiveSettleSlowAfter`; `TomSettleTimeout` names what
+  was waited for and the last value read. One policy for every package's live
+  suites, moved here from `tom_webwork_core`'s test support.
+
 ## 0.1.0
 
 - The repository and workspace roots, found by landmark (`roots.dart`).
