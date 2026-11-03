@@ -6,6 +6,7 @@
 library;
 
 export 'browser_suite.dart';
+export 'cors_proxy.dart';
 export 'dart_cli.dart';
 export 'gitea.dart';
 export 'github_live.dart';

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.0
+
+- A request that gets no answer in a **web page** says that the server is
+  either not answering or does not allow requests from a web page (no CORS
+  headers on its git endpoints): the browser reports both in the same words,
+  and the sentence used to name only the first (`gitUnreachableMessage`).
+
 ## 0.1.0
 
 - Git objects (blob, tree, commit), loose objects, and pack version 2 with its

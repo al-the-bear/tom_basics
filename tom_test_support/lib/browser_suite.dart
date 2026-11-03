@@ -71,14 +71,21 @@ final class TomBrowserSuite {
 
   /// Runs `flutter test --platform chrome` over [directory].
   ///
+  /// [defines] reach the browser code as `--dart-define`s
+  /// (`String.fromEnvironment`) — the one channel from the VM test that drives
+  /// the run into the page, for an address or a token the VM side knows only
+  /// at run time, such as a server it started.
+  ///
   /// Throws a [StateError] when [skipReason] is not null.
-  Future<ProcessResult> run() {
+  Future<ProcessResult> run({Map<String, String> defines = const {}}) {
     final reason = skipReason;
     if (reason != null) throw StateError(reason);
     return Process.run(flutterExecutable!, [
       'test',
       '--platform',
       'chrome',
+      for (final define in defines.entries)
+        '--dart-define=${define.key}=${define.value}',
       directory,
     ], workingDirectory: workingDirectory);
   }

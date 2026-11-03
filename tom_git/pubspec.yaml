@@ -4,7 +4,7 @@ description: >-
   object model, loose objects and packfiles (read with deltas, written
   without), editing a tree without a working tree or index, and the smart
   HTTP transport for fetch and push.
-version: 0.1.0
+version: 0.2.0
 repository: https://github.com/al-the-bear/tom_basics
 
 environment:

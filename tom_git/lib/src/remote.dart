@@ -9,6 +9,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
+import 'package:meta/meta.dart';
 
 import 'object_id.dart';
 import 'pkt_line.dart';
@@ -63,6 +64,30 @@ class GitRepositoryNotFoundException extends GitTransportException {
 class GitUnreachableException extends GitTransportException {
   GitUnreachableException(super.message, {super.cause});
 }
+
+/// Whether this code runs in a web page.
+const bool _inPage = bool.fromEnvironment('dart.library.js_interop');
+
+/// The sentence for a request to [host] that got no answer, [detail] being
+/// what the HTTP client said.
+///
+/// In a web page the browser reports a server that is down and a server that
+/// refused the page's cross-origin request in the same words ("Failed to
+/// fetch"): the response a server sends without CORS headers is withheld from
+/// the page, not handed to it as an error. So the sentence names both causes
+/// rather than the one it cannot tell apart — a reader told only that the
+/// server "could not be reached" goes looking for a server that is running.
+@visibleForTesting
+String gitUnreachableMessage(
+  String host,
+  String detail, {
+  bool inPage = _inPage,
+}) => inPage
+    ? '$host could not be reached from this page ($detail): either it is not '
+          'answering, or it does not allow requests from a web page — a git '
+          'server a browser can use must send CORS headers on its git '
+          'endpoints'
+    : '$host could not be reached: $detail';
 
 /// The refs a remote advertises.
 class GitRemoteRefs {
@@ -480,8 +505,7 @@ class GitHttpRemote {
       response = await http.Response.fromStream(await _client.send(request));
     } on http.ClientException catch (e) {
       throw GitUnreachableException(
-        '${url.host} could not be reached: '
-        '${e.message}',
+        gitUnreachableMessage(url.host, e.message),
         cause: e,
       );
     }

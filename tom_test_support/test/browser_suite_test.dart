@@ -85,5 +85,32 @@ void main() {
         isNull,
       );
     });
+
+    test(
+      'BS-8: defines reach the page as --dart-define, before the directory',
+      () async {
+        Directory(
+          '${package.path}/test/browser_live',
+        ).createSync(recursive: true);
+        final root = fakeFlutterRoot();
+        final flutter = File('$root/bin/flutter')
+          ..writeAsStringSync('#!/bin/sh\necho "\$@"\n');
+        await Process.run('chmod', ['+x', flutter.path]);
+        final suite = TomBrowserSuite(
+          directory: 'test/browser_live',
+          workingDirectory: package.path,
+          environment: {'FLUTTER_ROOT': root},
+        );
+        final result = await suite.run(
+          defines: {'SERVER_URL': 'http://127.0.0.1:3000', 'TOKEN': 't'},
+        );
+        expect(
+          '${result.stdout}'.trim(),
+          'test --platform chrome --dart-define=SERVER_URL=http://127.0.0.1:3000 '
+          '--dart-define=TOKEN=t test/browser_live',
+        );
+      },
+      testOn: '!windows',
+    );
   });
 }

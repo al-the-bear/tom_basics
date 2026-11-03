@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.0
+
+- `TomBrowserSuite.run(defines:)`: values the VM test knows only at run time —
+  the address and token of a server it started — reach the browser code as
+  `--dart-define`s.
+- `TomCorsProxy` (`cors_proxy.dart`): a reverse proxy that adds the CORS
+  headers a web page needs and answers its preflight, for browser suites
+  against servers that send none — Gitea's `[cors]` setting covers its `/api`
+  routes and not git's smart-HTTP endpoints.
+
 ## 0.2.0
 
 - The wait a live suite makes between a write and the read that depends on
