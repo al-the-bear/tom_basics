@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.4.0
+
+- `process_tree.dart`: `processTreeOf` (a process and every descendant, by
+  `pgrep -P`) and `aliveAmong` — so a test or a test runner reaps what it
+  spawned and nothing else, never a process matched by its name. Moved here
+  from `tom_webwork_app`'s test support; the live runner in
+  `tom_webwork_core` uses it too.
+
 ## 0.3.0
 
 - `TomBrowserSuite.run(defines:)`: values the VM test knows only at run time —

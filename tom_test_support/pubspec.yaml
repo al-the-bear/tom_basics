@@ -5,7 +5,7 @@ description: >-
   taken from the runner, a framework-free wait for a network-backed action,
   the live-GitHub credential contract a live suite is gated on, and a
   disposable Gitea server in Docker for live git suites.
-version: 0.3.0
+version: 0.4.0
 repository: https://github.com/al-the-bear/tom_basics
 
 environment:
