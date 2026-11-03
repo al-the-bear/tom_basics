@@ -26,9 +26,10 @@ const llmAgentPurpose = 'agent';
 String llmSessionFor(String purpose) =>
     purpose == llmAgentPurpose ? llmChatSession : llmDefaultSession;
 
-/// A request refused because its session already has a run. Never
-/// queued: a queued run would start at a moment nobody chose, against a
-/// document that may have changed.
+/// A request refused because its session already has a run. An app whose
+/// user starts runs refuses rather than queues: a queued run would start at a
+/// moment nobody chose, against a document that may have changed. A backend
+/// serving its own lanes may queue instead, and then never raises this.
 class LlmSessionBusyException implements Exception {
   /// The session that is busy.
   final String sessionId;
