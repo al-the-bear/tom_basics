@@ -3,6 +3,8 @@
 /// they applied when one item throws.
 library;
 
+import 'dart:async';
+
 import 'package:test/test.dart';
 import 'package:tom_undo/tom_undo.dart';
 
@@ -70,6 +72,65 @@ void main() {
       expect(undone, 'a');
       expect(stack.nextUndo, 'b');
       expect(stack.nextRedo, 'a');
+    });
+  });
+
+  group('UNDO-SERIAL overlapping asynchronous moves', () {
+    test('UNDO-STACK-7: two undos started before the first finishes apply two '
+        'entries, each once, newest first', () async {
+      final stack = TomUndoStack<String>()
+        ..push('a')
+        ..push('b');
+      final applied = <String>[];
+      final gate = Completer<void>();
+      final first = stack.undoAsync((entry) async {
+        applied.add(entry);
+        await gate.future;
+      });
+      final second = stack.undoAsync((entry) async => applied.add(entry));
+      expect(stack.isApplying, isTrue);
+      gate.complete();
+      expect(await first, 'b');
+      expect(await second, 'a');
+      expect(applied, ['b', 'a']);
+      expect(stack.redoCount, 2);
+      expect(stack.isApplying, isFalse);
+    });
+
+    test('UNDO-STACK-8: a redo queued behind an undo redoes what that undo '
+        'undid', () async {
+      final stack = TomUndoStack<String>()..push('a');
+      final gate = Completer<void>();
+      final undo = stack.undoAsync((_) => gate.future);
+      final redo = stack.redoAsync((_) async {});
+      gate.complete();
+      expect(await undo, 'a');
+      expect(await redo, 'a');
+      expect(stack.nextUndo, 'a');
+      expect(stack.canRedo, isFalse);
+    });
+
+    test('UNDO-STACK-9: an entry cleared while it is applied is not put back',
+        () async {
+      final stack = TomUndoStack<String>()..push('a');
+      await stack.undoAsync((_) async => stack.clear());
+      expect(stack.canUndo, isFalse);
+      expect(stack.canRedo, isFalse);
+    });
+
+    test('UNDO-STACK-10: a synchronous undo or redo is refused while an '
+        'asynchronous one applies; a failed one releases the stack', () async {
+      final stack = TomUndoStack<String>()
+        ..push('a')
+        ..push('b');
+      final gate = Completer<void>();
+      final running = stack.undoAsync((_) => gate.future);
+      expect(() => stack.undo(), throwsStateError);
+      expect(() => stack.redo(), throwsStateError);
+      gate.completeError(StateError('failed'));
+      await expectLater(running, throwsStateError);
+      expect(stack.isApplying, isFalse);
+      expect(stack.undo(), 'b', reason: 'the failed entry stayed undoable');
     });
   });
 

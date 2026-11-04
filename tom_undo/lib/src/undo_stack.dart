@@ -9,6 +9,10 @@
 /// * **Bounded, newest kept.** [push] clears the redo stack, because an edit
 ///   after an undo makes the undone future unreachable, and drops the oldest
 ///   entries beyond [maxEntries].
+/// * **One asynchronous move at a time.** [undoAsync] and [redoAsync] wait for
+///   the one in flight before choosing their entry, so two presses of Undo
+///   while an application is still running undo two entries, never one entry
+///   twice; a synchronous [undo] or [redo] meanwhile is refused.
 ///
 /// The stack holds whatever the history needs — a command with its own undo
 /// and redo, a recorded transaction, or a before/after snapshot the caller
@@ -26,6 +30,12 @@ class TomUndoStack<E> {
 
   final List<E> _undo = [];
   final List<E> _redo = [];
+
+  /// The asynchronous undo or redo in flight, if any.
+  Future<void>? _inFlight;
+
+  /// Whether an asynchronous undo or redo is still applying its entry.
+  bool get isApplying => _inFlight != null;
 
   bool get canUndo => _undo.isNotEmpty;
   bool get canRedo => _redo.isNotEmpty;
@@ -63,7 +73,10 @@ class TomUndoStack<E> {
   /// [apply] the entry only moves — for a history whose caller applies the
   /// entry it is handed back. A throw from [apply] leaves both stacks as they
   /// were.
+  ///
+  /// Throws a [StateError] while an asynchronous undo or redo is in flight.
   E? undo([void Function(E entry)? apply]) {
+    _refuseWhileApplying();
     final entry = nextUndo;
     if (entry == null) return null;
     apply?.call(entry);
@@ -74,6 +87,7 @@ class TomUndoStack<E> {
   /// Applies [apply] to the newest undone entry and then moves it back to the
   /// undo stack. As [undo], in the other direction.
   E? redo([void Function(E entry)? apply]) {
+    _refuseWhileApplying();
     final entry = nextRedo;
     if (entry == null) return null;
     apply?.call(entry);
@@ -83,24 +97,51 @@ class TomUndoStack<E> {
 
   /// [undo] for an application that completes asynchronously.
   ///
-  /// The entry moves once [apply] has completed. If something pushed while it
+  /// Waits for an undo or redo already in flight, then takes the newest entry
+  /// and moves it once [apply] has completed. If something pushed while it
   /// ran, the entry still moves — by identity, not by position — and the push
-  /// has already cleared the redo stack it lands on beside.
-  Future<E?> undoAsync(Future<void> Function(E entry) apply) async {
-    final entry = nextUndo;
-    if (entry == null) return null;
-    await apply(entry);
-    _move(entry, from: _undo, to: _redo);
-    return entry;
-  }
+  /// has already cleared the redo stack it lands on beside. An entry that left
+  /// the stack while it was applied ([clear], or dropped beyond [maxEntries])
+  /// is not put back anywhere.
+  Future<E?> undoAsync(Future<void> Function(E entry) apply) =>
+      _serialised(() async {
+        final entry = nextUndo;
+        if (entry == null) return null;
+        await apply(entry);
+        _move(entry, from: _undo, to: _redo);
+        return entry;
+      });
 
   /// [redo] for an application that completes asynchronously.
-  Future<E?> redoAsync(Future<void> Function(E entry) apply) async {
-    final entry = nextRedo;
-    if (entry == null) return null;
-    await apply(entry);
-    _move(entry, from: _redo, to: _undo);
-    return entry;
+  Future<E?> redoAsync(Future<void> Function(E entry) apply) =>
+      _serialised(() async {
+        final entry = nextRedo;
+        if (entry == null) return null;
+        await apply(entry);
+        _move(entry, from: _redo, to: _undo);
+        return entry;
+      });
+
+  Future<E?> _serialised(Future<E?> Function() step) async {
+    for (var running = _inFlight; running != null; running = _inFlight) {
+      await running;
+    }
+    final result = step();
+    final done = result.then((_) {}, onError: (Object _) {});
+    _inFlight = done;
+    try {
+      return await result;
+    } finally {
+      if (identical(_inFlight, done)) _inFlight = null;
+    }
+  }
+
+  void _refuseWhileApplying() {
+    if (_inFlight != null) {
+      throw StateError(
+        'an asynchronous undo or redo is still applying its entry',
+      );
+    }
   }
 
   /// Empties both stacks.
@@ -109,9 +150,12 @@ class TomUndoStack<E> {
     _redo.clear();
   }
 
+  /// Moves [entry] from [from] to [to]; an entry [from] no longer holds is
+  /// not added to [to] — it left the history while it was being applied.
   void _move(E entry, {required List<E> from, required List<E> to}) {
     final at = from.lastIndexWhere((e) => identical(e, entry));
-    if (at >= 0) from.removeAt(at);
+    if (at < 0) return;
+    from.removeAt(at);
     to.add(entry);
   }
 }

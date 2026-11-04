@@ -1,6 +1,6 @@
 # tom_undo
 
-Published on pub.dev as [`tom_undo` 0.1.0](https://pub.dev/packages/tom_undo).
+Published on pub.dev as [`tom_undo` 0.2.0](https://pub.dev/packages/tom_undo).
 
 One undo/redo stack, `TomUndoStack<E>`, that every undo history in the
 workspace runs on — Tom Forge's `DefaultUndoManager`, the text, Markdown, YAML
@@ -17,7 +17,11 @@ dependencies:
 - **Applied first, moved second.** `undo` and `redo` apply an entry and only
   then move it between the stacks, so an application that throws leaves the
   entry where it was and the error reaches the caller. `undoAsync` and
-  `redoAsync` do the same for an application that completes later.
+  `redoAsync` do the same for an application that completes later, one at a
+  time: a second started while the first applies waits for it, so two quick
+  undos take back two entries rather than one twice. While one applies
+  (`isApplying`), a synchronous `undo` or `redo` is refused with a
+  `StateError`.
 - **Bounded.** A push clears the redo stack and drops the oldest entries
   beyond `maxEntries`; `popNewest` takes the newest entry back so a history can
   merge a burst of typing into one act.
