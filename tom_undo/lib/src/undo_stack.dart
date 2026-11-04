@@ -22,11 +22,30 @@ library;
 
 /// A bounded undo/redo stack of [E].
 class TomUndoStack<E> {
-  TomUndoStack({this.maxEntries = 100})
-    : assert(maxEntries > 0, 'a stack must keep at least one entry');
+  TomUndoStack({int maxEntries = 100})
+    : assert(maxEntries > 0, 'a stack must keep at least one entry'),
+      _maxEntries = maxEntries;
+
+  int _maxEntries;
 
   /// How many entries the undo stack keeps; the oldest beyond it are dropped.
-  final int maxEntries;
+  int get maxEntries => _maxEntries;
+
+  /// Sets the bound. A lower bound drops the oldest undoable entries at once;
+  /// the redo stack, which only an undo fills, is never longer than the undo
+  /// stack was, and is trimmed the same way from its far end.
+  set maxEntries(int value) {
+    if (value <= 0) {
+      throw ArgumentError.value(value, 'maxEntries', 'must be at least 1');
+    }
+    _maxEntries = value;
+    while (_undo.length > value) {
+      _undo.removeAt(0);
+    }
+    while (_redo.length > value) {
+      _redo.removeAt(0);
+    }
+  }
 
   final List<E> _undo = [];
   final List<E> _redo = [];
@@ -62,7 +81,7 @@ class TomUndoStack<E> {
   void push(E entry) {
     _undo.add(entry);
     _redo.clear();
-    while (_undo.length > maxEntries) {
+    while (_undo.length > _maxEntries) {
       _undo.removeAt(0);
     }
   }

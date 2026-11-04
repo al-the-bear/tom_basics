@@ -75,6 +75,31 @@ void main() {
     });
   });
 
+  group('UNDO-BOUND changing the bound', () {
+    test('UNDO-STACK-11: lowering maxEntries drops the oldest undo entries and '
+        'the furthest redo entries at once; raising it keeps more', () {
+      final stack = TomUndoStack<int>(maxEntries: 5);
+      for (var i = 1; i <= 5; i++) {
+        stack.push(i);
+      }
+      stack.undo();
+      stack.undo();
+      stack.maxEntries = 2;
+      expect(stack.undoEntries, [2, 3]);
+      expect(stack.redoCount, 2);
+      expect(stack.nextRedo, 4);
+      stack.maxEntries = 1;
+      expect(stack.undoEntries, [3]);
+      expect(stack.nextRedo, 4, reason: 'the nearest redo is kept');
+      stack.maxEntries = 3;
+      stack
+        ..push(6)
+        ..push(7);
+      expect(stack.undoEntries, [3, 6, 7]);
+      expect(() => stack.maxEntries = 0, throwsArgumentError);
+    });
+  });
+
   group('UNDO-SERIAL overlapping asynchronous moves', () {
     test('UNDO-STACK-7: two undos started before the first finishes apply two '
         'entries, each once, newest first', () async {

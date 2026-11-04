@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.0
+
+- `maxEntries` is settable: a lower bound drops the oldest undo entries and
+  the furthest redo entries at once, so a depth setting takes effect on an
+  open history.
+
 ## 0.2.0
 
 - `undoAsync` and `redoAsync` are serialised: one started while another is

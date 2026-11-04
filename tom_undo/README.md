@@ -1,6 +1,6 @@
 # tom_undo
 
-Published on pub.dev as [`tom_undo` 0.2.0](https://pub.dev/packages/tom_undo).
+Published on pub.dev as [`tom_undo` 0.3.0](https://pub.dev/packages/tom_undo).
 
 One undo/redo stack, `TomUndoStack<E>`, that every undo history in the
 workspace runs on — Tom Forge's `DefaultUndoManager`, the text, Markdown, YAML
@@ -23,7 +23,7 @@ dependencies:
   (`isApplying`), a synchronous `undo` or `redo` is refused with a
   `StateError`.
 - **Bounded.** A push clears the redo stack and drops the oldest entries
-  beyond `maxEntries`; `popNewest` takes the newest entry back so a history can
+  beyond `maxEntries`, which can be changed on an open stack; `popNewest` takes the newest entry back so a history can
   merge a burst of typing into one act.
 - **Atomic composite steps.** `tomApplyAll` (and `tomApplyAllAsync`) apply a
   list of steps in order and, when one throws, put back the ones already
