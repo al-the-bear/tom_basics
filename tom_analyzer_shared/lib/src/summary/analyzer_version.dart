@@ -33,16 +33,17 @@ import 'dart:io';
 /// constant, and the Tom code generators that use this cache run
 /// **AOT-compiled** — where `Isolate.resolvePackageUri` path-sniffing is
 /// unavailable. A compile-time constant is therefore the only AOT-safe source
-/// of truth. This package pins `analyzer: ^10.0.0` in its pubspec, so each
+/// of truth. This package pins `analyzer: ^14.1.0` in its pubspec, so each
 /// published build maps to exactly one analyzer major.
 ///
 /// ## Maintenance
 ///
 /// **Bump this constant in lockstep with the `analyzer` constraint in
-/// `pubspec.yaml`.** When `tom_analyzer_shared` migrates to `analyzer: ^11.x`,
-/// set this to `11`. The two must always agree; a mismatch reintroduces the
-/// cross-major poison this guard exists to prevent.
-const int analyzerMajorVersion = 10;
+/// `pubspec.yaml`.** When `tom_analyzer_shared` migrates to the next analyzer
+/// major, set this to that major. The two must always agree; a mismatch
+/// reintroduces the cross-major poison this guard exists to prevent
+/// (`test/summary/analyzer_version_test.dart` holds them together).
+const int analyzerMajorVersion = 14;
 
 /// The `<major>.<minor>.<patch>` Dart SDK version of the running toolchain.
 ///

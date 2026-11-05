@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.8.0
+
+- **Migrated to `analyzer: ^14.1.0`** (from `^10.0.0`). analyzer 14.1 moved
+  `AnalysisOptionsImpl` to `package:analyzer/src/analysis_options/`; the summary
+  builder imports it from there.
+- **The summary cache moves to the `14/` partition.** `analyzerMajorVersion`
+  is 14, so bundles analyzer 10 wrote under `.tom/analyzer-cache/10/` are never
+  read: analyzer 14 cannot decode them (it fails while reading their reference
+  table). `test/summary/analyzer_version_test.dart` checks that the constant is
+  the major of the resolved analyzer and of the pubspec constraint.
+
 ## 0.7.6
 
 - **Package locations come from `.dart_tool/package_config.json` (scf32).**
