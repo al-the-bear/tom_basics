@@ -667,32 +667,9 @@ class TestWorkspace {
   }
 
   /// Check if the workspace has any uncommitted changes (staged or unstaged)
-  /// that could affect test results.
-  ///
-  /// Returns a list of changed file paths, or empty if clean.
-  /// Excludes submodule pointer changes (xternal/) and untracked generated
-  /// files since those don't affect the test fixtures or tool behavior.
-  Future<List<String>> hasUncommittedChanges() async {
-    final result = await _git([
-      'status',
-      '--porcelain',
-      '--ignore-submodules=dirty',
-    ], workingDirectory: workspaceRoot);
-    final output = result.stdout.toString().trim();
-    if (output.isEmpty) return [];
-    return output
-        .split('\n')
-        .map((line) => line.trim())
-        .where((line) => line.isNotEmpty)
-        // Exclude submodule pointer changes — they don't affect tests
-        .where((line) => !RegExp(r'^[Mm?\s]{1,2}\s*xternal/').hasMatch(line))
-        // Exclude untracked generated files (e.g., .reflection.dart, .g.dart)
-        .where(
-          (line) =>
-              !RegExp(r'^\?\?\s.*\.(reflection|g|r|b)\.dart$').hasMatch(line),
-        )
-        .toList();
-  }
+  /// that could affect test results. See [uncommittedChangesIn].
+  Future<List<String>> hasUncommittedChanges() =>
+      uncommittedChangesIn(workspaceRoot);
 
   // ---------------------------------------------------------------------------
   // Tool execution
@@ -905,4 +882,40 @@ class TestWorkspace {
   }) async {
     return Process.run('git', args, workingDirectory: workingDirectory);
   }
+}
+
+/// The uncommitted changes in the git repository at [root] that could affect
+/// an integration run, as `git status --porcelain` lines; empty when clean.
+///
+/// SUBMODULES ARE IGNORED ENTIRELY (`--ignore-submodules=all`): both changes
+/// inside a submodule and a submodule whose HEAD differs from the commit the
+/// superproject records. The tear-down protocol reverts files and verifies
+/// that no HEAD moved; it never moves a submodule's HEAD, so a pointer that
+/// already differs (the normal state of a superproject between pushes of its
+/// submodule tree) cannot be harmed by a run. Reporting it made the suite
+/// unrunnable in any workspace whose pointers had not just been pushed.
+/// Untracked generated files (`.reflection.dart`, `.g.dart`, `.r.dart`,
+/// `.b.dart`) are left out too: they do not affect fixtures or tool behaviour.
+Future<List<String>> uncommittedChangesIn(String root) async {
+  final result = await Process.run('git', [
+    'status',
+    '--porcelain',
+    '--ignore-submodules=all',
+  ], workingDirectory: root);
+  if (result.exitCode != 0) {
+    throw StateError(
+      'git status failed in $root (exit ${result.exitCode}): ${result.stderr}',
+    );
+  }
+  final output = result.stdout.toString().trim();
+  if (output.isEmpty) return [];
+  return output
+      .split('\n')
+      .map((line) => line.trim())
+      .where((line) => line.isNotEmpty)
+      .where(
+        (line) =>
+            !RegExp(r'^\?\?\s.*\.(reflection|g|r|b)\.dart$').hasMatch(line),
+      )
+      .toList();
 }
