@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.5.0
+
+- `licence_audit.dart`: the licence audit of the packages an application
+  resolves — `tomResolvedPackages`, `tomLinkedPackages` (the `dependencies:`
+  walk), `tomClassifyLicence` and `tomAuditLicences` with the licences the
+  application admits (`TomLicence.permissive`, plus `TomLicence.mpl2` where
+  its notice is carried). Moved here from `tom_webwork_testkit`'s
+  `editor_licence_path.dart`, so a BSD-3 application (Tom Forge) runs the
+  same audit as a GPL one (Webwork).
+
 ## 0.4.0
 
 - `process_tree.dart`: `processTreeOf` (a process and every descendant, by

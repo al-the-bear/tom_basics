@@ -10,6 +10,7 @@ export 'cors_proxy.dart';
 export 'dart_cli.dart';
 export 'gitea.dart';
 export 'github_live.dart';
+export 'licence_audit.dart';
 export 'process_tree.dart';
 export 'pump_until.dart';
 export 'roots.dart';
