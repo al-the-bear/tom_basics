@@ -5,7 +5,7 @@
 # Tests: Executables, compile action, cross-compilation
 
 name: test-cli
-short-id: ZTC
+project_id: ZTC
 
 type: dart_console
 description: Test standalone CLI app for validating workspace analyzer features

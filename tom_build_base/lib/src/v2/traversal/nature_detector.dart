@@ -357,9 +357,7 @@ class NatureDetector {
       if (yaml is Map) {
         config = Map<String, dynamic>.from(yaml);
         projectName = config['name'] as String?;
-        // Support both project_id (underscore) and short-id (hyphen) formats
-        shortId =
-            config['project_id'] as String? ?? config['short-id'] as String?;
+        shortId = config['project_id'] as String?;
       }
     } catch (_) {}
 

@@ -5,7 +5,7 @@
 # Tests: Flutter-specific actions, mobile platforms, assets
 
 name: test-flutter
-short-id: ZTF
+project_id: ZTF
 
 type: flutter_app
 description: Test Flutter app for validating workspace analyzer features

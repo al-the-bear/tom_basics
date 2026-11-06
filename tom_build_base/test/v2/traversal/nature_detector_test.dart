@@ -306,6 +306,29 @@ void main() {
           );
         },
       );
+
+      TomBuildFolder tomFolderWith(String name, String yaml) {
+        final dir = Directory(p.join(zomTestRoot, name))..createSync();
+        File(p.join(dir.path, 'tom_project.yaml')).writeAsStringSync(yaml);
+        return detector
+            .detectNatures(FsFolder(path: dir.path))
+            .whereType<TomBuildFolder>()
+            .single;
+      }
+
+      test('BB-NAT-39: project_id is the project\'s id [2026-11-06]', () {
+        final folder = tomFolderWith(
+          'nat39_project_id',
+          'project_id: PID\nname: pid-name\n',
+        );
+        expect(folder.shortId, 'PID');
+        expect(folder.projectName, 'pid-name');
+      });
+
+      test('BB-NAT-40: a short-id key is not an id [2026-11-06]', () {
+        final folder = tomFolderWith('nat40_short_id', 'short-id: OLD\n');
+        expect(folder.shortId, isNull);
+      });
     });
 
     group('Multiple natures', () {

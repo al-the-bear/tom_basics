@@ -862,7 +862,7 @@ class NatureDetector {
     return TomProjectFolder(
       folder, 
       name: yaml?['name'] as String?,
-      shortId: yaml?['short-id'] as String?,
+      shortId: yaml?['project_id'] as String?,
       config: yaml ?? {},
     );
   }
@@ -876,7 +876,7 @@ Project names and IDs are short identifiers defined in `tom_project.yaml`:
 ```yaml
 # tom_project.yaml
 name: buildkit     # Display name (lowercase, hyphen-separated)
-short-id: BK       # Short identifier (uppercase)
+project_id: BK     # Short identifier (uppercase)
 # ... other config
 ```
 
@@ -1693,11 +1693,11 @@ Short mnemonics and display names for projects, defined in `tom_project.yaml`:
 ```yaml
 # In tom_build_base/tom_project.yaml
 name: buildkit        # Lowercase display name
-short-id: BK          # Short uppercase identifier
+project_id: BK        # Short uppercase identifier
 
 # In tom_d4rt_generator/tom_project.yaml
 name: d4rt-gen
-short-id: D4G
+project_id: D4G
 ```
 
 **Global reference:** See `_copilot_guidelines/projects_and_repos.md` for the complete list of project names and IDs.
@@ -1711,7 +1711,7 @@ buildkit -x d4rt :cleanup       # Exclude by project name
 ```
 
 **Resolution hierarchy for `--project` / `-p`:**
-1. Check if value matches a project ID (from `tom_project.yaml` `short-id`)
+1. Check if value matches a project ID (from `tom_project.yaml` `project_id`)
 2. Check if value matches a project name (from `tom_project.yaml` `name`)
 3. Check if value matches a folder name pattern (glob on folder name)
 

@@ -109,11 +109,11 @@ void main() {
 
     group('Project ID and Name filtering (--project, -p)', () {
       test(
-        'BB-FLT-30: Filters by project short-id from tom_project.yaml [2026-02-14]',
+        'BB-FLT-30: Filters by project_id from tom_project.yaml [2026-02-14]',
         () {
           final info = ProjectTraversalInfo(
             executionRoot: zomTestRoot,
-            projectPatterns: ['ZTF'], // short-id for zom_test_flutter
+            projectPatterns: ['ZTF'], // project_id of zom_test_flutter
             includeTestProjects: true,
           );
 
@@ -125,7 +125,7 @@ void main() {
       );
 
       test(
-        'BB-FLT-31: Filters by project short-id case-insensitive [2026-02-14]',
+        'BB-FLT-31: Filters by project_id case-insensitive [2026-02-14]',
         () {
           final info = ProjectTraversalInfo(
             executionRoot: zomTestRoot,
@@ -328,7 +328,7 @@ void main() {
     });
 
     group('Project exclude with ID and Name (--exclude-projects)', () {
-      test('BB-FLT-35: Excludes by project short-id [2026-02-14]', () {
+      test('BB-FLT-35: Excludes by project_id [2026-02-14]', () {
         final info = ProjectTraversalInfo(
           executionRoot: zomTestRoot,
           excludeProjects: ['ZTF'], // exclude flutter by ID

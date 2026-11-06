@@ -312,7 +312,7 @@ class FilterPipeline {
 
   /// Check if folder has a matching project ID in buildkit.yaml.
   bool _matchesProjectId(FsFolder folder, List<String> patterns) {
-    // First check TomBuildFolder for short-id
+    // First check TomBuildFolder for its project_id
     for (final nature in folder.natures) {
       if (nature is TomBuildFolder && nature.shortId != null) {
         final id = nature.shortId!.toLowerCase();

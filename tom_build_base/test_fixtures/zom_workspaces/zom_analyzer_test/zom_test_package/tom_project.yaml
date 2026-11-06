@@ -5,7 +5,7 @@
 # Tests: Actions, mode-definitions, cross-compilation
 
 name: test-pkg
-short-id: ZTP
+project_id: ZTP
 
 type: dart_package
 description: Test package for validating workspace analyzer features

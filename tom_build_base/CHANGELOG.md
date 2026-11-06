@@ -1,3 +1,13 @@
+## 2.18.0
+
+### Removed — `short-id` in tom_project.yaml
+
+`NatureDetector` reads a project's id from `project_id` only; the hyphenated
+`short-id` it also accepted is no longer read, so `TomBuildFolder.shortId` is
+null for a tom_project.yaml that still names it. Every tom_project.yaml in the
+workspace uses `project_id`; the three zom fixtures that still said `short-id`
+now say `project_id`. Tests BB-NAT-39 and BB-NAT-40.
+
 ## 2.17.2
 
 ### Fixed — an absolute `--project` path through a symbolic link selects its project
