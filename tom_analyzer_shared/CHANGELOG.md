@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.8.1
+
+- **A package's own analyzer excludes no longer drop files from its summary.**
+  The summary generator analysed each package with its own
+  `analysis_options.yaml`, so every file its `analyzer: exclude:` named had no
+  analysis context: one `Failed to analyze …: Bad state: Unable to find the
+  context to …` warning per file (televerse's `*.g.dart` / `*.freezed.dart`
+  parts, a few hundred of them), and an excluded *library* was missing from the
+  bundle (tom_d4rt_dcli's `*.b.dart` bridges). Packages are now analysed with
+  an empty options file of the generator's own.
+- `SummaryGenerator.fingerprintFormat` is `fingerprint-format: 3`, so bundles
+  built before are rebuilt once.
+
 ## 0.8.0
 
 - **Migrated to `analyzer: ^14.1.0`** (from `^10.0.0`). analyzer 14.1 moved

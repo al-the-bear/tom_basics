@@ -342,8 +342,14 @@ class SummaryGenerator {
   /// line makes every bundle built before it — which may carry the damage —
   /// stale once, fleet-wide, so the cache is rebuilt under the new rule.
   ///
+  /// Format 3: a package was analysed with its own `analysis_options.yaml`,
+  /// whose `analyzer: exclude:` left the excluded files without an analysis
+  /// context — tom_d4rt_dcli's `*.b.dart` bridge libraries were missing from
+  /// its bundle. Bundles are now built with an empty options file; those built
+  /// before may lack libraries, so they are rebuilt once.
+  ///
   /// Change it only when bundles built under the old rules must not be trusted.
-  static const fingerprintFormat = 'fingerprint-format: 2';
+  static const fingerprintFormat = 'fingerprint-format: 3';
 
   /// Computes, for each cacheable package, a fingerprint of the exact
   /// versioned dependency closure its summary is linked against.
@@ -551,6 +557,15 @@ class SummaryGenerator {
     List<String>? librarySummaryPaths,
   }) async {
     AnalysisContextCollectionImpl? collection;
+    // The package's own analysis_options.yaml is about linting it: its
+    // `analyzer: exclude:` (televerse its `*.g.dart` parts, tom_d4rt_dcli its
+    // `*.b.dart` bridge libraries) would leave those files without an
+    // analysis context — a "Failed to analyze" warning each, and an excluded
+    // library missing from the summary. An empty options file of our own
+    // keeps every file in.
+    final optionsDir = Directory.systemTemp.createTempSync('tom_summary_options_');
+    final optionsFile = File(p.join(optionsDir.path, 'analysis_options.yaml'))
+      ..writeAsStringSync('');
     final dartToolDir = Directory(p.join(packagePath, '.dart_tool'));
     final packageConfigFile = File(
       p.join(dartToolDir.path, 'package_config.json'),
@@ -592,12 +607,14 @@ class SummaryGenerator {
           (librarySummaryPaths != null && librarySummaryPaths.isNotEmpty)) {
         collection = AnalysisContextCollectionImpl(
           includedPaths: [p.normalize(p.absolute(packagePath))],
+          optionsFile: optionsFile.path,
           sdkSummaryPath: sdkSummaryPath,
           librarySummaryPaths: librarySummaryPaths ?? const [],
         );
       } else {
         collection = AnalysisContextCollectionImpl(
           includedPaths: [p.normalize(p.absolute(packagePath))],
+          optionsFile: optionsFile.path,
         );
       }
 
@@ -636,6 +653,11 @@ class SummaryGenerator {
       return _createSummaryBundle(resolvedLibraries);
     } finally {
       await collection?.dispose();
+      try {
+        optionsDir.deleteSync(recursive: true);
+      } catch (_) {
+        // A leftover empty temp folder is harmless.
+      }
 
       // Clean up the temporary package_config.json
       if (!hadPackageConfig && packageConfigFile.existsSync()) {
