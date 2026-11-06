@@ -25,7 +25,7 @@ void main() {
   final tempDirs = <String>{};
 
   setUpAll(() async {
-    ws = TestWorkspace();
+    ws = await TestWorkspace.isolated();
     print('');
     print('╔══════════════════════════════════════════════════════╗');
     print('║          Cleanup Integration Tests                   ║');
@@ -92,6 +92,8 @@ void main() {
     // remove the test-provisioned `_build` so the tree is clean post-run.
     await ws.deprovisionBuildProject();
     print('  ── Cleanup Tests: Complete ──');
+    // Last: the copy must outlive the tear-down above.
+    await ws.dispose();
   });
 
   // ---------------------------------------------------------------------------

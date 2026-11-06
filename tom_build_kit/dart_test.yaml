@@ -2,7 +2,8 @@
 # Use expanded reporter so per-test verbose output (TestLogger) is visible.
 reporter: expanded
 
-# Run tests sequentially — integration tests modify the same workspace files
-# (buildkit_master.yaml, version.versioner.dart, etc.) so parallel execution causes
-# revertAll() calls from one test file to interfere with another.
+# Run test files one at a time. Each integration suite works in its own scratch
+# copy of the workspace (test/helpers/scratch_workspace.dart), so they no longer
+# share workspace files; running them in parallel has not been verified (they
+# still share .test-log/ and $HOME-level state).
 concurrency: 1

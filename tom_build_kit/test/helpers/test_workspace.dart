@@ -1,7 +1,10 @@
 import 'dart:io';
 
+import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
+
+import 'scratch_workspace.dart';
 
 // ---------------------------------------------------------------------------
 // TestLogger — per-test verbose output and log capture
@@ -121,11 +124,20 @@ class TestLogger {
 /// Tests that use `buildkit_skip.yaml` markers can check
 /// [isSkippedRepo] to avoid git operations on those repos.
 class TestWorkspace {
-  /// Workspace root (contains buildkit_master.yaml).
+  /// Root of the workspace the tests work in: a private scratch copy of the
+  /// live workspace (see `scratch_workspace.dart`), never the live tree.
   final String workspaceRoot;
 
-  /// Path to the tom_build_kit project.
+  /// Path to the tom_build_kit project (the live package under test).
   final String buildkitRoot;
+
+  /// Root of the live workspace the copy was made from; read-only for tests.
+  final String? liveRoot;
+
+  /// buildkit compiled once to a kernel snapshot for this workspace, or null
+  /// to run it from source (`dart run`). `dart run` recompiles buildkit on
+  /// every call; the suites make hundreds of calls.
+  final String? _buildkitSnapshot;
 
   /// Saved HEAD SHA refs for main repo and submodules.
   /// Key: path (workspaceRoot for main), Value: SHA.
@@ -134,26 +146,107 @@ class TestWorkspace {
   /// Submodule paths (relative to workspace root).
   List<String>? _submodulePaths;
 
-  /// In-memory snapshot of the real workspace `buildkit_master.yaml`, captured
-  /// once the workspace is verified clean. Lets [revertAll] guarantee the real
-  /// manifest is restored even if the committed HEAD copy has drifted to
-  /// fixture content (see [_guardAndSnapshotMaster]).
+  /// In-memory snapshot of the workspace `buildkit_master.yaml`, captured once
+  /// the workspace is verified clean. Lets [revertAll] guarantee the manifest
+  /// is restored even if the committed HEAD copy has drifted to fixture
+  /// content (see [_guardAndSnapshotMaster]).
   String? _masterSnapshot;
 
-  TestWorkspace._({required this.workspaceRoot, required this.buildkitRoot});
+  TestWorkspace._({
+    required this.workspaceRoot,
+    required this.buildkitRoot,
+    this.liveRoot,
+    String? buildkitSnapshot,
+  }) : _buildkitSnapshot = buildkitSnapshot;
+
+  /// A workspace rooted at [root], for the tests of this helper. Every method
+  /// that changes the tree refuses a root that is not a scratch copy.
+  @visibleForTesting
+  TestWorkspace.forRoot(String root)
+    : this._(workspaceRoot: root, buildkitRoot: _findBuildkitRoot());
 
   /// Absolute path to the workspace master config.
   String get masterConfigPath => p.join(workspaceRoot, 'buildkit_master.yaml');
 
-  /// Discover workspace by walking up from the buildkit project.
-  factory TestWorkspace() {
-    // Start from the package root (where pubspec.yaml is)
+  /// A private copy of the live workspace (the one holding this package) for
+  /// one test file, deleted when the calling group ends.
+  ///
+  /// Call it in `setUpAll` (the copy takes several seconds to build, about 9k
+  /// files) and [dispose] as the LAST step of `tearDownAll`: the suites'
+  /// tear-downs still verify and clean the copy, so it must outlive them, and
+  /// an `addTearDown` registered in `setUpAll` runs before `tearDownAll` does.
+  /// `test/scratch_workspace_test.dart` (BK-ISO-8) checks that every suite
+  /// that calls this also disposes. Nothing a test does through
+  /// this workspace can touch the live tree, where other sessions may be
+  /// working: fixtures, `_build`, skip files and every `git checkout` happen
+  /// in the copy, and every method that changes the tree checks that its root
+  /// is one.
+  static Future<TestWorkspace> isolated() async {
     final buildkitRoot = _findBuildkitRoot();
-    final workspaceRoot = _findWorkspaceRoot(buildkitRoot);
+    final liveRoot = _findWorkspaceRoot(buildkitRoot);
+    final scratch = await createScratchWorkspace(liveRoot);
+    print('    🧪 Scratch workspace: ${scratch.path} (copy of $liveRoot)');
+    // The snapshot sits in the copy, excluded from its git status so the
+    // clean check does not see it.
+    final snapshot = p.join(scratch.path, _snapshotFileName);
+    final compiled = await Process.run('dart', [
+      'compile',
+      'kernel',
+      p.join(buildkitRoot, 'bin', 'buildkit.dart'),
+      '-o',
+      snapshot,
+    ], workingDirectory: buildkitRoot);
+    if (compiled.exitCode != 0) {
+      throw StateError(
+        'compiling buildkit failed:\n${compiled.stdout}${compiled.stderr}',
+      );
+    }
+    File(
+      p.join(scratch.path, '.git', 'info', 'exclude'),
+    ).writeAsStringSync('/$_snapshotFileName\n', mode: FileMode.append);
     return TestWorkspace._(
-      workspaceRoot: workspaceRoot,
+      workspaceRoot: scratch.path,
       buildkitRoot: buildkitRoot,
+      liveRoot: liveRoot,
+      buildkitSnapshot: snapshot,
     );
+  }
+
+  static const _snapshotFileName = '.tom_build_kit_buildkit.dill';
+
+  /// The `dart` arguments that start buildkit.
+  List<String> get _buildkitInvocation => _buildkitSnapshot != null
+      ? [_buildkitSnapshot]
+      : ['run', p.join(buildkitRoot, 'bin', 'buildkit.dart')];
+
+  /// [workingDirectory] when it lies inside the copy (default: its root).
+  String _workingDirectoryInside(String? workingDirectory) {
+    final dir = p.normalize(p.absolute(workingDirectory ?? workspaceRoot));
+    if (dir != workspaceRoot && !p.isWithin(workspaceRoot, dir)) {
+      throw StateError(
+        'Refusing to run buildkit in $dir: outside the scratch workspace '
+        '$workspaceRoot.',
+      );
+    }
+    return dir;
+  }
+
+  /// Delete the scratch copy. Call it last in `tearDownAll`.
+  Future<void> dispose() async {
+    _requireScratch('delete the workspace');
+    deleteScratchWorkspace(Directory(workspaceRoot));
+    print('    🧹 Deleted scratch workspace $workspaceRoot');
+  }
+
+  /// Throws unless [workspaceRoot] is a scratch copy.
+  void _requireScratch(String operation) {
+    if (!isScratchWorkspace(workspaceRoot)) {
+      throw StateError(
+        'Refusing to $operation in $workspaceRoot: it is not a scratch copy '
+        '(no $scratchMarkerFileName). Integration tests change only the copy '
+        'TestWorkspace.isolated() makes, never a live workspace.',
+      );
+    }
   }
 
   /// Find the buildkit project root (directory with pubspec.yaml).
@@ -517,6 +610,7 @@ class TestWorkspace {
   /// is what guarantees a clean per-test state. The provisioned copy is removed
   /// again by [deprovisionBuildProject].
   Future<void> provisionBuildProject() async {
+    _requireScratch('provision _build');
     final source = Directory(buildProjectFixtureDir);
     if (!source.existsSync()) {
       throw StateError(
@@ -537,6 +631,7 @@ class TestWorkspace {
   /// `errno = 32` ("the file is in use by another process"). Retry with a short
   /// backoff so the OS has a chance to release the handles before we give up.
   Future<void> deprovisionBuildProject() async {
+    _requireScratch('remove _build');
     final dir = Directory(_provisionedBuildDir);
     if (!dir.existsSync()) return;
 
@@ -574,6 +669,7 @@ class TestWorkspace {
   /// For example: `fixtures/versioner/projects/_build/buildkit.yaml`
   /// would be copied to `<workspace>/_build/buildkit.yaml`.
   Future<void> installFixture(String fixtureName) async {
+    _requireScratch('install fixture "$fixtureName"');
     final fixtureDir = p.join(fixturesDir, fixtureName);
 
     // Copy buildkit_master.yaml
@@ -692,7 +788,8 @@ class TestWorkspace {
     List<String> args, {
     String? workingDirectory,
   }) async {
-    final binPath = p.join(buildkitRoot, 'bin', 'buildkit.dart');
+    _requireScratch('run buildkit :$tool');
+    final cwd = _workingDirectoryInside(workingDirectory);
 
     // Separate navigation/global args (before :command) from
     // command-specific args (after :command).
@@ -700,15 +797,16 @@ class TestWorkspace {
     final cmdArgs = <String>[];
     _splitArgs(args, globalArgs, cmdArgs);
 
-    final allArgs = ['run', binPath, ...globalArgs, ':$tool', ...cmdArgs];
+    final allArgs = [
+      ..._buildkitInvocation,
+      ...globalArgs,
+      ':$tool',
+      ...cmdArgs,
+    ];
     print(
       '    🔧 Running: buildkit ${[...globalArgs, ':$tool', ...cmdArgs].join(' ')}',
     );
-    final result = await Process.run(
-      'dart',
-      allArgs,
-      workingDirectory: workingDirectory ?? workspaceRoot,
-    );
+    final result = await Process.run('dart', allArgs, workingDirectory: cwd);
     print('    ✓ $tool exited with code ${result.exitCode}');
     return result;
   }
@@ -807,14 +905,14 @@ class TestWorkspace {
     String? workingDirectory,
     List<String> globalArgs = const [],
   }) async {
-    final binPath = p.join(buildkitRoot, 'bin', 'buildkit.dart');
+    _requireScratch('run buildkit $pipeline');
+    final cwd = _workingDirectoryInside(workingDirectory);
     final allArgs = [...globalArgs, pipeline, ...args];
     print('    🔧 Running pipeline: buildkit ${allArgs.join(' ')}');
     final result = await Process.run('dart', [
-      'run',
-      binPath,
+      ..._buildkitInvocation,
       ...allArgs,
-    ], workingDirectory: workingDirectory ?? workspaceRoot);
+    ], workingDirectory: cwd);
     print(
       '    ✓ buildkit ${allArgs.first} exited with code ${result.exitCode}',
     );
@@ -845,6 +943,7 @@ class TestWorkspace {
   /// Returns the absolute path to the created file. Use [removeSkipFile]
   /// or add the returned path to a cleanup list for tearDown.
   String placeSkipFile(String relativeDir) {
+    _requireScratch('place a skip file');
     final absPath = p.join(
       workspaceRoot,
       relativeDir,
@@ -860,6 +959,7 @@ class TestWorkspace {
 
   /// Remove a temporary `tom_build_skip.yaml` from a directory.
   void removeSkipFile(String relativeDir) {
+    _requireScratch('remove a skip file');
     final absPath = p.join(
       workspaceRoot,
       relativeDir,
@@ -880,6 +980,7 @@ class TestWorkspace {
     List<String> args, {
     required String workingDirectory,
   }) async {
+    _requireScratch('run git ${args.join(' ')}');
     return Process.run('git', args, workingDirectory: workingDirectory);
   }
 }

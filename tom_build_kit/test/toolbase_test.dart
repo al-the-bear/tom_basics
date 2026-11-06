@@ -17,7 +17,7 @@ void main() {
   late TestLogger log;
 
   setUpAll(() async {
-    ws = TestWorkspace();
+    ws = await TestWorkspace.isolated();
     print('');
     print('╔══════════════════════════════════════════════════════╗');
     print('║          ToolBase Integration Tests                  ║');
@@ -48,6 +48,8 @@ void main() {
     // remove the test-provisioned `_build` so the tree is clean post-run.
     await ws.deprovisionBuildProject();
     print('  ── ToolBase Tests: Complete ──');
+    // Last: the copy must outlive the tear-down above.
+    await ws.dispose();
   });
 
   // ---------------------------------------------------------------------------

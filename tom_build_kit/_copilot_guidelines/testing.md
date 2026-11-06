@@ -1,58 +1,33 @@
 # Tom Build Kit — Testing Guidelines
 
-## Test Strategy: Workspace Integration Tests
+## Test Strategy: Integration Tests in a Scratch Copy of the Workspace
 
-Buildkit tests are **integration tests** that run against the **real workspace**. They exercise the actual CLI tools by spawning them as child processes, then verify outcomes through file system checks and git diffs.
+Buildkit's integration tests exercise the real CLI tools by spawning them as child processes against the workspace's project tree, then verify outcomes through file system checks and git diffs. They do NOT run in the live workspace: each test file works in its own **scratch copy** (`test/helpers/scratch_workspace.dart`), so they can run while other sessions edit the tree, and nothing they install, generate or revert can reach it.
 
-**No one may make changes to the workspace during tests.** The tests assume exclusive access to the workspace. Any concurrent changes will corrupt test results and may prevent git revert from working correctly.
+No preparation is needed: no commit, no push, no backup. `dart test` (or `testkit :test`) from the package root runs everything.
 
-## Pre-Test Safety Protocol
+### The scratch copy
 
-**This protocol MUST be followed before running any integration tests.** There are no shortcuts or workarounds.
+`TestWorkspace.isolated()` builds the copy from the live workspace's tracked tree (`git ls-files --recurse-submodules`):
 
-### Step 1: Commit and push all submodules
+- every **descriptor file** (`pubspec.yaml`, `buildkit.yaml`, `buildkit_skip.yaml`, `tom_project.yaml`, `.gitignore`, `package.json`, ... — `descriptorFileNames`) with its content;
+- every file in a `bin/` folder, and one file of every other directory, created **empty** — nature detection checks descriptors, folder existence and `bin/` file names, so the copy is about 9k files instead of 73k files and 2.5 GB;
+- committed as **one git repository**, so a test's `git checkout -- .` works on it; nested repositories are not reproduced (no suite uses git-mode traversal);
+- a committed marker file (`scratchMarkerFileName`); every `TestWorkspace` method that changes the tree, runs git or runs buildkit refuses a root without it;
+- in the **system temp directory**, outside any git repository: tom_build_base's `findTopRepo` returns the outermost repository above a path, so a copy under the workspace's `ztmp/` would resolve to the live superproject.
 
-Every submodule must be clean (no uncommitted changes) and pushed to origin.
+buildkit is compiled once per copy to a kernel snapshot (excluded from the copy's git status), instead of `dart run` recompiling it for every call.
 
-```bash
-# For each submodule:
-cd xternal/<submodule>
-git add -A && git commit -m "..." && git push
-```
-
-### Step 2: Commit and push the main workspace repo
-
-```bash
-cd <workspace-root>
-git add -A && git commit -m "..." && git push
-```
-
-### Step 3: Make a backup copy of the complete workspace
-
-This is the secondary safety net. If a tool under test deletes git files or otherwise destroys the workspace beyond what `git checkout` can recover, this backup is the fallback.
-
-```bash
-cp -a tom2 tom2_backup
-```
-
-### Step 4: Run the test loop
-
-For each test:
-
-1. **Run** the test (installs fixture, executes tool)
-2. **Verify** changes (check generated files, stdout, exit code)
-3. **Revert** all changes via `git checkout -- .` from workspace root (and submodule roots if needed)
-
-The `tearDown()` in each test file handles the revert automatically. The `setUpAll()` verifies the workspace is in a clean state before any tests run.
-
-## Test Architecture
+A test that needs a real project's sources (not just its descriptors) cannot get them from the copy; give it a fixture instead (as `_build` is).
 
 ### Core Mechanism
 
-1. **Install fixture**: Copy a test-specific `buildkit_master.yaml` into the workspace root, overwriting the real one
-2. **Run tool**: Execute the buildkit command via `dart run <path/to/bin/tool.dart>`
-3. **Verify**: Check exit code, stdout/stderr, generated/modified files
-4. **Revert**: `git checkout -- .` restores everything (fixture, generated files, state files)
+1. **Copy** (`setUpAll`): `ws = await TestWorkspace.isolated();`
+2. **Install fixture**: copy a test-specific `buildkit_master.yaml` into the copy's root, and provision the `_build` project from `test/fixtures/build_project/_build`
+3. **Run tool**: execute buildkit in the copy (`runTool`, `runPipeline`; a `workingDirectory` outside the copy is refused)
+4. **Verify**: exit code, stdout/stderr, generated/modified files
+5. **Revert** (`tearDown`): `git checkout -- .` in the copy
+6. **Dispose** (last step of `tearDownAll`): `await ws.dispose();` deletes the copy. It must come last — the tear-down still verifies and cleans the copy — and an `addTearDown` registered in `setUpAll` would run before `tearDownAll`. BK-ISO-8 fails for a suite that calls `isolated()` without disposing.
 
 ### Directory Layout
 
@@ -60,20 +35,15 @@ The `tearDown()` in each test file handles the revert automatically. The `setUpA
 tom_build_kit/
   test/
     helpers/
-      test_workspace.dart      # Shared utilities: fixture swap, git revert, process runner
+      scratch_workspace.dart   # Builds and deletes the scratch copy
+      test_workspace.dart      # Fixture swap, git revert, process runner — on the copy
     fixtures/
-      versioner/
-        buildkit_master.yaml   # Minimal master config for versioner tests
-      exclusion/
-        buildkit_master.yaml   # Minimal master config for exclusion tests
-      cleanup/
-        buildkit_master.yaml   # Minimal master config for cleanup tests
-      pipeline/
-        buildkit_master.yaml   # Pipeline-specific configs
-    versioner_test.dart         # Versioner tool integration tests
-    exclusion_test.dart         # Cross-tool project exclusion tests (27 tests)
-    cleanup_test.dart           # Cleanup tool integration tests
-    pipeline_test.dart          # Buildkit pipeline integration tests
+      build_project/_build/    # The `_build` target project, provisioned per test
+      versioner/ exclusion/ pipeline/ compile_fail/
+        buildkit_master.yaml   # Minimal master configs per suite
+    scratch_workspace_test.dart       # BK-ISO: the copy and its guards
+    workspace_cleanliness_test.dart   # BK-CLEAN: the clean check
+    *_test.dart                       # Tool integration suites
 ```
 
 ### Fixture Design Principles
@@ -81,35 +51,19 @@ tom_build_kit/
 - Each fixture `buildkit_master.yaml` targets **1–2 small projects** to keep tests fast
 - Fixtures define only the **minimum config** needed for the specific test
 - The `navigation:` section in fixtures uses explicit `exclude:` patterns to limit scope
-- Target projects must be in the **main repo** (not submodules) for simple git revert
 
 ### Test Helper: TestWorkspace
 
-The shared `TestWorkspace` class provides:
-
-- **Workspace protection protocol**:
-  - `requireCleanWorkspace()` — fails if uncommitted changes exist (call in `setUpAll`)
-  - `saveHeadRefs()` — records HEAD SHAs for main repo + all submodules (call in `setUpAll`)
-  - `verifyHeadRefs()` — post-suite check that no commits leaked (call in `tearDownAll`)
-  - `tearDownProtocol()` — combined revert + verify for `tearDownAll`
-- **Skip file support**: `isSkippedRepo(path)` — checks for `buildkit_skip.yaml` marker; repos with this file are excluded from test git operations (no commit check, no checkout revert)
-- **Skip file placement**: `placeSkipFile(relativeDir)` — creates a temporary `buildkit_skip.yaml` in a directory; `removeSkipFile(relativeDir)` — removes it. Tests should track placed files and clean them up in `tearDown`.
-- **Fixture installation**: `installFixture(name)` — copies fixture `buildkit_master.yaml` to workspace root
-- **Git revert**: `revertAll()` — reverts all changes in main repo; `revertSubmodule(path)` — reverts submodule
-- **Tool execution**: `runTool(name, args)` — runs a tool via `dart run <bin/tool.dart>` from workspace root
-- **Pipeline execution**: `runPipeline(name, args)` — runs buildkit with a pipeline name
-- **File helpers**: `readWorkspaceFile()`, `workspaceFileExists()` — read/check files relative to workspace root
-- **Dirty check**: `hasUncommittedChanges()` — verifies workspace is clean before tests start
-
-### Automatic Workspace Protection
-
-When you run `dart test`, the test infrastructure **automatically** protects the workspace:
-
-1. `setUpAll` calls `requireCleanWorkspace()` + `saveHeadRefs()`
-2. Each `tearDown` calls `revertAll()` to restore files
-3. `tearDownAll` calls `verifyHeadRefs()` to verify no commits leaked
-
-This means even a single test file run (`dart test test/versioner_test.dart`) provides full workspace protection without any manual steps beyond the initial commit/push.
+- **Copy lifecycle**: `TestWorkspace.isolated()` (in `setUpAll`), `dispose()` (last in `tearDownAll`); `workspaceRoot` is the copy, `liveRoot` the workspace it was made from (read only). `TestWorkspace.forRoot(path)` exists for the helper's own tests and refuses every change.
+- **Protection protocol** (on the copy):
+  - `requireCleanWorkspace()` — fails if the copy has uncommitted changes (call in `setUpAll`)
+  - `saveHeadRefs()` / `verifyHeadRefs()` — no commit may leak during the suite
+  - `uncommittedChangesIn(root)` — read from `git status --porcelain=v2`: modified or untracked content (in the root or inside a submodule) is dirty, a submodule whose pointer merely moved is not
+- **Skip files**: `placeSkipFile(relativeDir)` / `removeSkipFile(relativeDir)` — a temporary `buildkit_skip.yaml` in the copy; `isSkippedRepo(path)` checks for one
+- **Fixtures**: `installFixture(name)`, `provisionBuildProject()`, `deprovisionBuildProject()`
+- **Git revert**: `revertAll()` (the copy's root), `revertFiles(paths)`, `revertSubmodule(path)`
+- **Tool execution**: `runTool(name, args)`, `runPipeline(name, args)` — buildkit from the snapshot, in the copy
+- **File helpers**: `readWorkspaceFile()`, `workspaceFileExists()`, `relativeProjectPath()` — relative to the copy
 
 ### `--exclude-projects` Pattern Matching
 
@@ -137,25 +91,15 @@ This same logic applies to:
 A marker file `buildkit_skip.yaml` in a directory root excludes that directory from:
 
 - **Tool processing**: ProjectDiscovery skips the directory and all subdirectories
-- **Test git operations**: `saveHeadRefs()` and `tearDownProtocol()` skip repos with this file
 - **buildkit scanning**: Both `--exclude-projects` and skip file checks apply
-
-### Git Revert Strategy
-
-After each test (`tearDown`):
-
-1. `git checkout -- .` from workspace root — restores `buildkit_master.yaml`, generated files, state files
-2. For submodule targets: `git checkout -- .` from submodule root
-
-The revert restores all tracked files to their committed state. Untracked files created by tests are not automatically cleaned — tests that create new files must delete them explicitly.
+- **Test git operations**: `saveHeadRefs()` and `tearDownProtocol()` skip repos with this file
 
 ### Test Isolation Rules
 
 - Each test gets a fresh fixture installed in `setUp` or at test start
-- Each test reverts all changes in `tearDown`
+- Each test reverts its changes in `tearDown`; untracked files a test creates are its own to delete
 - Tests **must not depend on execution order**
-- Tests **must not leave untracked files** behind (delete them in tearDown if created)
-- The `setUpAll()` verifies the workspace starts clean
+- Test files run one at a time (`dart_test.yaml` `concurrency: 1`). Each has its own copy, so they no longer share workspace files; running them in parallel has not been verified (they still share `.test-log/` and `$HOME`-level state)
 
 ## Test Coverage
 
@@ -164,8 +108,8 @@ See [doc/test_coverage.md](../doc/test_coverage.md) for the complete feature cov
 ## Running Tests
 
 ```bash
-cd basics/tom_build_kit
-dart test
+cd tom_ai/basics/tom_build_kit
+testkit :test      # or: dart test
 ```
 
 Individual test files:

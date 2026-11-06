@@ -27,7 +27,7 @@ void main() {
   late String versionFileRelative;
 
   setUpAll(() async {
-    ws = TestWorkspace();
+    ws = await TestWorkspace.isolated();
     targetProject = p.join(ws.workspaceRoot, '_build');
     versionFileRelative = '_build/lib/src/version.versioner.dart';
     print('');
@@ -63,6 +63,8 @@ void main() {
     // remove the test-provisioned `_build` so the tree is clean post-run.
     await ws.deprovisionBuildProject();
     print('  ── Versioner Tests: Complete ──');
+    // Last: the copy must outlive the tear-down above.
+    await ws.dispose();
   });
 
   group('versioner', () {

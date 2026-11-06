@@ -1,3 +1,31 @@
+## 1.13.0
+
+### Changed — `dcli` ^10
+
+`dcli: ^10.0.0` (from ^8.4.2). Every `tom_d4rt_dcli` from 1.5.0 on is on
+dcli ^10, so a package taking both (tom_build_cli, the `tom` binary) did not
+resolve against any earlier tom_build_kit. The floor is 10.0.0 because
+`tom_d4rt_dcli` still pins `pubspec_manager ^3.2.1`, which only dcli 10.0.0
+accepts; on its own tom_build_kit resolves the current 10.4.x. Tested on both.
+
+### Changed — `--project` ids come from `project_id` only
+
+Requires `tom_build_base` 2.18.0. A bare `--project` name matches a project's
+folder, its `tom_project.yaml` `project_id`, or its name; the `short-id`
+fallback is gone, as in tom_build_base 2.18.0.
+
+### Fixed — a workspace reached through a symbolic link selects its projects
+
+An absolute `--project` path in a workspace reached through a link (on macOS
+everything under `/var` is `/private/var`) was rejected as outside the
+workspace, and then selected no project (tom_build_base 2.17.1 / 2.17.2).
+
+### Tests run in a scratch copy of the workspace
+
+The integration suites no longer touch the live workspace: each test file
+works in its own copy (`test/helpers/scratch_workspace.dart`), so they run
+while other sessions edit the tree. See `_copilot_guidelines/testing.md`.
+
 ## 1.12.0
 
 ### Added — `:unreferenced`, the unreferenced-export audit

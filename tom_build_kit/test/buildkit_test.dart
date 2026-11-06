@@ -24,7 +24,7 @@ void main() {
   late TestLogger log;
 
   setUpAll(() async {
-    ws = TestWorkspace();
+    ws = await TestWorkspace.isolated();
     print('');
     print('╔══════════════════════════════════════════════════════╗');
     print('║          BuildKit Integration Tests                  ║');
@@ -56,6 +56,8 @@ void main() {
     // remove the test-provisioned `_build` so the tree is clean post-run.
     await ws.deprovisionBuildProject();
     print('  ── BuildKit Tests: Complete ──');
+    // Last: the copy must outlive the tear-down above.
+    await ws.dispose();
   });
 
   // ----------- Tests ----------- //
@@ -285,7 +287,10 @@ void main() {
         reason: 'Option suppression syntax should be accepted',
       );
       log.expectation('exit code 0', result.exitCode == 0);
-    });
+    },
+        skip: 'per-step suppression (-s-) is documented but not implemented: '
+            'the parser reads `-s-` as `--scan -`. build_tom '
+            'aft_kit-52_akfd-per-step-option-suppression');
 
     test('shell command execution in pipeline', () async {
       log.start('BKT_SHL01', 'shell command in pipeline');

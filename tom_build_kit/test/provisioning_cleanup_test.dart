@@ -24,9 +24,13 @@ import 'helpers/test_workspace.dart';
 void main() {
   late TestWorkspace ws;
 
-  setUp(() {
-    ws = TestWorkspace();
+  // One scratch copy for the file: provisioning only touches its `_build`,
+  // which each test removes again in tearDown.
+  setUpAll(() async {
+    ws = await TestWorkspace.isolated();
   });
+
+  tearDownAll(() => ws.dispose());
 
   tearDown(() async {
     // Always leave the tree clean, even if an expectation failed mid-test.

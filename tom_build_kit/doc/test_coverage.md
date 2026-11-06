@@ -181,7 +181,7 @@ Uses workspace-level pipeline configuration from `buildkit_master.yaml`.
 | BKT_PIP01 | Pipeline execution (`build`, `clean`) | ✅ | Run `buildkit clean --project _build`. Verify pipeline steps execute in order. |
 | BKT_DRY01 | `--dry-run` on pipeline (flags after pipeline name) | ✅ | Bug #15 FIXED: warning added when known flags appear after pipeline name. Test skipped since behavior is by design. |
 | BKT_DRY02 | `--dry-run` before pipeline name (workaround) | ✅ | Run `buildkit --dry-run --project _build test-simple`. Verify [DRY RUN] markers and no execution. Documents workaround for bug #15. |
-| BKT_OPT01 | Per-step option suppression (`-s-`, `-v-`) | ✅ | Run `buildkit :versioner -s- --project _build`. Verify `-s` not passed to versioner. |
+| BKT_OPT01 | Per-step option suppression (`-s-`, `-v-`) | ⏭ skipped: not implemented (build_tom aft_kit-52) | Run `buildkit :versioner -s- --project _build`. Verify `-s` not passed to versioner. |
 | BKT_SHL01 | Shell command execution in pipeline | ✅ | Configure pipeline step with `shell echo hello`. Run. Verify "hello" in output. |
 | BKT_XPJ01 | `--exclude-projects` filters pipeline targets | ✅ | Run `buildkit build --exclude-projects 'zom_*'`. Verify no `zom_` projects processed by any pipeline step. |
 | BKT_XPJ02 | `--exclude` combined with `--exclude-projects` | ✅ | Run `buildkit build --exclude '*.g.dart' --exclude-projects 'xternal/tom_module_basics/*'`. Verify both file-level and project-level exclusions applied independently. |
@@ -423,3 +423,26 @@ workspace protocol, so it runs whatever the state of the workspace.
 | UNREF-7 | The command fails on findings | ✅ | And names them; a project without the section is skipped. |
 | UNREF-8 | The command passes when everything is allowlisted | ✅ | And says how much it checked. |
 | UNREF-9 | A prefix that matches nothing | ✅ | NOT MEASURED, a failure. |
+
+## 16. Test Infrastructure — Scratch Workspace and Clean Check
+
+**Test files:** `test/scratch_workspace_test.dart`, `test/workspace_cleanliness_test.dart`
+
+The integration suites run in a scratch copy of the workspace (`test/helpers/scratch_workspace.dart`); see `_copilot_guidelines/testing.md`.
+
+| ID | Feature | Status | How to Test |
+|----|---------|--------|-------------|
+| BK-ISO-1 | The copy is a scratch copy outside the live workspace and outside any git repository above it | ✅ | Marker present; no `.git` in any ancestor. |
+| BK-ISO-2 | It holds every project of the live workspace | ✅ | Every tracked descriptor file with identical content; every directory and every `bin/` file exists. |
+| BK-ISO-3 | It is clean, the buildkit snapshot excluded | ✅ | `uncommittedChangesIn` is empty. |
+| BK-ISO-4 | Fixtures, skip files and reverts stay in the copy | ✅ | The live `buildkit_master.yaml` is unchanged and no skip file appears in the live tree. |
+| BK-ISO-5 | buildkit is not run outside the copy | ✅ | `runTool` with a live `workingDirectory` throws. |
+| BK-ISO-6 | `dispose()` deletes the copy | ✅ | The directory is gone after the group. |
+| BK-ISO-7 | A root that is not a scratch copy is never changed | ✅ | Fixture, revert, provisioning, skip file, buildkit and deletion all throw; the file is untouched. |
+| BK-ISO-8 | Every suite that makes a copy disposes of it in `tearDownAll` | ✅ | Source scan of `test/`. |
+| BK-CLEAN-1 | A clean repository has no uncommitted changes | ✅ | Scratch superproject with a submodule. |
+| BK-CLEAN-2 | A submodule whose HEAD moved does not make it dirty | ✅ | Commit in the submodule only. |
+| BK-CLEAN-3 | A modified tracked file does | ✅ | |
+| BK-CLEAN-4 | An untracked file does | ✅ | |
+| BK-CLEAN-5 | A modified file inside a submodule does | ✅ | Reported as the submodule's path. |
+| BK-CLEAN-6 | An untracked file inside a submodule does | ✅ | |

@@ -1,6 +1,6 @@
 # Tom Build Kit
 
-Published on pub.dev as [`tom_build_kit` 1.12.0](https://pub.dev/packages/tom_build_kit).
+Published on pub.dev as [`tom_build_kit` 1.13.0](https://pub.dev/packages/tom_build_kit).
 
 > Tom Build Kit is part of the **Tom framework** by al-the-bear.
 > Distributed under the terms in this package's license — see [LICENSE](LICENSE).
@@ -466,7 +466,7 @@ Related packages (don't duplicate — follow the link):
 
 ## Status
 
-- **Version:** 1.12.0 (on pub.dev)
+- **Version:** 1.13.0 (on pub.dev)
 - **SDK:** Dart `^3.10.4`
 - **Base:** `tom_build_base: ^2.17.0` (hosted)
 - **Tests:** `dart test` (executor, pipeline, project-scan and git suites).
