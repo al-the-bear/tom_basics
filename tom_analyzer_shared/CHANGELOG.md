@@ -12,6 +12,7 @@
   an empty options file of the generator's own.
 - `SummaryGenerator.fingerprintFormat` is `fingerprint-format: 3`, so bundles
   built before are rebuilt once.
+- `tom_build_base` is constrained `^2.6.32` (it had no upper bound).
 
 ## 0.8.0
 
