@@ -276,6 +276,57 @@ void main() {
       });
     });
 
+    group('Absolute path patterns through a symbolic link', () {
+      // macOS: /var is a link to /private/var. A tool scans from its cwd, which
+      // is the resolved path, while a caller passes `--project` as it was
+      // given, so the same project folder arrives under two spellings.
+      late Directory base;
+      late String realProject;
+      late String linkedProject;
+      late FsFolder scanned;
+
+      setUp(() {
+        base = Directory(
+          Directory.systemTemp
+              .createTempSync('flt_link_')
+              .resolveSymbolicLinksSync(),
+        );
+        final realRoot = p.join(base.path, 'real_ws');
+        realProject = p.join(realRoot, '_build');
+        Directory(realProject).createSync(recursive: true);
+        final linkedRoot = p.join(base.path, 'linked_ws');
+        Link(linkedRoot).createSync(realRoot);
+        linkedProject = p.join(linkedRoot, '_build');
+        scanned = FsFolder(path: realProject);
+      });
+
+      tearDown(() => base.deleteSync(recursive: true));
+
+      test('BB-FLT-45: a project path given through a link matches the '
+          'scanned folder [2026-11-06]', () {
+        expect(filter.matchesProjectPattern(scanned, [linkedProject]), isTrue);
+      });
+
+      test('BB-FLT-46: a real path matches a folder scanned through a link '
+          '[2026-11-06]', () {
+        expect(
+          filter.matchesProjectPattern(FsFolder(path: linkedProject), [
+            realProject,
+          ]),
+          isTrue,
+        );
+      });
+
+      test('BB-FLT-47: a link to another folder still does not match '
+          '[2026-11-06]', () {
+        final other = p.join(base.path, 'other');
+        Directory(other).createSync();
+        final linkToOther = p.join(base.path, 'to_other');
+        Link(linkToOther).createSync(other);
+        expect(filter.matchesProjectPattern(scanned, [linkToOther]), isFalse);
+      });
+    });
+
     group('Project exclude with ID and Name (--exclude-projects)', () {
       test('BB-FLT-35: Excludes by project short-id [2026-02-14]', () {
         final info = ProjectTraversalInfo(

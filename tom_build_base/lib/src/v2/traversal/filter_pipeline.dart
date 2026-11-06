@@ -229,16 +229,39 @@ class FilterPipeline {
   ///
   /// The comparison is separator-agnostic: both the pattern and the folder
   /// path are normalised to forward slashes first, so a Windows backslash path
-  /// and a POSIX-style path both resolve to the same folder.
+  /// and a POSIX-style path both resolve to the same folder. When an absolute
+  /// pattern does not match literally, both are compared again with symbolic
+  /// links resolved: a tool scans from its cwd, which is the resolved path,
+  /// while the caller passes the path it was given (on macOS `/var/...` for
+  /// `/private/var/...`).
   bool _matchesFullPath(String folderPath, List<String> patterns) {
     final normalizedFolder = _normalizeSeparators(folderPath);
+    String? canonicalFolder;
     for (final pattern in patterns) {
       if (!_isPathPattern(pattern)) continue;
       if (_pathEquals(normalizedFolder, _normalizeSeparators(pattern))) {
         return true;
       }
+      if (!p.isAbsolute(pattern)) continue;
+      canonicalFolder ??= _normalizeSeparators(_resolveLinks(folderPath));
+      if (_pathEquals(
+        canonicalFolder,
+        _normalizeSeparators(_resolveLinks(pattern)),
+      )) {
+        return true;
+      }
     }
     return false;
+  }
+
+  /// [path] with symbolic links resolved, or [path] itself when it does not
+  /// exist or cannot be resolved.
+  static String _resolveLinks(String path) {
+    try {
+      return Directory(path).resolveSymbolicLinksSync();
+    } on FileSystemException {
+      return path;
+    }
   }
 
   /// Match a relative path against path-based patterns.

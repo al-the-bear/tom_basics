@@ -61,7 +61,7 @@ source-level package-boundary audit.
 
 ```yaml
 dependencies:
-  tom_build_base: ^2.17.1
+  tom_build_base: ^2.17.2
 ```
 
 Or from the command line:
@@ -590,7 +590,7 @@ See also [`../README.md`](../README.md), the `tom_ai/basics` package map, and
 
 ## Status
 
-- **Version:** 2.17.1
+- **Version:** 2.17.2
 - **Tests:** an extensive suite under `test/` (`dart test` / `testkit :test`)
   covering tool definition, argument parsing, help and completion generation,
   traversal, filtering and build-order, pipelines, macros and defines,

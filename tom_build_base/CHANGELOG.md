@@ -1,3 +1,14 @@
+## 2.17.2
+
+### Fixed — an absolute `--project` path through a symbolic link selects its project
+
+2.17.1 stopped rejecting such a path; `FilterPipeline.matchesProjectPattern`
+still compared it with the scanned folders literally, so it selected nothing
+(`--project selector matched no project: '/var/.../_build' (scanned
+/private/var/...)`). An absolute pattern that does not match literally is now
+compared again with symbolic links resolved on both sides. A link to another
+folder still does not match.
+
 ## 2.17.1
 
 ### Fixed — a `--project` path through a symbolic link is no longer rejected
