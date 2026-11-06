@@ -17,6 +17,7 @@ void main() {
   late String fixtureRoot;
   late Directory tempDir;
   late String buildkitPath;
+  late String buildkitSnapshot;
 
   setUpAll(() async {
     // Create temp workspace fixture
@@ -87,6 +88,26 @@ environment:
       isTrue,
       reason: 'buildkit.dart should exist at $buildkitPath',
     );
+
+    // Compile once. `dart run bin/buildkit.dart` compiled buildkit from source
+    // on every call, ~40 s each, so the fourteen calls here took over nine
+    // minutes and a loaded machine pushed single cases past the two-minute
+    // timeout (BK-EXEC-9, BK-EXEC-12). A kernel snapshot runs the same
+    // sources on the same VM.
+    buildkitSnapshot = p.join(fixtureRoot, '_buildkit.dill');
+    final compiled = await Process.run('dart', [
+      'compile',
+      'kernel',
+      buildkitPath,
+      '-o',
+      buildkitSnapshot,
+    ], workingDirectory: p.dirname(p.dirname(buildkitPath)));
+    expect(
+      compiled.exitCode,
+      0,
+      reason:
+          'compiling buildkit failed:\n${compiled.stdout}${compiled.stderr}',
+    );
   });
 
   tearDownAll(() async {
@@ -99,7 +120,7 @@ environment:
   Future<ProcessResult> runBuildkit(List<String> args) async {
     return Process.run(
       'dart',
-      ['run', buildkitPath, ...args],
+      [buildkitSnapshot, ...args],
       environment: {'HOME': Platform.environment['HOME'] ?? '/tmp'},
       workingDirectory: fixtureRoot,
     );
