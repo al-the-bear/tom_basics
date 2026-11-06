@@ -1,11 +1,12 @@
 // BK-CLEAN: which changes make the workspace "dirty" for the integration
 // protocol (`TestWorkspace.requireCleanWorkspace`).
 //
-// The protocol reverts files and checks that no HEAD moved; it never moves a
+// The protocol reverts files (`git checkout -- .` in the root AND in every
+// first-level submodule) and checks that no HEAD moved; it never moves a
 // submodule's HEAD. So a gitlink pointer that already differs from the
-// superproject's recorded commit (the normal state of a superproject between
-// pushes of its submodule tree) cannot be harmed by a run and must not block
-// it. A modified tracked file can, and must.
+// superproject's recorded commit cannot be harmed by a run and must not block
+// it; a modified or untracked file, in the root or inside a submodule, would be
+// destroyed by the revert, and must.
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
@@ -85,5 +86,17 @@ void main() {
   test('BK-CLEAN-4: an untracked file does [2026-11-06]', () async {
     File(p.join(root, 'new.txt')).writeAsStringSync('x');
     expect(await uncommittedChangesIn(root), [contains('new.txt')]);
+  });
+
+  test('BK-CLEAN-5: a modified file inside a submodule does — the tear-down '
+      'reverts submodules too [2026-11-06]', () async {
+    File(p.join(sub, 'a.txt')).writeAsStringSync('edited by another session');
+    expect(await uncommittedChangesIn(root), [contains('child')]);
+  });
+
+  test('BK-CLEAN-6: an untracked file inside a submodule does '
+      '[2026-11-06]', () async {
+    File(p.join(sub, 'scratch.txt')).writeAsStringSync('x');
+    expect(await uncommittedChangesIn(root), [contains('child')]);
   });
 }

@@ -884,38 +884,71 @@ class TestWorkspace {
   }
 }
 
-/// The uncommitted changes in the git repository at [root] that could affect
-/// an integration run, as `git status --porcelain` lines; empty when clean.
+/// The uncommitted changes in the git repository at [root] that a test run's
+/// tear-down would destroy, as `XY path` / `?? path` lines; empty when clean.
 ///
-/// SUBMODULES ARE IGNORED ENTIRELY (`--ignore-submodules=all`): both changes
-/// inside a submodule and a submodule whose HEAD differs from the commit the
-/// superproject records. The tear-down protocol reverts files and verifies
-/// that no HEAD moved; it never moves a submodule's HEAD, so a pointer that
-/// already differs (the normal state of a superproject between pushes of its
-/// submodule tree) cannot be harmed by a run. Reporting it made the suite
-/// unrunnable in any workspace whose pointers had not just been pushed.
-/// Untracked generated files (`.reflection.dart`, `.g.dart`, `.r.dart`,
-/// `.b.dart`) are left out too: they do not affect fixtures or tool behaviour.
+/// The tear-down protocol runs `git checkout -- .` in the root AND in every
+/// first-level submodule, and verifies that no HEAD moved; it never moves a
+/// submodule's HEAD. So:
+///
+/// * a modified or untracked file in the root is dirty;
+/// * a submodule with modified or untracked content is dirty, because the
+///   revert would discard it (another session's edits, in a shared
+///   workspace); it is reported as its path;
+/// * a submodule whose HEAD merely differs from the commit the superproject
+///   records (the normal state between pushes of the submodule tree) is NOT:
+///   the run cannot harm it.
+///
+/// Read from `git status --porcelain=v2`, whose submodule field
+/// (`S<commit><modified><untracked>`) separates the cases; the v1 flags cannot
+/// (`--ignore-submodules=dirty` reports a moved pointer and hides an edited
+/// file, the opposite of what the revert needs). Untracked generated files
+/// (`.reflection.dart`, `.g.dart`, `.r.dart`, `.b.dart`) are left out: they
+/// do not affect fixtures or tool behaviour.
 Future<List<String>> uncommittedChangesIn(String root) async {
   final result = await Process.run('git', [
     'status',
-    '--porcelain',
-    '--ignore-submodules=all',
+    '--porcelain=v2',
   ], workingDirectory: root);
   if (result.exitCode != 0) {
     throw StateError(
       'git status failed in $root (exit ${result.exitCode}): ${result.stderr}',
     );
   }
-  final output = result.stdout.toString().trim();
-  if (output.isEmpty) return [];
-  return output
-      .split('\n')
-      .map((line) => line.trim())
-      .where((line) => line.isNotEmpty)
-      .where(
-        (line) =>
-            !RegExp(r'^\?\?\s.*\.(reflection|g|r|b)\.dart$').hasMatch(line),
-      )
-      .toList();
+  final dirty = <String>[];
+  for (final line in result.stdout.toString().split('\n')) {
+    if (line.isEmpty || line.startsWith('#')) continue;
+    if (line.startsWith('? ')) {
+      final path = line.substring(2);
+      if (!RegExp(r'\.(reflection|g|r|b)\.dart$').hasMatch(path)) {
+        dirty.add('?? $path');
+      }
+      continue;
+    }
+    if (line.startsWith('! ')) continue;
+    // `1 XY sub mH mI mW hH hI path`, `2 XY sub mH mI mW hH hI Xscore
+    // path<TAB>orig`, `u XY sub m1 m2 m3 mW h1 h2 h3 path`.
+    final fields = line.split(' ');
+    final pathStart = switch (fields.first) {
+      '1' => 8,
+      '2' => 9,
+      'u' => 10,
+      _ => -1,
+    };
+    if (pathStart < 0 || fields.length <= pathStart) {
+      dirty.add(line);
+      continue;
+    }
+    final xy = fields[1].replaceAll('.', ' ');
+    final sub = fields[2];
+    final path = fields.sublist(pathStart).join(' ').split('\t').first;
+    if (sub.startsWith('S')) {
+      // S<c><m><u>: a moved pointer alone (`SC..`) is not dirty.
+      final modified = sub.length > 2 && sub[2] == 'M';
+      final untracked = sub.length > 3 && sub[3] == 'U';
+      if (!modified && !untracked) continue;
+    }
+    dirty.add('$xy $path');
+  }
+  return dirty;
 }
