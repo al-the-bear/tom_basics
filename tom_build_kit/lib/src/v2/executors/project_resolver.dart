@@ -212,9 +212,8 @@ class ProjectResolver {
         final content = tomProjectFile.readAsStringSync();
         final yaml = loadYaml(content);
         if (yaml is Map) {
-          // Check project_id and short-id
-          final projectId =
-              yaml['project_id'] as String? ?? yaml['short-id'] as String?;
+          // Check project_id
+          final projectId = yaml['project_id'] as String?;
           if (projectId != null && projectId.toLowerCase() == lowerSearch) {
             return _ConfigMatch.id;
           }
