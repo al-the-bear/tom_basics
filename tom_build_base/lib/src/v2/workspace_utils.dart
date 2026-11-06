@@ -70,7 +70,11 @@ String findWorkspaceRoot(String startPath) {
 /// to operate on a path it must never touch.
 ///
 /// This function therefore checks only the absolute patterns: each must equal
-/// [executionRoot] or be contained within it. The first offending pattern yields
+/// [executionRoot] or be contained within it. Both sides are compared after
+/// resolving symbolic links (as [validateScanPathWithinRoot] does), so the same
+/// directory named through a link and by its real path agrees — on macOS a
+/// tool's cwd is `/private/var/...` while the caller passes `/var/...` — and a
+/// link inside the root that points outside it is rejected. The first offending pattern yields
 /// a human-readable error string (mentioning "outside", "path", and "within" so
 /// callers and tests can recognise the rejection); a return of `null` means all
 /// patterns are safe.
@@ -78,10 +82,10 @@ String? validateProjectPathsWithinRoot(
   List<String> projectPatterns,
   String executionRoot,
 ) {
-  final rootAbs = p.normalize(p.absolute(executionRoot));
+  final rootAbs = _canonicalize(executionRoot);
   for (final pattern in projectPatterns) {
     if (!p.isAbsolute(pattern)) continue;
-    final patternAbs = p.normalize(pattern);
+    final patternAbs = _canonicalize(pattern);
     if (p.equals(rootAbs, patternAbs) || p.isWithin(rootAbs, patternAbs)) {
       continue;
     }

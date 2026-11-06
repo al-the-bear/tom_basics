@@ -103,6 +103,58 @@ void main() {
         expect(error, contains(outside));
       },
     );
+
+    group('through a symbolic link', () {
+      late Directory base;
+      late String realRoot;
+      late String linkedRoot;
+      late String outsideDir;
+
+      setUp(() {
+        // Canonical base, so the link below is the only indirection.
+        base = Directory(
+          Directory.systemTemp
+              .createTempSync('project_paths_link_')
+              .resolveSymbolicLinksSync(),
+        );
+        realRoot = p.join(base.path, 'real_ws');
+        Directory(p.join(realRoot, '_build')).createSync(recursive: true);
+        linkedRoot = p.join(base.path, 'linked_ws');
+        Link(linkedRoot).createSync(realRoot);
+        outsideDir = p.join(base.path, 'elsewhere');
+        Directory(outsideDir).createSync();
+      });
+
+      tearDown(() => base.deleteSync(recursive: true));
+
+      // macOS: /var is a link to /private/var. The cwd a tool reports is the
+      // resolved path while a caller passes the path it was given, so the root
+      // and an absolute --project path can name the same directory through
+      // different spellings.
+      test('accepts a project under the root named through the link', () {
+        expect(
+          validateProjectPathsWithinRoot([
+            p.join(linkedRoot, '_build'),
+          ], realRoot),
+          isNull,
+        );
+      });
+
+      test('accepts a project named by its real path under a linked root', () {
+        expect(
+          validateProjectPathsWithinRoot([
+            p.join(realRoot, '_build'),
+          ], linkedRoot),
+          isNull,
+        );
+      });
+
+      test('still rejects a link that points outside the root', () {
+        final escape = p.join(realRoot, 'escape');
+        Link(escape).createSync(outsideDir);
+        expect(validateProjectPathsWithinRoot([escape], realRoot), isNotNull);
+      });
+    });
   });
 
   group('validateScanPathWithinRoot', () {

@@ -1,3 +1,16 @@
+## 2.17.1
+
+### Fixed — a `--project` path through a symbolic link is no longer rejected
+
+`validateProjectPathsWithinRoot` compared the execution root and an absolute
+`--project` path lexically. The cwd a tool reports is the resolved path, so a
+workspace reached through a link (on macOS everything under `/var` is
+`/private/var`) rejected its own projects: `project path is outside the
+workspace and was rejected: /var/.../_build (workspace root: /private/var/...)`.
+Both sides are now resolved before the comparison, as
+`validateScanPathWithinRoot` already did; a link inside the root that points
+outside it is now rejected, where the lexical check let it through.
+
 ## 2.17.0
 
 ### Added — `ci.dart`, a framework for a CI run by hand
