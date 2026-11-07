@@ -1,9 +1,10 @@
 # tom_test_support
 
-Published on pub.dev as [`tom_test_support` 0.2.0](https://pub.dev/packages/tom_test_support).
+Published on pub.dev as [`tom_test_support` 0.6.0](https://pub.dev/packages/tom_test_support).
 
 Test support any Tom package's suite can use: the repository and workspace
-roots found by landmark, the Dart CLI a test may spawn, a wait for a
+roots found by landmark, the workspace clone the build tools' suites run on,
+the Dart CLI a test may spawn, a wait for a
 network-backed action, the live-GitHub credential contract, a disposable
 Gitea in Docker for live git suites, and the driver that runs a Flutter
 package's browser-only tests on Chrome from its ordinary suite.
@@ -33,6 +34,7 @@ for the web; nothing here runs in a browser.
 | `browser_suite.dart` | `TomBrowserSuite`: a package's `@TestOn('browser')` files in `test/browser/` are skipped silently by an ordinary `flutter test`, so one VM test drives them with `flutter test --platform chrome` on the SDK it runs under (`FLUTTER_ROOT`). `skipReason` names what would make it run (`TOM_SKIP_BROWSER_TESTS=1`, no SDK, no directory); `failureOf` reports a failing exit, and a run that exited 0 without `All tests passed`, which is what a fully-skipped directory looks like. `run(defines:)` hands values the VM test knows only at run time — the address and token of a server it started — to the page as `--dart-define`s; `directory` names another folder, such as a live browser suite kept apart from the ordinary one. |
 | `cors_proxy.dart` | `TomCorsProxy`: a reverse proxy on a loopback port that adds the CORS headers a web page needs and answers its preflight, for a browser suite against a server that sends none. Gitea's own `[cors]` setting covers its `/api` routes and not git's smart-HTTP endpoints, so a git server a page can reach is one behind such a proxy. |
 | `process_tree.dart` | `processTreeOf` (a process and every descendant, walked with `pgrep -P`) and `aliveAmong`: what a test or a test runner spawned, so its cleanup reaps that tree and nothing else. A process is never matched by its name — reaping every `flutter_tester` that appeared during a run kills the hosts of whatever runs beside it. POSIX only; `processTreeOf` throws on Windows rather than answer with an empty set. |
+| `workspace_clone.dart` | `TomWorkspaceClone`: the one clone of the workspace per machine (`<parent>/<name>_testclone`, or `TOM_TEST_WORKSPACE`) that the build tools' suites run on instead of the live tree. `acquire()` takes the machine's lock (a second run waits, then names the holder), creates the clone on first use, resets it and brings every repository — superproject and submodules, recursively, laid out as the live ones with `.git` files into `.git/modules` — to the commit and branch its LIVE repository has checked out, fetched from that repository on this machine (unpushed commits included, uncommitted edits not); `release()` resets it again: the recorded commit, `git reset --hard`, `git clean -fd`, ignored files such as `.dart_tool/` kept. `origin` carries the live URL, pushing is disabled. `findLiveRoot` needs `.tom_metadata/` *and* `tom_workspace.yaml`; `tomRequireWorkspaceClone` lets a helper refuse to change anything but a clone. |
 | `tom_test_support.dart` | All of them. |
 
 No token is held in a printable form: a `TomGitHubLiveConfig` prints its

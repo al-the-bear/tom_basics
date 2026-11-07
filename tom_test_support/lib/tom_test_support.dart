@@ -15,3 +15,4 @@ export 'process_tree.dart';
 export 'pump_until.dart';
 export 'roots.dart';
 export 'settle.dart';
+export 'workspace_clone.dart';

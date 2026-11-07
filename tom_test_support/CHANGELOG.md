@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.6.0
+
+- `workspace_clone.dart`: `TomWorkspaceClone`, the clone of the workspace the
+  build tools' suites run on, so no test reads or writes the live tree other
+  sessions work in. One per machine beside the workspace
+  (`<name>_testclone`, or `TOM_TEST_WORKSPACE`), held under a lock file per
+  run; created on first use, brought to the commits the live repositories
+  have checked out, reset after the run (`git reset --hard` + `git clean -fd`
+  in every repository, ignored resolution state kept). Submodules are laid
+  out as in the live tree, `origin` carries the live URL and pushing is
+  disabled. `tomRequireWorkspaceClone` for helpers that change a tree.
+
 ## 0.5.0
 
 - `licence_audit.dart`: the licence audit of the packages an application
