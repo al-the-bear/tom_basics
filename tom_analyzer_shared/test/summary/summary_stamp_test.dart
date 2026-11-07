@@ -13,9 +13,11 @@ void main() {
   tearDown(() => dir.deleteSync(recursive: true));
 
   test('SST-1: the current stamp is the running toolchain; it round-trips '
-      'through its text', () {
+      'through its text, which names no path', () {
     final stamp = SummaryStamp.current(embedderYamlPath: '/f/_embedder.yaml');
     expect(stamp.toolchain, currentToolchainKey());
+    expect(stamp.dartUi, isTrue);
+    expect(stamp.encode(), isNot(contains('/f/')));
     expect(SummaryStamp.decode(stamp.encode()), stamp);
     expect(
       SummaryStamp.decode(const SummaryStamp(toolchain: 'x').encode()),

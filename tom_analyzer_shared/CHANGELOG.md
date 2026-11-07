@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.11.0
+
+- **Breaking: `SummaryStamp` records whether a summary holds `dart:ui`
+  (`dartUi`, `dart-ui: yes|no`), not the embedder's path.** The Dart SDK
+  version in the toolchain already names the Flutter release, and a path made
+  a stamp committed beside a shipped summary true on one machine only (and
+  every other machine rebuilt it). `SummaryStamp.current(embedderYamlPath:)`
+  is unchanged.
+
 ## 0.10.0
 
 - **The summary cache is keyed by the analyzer's data version.** The
