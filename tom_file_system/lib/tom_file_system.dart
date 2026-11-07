@@ -8,5 +8,6 @@ library;
 
 export 'src/file_system.dart';
 export 'src/file_system_base.dart';
+export 'src/file_system_folders.dart';
 export 'src/memory_file_system.dart';
 export 'src/text_detection.dart';
