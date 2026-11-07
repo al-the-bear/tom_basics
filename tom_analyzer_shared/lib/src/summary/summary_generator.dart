@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -52,6 +53,38 @@ class SummaryGenerationResult {
       'failed: $failed)';
 }
 
+/// A package's summary could not be built completely, so it was not cached.
+///
+/// A bundle that misses a library of its package, or that was linked while a
+/// dependency it imports could not be resolved, still loads: the consumer
+/// then finds the missing types to be invalid and says nothing (tom_forge
+/// later21: dcli_core's `LineAction` went missing that way, and a generator
+/// emitted untyped code). Such a bundle is never written; the package is
+/// analysed from source by its consumer instead, and this names why.
+class IncompleteSummaryException implements Exception {
+  /// The package whose summary was refused.
+  final String packageName;
+
+  /// Its version.
+  final String version;
+
+  /// What is missing, one entry per problem, e.g. `library
+  /// package:yaml/yaml.dart is not in the bundle` or `package:yaml/yaml.dart
+  /// (imported by package:dcli_core/src/util/x.dart) did not resolve`.
+  final List<String> problems;
+
+  const IncompleteSummaryException(
+    this.packageName,
+    this.version,
+    this.problems,
+  );
+
+  @override
+  String toString() =>
+      'IncompleteSummaryException: the summary of $packageName@$version '
+      'is incomplete and was not cached: ${problems.join('; ')}';
+}
+
 /// Generates analyzer summaries for packages.
 ///
 /// Creates binary `.sum` files containing pre-analyzed type information
@@ -93,7 +126,12 @@ class SummaryGenerator {
   ///
   /// Does nothing if the summary is already cached.
   ///
-  /// Throws if the package path cannot be resolved or analysis fails.
+  /// Throws if the package path cannot be resolved, and an
+  /// [IncompleteSummaryException] — writing nothing — when the bundle would
+  /// not be whole: a library of `lib/` that does not resolve or is missing
+  /// from the bundle, or an import of the package's own or a declared
+  /// dependency's library that cannot be resolved (its summary is not among
+  /// [librarySummaryPaths]).
   Future<bool> generateSummary(
     PackageDependency dependency, {
     String? sdkSummaryPath,
@@ -140,19 +178,17 @@ class SummaryGenerator {
       '(${libraryFiles.length} libraries)...',
     );
 
-    // Analyze and create summary bundle
+    // Analyze and create summary bundle. It throws an
+    // [IncompleteSummaryException] rather than return a bundle that misses
+    // anything, so what reaches the cache below is complete.
     final summaryBytes = await _analyzeAndCreateBundle(
       packagePath,
-      dependency.name,
+      dependency,
       libraryFiles,
+      declaredDependencies: _readPackageDependencies(packagePath).toSet(),
       sdkSummaryPath: sdkSummaryPath,
       librarySummaryPaths: librarySummaryPaths,
     );
-
-    if (summaryBytes == null) {
-      stdout.writeln('    Failed to create bundle for ${dependency.name}');
-      return false;
-    }
 
     // Write to cache
     await cacheManager.writeSummary(
@@ -245,16 +281,23 @@ class SummaryGenerator {
       directDependencyGraph: graph,
     );
 
+    final nameToDep = {for (final d in cacheable) d.name: d};
+
     // Packages whose summary could not be built in this pass, and so cannot
     // be linked against. See the check before each generation below.
     final unavailable = <String>{};
 
-    // Collect already-cached summary paths as available for new generations
-    final availableSummaries = <String>[];
+    // The bundle of every package that has one, by name: what a generation
+    // links against. A bundle found on disk at any point counts, including
+    // one another process (or isolate) sharing the partition wrote after this
+    // pass began — leaving those out linked their dependents against nothing
+    // (tom_forge later21).
+    final availableSummaries = <String, String>{};
     for (final dep in cacheable) {
       if (await cacheManager.hasSummary(dep.name, dep.version)) {
-        availableSummaries.add(
-          cacheManager.getCachePath(dep.name, dep.version),
+        availableSummaries[dep.name] = cacheManager.getCachePath(
+          dep.name,
+          dep.version,
         );
       }
     }
@@ -268,8 +311,13 @@ class SummaryGenerator {
       final dep = ordered[i];
       onProgress?.call(dep.name, i + 1, ordered.length);
 
-      // Check if already cached
+      // Check if already cached — by this pass, an earlier one, or another
+      // process sharing the partition.
       if (await cacheManager.hasSummary(dep.name, dep.version)) {
+        availableSummaries[dep.name] = cacheManager.getCachePath(
+          dep.name,
+          dep.version,
+        );
         skipped++;
         continue;
       }
@@ -295,19 +343,48 @@ class SummaryGenerator {
         continue;
       }
 
+      // Link only against final bundles: every package in the dependency
+      // closure must have one now. A dependency without one (deleted by
+      // another process's invalidation meanwhile, or in a cycle not yet
+      // built) would be resolved from nowhere.
+      final missing = <String>[];
+      for (final name in dependencyClosure(graph, dep.name)) {
+        if (name == dep.name || availableSummaries.containsKey(name)) continue;
+        final other = nameToDep[name];
+        if (other != null &&
+            await cacheManager.hasSummary(other.name, other.version)) {
+          availableSummaries[name] = cacheManager.getCachePath(
+            other.name,
+            other.version,
+          );
+          continue;
+        }
+        missing.add(name);
+      }
+      missing.sort();
+      if (missing.isNotEmpty) {
+        failed++;
+        unavailable.add(dep.name);
+        errors[dep.name] =
+            'not generated: the summaries of ${missing.join(', ')} '
+            'are not in the cache';
+        continue;
+      }
+
       try {
         final success = await generateSummary(
           dep,
           sdkSummaryPath: sdkSummaryPath,
           librarySummaryPaths: availableSummaries.isNotEmpty
-              ? List.from(availableSummaries)
+              ? availableSummaries.values.toList()
               : null,
         );
         if (success) {
           generated++;
           // Add newly generated summary to available list for subsequent packages
-          availableSummaries.add(
-            cacheManager.getCachePath(dep.name, dep.version),
+          availableSummaries[dep.name] = cacheManager.getCachePath(
+            dep.name,
+            dep.version,
           );
         } else {
           skipped++;
@@ -345,8 +422,16 @@ class SummaryGenerator {
   /// its bundle. Bundles are now built with an empty options file; those built
   /// before may lack libraries, so they are rebuilt once.
   ///
+  /// Format 4: a pass linked a package without the bundles another process
+  /// sharing the partition had written meanwhile, and two processes building
+  /// one package shared its `.dart_tool/package_config.json` in the pub
+  /// cache, so a partition populated concurrently could keep bundles missing
+  /// types or libraries (tom_forge later21: `yaml` 1.7 KB instead of 67 KB).
+  /// A bundle is now checked complete before it is written; those written
+  /// before are rebuilt once.
+  ///
   /// Change it only when bundles built under the old rules must not be trusted.
-  static const fingerprintFormat = 'fingerprint-format: 3';
+  static const fingerprintFormat = 'fingerprint-format: 4';
 
   /// Computes, for each cacheable package, a fingerprint of the exact
   /// versioned dependency closure its summary is linked against.
@@ -384,23 +469,10 @@ class SummaryGenerator {
     final directDeps =
         directDependencyGraph ?? await buildDirectDependencyGraph(cacheable);
 
-    // Transitive closure per package via BFS. `add` returning false on a
-    // revisit terminates cycles.
-    Set<String> closureOf(String start) {
-      final result = <String>{};
-      final queue = <String>[...?directDeps[start]];
-      while (queue.isNotEmpty) {
-        final next = queue.removeLast();
-        if (result.add(next)) {
-          queue.addAll(directDeps[next] ?? const <String>{});
-        }
-      }
-      return result;
-    }
-
     final fingerprints = <String, String>{};
     for (final dep in cacheable) {
-      final closure = closureOf(
+      final closure = dependencyClosure(
+        directDeps,
         dep.name,
       ).map((n) => '$n@${nameToDep[n]!.version}').toList()..sort();
       fingerprints[dep.name] = [fingerprintFormat, ...closure].join('\n');
@@ -433,6 +505,24 @@ class SummaryGenerator {
       directDeps[dep.name] = pkgDeps.where(names.contains).toSet();
     }
     return directDeps;
+  }
+
+  /// Every package [start] transitively depends on in [directDeps] (without
+  /// [start] itself, unless a cycle leads back to it). A pure function; cycles
+  /// are tolerated (the result is a set).
+  static Set<String> dependencyClosure(
+    Map<String, Set<String>> directDeps,
+    String start,
+  ) {
+    final result = <String>{};
+    final queue = <String>[...?directDeps[start]];
+    while (queue.isNotEmpty) {
+      final next = queue.removeLast();
+      if (result.add(next)) {
+        queue.addAll(directDeps[next] ?? const <String>{});
+      }
+    }
+    return result;
   }
 
   /// Expands [seeds] to include every package that transitively depends on any
@@ -532,11 +622,14 @@ class SummaryGenerator {
   /// Analyzes a package and creates its summary bundle.
   ///
   /// Creates a temporary [AnalysisContextCollectionImpl] for the package,
-  /// resolves all public libraries, and serializes them using
+  /// resolves every library under `lib/`, and serializes them using
   /// [_createSummaryBundle].
   ///
-  /// Creates a temporary `.dart_tool/package_config.json` to ensure the
-  /// analyzer uses proper `package:` URIs instead of `file://` URIs.
+  /// The analyzer gets a `package_config.json` and an empty
+  /// `analysis_options.yaml` of our own, in a temporary directory: the
+  /// package directory (in the pub cache, shared by every process and isolate
+  /// building summaries) is only read. The config maps the package to its
+  /// `lib/`, so the bundle records `package:` URIs, never `file:` ones.
   ///
   /// If [librarySummaryPaths] is provided, the analyzer loads those summaries
   /// to resolve cross-package type references. When [sdkSummaryPath] is
@@ -546,13 +639,24 @@ class SummaryGenerator {
   /// construction below for the condition that makes this reliable. When
   /// [sdkSummaryPath] is null the analyzer falls back to resolving the SDK
   /// from disk.
-  Future<Uint8List?> _analyzeAndCreateBundle(
+  ///
+  /// Throws an [IncompleteSummaryException] instead of returning a bundle
+  /// that is not whole: a `lib/` file that is neither a resolved library nor
+  /// a part, a library missing from the written bundle, or a `package:`
+  /// import or export of the package itself or of one of its
+  /// [declaredDependencies] that did not resolve (its summary was missing
+  /// while linking). An unresolved `package:` URI of a package it does not
+  /// declare is the package's own defect, not the cache's: it is reported on
+  /// stderr and the bundle is kept.
+  Future<Uint8List> _analyzeAndCreateBundle(
     String packagePath,
-    String packageName,
+    PackageDependency dependency,
     List<String> libraryFiles, {
+    required Set<String> declaredDependencies,
     String? sdkSummaryPath,
     List<String>? librarySummaryPaths,
   }) async {
+    final packageName = dependency.name;
     AnalysisContextCollectionImpl? collection;
     // The package's own analysis_options.yaml is about linting it: its
     // `analyzer: exclude:` (televerse its `*.g.dart` parts, tom_d4rt_dcli its
@@ -560,41 +664,31 @@ class SummaryGenerator {
     // analysis context — a "Failed to analyze" warning each, and an excluded
     // library missing from the summary. An empty options file of our own
     // keeps every file in.
-    final optionsDir = Directory.systemTemp.createTempSync(
-      'tom_summary_options_',
-    );
-    final optionsFile = File(p.join(optionsDir.path, 'analysis_options.yaml'))
+    final configDir = Directory.systemTemp.createTempSync('tom_summary_');
+    final optionsFile = File(p.join(configDir.path, 'analysis_options.yaml'))
       ..writeAsStringSync('');
-    final dartToolDir = Directory(p.join(packagePath, '.dart_tool'));
     final packageConfigFile = File(
-      p.join(dartToolDir.path, 'package_config.json'),
+      p.join(configDir.path, 'package_config.json'),
     );
-    final hadDartTool = dartToolDir.existsSync();
-    final hadPackageConfig = packageConfigFile.existsSync();
+    final absolutePackagePath = p.normalize(p.absolute(packagePath));
 
     try {
-      // Create minimal package_config.json for proper package: URI resolution
-      if (!dartToolDir.existsSync()) {
-        dartToolDir.createSync(recursive: true);
-      }
-
-      // Get language version from pubspec.yaml if possible
       final languageVersion = _getLanguageVersion(packagePath);
-
-      // Write a minimal package_config.json
-      final packageConfig =
-          '''{
-  "configVersion": 2,
-  "packages": [
-    {
-      "name": "$packageName",
-      "rootUri": "../",
-      "packageUri": "lib/",
-      "languageVersion": "$languageVersion"
-    }
-  ]
-}''';
-      packageConfigFile.writeAsStringSync(packageConfig);
+      packageConfigFile.writeAsStringSync(
+        jsonEncode({
+          'configVersion': 2,
+          'packages': [
+            {
+              'name': packageName,
+              'rootUri': p
+                  .toUri('$absolutePackagePath${p.separator}')
+                  .toString(),
+              'packageUri': 'lib/',
+              'languageVersion': languageVersion,
+            },
+          ],
+        }),
+      );
 
       // Create analysis context for the package.
       // IMPORTANT: When sdkSummaryPath is provided, librarySummaryPaths MUST
@@ -602,74 +696,129 @@ class SummaryGenerator {
       // SummaryDataStore when librarySummaryPaths != null, and the SDK bundle
       // is only registered into that store via `summaryData?.addBundle(...)`.
       // Without a SummaryDataStore, dart:core is not found.
-      if (sdkSummaryPath != null ||
-          (librarySummaryPaths != null && librarySummaryPaths.isNotEmpty)) {
-        collection = AnalysisContextCollectionImpl(
-          includedPaths: [p.normalize(p.absolute(packagePath))],
-          optionsFile: optionsFile.path,
-          sdkSummaryPath: sdkSummaryPath,
-          librarySummaryPaths: librarySummaryPaths ?? const [],
-        );
-      } else {
-        collection = AnalysisContextCollectionImpl(
-          includedPaths: [p.normalize(p.absolute(packagePath))],
-          optionsFile: optionsFile.path,
-        );
-      }
+      final useSummaries =
+          sdkSummaryPath != null ||
+          (librarySummaryPaths != null && librarySummaryPaths.isNotEmpty);
+      collection = AnalysisContextCollectionImpl(
+        includedPaths: [absolutePackagePath],
+        optionsFile: optionsFile.path,
+        packageConfigFile: packageConfigFile.path,
+        sdkSummaryPath: useSummaries ? sdkSummaryPath : null,
+        librarySummaryPaths: useSummaries
+            ? (librarySummaryPaths ?? const [])
+            : null,
+      );
 
       final resolvedLibraries = <LibraryElement>[];
+      final expectedUris = <String>[];
+      final problems = <String>[];
+      final libDir = p.join(absolutePackagePath, 'lib');
 
       for (final filePath in libraryFiles) {
+        final uri =
+            'package:$packageName/'
+            '${p.posix.joinAll(p.split(p.relative(filePath, from: libDir)))}';
         try {
           final context = collection.contextFor(filePath);
-          final session = context.currentSession;
-
-          final result = await session.getResolvedLibrary(filePath);
+          final result = await context.currentSession.getResolvedLibrary(
+            filePath,
+          );
+          if (result is NotLibraryButPartResult) continue;
+          expectedUris.add(uri);
           if (result is! ResolvedLibraryResult) {
+            problems.add('library $uri did not resolve ($result)');
             continue;
           }
-
           final libraryElement = result.element;
-
           // BundleWriter requires LibraryElementImpl
           if (libraryElement is! LibraryElementImpl) {
+            problems.add('library $uri has no element the writer takes');
             continue;
           }
-
           resolvedLibraries.add(libraryElement);
-        } catch (e) {
-          // Skip individual library failures — log but continue
-          stderr.writeln(
-            'Warning: Failed to analyze ${p.basename(filePath)}: $e',
+          problems.addAll(
+            _unresolvedPackageDirectives(
+              libraryElement,
+              packageName: packageName,
+              declared: declaredDependencies,
+            ),
           );
+        } catch (e) {
+          expectedUris.add(uri);
+          problems.add('library $uri failed to analyze: $e');
         }
       }
 
-      if (resolvedLibraries.isEmpty) {
-        return null;
+      if (resolvedLibraries.isEmpty && problems.isEmpty) {
+        problems.add('no library of lib/ resolved');
+      }
+      if (problems.isNotEmpty) {
+        throw IncompleteSummaryException(
+          packageName,
+          dependency.version,
+          problems,
+        );
       }
 
-      return _createSummaryBundle(resolvedLibraries);
+      final bytes = _createSummaryBundle(resolvedLibraries);
+      final written = summaryLibraryUris(bytes).toSet();
+      final absent = [
+        for (final uri in expectedUris)
+          if (!written.contains(uri)) 'library $uri is not in the bundle',
+      ];
+      if (absent.isNotEmpty) {
+        throw IncompleteSummaryException(
+          packageName,
+          dependency.version,
+          absent,
+        );
+      }
+      return bytes;
     } finally {
       await collection?.dispose();
       try {
-        optionsDir.deleteSync(recursive: true);
+        configDir.deleteSync(recursive: true);
       } catch (_) {
-        // A leftover empty temp folder is harmless.
+        // A leftover temp folder is harmless.
       }
+    }
+  }
 
-      // Clean up the temporary package_config.json
-      if (!hadPackageConfig && packageConfigFile.existsSync()) {
-        packageConfigFile.deleteSync();
-      }
-      if (!hadDartTool && dartToolDir.existsSync()) {
-        try {
-          dartToolDir.deleteSync(recursive: true);
-        } catch (_) {
-          // Ignore cleanup failures
+  /// The `package:` imports and exports of [library] (of package
+  /// [packageName]) that did not resolve to a library, for the packages a
+  /// missing summary can explain: [packageName] itself and its [declared]
+  /// dependencies. Any other unresolved `package:` URI is written to stderr,
+  /// naming the package, and not returned.
+  List<String> _unresolvedPackageDirectives(
+    LibraryElement library, {
+    required String packageName,
+    required Set<String> declared,
+  }) {
+    final problems = <String>[];
+    for (final fragment in library.fragments) {
+      final directives = <ElementDirective>[
+        ...fragment.libraryImports,
+        ...fragment.libraryExports,
+      ];
+      for (final directive in directives) {
+        final uri = directive.uri;
+        if (uri is DirectiveUriWithLibrary) continue;
+        if (uri is! DirectiveUriWithRelativeUriString) continue;
+        final target = uri.relativeUriString;
+        if (!target.startsWith('package:')) continue;
+        final targetPackage = target.substring(8).split('/').first;
+        final message = '$target (imported by ${library.uri}) did not resolve';
+        if (targetPackage == packageName || declared.contains(targetPackage)) {
+          problems.add(message);
+        } else {
+          stderr.writeln(
+            'Warning: $packageName: $message; $targetPackage is not among its '
+            'dependencies',
+          );
         }
       }
     }
+    return problems;
   }
 
   /// Builds a topological generation order for package summaries.

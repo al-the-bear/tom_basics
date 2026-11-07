@@ -1,5 +1,34 @@
 # Changelog
 
+## 0.12.0
+
+- **A cached summary is complete, or it is not cached.** Two processes (or
+  isolates) populating one empty partition at once left bundles missing types
+  and libraries — measured: `yaml` 1.7 KB instead of 67 KB, `dcli_core` 13 KB
+  instead of 65 KB — and a consumer lost types without a word. The causes, all
+  fixed:
+  - A pass did not link against bundles another process had written after it
+    began: such a package was skipped as cached but left out of what its
+    dependents were linked against. Every bundle on disk now counts, and a
+    package is built only once every package of its dependency closure has a
+    bundle (otherwise it is reported as not generated).
+  - The generator wrote a `.dart_tool/package_config.json` into the package's
+    pub-cache directory and deleted it afterwards, so two builds of one
+    package removed it under each other. The package config and options file
+    are now the generator's own, in a temporary directory; the package
+    directory is only read.
+  - Every writer of a bundle used the same temp file (`<bundle>.tmp`); each now
+    writes its own and renames it into place.
+- **`IncompleteSummaryException`.** `SummaryGenerator.generateSummary` throws
+  it, writing nothing, when a library of `lib/` does not resolve or is missing
+  from the bundle, or an import of the package's own or a declared
+  dependency's library does not resolve. An unresolved import of a package it
+  does not declare is warned about on stderr. The summary-cache stage names
+  every package it could not generate and why, not only with `verbose`.
+- **`SummaryGenerator.dependencyClosure`**, the transitive dependencies of a
+  package in a direct-dependency graph.
+- **`fingerprint-format: 4`**: bundles written before are rebuilt once.
+
 ## 0.11.0
 
 - **Breaking: `SummaryStamp` records whether a summary holds `dart:ui`

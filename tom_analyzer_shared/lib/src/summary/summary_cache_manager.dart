@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 import 'dart:io';
+import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:analyzer/src/summary/package_bundle_reader.dart';
@@ -167,8 +168,7 @@ class SummaryCacheManager {
   ) async {
     await ensureCacheDirectory();
     final path = getFingerprintPath(packageName, version);
-    final tempPath = '$path.tmp';
-    final tempFile = File(tempPath);
+    final tempFile = File(_tempPathFor(path));
     try {
       await tempFile.writeAsString(fingerprint, flush: true);
       await tempFile.rename(path);
@@ -342,9 +342,8 @@ class SummaryCacheManager {
 
     final path = getCachePath(packageName, version);
 
-    // Write atomically using a temp file
-    final tempPath = '$path.tmp';
-    final tempFile = File(tempPath);
+    // Write atomically through a temp file of this writer's own.
+    final tempFile = File(_tempPathFor(path));
 
     try {
       await tempFile.writeAsBytes(bytes, flush: true);
@@ -355,6 +354,15 @@ class SummaryCacheManager {
       rethrow;
     }
   }
+
+  /// A temp file name for [path] no other writer uses: processes and
+  /// isolates populating one partition at once each write their own and
+  /// rename it into place. A name shared by all of them (`<path>.tmp`) let
+  /// one writer truncate the file another had just finished and was renaming.
+  static String _tempPathFor(String path) =>
+      '$path.$pid-${_random.nextInt(1 << 32).toRadixString(16)}.tmp';
+
+  static final Random _random = Random.secure();
 
   /// Ensures the cache directory exists.
   Future<void> ensureCacheDirectory() async {

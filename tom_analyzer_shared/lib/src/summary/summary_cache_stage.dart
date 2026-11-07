@@ -201,11 +201,13 @@ Future<SummaryCacheResult?> runSummaryCacheStage(
       out('Generated ${result.generated} summaries.');
     }
     if (result.failed > 0) {
-      out('Failed to generate ${result.failed} summaries.');
-      if (verbose) {
-        for (final entry in result.errors.entries) {
-          out('  ${entry.key}: ${entry.value}');
-        }
+      // Always named: a package left out of the cache is analysed from
+      // source, and one whose bundle would have been incomplete
+      // ([IncompleteSummaryException]) is how a consumer loses types without
+      // a word otherwise.
+      out('Warning: failed to generate ${result.failed} summaries:');
+      for (final entry in result.errors.entries) {
+        out('  ${entry.key}: ${entry.value}');
       }
     }
   } else {
