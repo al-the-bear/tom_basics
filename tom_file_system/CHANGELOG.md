@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.0
+
+- `TomFileSystemFolders`: `writeTextMakingFolder` (write into a folder that
+  may not exist yet), `readTextIfExists` (null for a missing file),
+  `ensureFolder`, `folderOf` — what a store keeping its state in a file of its
+  own does on every load and save.
+
 ## 0.1.0
 
 - One file-system contract, `TomFileSystem`, addressed by `Uri` with a root:

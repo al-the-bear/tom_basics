@@ -4,7 +4,7 @@ description: >-
   revision-checked saves, delete to the platform's trash, links that never
   leave the root, values instead of dart:io objects — with an in-memory and a
   local implementation (watching, freedesktop.org trash, Windows Recycle Bin).
-version: 0.1.0
+version: 0.2.0
 repository: https://github.com/al-the-bear/tom_basics
 
 environment:
