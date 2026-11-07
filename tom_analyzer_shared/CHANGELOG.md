@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.10.0
+
+- **The summary cache is keyed by the analyzer's data version.** The
+  partition is `<analyzer-major>/<dart-sdk>+d<analyzer-data-version>`: the
+  linked analyzer's `AnalysisDriver.DATA_VERSION`, which it raises whenever
+  its stored format changes, joins the Dart SDK version. analyzer 14.5.0 and
+  14.7.0 on one SDK write bundles the other cannot read (data versions 739
+  and 752); keyed by major and SDK alone, one could read the other's. Existing
+  partitions become retired ones for `analyzer_cache_gc`.
+- New: `analyzerDataVersion`, `currentToolchainKey`,
+  `analyzerDataVersionInPackageRoots` (the data version of the analyzer
+  another package resolves, read from its source — whether summaries written
+  now can be read there), and `SummaryStamp` — what wrote a summary, kept in
+  `<summary>.stamp` beside it, for a tool that keeps a summary file of its own.
+- **Breaking:** `AnalyzerCachePartition.dartSdkVersion` is `toolchain`, and
+  `currentPartitionKey` takes `dataVersion`.
+
 ## 0.9.1
 
 - New: `summaryLibraryUris` — the library URIs a summary holds, so a tool can

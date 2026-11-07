@@ -24,11 +24,13 @@ void main() {
     String root, {
     int? analyzerMajor,
     String? dartSdkVersion,
+    int? analyzerDataVersion,
   }) {
     return SummaryCacheManager(
       root,
       dartSdkVersion: dartSdkVersion,
       analyzerMajor: analyzerMajor,
+      analyzerDataVersion: analyzerDataVersion,
       environment: {'TOM_TOOL_CACHE': p.join(root, '.tom')},
     );
   }
@@ -66,17 +68,24 @@ void main() {
     });
 
     group('analyzer-major partitioning', () {
-      test('cache directory is nested under the analyzer major and SDK version',
-          () {
+      test('cache directory is nested under the analyzer major and the '
+          'toolchain (SDK version + analyzer data version)', () {
         // Default major comes from analyzerMajorVersion (the analyzer this
         // package is built against); the innermost segment is the Dart SDK
-        // version, which tracks the toolchain (see the SDK-version
-        // partitioning group below for why).
+        // version and the linked analyzer's data version (see the
+        // analyzer-data-version group below for why both).
         expect(
           cacheManager.cacheDirectory,
-          endsWith(p.join('analyzer-cache', '$analyzerMajorVersion', '3.10.4')),
+          endsWith(
+            p.join(
+              'analyzer-cache',
+              '$analyzerMajorVersion',
+              '3.10.4+d$analyzerDataVersion',
+            ),
+          ),
         );
         expect(cacheManager.analyzerMajor, equals(analyzerMajorVersion));
+        expect(cacheManager.analyzerDataVersion, equals(analyzerDataVersion));
       });
 
       test('different analyzer majors resolve to different cache dirs', () {
@@ -118,11 +127,45 @@ void main() {
         final manager10 = makeCacheManager(tempDir.path, analyzerMajor: 10);
 
         await manager8.writeSummary(
-            'async', '2.13.0', Uint8List.fromList([1, 2, 3]));
+          'async',
+          '2.13.0',
+          Uint8List.fromList([1, 2, 3]),
+        );
 
         // The analyzer-10 partition must not see the analyzer-8 bundle.
         expect(await manager10.hasSummary('async', '2.13.0'), isFalse);
         expect(await manager8.hasSummary('async', '2.13.0'), isTrue);
+      });
+    });
+
+    group('analyzer-data-version partitioning', () {
+      // analyzer 14.5.0 (data version 739) and 14.7.0 (752) on one Dart SDK
+      // write bundles the other cannot read — the major and the SDK alone do
+      // not key the format.
+      test('a summary written under another analyzer data version is never '
+          'read', () async {
+        final writer = makeCacheManager(
+          tempDir.path,
+          dartSdkVersion: '3.13.7',
+          analyzerDataVersion: 739,
+        );
+        final reader = makeCacheManager(
+          tempDir.path,
+          dartSdkVersion: '3.13.7',
+          analyzerDataVersion: 752,
+        );
+        await writer.writeSummary(
+          'async',
+          '2.13.0',
+          Uint8List.fromList([1, 2, 3]),
+        );
+        await writer.writeSummary('sdk', '3.13.7', Uint8List.fromList([4]));
+
+        expect(await writer.hasSummary('async', '2.13.0'), isTrue);
+        expect(await reader.hasSummary('async', '2.13.0'), isFalse);
+        expect(await reader.hasSdkSummary(), isFalse);
+        expect(reader.cacheDirectory, isNot(writer.cacheDirectory));
+        expect(reader.cacheDirectory, endsWith('3.13.7+d752'));
       });
     });
 
@@ -178,11 +221,21 @@ void main() {
       test('returns all cacheable deps when cache is empty', () async {
         final deps = [
           const PackageDependency(
-              name: 'a', version: '1.0.0', source: 'hosted'),
+            name: 'a',
+            version: '1.0.0',
+            source: 'hosted',
+          ),
           const PackageDependency(
-              name: 'b', version: '2.0.0', source: 'hosted'),
+            name: 'b',
+            version: '2.0.0',
+            source: 'hosted',
+          ),
           const PackageDependency(
-              name: 'c', version: '3.0.0', source: 'path', path: '/some/path'),
+            name: 'c',
+            version: '3.0.0',
+            source: 'path',
+            path: '/some/path',
+          ),
         ];
 
         final missing = await cacheManager.findMissingSummaries(deps);
@@ -192,13 +245,22 @@ void main() {
 
       test('excludes already cached packages', () async {
         await cacheManager.writeSummary(
-            'a', '1.0.0', Uint8List.fromList([1, 2, 3]));
+          'a',
+          '1.0.0',
+          Uint8List.fromList([1, 2, 3]),
+        );
 
         final deps = [
           const PackageDependency(
-              name: 'a', version: '1.0.0', source: 'hosted'),
+            name: 'a',
+            version: '1.0.0',
+            source: 'hosted',
+          ),
           const PackageDependency(
-              name: 'b', version: '2.0.0', source: 'hosted'),
+            name: 'b',
+            version: '2.0.0',
+            source: 'hosted',
+          ),
         ];
 
         final missing = await cacheManager.findMissingSummaries(deps);
@@ -209,9 +271,16 @@ void main() {
       test('skips non-cacheable dependencies', () async {
         final deps = [
           const PackageDependency(
-              name: 'local', version: '1.0.0', source: 'path', path: '/p'),
+            name: 'local',
+            version: '1.0.0',
+            source: 'path',
+            path: '/p',
+          ),
           const PackageDependency(
-              name: 'remote', version: '1.0.0', source: 'git'),
+            name: 'remote',
+            version: '1.0.0',
+            source: 'git',
+          ),
         ];
 
         final missing = await cacheManager.findMissingSummaries(deps);
@@ -227,9 +296,15 @@ void main() {
 
       test('lists all .sum files', () async {
         await cacheManager.writeSummary(
-            'pkg_a', '1.0.0', Uint8List.fromList([1]));
+          'pkg_a',
+          '1.0.0',
+          Uint8List.fromList([1]),
+        );
         await cacheManager.writeSummary(
-            'pkg_b', '2.0.0', Uint8List.fromList([2]));
+          'pkg_b',
+          '2.0.0',
+          Uint8List.fromList([2]),
+        );
 
         final summaries = await cacheManager.listCachedSummaries();
         expect(summaries, hasLength(2));
@@ -238,10 +313,14 @@ void main() {
 
       test('ignores non-.sum files', () async {
         await cacheManager.ensureCacheDirectory();
-        File('${cacheManager.cacheDirectory}/notes.txt')
-            .writeAsStringSync('hello');
+        File(
+          '${cacheManager.cacheDirectory}/notes.txt',
+        ).writeAsStringSync('hello');
         await cacheManager.writeSummary(
-            'real', '1.0.0', Uint8List.fromList([1]));
+          'real',
+          '1.0.0',
+          Uint8List.fromList([1]),
+        );
 
         final summaries = await cacheManager.listCachedSummaries();
         expect(summaries, hasLength(1));
@@ -251,10 +330,8 @@ void main() {
 
     group('clearCache', () {
       test('removes all .sum files', () async {
-        await cacheManager.writeSummary(
-            'a', '1.0.0', Uint8List.fromList([1]));
-        await cacheManager.writeSummary(
-            'b', '2.0.0', Uint8List.fromList([2]));
+        await cacheManager.writeSummary('a', '1.0.0', Uint8List.fromList([1]));
+        await cacheManager.writeSummary('b', '2.0.0', Uint8List.fromList([2]));
 
         await cacheManager.clearCache();
 
@@ -271,17 +348,25 @@ void main() {
     group('cleanUnusedSummaries', () {
       test('removes summaries not in current dependencies', () async {
         await cacheManager.writeSummary(
-            'old_pkg', '1.0.0', Uint8List.fromList([1]));
+          'old_pkg',
+          '1.0.0',
+          Uint8List.fromList([1]),
+        );
         await cacheManager.writeSummary(
-            'current', '2.0.0', Uint8List.fromList([2]));
+          'current',
+          '2.0.0',
+          Uint8List.fromList([2]),
+        );
 
         final currentDeps = [
           const PackageDependency(
-              name: 'current', version: '2.0.0', source: 'hosted'),
+            name: 'current',
+            version: '2.0.0',
+            source: 'hosted',
+          ),
         ];
 
-        final removed =
-            await cacheManager.cleanUnusedSummaries(currentDeps);
+        final removed = await cacheManager.cleanUnusedSummaries(currentDeps);
         expect(removed, equals(1));
 
         final remaining = await cacheManager.listCachedSummaries();
@@ -291,17 +376,25 @@ void main() {
 
       test('removes old version when dependency upgraded', () async {
         await cacheManager.writeSummary(
-            'pkg', '1.0.0', Uint8List.fromList([1]));
+          'pkg',
+          '1.0.0',
+          Uint8List.fromList([1]),
+        );
         await cacheManager.writeSummary(
-            'pkg', '2.0.0', Uint8List.fromList([2]));
+          'pkg',
+          '2.0.0',
+          Uint8List.fromList([2]),
+        );
 
         final currentDeps = [
           const PackageDependency(
-              name: 'pkg', version: '2.0.0', source: 'hosted'),
+            name: 'pkg',
+            version: '2.0.0',
+            source: 'hosted',
+          ),
         ];
 
-        final removed =
-            await cacheManager.cleanUnusedSummaries(currentDeps);
+        final removed = await cacheManager.cleanUnusedSummaries(currentDeps);
         expect(removed, equals(1));
 
         final has1 = await cacheManager.hasSummary('pkg', '1.0.0');
@@ -312,15 +405,20 @@ void main() {
 
       test('returns 0 when all summaries are current', () async {
         await cacheManager.writeSummary(
-            'pkg', '1.0.0', Uint8List.fromList([1]));
+          'pkg',
+          '1.0.0',
+          Uint8List.fromList([1]),
+        );
 
         final currentDeps = [
           const PackageDependency(
-              name: 'pkg', version: '1.0.0', source: 'hosted'),
+            name: 'pkg',
+            version: '1.0.0',
+            source: 'hosted',
+          ),
         ];
 
-        final removed =
-            await cacheManager.cleanUnusedSummaries(currentDeps);
+        final removed = await cacheManager.cleanUnusedSummaries(currentDeps);
         expect(removed, equals(0));
       });
     });
@@ -380,17 +478,13 @@ void main() {
 
     group('SDK version handling', () {
       test('accepts custom dart SDK version', () {
-        final manager =
-            makeCacheManager(tempDir.path, dartSdkVersion: '3.8.0');
+        final manager = makeCacheManager(tempDir.path, dartSdkVersion: '3.8.0');
         expect(manager.dartSdkVersion, equals('3.8.0'));
       });
 
       test('detects SDK version from Platform when not provided', () {
         final manager = makeCacheManager(tempDir.path);
-        expect(
-          manager.dartSdkVersion,
-          matches(RegExp(r'^\d+\.\d+\.\d+$')),
-        );
+        expect(manager.dartSdkVersion, matches(RegExp(r'^\d+\.\d+\.\d+$')));
       });
 
       test('different SDK versions resolve to different cache paths', () {
@@ -400,43 +494,62 @@ void main() {
         // with the next SDK (observed: `RangeError ... StringTable` after the
         // 2026-07-16 fleet SDK upgrade). The SDK version is the AOT-safe
         // toolchain-identity signal, so it partitions the cache.
-        final managerA =
-            makeCacheManager(tempDir.path, dartSdkVersion: '3.8.0');
-        final managerB =
-            makeCacheManager(tempDir.path, dartSdkVersion: '3.10.0');
+        final managerA = makeCacheManager(
+          tempDir.path,
+          dartSdkVersion: '3.8.0',
+        );
+        final managerB = makeCacheManager(
+          tempDir.path,
+          dartSdkVersion: '3.10.0',
+        );
 
         final pathA = managerA.getCachePath('pkg', '1.0.0');
         final pathB = managerB.getCachePath('pkg', '1.0.0');
         expect(pathA, isNot(equals(pathB)));
-        expect(managerA.cacheDirectory, endsWith('3.8.0'));
-        expect(managerB.cacheDirectory, endsWith('3.10.0'));
+        expect(managerA.cacheDirectory, endsWith('3.8.0+d$analyzerDataVersion'));
+        expect(
+          managerB.cacheDirectory,
+          endsWith('3.10.0+d$analyzerDataVersion'),
+        );
       });
 
-      test('a summary written under a mismatched SDK partition is not loaded',
-          () async {
-        // The explicit RCK26 requirement: a `.sum` produced by one toolchain
-        // must be invisible to a manager keyed to a different toolchain, so a
-        // Dart SDK upgrade starts from an empty partition automatically and
-        // never reads a stale, format-incompatible bundle.
-        final oldToolchain =
-            makeCacheManager(tempDir.path, dartSdkVersion: '3.8.0');
-        final newToolchain =
-            makeCacheManager(tempDir.path, dartSdkVersion: '3.10.0');
+      test(
+        'a summary written under a mismatched SDK partition is not loaded',
+        () async {
+          // The explicit RCK26 requirement: a `.sum` produced by one toolchain
+          // must be invisible to a manager keyed to a different toolchain, so a
+          // Dart SDK upgrade starts from an empty partition automatically and
+          // never reads a stale, format-incompatible bundle.
+          final oldToolchain = makeCacheManager(
+            tempDir.path,
+            dartSdkVersion: '3.8.0',
+          );
+          final newToolchain = makeCacheManager(
+            tempDir.path,
+            dartSdkVersion: '3.10.0',
+          );
 
-        await oldToolchain.writeSummary(
-            'async', '2.13.0', Uint8List.fromList([1, 2, 3]));
+          await oldToolchain.writeSummary(
+            'async',
+            '2.13.0',
+            Uint8List.fromList([1, 2, 3]),
+          );
 
-        expect(await newToolchain.hasSummary('async', '2.13.0'), isFalse);
-        expect(await newToolchain.loadSummary('async', '2.13.0'), isNull);
-        expect(await oldToolchain.hasSummary('async', '2.13.0'), isTrue);
-      });
+          expect(await newToolchain.hasSummary('async', '2.13.0'), isFalse);
+          expect(await newToolchain.loadSummary('async', '2.13.0'), isNull);
+          expect(await oldToolchain.hasSummary('async', '2.13.0'), isTrue);
+        },
+      );
     });
 
     group('loadSummaries', () {
       test('returns empty store when no summaries exist', () async {
         final deps = [
           const PackageDependency(
-              name: 'a', version: '1.0.0', source: 'hosted'),
+            name: 'a',
+            version: '1.0.0',
+            source: 'hosted',
+          ),
         ];
 
         final store = await cacheManager.loadSummaries(deps);
@@ -447,7 +560,10 @@ void main() {
       test('skips non-cacheable dependencies', () async {
         final deps = [
           const PackageDependency(
-              name: 'local', version: '1.0.0', source: 'path'),
+            name: 'local',
+            version: '1.0.0',
+            source: 'path',
+          ),
         ];
 
         final store = await cacheManager.loadSummaries(deps);

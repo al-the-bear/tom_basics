@@ -34,7 +34,7 @@ import 'analyzer_version.dart';
 /// `<tool-cache>/analyzer-cache/` root.
 const String _analyzerCacheSubDir = 'analyzer-cache';
 
-/// One `<analyzer-major>/<dart-sdk-version>` partition in the shared cache.
+/// One `<analyzer-major>/<toolchain>` partition in the shared cache.
 ///
 /// A partition is the leaf directory that actually holds `.sum` bundles and
 /// their `.sum.deps` fingerprint sidecars for a single toolchain identity.
@@ -42,8 +42,11 @@ class AnalyzerCachePartition {
   /// The analyzer major version segment of the partition path.
   final int analyzerMajor;
 
-  /// The Dart SDK version segment of the partition path.
-  final String dartSdkVersion;
+  /// The toolchain segment of the partition path:
+  /// `<dart-sdk-version>+d<analyzer-data-version>` ([currentToolchainKey]),
+  /// or a bare Dart SDK version for a partition written before the analyzer
+  /// data version was part of the key.
+  final String toolchain;
 
   /// Absolute path of the partition directory.
   final String path;
@@ -63,18 +66,18 @@ class AnalyzerCachePartition {
 
   const AnalyzerCachePartition({
     required this.analyzerMajor,
-    required this.dartSdkVersion,
+    required this.toolchain,
     required this.path,
     required this.lastUsed,
     required this.sizeBytes,
     required this.summaryCount,
   });
 
-  /// Stable `"<analyzer-major>/<dart-sdk-version>"` identity.
+  /// Stable `"<analyzer-major>/<toolchain>"` identity.
   ///
   /// Used to protect the live partition from collection (the caller passes the
   /// current toolchain's key in `keep`).
-  String get key => '$analyzerMajor/$dartSdkVersion';
+  String get key => '$analyzerMajor/$toolchain';
 
   /// Total size in mebibytes.
   double get sizeMB => sizeBytes / (1024 * 1024);
@@ -92,10 +95,10 @@ class AnalyzerCachePartition {
 /// Opt-in garbage collector for orphaned analyzer-cache partitions.
 ///
 /// Operates at the `analyzer-cache` root (the parent of the per-toolchain
-/// `<major>/<sdk>` partitions), so it can enumerate and prune sibling
+/// `<major>/<toolchain>` partitions), so it can enumerate and prune sibling
 /// partitions the running toolchain does not use.
 class AnalyzerCacheGarbageCollector {
-  /// The `analyzer-cache` root directory holding `<major>/<sdk>` partitions.
+  /// The `analyzer-cache` root directory holding `<major>/<toolchain>` partitions.
   final String cacheRoot;
 
   /// Creates a collector rooted at an explicit `analyzer-cache` directory.
@@ -123,22 +126,23 @@ class AnalyzerCacheGarbageCollector {
     return AnalyzerCacheGarbageCollector(root);
   }
 
-  /// The `"<analyzer-major>/<dart-sdk-version>"` key of the partition the
+  /// The `"<analyzer-major>/<toolchain>"` key of the partition the
   /// *current* toolchain uses.
   ///
   /// Pass this to [collect]'s `keep` set to protect the live partition. The
-  /// segments default to the running toolchain ([analyzerMajorVersion] and
-  /// [currentDartSdkVersion]); overridable for tests.
+  /// segments default to the running toolchain ([analyzerMajorVersion],
+  /// [currentDartSdkVersion] and [analyzerDataVersion]); overridable for
+  /// tests.
   static String currentPartitionKey({
     int? analyzerMajor,
     String? dartSdkVersion,
+    int? dataVersion,
   }) {
     final major = analyzerMajor ?? analyzerMajorVersion;
-    final sdk = dartSdkVersion ?? currentDartSdkVersion();
-    return '$major/$sdk';
+    return '$major/${currentToolchainKey(dartSdkVersion: dartSdkVersion, dataVersion: dataVersion)}';
   }
 
-  /// Enumerates all `<major>/<sdk>` partitions under [cacheRoot].
+  /// Enumerates all `<major>/<toolchain>` partitions under [cacheRoot].
   ///
   /// Returns an empty list when the root does not exist. Stray entries that do
   /// not match the layout (files directly under the root, or `<major>`
@@ -196,7 +200,7 @@ class AnalyzerCacheGarbageCollector {
 
     return AnalyzerCachePartition(
       analyzerMajor: major,
-      dartSdkVersion: sdk,
+      toolchain: sdk,
       path: dirPath,
       lastUsed: newest,
       sizeBytes: sizeBytes,

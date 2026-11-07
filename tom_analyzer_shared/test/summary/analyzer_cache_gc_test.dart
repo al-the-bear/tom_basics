@@ -21,21 +21,19 @@ String _makePartition(
   final dir = Directory(p.join(cacheRoot, '$major', sdk))
     ..createSync(recursive: true);
   for (var i = 0; i < summaryCount; i++) {
-    File(p.join(dir.path, 'pkg$i@1.0.0.sum'))
-        .writeAsBytesSync(List<int>.filled(bytesPerSummary, 0x41));
+    File(
+      p.join(dir.path, 'pkg$i@1.0.0.sum'),
+    ).writeAsBytesSync(List<int>.filled(bytesPerSummary, 0x41));
     File(p.join(dir.path, 'pkg$i@1.0.0.sum.deps')).writeAsStringSync('fp$i');
   }
   return dir.path;
 }
 
-AnalyzerCachePartition _part(
-  String key, {
-  required DateTime lastUsed,
-}) {
+AnalyzerCachePartition _part(String key, {required DateTime lastUsed}) {
   final parts = key.split('/');
   return AnalyzerCachePartition(
     analyzerMajor: int.parse(parts[0]),
-    dartSdkVersion: parts[1],
+    toolchain: parts[1],
     path: '/fake/$key',
     lastUsed: lastUsed,
     sizeBytes: 0,
@@ -47,23 +45,31 @@ void main() {
   group('currentDartSdkVersion', () {
     test('parses a <major>.<minor>.<patch> from the running toolchain', () {
       final v = currentDartSdkVersion();
-      expect(v, matches(RegExp(r'^\d+\.\d+\.\d+$')),
-          reason: 'should be a three-part version or "unknown": $v');
+      expect(
+        v,
+        matches(RegExp(r'^\d+\.\d+\.\d+$')),
+        reason: 'should be a three-part version or "unknown": $v',
+      );
     });
   });
 
   group('AnalyzerCacheGarbageCollector.currentPartitionKey', () {
-    test('is "<analyzer-major>/<sdk>" from the current toolchain', () {
+    test('is "<analyzer-major>/<sdk>+d<analyzer-data-version>" from the '
+        'current toolchain', () {
       final key = AnalyzerCacheGarbageCollector.currentPartitionKey();
-      expect(key, '$analyzerMajorVersion/${currentDartSdkVersion()}');
+      expect(
+        key,
+        '$analyzerMajorVersion/${currentDartSdkVersion()}+d$analyzerDataVersion',
+      );
     });
 
     test('honors explicit overrides', () {
       final key = AnalyzerCacheGarbageCollector.currentPartitionKey(
         analyzerMajor: 8,
         dartSdkVersion: '3.0.0',
+        dataVersion: 700,
       );
-      expect(key, '8/3.0.0');
+      expect(key, '8/3.0.0+d700');
     });
   });
 
@@ -86,8 +92,11 @@ void main() {
         all,
         cutoff: DateTime(2023, 1, 1), // exactly midPart.lastUsed
       );
-      expect(doomed.map((e) => e.key), ['10/3.0.0'],
-          reason: 'a partition whose lastUsed equals the cutoff is kept');
+      expect(
+        doomed.map((e) => e.key),
+        ['10/3.0.0'],
+        reason: 'a partition whose lastUsed equals the cutoff is kept',
+      );
     });
 
     test('never selects a protected (keep) partition', () {
@@ -133,13 +142,21 @@ void main() {
 
       final gc = AnalyzerCacheGarbageCollector(cacheRoot);
       final parts = await gc.listPartitions();
-      expect(parts.map((e) => e.key).toSet(),
-          {'10/3.12.0', '10/3.6.0', '8/3.0.0'});
+      expect(parts.map((e) => e.key).toSet(), {
+        '10/3.12.0',
+        '10/3.6.0',
+        '8/3.0.0',
+      });
     });
 
     test('reports summary count and total size per partition', () async {
-      _makePartition(cacheRoot, 10, '3.12.0',
-          summaryCount: 3, bytesPerSummary: 100);
+      _makePartition(
+        cacheRoot,
+        10,
+        '3.12.0',
+        summaryCount: 3,
+        bytesPerSummary: 100,
+      );
 
       final gc = AnalyzerCacheGarbageCollector(cacheRoot);
       final part = (await gc.listPartitions()).single;
@@ -163,8 +180,9 @@ void main() {
 
     test('ignores stray non-integer major directories', () async {
       _makePartition(cacheRoot, 10, '3.12.0');
-      Directory(p.join(cacheRoot, 'not-a-major', '3.0.0'))
-          .createSync(recursive: true);
+      Directory(
+        p.join(cacheRoot, 'not-a-major', '3.0.0'),
+      ).createSync(recursive: true);
 
       final gc = AnalyzerCacheGarbageCollector(cacheRoot);
       final parts = await gc.listPartitions();
@@ -211,17 +229,18 @@ void main() {
       );
 
       expect(removed.map((e) => e.key), ['8/3.0.0']);
-      expect(Directory(oldPath).existsSync(), isTrue,
-          reason: 'dry run must not touch the filesystem');
+      expect(
+        Directory(oldPath).existsSync(),
+        isTrue,
+        reason: 'dry run must not touch the filesystem',
+      );
     });
 
     test('deletes nothing when no partition predates the cutoff', () async {
       _makePartition(cacheRoot, 10, '3.12.0');
 
       final gc = AnalyzerCacheGarbageCollector(cacheRoot);
-      final removed = await gc.collect(
-        cutoff: DateTime(2000, 1, 1),
-      );
+      final removed = await gc.collect(cutoff: DateTime(2000, 1, 1));
 
       expect(removed, isEmpty);
       expect(Directory(p.join(cacheRoot, '10', '3.12.0')).existsSync(), isTrue);

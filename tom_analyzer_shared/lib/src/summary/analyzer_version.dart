@@ -5,6 +5,10 @@ library;
 
 import 'dart:io';
 
+import 'package:path/path.dart' as p;
+
+import 'package:analyzer/src/dart/analysis/driver.dart' show AnalysisDriver;
+
 /// The major version of the `analyzer` package this build of
 /// `tom_analyzer_shared` was compiled against.
 ///
@@ -55,4 +59,42 @@ const int analyzerMajorVersion = 14;
 String currentDartSdkVersion() {
   final match = RegExp(r'^(\d+\.\d+\.\d+)').firstMatch(Platform.version);
   return match?.group(1) ?? 'unknown';
+}
+
+/// The data version of the `analyzer` this build is linked with
+/// (`AnalysisDriver.DATA_VERSION`): the analyzer raises it whenever what it
+/// stores — summary bundles among it — changes format.
+///
+/// It is the exact key of the summary format. The major
+/// ([analyzerMajorVersion]) and the Dart SDK version ([currentDartSdkVersion])
+/// are not enough: analyzer 14.5.0 (739) and 14.7.0 (752) on one Dart SDK
+/// write bundles the other cannot read. Being a constant of the linked
+/// analyzer, it is right in an AOT-compiled tool, where the package's own
+/// resolution cannot be looked up.
+const int analyzerDataVersion = AnalysisDriver.DATA_VERSION;
+
+/// The toolchain a summary was written by, as one path-safe key:
+/// `<dart-sdk-version>+d<analyzer-data-version>` (e.g. `3.13.7+d752`). The
+/// second segment of the cache partition, and what a stamp beside a summary
+/// records. Both parts default to the running toolchain.
+String currentToolchainKey({String? dartSdkVersion, int? dataVersion}) =>
+    '${dartSdkVersion ?? currentDartSdkVersion()}'
+    '+d${dataVersion ?? analyzerDataVersion}';
+
+/// The data version of the analyzer resolved among [packageRoots] (name →
+/// package root, as `readPackageRoots` returns them), read from its
+/// `AnalysisDriver` source, or null when the packages resolve no analyzer or
+/// the constant cannot be found. Tells whether summaries this tool writes can
+/// be read by the analyzer another package (an app shipping them) runs on.
+int? analyzerDataVersionInPackageRoots(Map<String, String> packageRoots) {
+  final root = packageRoots['analyzer'];
+  if (root == null) return null;
+  final driver = File(
+    p.join(root, 'lib', 'src', 'dart', 'analysis', 'driver.dart'),
+  );
+  if (!driver.existsSync()) return null;
+  final match = RegExp(
+    r'static const int DATA_VERSION = (\d+);',
+  ).firstMatch(driver.readAsStringSync());
+  return match == null ? null : int.parse(match.group(1)!);
 }

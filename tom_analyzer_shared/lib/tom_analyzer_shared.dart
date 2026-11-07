@@ -40,10 +40,16 @@ export 'src/sdk/flutter_embedder.dart'
 export 'src/summary/analyzer_cache_gc.dart'
     show AnalyzerCacheGarbageCollector, AnalyzerCachePartition;
 export 'src/summary/analyzer_version.dart'
-    show analyzerMajorVersion, currentDartSdkVersion;
+    show
+        analyzerDataVersion,
+        analyzerDataVersionInPackageRoots,
+        analyzerMajorVersion,
+        currentDartSdkVersion,
+        currentToolchainKey;
 export 'src/summary/dependency_resolver.dart';
 export 'src/summary/grouped_package_bundle.dart';
 export 'src/summary/package_dependency.dart';
 export 'src/summary/summary_cache_manager.dart';
 export 'src/summary/summary_cache_stage.dart';
 export 'src/summary/summary_generator.dart';
+export 'src/summary/summary_stamp.dart';

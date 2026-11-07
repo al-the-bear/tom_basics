@@ -273,13 +273,22 @@ it never guesses a layout the analyzer can't find:
 ```dart
 final cache = SummaryCacheManager(projectRoot);
 
-print(cache.cacheDirectory);                       // <tool-cache>/analyzer-cache
+print(cache.cacheDirectory);                       // <tool-cache>/analyzer-cache/<major>/<sdk>+d<data>
 print(cache.getCachePath('provider', '6.1.2'));    // …/provider@6.1.2.sum
 print(cache.getSdkSummaryPath());                  // …/sdk@<dart-version>.sum
 
 final stats = await cache.getStats();              // CacheStats
 print('${stats.summaryCount} files, ${stats.totalSizeMB.toStringAsFixed(1)} MB');
 ```
+
+The directory is partitioned by what wrote the bundles, because the analyzer's
+summary format is readable only by the analyzer that wrote it: the analyzer
+major, then the toolchain — the Dart SDK version and the linked analyzer's
+`AnalysisDriver.DATA_VERSION` (`analyzerDataVersion`, e.g. `3.13.7+d752`). The
+data version is the exact format key: analyzer 14.5.0 and 14.7.0 on one SDK
+write bundles the other cannot read, and land in different partitions. A tool
+keeping one summary file of its own (an SDK summary it ships) records the same
+key in a `SummaryStamp` beside it and rebuilds when the stamp differs.
 
 Pass `cacheDirectory:` to bypass the shared-cache resolution entirely (tests and
 callers that manage their own layout), or `environment:` to override the

@@ -34,4 +34,24 @@ void main() {
 
     expect(constraint, startsWith('^$analyzerMajorVersion.'));
   });
+
+  test(
+    'analyzerDataVersion is the resolved analyzer\'s DATA_VERSION, read '
+    'the way analyzerDataVersionInPackageRoots reads another package\'s',
+    () async {
+      final libUri = await Isolate.resolvePackageUri(
+        Uri.parse('package:analyzer/'),
+      );
+      final packageRoot = p.dirname(p.normalize(libUri!.toFilePath()));
+      expect(
+        analyzerDataVersionInPackageRoots({'analyzer': packageRoot}),
+        equals(analyzerDataVersion),
+      );
+      expect(analyzerDataVersionInPackageRoots(const {}), isNull);
+      expect(
+        currentToolchainKey(dartSdkVersion: '3.13.7', dataVersion: 752),
+        '3.13.7+d752',
+      );
+    },
+  );
 }

@@ -11,6 +11,7 @@ import 'package:path/path.dart' as p;
 
 import '../cache/tool_cache_locator.dart';
 import 'analyzer_version.dart';
+import 'analyzer_version.dart' as shared_version show analyzerDataVersion;
 import 'package_dependency.dart';
 
 /// Sub-directory of the shared tool cache that holds analyzer summaries.
@@ -19,7 +20,7 @@ const String _analyzerCacheSubDir = 'analyzer-cache';
 /// Manages the analyzer summary cache for a workspace.
 ///
 /// Summaries are stored in
-/// `<tool-cache>/analyzer-cache/<analyzer-major>/<dart-sdk-version>/` with
+/// `<tool-cache>/analyzer-cache/<analyzer-major>/<toolchain>/` with
 /// filenames in the format `{package}@{version}.sum`, where `<tool-cache>` is
 /// the shared Tom tool-cache directory resolved by [ToolCacheLocator] (so the
 /// same hosted-package summary is reused across projects and tools). Pass an
@@ -31,18 +32,17 @@ const String _analyzerCacheSubDir = 'analyzer-cache';
 ///
 /// * `<analyzer-major>` (see [analyzerMajorVersion]) partitions by the major
 ///   version of the `analyzer` package that produced the bundles.
-/// * `<dart-sdk-version>` (see [dartSdkVersion]) partitions by the exact Dart
-///   SDK that produced them. This is load-bearing because the bundle format has
-///   **no stability guarantee within an analyzer major** — a point SDK upgrade
-///   can ship a format-incompatible analyzer of the same major, so keying by
-///   major alone is insufficient. Concretely, after the 2026-07-16 fleet SDK
-///   upgrade, pre-upgrade `.sum` files were read by the new analyzer and
-///   crashed with `RangeError ... StringTable` (string-table misalignment).
-///   The SDK version is the AOT-safe toolchain-identity signal (the analyzer
-///   exposes no runtime version constant, and AOT-compiled generators cannot
-///   path-sniff their own `package_config`), and it self-freshens on every SDK
-///   upgrade: a toolchain change starts from an empty partition automatically,
-///   so `--rebuild-cache` is never needed for *correctness*.
+/// * `<toolchain>` (see [currentToolchainKey]) is
+///   `<dart-sdk-version>+d<analyzer-data-version>`: the exact Dart SDK and the
+///   linked analyzer's `AnalysisDriver.DATA_VERSION` ([analyzerDataVersion]),
+///   which the analyzer raises whenever its stored format changes. Neither the
+///   major nor the SDK is enough on its own: after the 2026-07-16 fleet SDK
+///   upgrade, pre-upgrade `.sum` files crashed the new analyzer with
+///   `RangeError ... StringTable`, and analyzer 14.5.0 and 14.7.0 on one Dart
+///   SDK write bundles the other cannot read. Both parts are constants of the
+///   running toolchain, so they are right in an AOT-compiled tool, and a
+///   toolchain change starts from an empty partition automatically —
+///   `--rebuild-cache` is never needed for *correctness*.
 ///
 /// Keying the directory by both guarantees a tool only ever reads bundles its
 /// own toolchain produced.
@@ -83,6 +83,12 @@ class SummaryCacheManager {
   /// without rebuilding against a different analyzer.
   final int analyzerMajor;
 
+  /// The analyzer data version this cache partition belongs to.
+  ///
+  /// Defaults to [analyzerDataVersion] (the linked analyzer's). Overridable
+  /// only to let tests exercise the partitioning without another analyzer.
+  final int analyzerDataVersion;
+
   /// Creates a cache manager for the given workspace.
   ///
   /// The [workspaceRoot] should be the directory containing the project's
@@ -96,17 +102,21 @@ class SummaryCacheManager {
   /// by callers that manage their own cache layout. [environment] overrides the
   /// process environment consulted by [ToolCacheLocator] (primarily for tests).
   ///
-  /// The [analyzerMajor] selects the per-analyzer-major cache partition; it
-  /// defaults to [analyzerMajorVersion] and should normally be left unset
-  /// outside of tests.
+  /// The [analyzerMajor] and [analyzerDataVersion] select the cache
+  /// partition; they default to the linked analyzer's
+  /// ([analyzerMajorVersion], the library constant [analyzerDataVersion]) and
+  /// should normally be left unset outside of tests.
   SummaryCacheManager(
     this.workspaceRoot, {
     String? dartSdkVersion,
     String? cacheDirectory,
     Map<String, String>? environment,
     int? analyzerMajor,
+    int? analyzerDataVersion,
   }) : dartSdkVersion = dartSdkVersion ?? _getDartSdkVersion(),
-       analyzerMajor = analyzerMajor ?? analyzerMajorVersion {
+       analyzerMajor = analyzerMajor ?? analyzerMajorVersion,
+       analyzerDataVersion =
+           analyzerDataVersion ?? shared_version.analyzerDataVersion {
     this.cacheDirectory =
         cacheDirectory ??
         p.join(
@@ -115,8 +125,11 @@ class SummaryCacheManager {
             environment: environment,
           ),
           _analyzerCacheSubDir,
-          '${analyzerMajor ?? analyzerMajorVersion}',
-          this.dartSdkVersion,
+          '${this.analyzerMajor}',
+          currentToolchainKey(
+            dartSdkVersion: this.dartSdkVersion,
+            dataVersion: this.analyzerDataVersion,
+          ),
         );
   }
 
