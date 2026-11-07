@@ -17,7 +17,6 @@ import 'package:analyzer/src/dart/analysis/analysis_options_map.dart';
 import 'package:analyzer/src/dart/analysis/byte_store.dart';
 import 'package:analyzer/src/dart/analysis/driver.dart';
 import 'package:analyzer/src/dart/analysis/performance_logger.dart';
-import 'package:analyzer/src/dart/sdk/sdk.dart';
 import 'package:analyzer/src/file_system/file_system.dart'
     show ResourceUriResolver;
 import 'package:analyzer/src/generated/source.dart'
@@ -25,6 +24,7 @@ import 'package:analyzer/src/generated/source.dart'
 import 'package:path/path.dart' as p;
 
 import '../sdk/dart_sdk_locator.dart';
+import '../sdk/flutter_embedder.dart';
 
 /// Raised when a package directory has no resolved
 /// `.dart_tool/package_config.json` (i.e. `pub get` has not been run there),
@@ -50,15 +50,25 @@ class GroupedPackageBundle {
   /// Total number of `.dart` libraries written into the bundle.
   final int libraryCount;
 
+  /// The Flutter embedder the bundle was linked against
+  /// (`sky_engine/lib/_embedder.yaml`), or null for a bundle of no Flutter
+  /// packages. The SDK summary read with this bundle must be built with the
+  /// same embedder (`buildSdkSummary(embedderYamlPath: ...)`), or the
+  /// `dart:ui` types the bundle's Flutter libraries export are undefined.
+  final String? embedderYamlPath;
+
   const GroupedPackageBundle({
     required this.bytes,
     required this.packageCount,
     required this.libraryCount,
+    this.embedderYamlPath,
   });
 
   @override
-  String toString() => 'GroupedPackageBundle(packages: $packageCount, '
-      'libraries: $libraryCount, ${bytes.length} bytes)';
+  String toString() =>
+      'GroupedPackageBundle(packages: $packageCount, '
+      'libraries: $libraryCount, ${bytes.length} bytes'
+      '${embedderYamlPath == null ? '' : ', embedder $embedderYamlPath'})';
 }
 
 /// Reads a resolved `.dart_tool/package_config.json` and returns a map of
@@ -77,8 +87,9 @@ Map<String, String> readPackageRoots(io.File packageConfigFile) {
     final pkgMap = pkg as Map<String, dynamic>;
     final name = pkgMap['name'] as String;
     final rootUri = pkgMap['rootUri'] as String;
-    final resolved = Uri.parse(packageConfigFile.uri.toString())
-        .resolve(rootUri.endsWith('/') ? rootUri : '$rootUri/');
+    final resolved = Uri.parse(
+      packageConfigFile.uri.toString(),
+    ).resolve(rootUri.endsWith('/') ? rootUri : '$rootUri/');
     roots[name] = p.normalize(resolved.toFilePath());
   }
   return roots;
@@ -98,12 +109,14 @@ Map<String, String> readPackageRoots(io.File packageConfigFile) {
 Map<String, String> mergePackageRootsForDirs(Iterable<String> packageDirs) {
   final merged = <String, String>{};
   for (final dir in packageDirs) {
-    final configFile =
-        io.File(p.join(dir, '.dart_tool', 'package_config.json'));
+    final configFile = io.File(
+      p.join(dir, '.dart_tool', 'package_config.json'),
+    );
     if (!configFile.existsSync()) {
       throw SummaryConfigException(
-          '${configFile.path} not found — run `flutter pub get` / '
-          '`dart pub get` in $dir first.');
+        '${configFile.path} not found — run `flutter pub get` / '
+        '`dart pub get` in $dir first.',
+      );
     }
     merged.addAll(readPackageRoots(configFile));
   }
@@ -129,12 +142,15 @@ class GroupedPackageBundleBuilder {
 
   /// Creates a grouped package-bundle builder.
   GroupedPackageBundleBuilder({ResourceProvider? resourceProvider})
-      : resourceProvider = resourceProvider ?? PhysicalResourceProvider.INSTANCE;
+    : resourceProvider = resourceProvider ?? PhysicalResourceProvider.INSTANCE;
 
   /// Builds a grouped `packages.sum` from the union of every package reachable
   /// from each directory in [packageDirs] (each must have run `pub get`).
   ///
   /// [sdkPath] overrides SDK location; when null, [resolveDartSdkPath] is used.
+  /// [embedderYamlPath] is the Flutter embedder to link against; when null,
+  /// the one of the `sky_engine` package among the packages, if any
+  /// ([flutterEmbedderYamlInPackageRoots]).
   /// [onLog] receives human-readable progress lines (defaults to silent).
   ///
   /// Throws [SummaryConfigException] if a config is missing, no SDK can be
@@ -142,14 +158,17 @@ class GroupedPackageBundleBuilder {
   Future<GroupedPackageBundle> buildFromDirs(
     List<String> packageDirs, {
     String? sdkPath,
+    String? embedderYamlPath,
     void Function(String message)? onLog,
   }) async {
-    final normalizedDirs =
-        packageDirs.map((d) => p.normalize(p.absolute(d))).toList();
+    final normalizedDirs = packageDirs
+        .map((d) => p.normalize(p.absolute(d)))
+        .toList();
     final packageRoots = mergePackageRootsForDirs(normalizedDirs);
     return buildFromPackageRoots(
       packageRoots,
       sdkPath: sdkPath,
+      embedderYamlPath: embedderYamlPath,
       onLog: onLog,
     );
   }
@@ -158,9 +177,16 @@ class GroupedPackageBundleBuilder {
   ///
   /// Lower-level counterpart to [buildFromDirs] for callers that already hold a
   /// merged package map (or want to construct one without a config file).
+  ///
+  /// The bundle is linked against the SDK with the Flutter embedder's
+  /// libraries added ([dartSdkWithEmbedder]): [embedderYamlPath], else the
+  /// embedder of the `sky_engine` package in [packageRoots], so Flutter's
+  /// `export 'dart:ui' show ...` lines are kept. Without either it is the
+  /// plain SDK.
   Future<GroupedPackageBundle> buildFromPackageRoots(
     Map<String, String> packageRoots, {
     String? sdkPath,
+    String? embedderYamlPath,
     void Function(String message)? onLog,
   }) async {
     final log = onLog ?? (_) {};
@@ -168,7 +194,8 @@ class GroupedPackageBundleBuilder {
     final resolvedSdkPath = sdkPath ?? resolveDartSdkPath();
     if (resolvedSdkPath == null) {
       throw SummaryConfigException(
-          'Could not locate the Dart SDK; pass sdkPath explicitly.');
+        'Could not locate the Dart SDK; pass sdkPath explicitly.',
+      );
     }
     log('Using SDK: $resolvedSdkPath');
     log('Found ${packageRoots.length} packages.');
@@ -195,8 +222,9 @@ class GroupedPackageBundleBuilder {
       for (final entity in libDir.listSync(recursive: true)) {
         if (entity is io.File && entity.path.endsWith('.dart')) {
           final rel = p.relative(entity.path, from: libDir.path);
-          libraryUris.add(Uri.parse(
-              'package:${entry.key}/${rel.replaceAll('\\', '/')}'));
+          libraryUris.add(
+            Uri.parse('package:${entry.key}/${rel.replaceAll('\\', '/')}'),
+          );
           count++;
         }
       }
@@ -207,13 +235,20 @@ class GroupedPackageBundleBuilder {
       throw SummaryConfigException('No libraries found to summarize.');
     }
 
-    final sdk = FolderBasedDartSdk(
-        resourceProvider, resourceProvider.getFolder(resolvedSdkPath));
+    final embedder =
+        embedderYamlPath ?? flutterEmbedderYamlInPackageRoots(packageRoots);
+    if (embedder != null) log('Linking against the Flutter embedder $embedder');
+    final sdk = dartSdkWithEmbedder(
+      resourceProvider,
+      sdkPath: resolvedSdkPath,
+      embedderYamlPath: embedder,
+    );
     final logger = PerformanceLog(StringBuffer());
     final scheduler = AnalysisDriverScheduler(logger);
     final byteStore = MemoryByteStore();
-    final optionsMap =
-        AnalysisOptionsMap.forSharedOptions(AnalysisOptionsImpl());
+    final optionsMap = AnalysisOptionsMap.forSharedOptions(
+      AnalysisOptionsImpl(),
+    );
 
     // _PackageMapUriResolver MUST come before ResourceUriResolver (see header).
     final sourceFactory = SourceFactory([
@@ -244,6 +279,7 @@ class GroupedPackageBundleBuilder {
       bytes: bytes,
       packageCount: packageRoots.length,
       libraryCount: libraryUris.length,
+      embedderYamlPath: embedder,
     );
   }
 }
@@ -264,7 +300,8 @@ class _PackageMapUriResolver extends UriResolver {
         if (relative.startsWith('/') ||
             relative.startsWith(io.Platform.pathSeparator)) {
           return Uri.parse(
-              'package:${entry.key}${relative.replaceAll('\\', '/')}');
+            'package:${entry.key}${relative.replaceAll('\\', '/')}',
+          );
         }
       }
     }
@@ -278,8 +315,9 @@ class _PackageMapUriResolver extends UriResolver {
     if (parts.isEmpty) return null;
     final folder = _packageMap[parts[0]];
     if (folder == null) return null;
-    final file =
-        _resourceProvider.getFile('${folder.path}/${parts.skip(1).join('/')}');
+    final file = _resourceProvider.getFile(
+      '${folder.path}/${parts.skip(1).join('/')}',
+    );
     if (!file.exists) return null;
     return FileSource(file, uri);
   }

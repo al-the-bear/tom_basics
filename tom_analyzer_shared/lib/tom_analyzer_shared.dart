@@ -31,6 +31,11 @@ library;
 export 'src/cache/tool_cache_locator.dart' show ToolCacheLocator;
 export 'src/sdk/dart_sdk_locator.dart'
     show resolveDartSdkPath, looksLikeDartSdk;
+export 'src/sdk/flutter_embedder.dart'
+    show
+        dartSdkWithEmbedder,
+        flutterEmbedderYamlInPackageRoots,
+        flutterEmbedderYamlInSdk;
 export 'src/summary/analyzer_cache_gc.dart'
     show AnalyzerCacheGarbageCollector, AnalyzerCachePartition;
 export 'src/summary/analyzer_version.dart'

@@ -321,6 +321,32 @@ The SDK summary is built **first** because package summaries resolve `dart:core`
 single package failing to summarise is recorded in `errors` and does not abort
 the rest — the analyzer simply falls back to analysing that one from source.
 
+### One grouped bundle for an embedded editor
+
+`GroupedPackageBundleBuilder` writes one `packages.sum` covering every package
+reachable from one or more resolved package directories — what an embedded
+Dart editor loads for analysis without an SDK. Read it with an SDK summary
+built against the **same** SDK: for Flutter packages, the Dart SDK with
+Flutter's embedder libraries (`dart:ui` …). The builder links against that SDK
+itself — the embedder of the packages' own `sky_engine`, or the one given —
+and names it in the result, for the SDK summary:
+
+```dart
+final bundle = await GroupedPackageBundleBuilder()
+    .buildFromDirs(['path/to/app'], sdkPath: sdkPath);
+final sdkSummary = await buildSdkSummary(
+  resourceProvider: PhysicalResourceProvider.INSTANCE,
+  sdkPath: sdkPath,
+  embedderYamlPath: bundle.embedderYamlPath, // null without Flutter
+);
+```
+
+A bundle linked against the plain SDK drops Flutter's `export 'dart:ui'
+show ...` lines, and `TextDirection`, `Color`, `Offset` … are undefined to
+code read against it. `flutterEmbedderYamlInPackageRoots`,
+`flutterEmbedderYamlInSdk` and `dartSdkWithEmbedder` are the lookups and the
+SDK the builder uses.
+
 ---
 
 ## Architecture

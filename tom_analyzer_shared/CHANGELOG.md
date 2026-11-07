@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.9.0
+
+- **Grouped bundles of Flutter packages resolve `dart:ui`.**
+  `GroupedPackageBundleBuilder` linked `packages.sum` against the plain Dart
+  SDK, so Flutter's `export 'dart:ui' show ...` lines were dropped and every
+  `dart:ui` type Flutter re-exports (`TextDirection`, `Color`, `Offset` …) was
+  undefined to code read against the bundle. It now links against the SDK
+  with Flutter's embedder libraries: the `sky_engine` embedder among the
+  packages, or `embedderYamlPath`. `GroupedPackageBundle.embedderYamlPath`
+  names it, for building the matching SDK summary.
+- New: `flutterEmbedderYamlInPackageRoots`, `flutterEmbedderYamlInSdk`,
+  `dartSdkWithEmbedder` — the embedder lookups and the SDK with the embedder,
+  shared by `SummaryGenerator` and the grouped builder.
+
 ## 0.8.1
 
 - **A package's own analyzer excludes no longer drop files from its summary.**

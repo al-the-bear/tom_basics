@@ -17,6 +17,7 @@ import 'package:path/path.dart' as p;
 import 'package:yaml/yaml.dart';
 
 import '../sdk/dart_sdk_locator.dart';
+import '../sdk/flutter_embedder.dart';
 import 'dependency_resolver.dart';
 import 'package_dependency.dart';
 import 'summary_cache_manager.dart';
@@ -193,18 +194,12 @@ class SummaryGenerator {
       '  Generating SDK summary (Dart ${cacheManager.dartSdkVersion})...',
     );
 
-    // Check for Flutter embedder (sky_engine provides dart:ui)
-    String? embedderYamlPath;
+    // The Flutter embedder (sky_engine provides dart:ui), when Flutter is
+    // installed.
     final flutterSdkPath = await dependencyResolver.getFlutterSdkPath();
-    if (flutterSdkPath != null) {
-      final dartUiPath = p.normalize(
-        p.join(flutterSdkPath, 'bin', 'cache', 'pkg', 'sky_engine', 'lib'),
-      );
-      final embedderFile = File(p.join(dartUiPath, '_embedder.yaml'));
-      if (embedderFile.existsSync()) {
-        embedderYamlPath = embedderFile.path;
-      }
-    }
+    final embedderYamlPath = flutterSdkPath == null
+        ? null
+        : flutterEmbedderYamlInSdk(flutterSdkPath);
 
     final summaryBytes = await buildSdkSummary(
       sdkPath: sdkPath,
@@ -286,14 +281,16 @@ class SummaryGenerator {
       // an invalid type in Windows' `flutter` summary. Leaving this package
       // unsummarised costs speed, not correctness: its source is analysed
       // directly.
-      final blocking = (graph[dep.name] ?? const <String>{})
-          .where(unavailable.contains)
-          .toList()
-        ..sort();
+      final blocking =
+          (graph[dep.name] ?? const <String>{})
+              .where(unavailable.contains)
+              .toList()
+            ..sort();
       if (blocking.isNotEmpty) {
         failed++;
         unavailable.add(dep.name);
-        errors[dep.name] = 'not generated: depends on ${blocking.join(', ')}, '
+        errors[dep.name] =
+            'not generated: depends on ${blocking.join(', ')}, '
             'whose summary could not be built';
         continue;
       }
@@ -563,7 +560,9 @@ class SummaryGenerator {
     // analysis context — a "Failed to analyze" warning each, and an excluded
     // library missing from the summary. An empty options file of our own
     // keeps every file in.
-    final optionsDir = Directory.systemTemp.createTempSync('tom_summary_options_');
+    final optionsDir = Directory.systemTemp.createTempSync(
+      'tom_summary_options_',
+    );
     final optionsFile = File(p.join(optionsDir.path, 'analysis_options.yaml'))
       ..writeAsStringSync('');
     final dartToolDir = Directory(p.join(packagePath, '.dart_tool'));
