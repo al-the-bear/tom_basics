@@ -15,9 +15,11 @@
 library;
 
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:analyzer/file_system/file_system.dart' show ResourceProvider;
 import 'package:analyzer/src/dart/sdk/sdk.dart';
+import 'package:analyzer/src/summary2/package_bundle_format.dart';
 import 'package:path/path.dart' as p;
 import 'package:yaml/yaml.dart';
 
@@ -78,3 +80,12 @@ FolderBasedDartSdk dartSdkWithEmbedder(
   }
   return sdk;
 }
+
+/// The library URIs a summary holds (`dart:core`, `dart:ui`,
+/// `package:flutter/painting.dart` ...): whether an SDK summary holds
+/// `dart:ui`, i.e. was built with Flutter's embedder, without the analyzer's
+/// internals at the caller.
+List<String> summaryLibraryUris(Uint8List summaryBytes) => [
+  for (final library in PackageBundleReader(summaryBytes).libraries)
+    library.uriStr,
+];

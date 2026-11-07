@@ -171,6 +171,11 @@ const red = Color(0xFFFF0000);
       packageSummary: bundle.bytes,
     );
     expect(errors, isEmpty, reason: errors.map((e) => e.message).join('\n'));
+    expect(summaryLibraryUris(sdkSummary), contains('dart:ui'));
+    expect(
+      summaryLibraryUris(bundle.bytes),
+      contains('package:flutter/painting.dart'),
+    );
 
     // A mistake is still reported: the analysis is real.
     final broken = await _errorsOf(

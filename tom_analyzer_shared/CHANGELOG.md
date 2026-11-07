@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.9.1
+
+- New: `summaryLibraryUris` — the library URIs a summary holds, so a tool can
+  tell whether an SDK summary was built with Flutter's `dart:ui` without the
+  analyzer's internals.
+
 ## 0.9.0
 
 - **Grouped bundles of Flutter packages resolve `dart:ui`.**

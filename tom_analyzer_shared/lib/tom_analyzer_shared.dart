@@ -35,7 +35,8 @@ export 'src/sdk/flutter_embedder.dart'
     show
         dartSdkWithEmbedder,
         flutterEmbedderYamlInPackageRoots,
-        flutterEmbedderYamlInSdk;
+        flutterEmbedderYamlInSdk,
+        summaryLibraryUris;
 export 'src/summary/analyzer_cache_gc.dart'
     show AnalyzerCacheGarbageCollector, AnalyzerCachePartition;
 export 'src/summary/analyzer_version.dart'
