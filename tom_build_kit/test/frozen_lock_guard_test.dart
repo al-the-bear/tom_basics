@@ -117,6 +117,7 @@ class _StaleLock {
       'pub cache';
 }
 
+// live-root: ok -- this guard's subject is this machine's live locks.
 Directory? _repoRoot() {
   var dir = Directory.current.absolute;
   for (var i = 0; i < 6; i++) {
@@ -318,6 +319,7 @@ Set<String> _declaredPathDependencies(Directory package) {
 }
 
 void main() {
+  // live-root: ok -- the live locks are what this guard judges.
   final root = _repoRoot();
 
   group('frozen locks (tom_ai/basics): resolutions match declarations', () {

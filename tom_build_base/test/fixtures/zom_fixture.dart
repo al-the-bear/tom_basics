@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:isolate';
 
 import 'package:path/path.dart' as p;
+import 'package:tom_test_support/workspace_clone.dart';
 
 /// Test support for the `zom_analyzer_test` workspace fixture.
 ///
@@ -171,50 +172,56 @@ String installNestedProjectFixture() {
   return tempRoot.path;
 }
 
-/// Returns the nearest ancestor of [start] (default: the resolved package
-/// root) that contains a `.git` entry — i.e. a real git working tree.
+/// The machine's workspace clone, held by a suite that scans a whole
+/// workspace (git traversal, submodules, module filters, GitFolder natures).
 ///
-/// The GitFolder tests need an actual repository to inspect; resolving it by
-/// walking up keeps them independent of how deeply this package is nested.
-String nearestGitRoot([String? start]) {
-  var dir = Directory(start ?? _packageRoot).absolute;
-  while (true) {
-    final gitDir = Directory(p.join(dir.path, '.git'));
-    final gitFile = File(p.join(dir.path, '.git'));
-    if (gitDir.existsSync() || gitFile.existsSync()) {
-      return dir.path;
-    }
-    final parent = dir.parent;
-    if (parent.path == dir.path) {
-      throw StateError(
-        'No .git found above ${start ?? Directory.current.path}',
-      );
-    }
-    dir = parent;
-  }
+/// Those suites used to scan the LIVE workspace, which other sessions change
+/// under them and load until they time out. The clone (tom_test_support
+/// `TomWorkspaceClone`) is the same tree at the live repositories' commits.
+/// Call in `setUpAll` after [resolvePackageRoot]; give it back with
+/// `release()` in `tearDownAll`.
+class WorkspaceCloneRoots {
+  WorkspaceCloneRoots._(this.clone, this.workspaceRoot, this.repositoryRoot);
+
+  /// The clone, for `release()`.
+  final TomWorkspaceClone clone;
+
+  /// The clone's root: the superproject holding every repository.
+  final String workspaceRoot;
+
+  /// The clone's copy of the repository holding this package (the nearest
+  /// `.git` above the package's place in the clone).
+  final String repositoryRoot;
+
+  /// Reset the clone and give it back.
+  Future<void> release() => clone.release();
 }
 
-/// Returns the enclosing multi-repo workspace root — the nearest ancestor of
-/// [start] (default: the resolved package root) that contains a
-/// `tom_workspace.yaml` marker.
-///
-/// The git-traversal / submodule / module-filter tests scan the real workspace
-/// (which holds many nested repositories under e.g. `xternal/`), so they need
-/// the superproject root rather than the leaf repo enclosing this package.
-/// Falls back to [nearestGitRoot] when no marker is found.
-String workspaceRootDir([String? start]) {
-  final base = start ?? _packageRoot;
-  var dir = Directory(base).absolute;
-  while (true) {
-    if (File(p.join(dir.path, 'tom_workspace.yaml')).existsSync()) {
-      return dir.path;
-    }
-    final parent = dir.parent;
-    if (parent.path == dir.path) {
-      return nearestGitRoot(start);
-    }
-    dir = parent;
+/// Take the workspace clone for this suite; see [WorkspaceCloneRoots].
+Future<WorkspaceCloneRoots> holdWorkspaceClone() async {
+  final packageRoot = await resolvePackageRoot();
+  final live = TomWorkspaceClone.findLiveRoot(from: Directory(packageRoot));
+  if (live == null) {
+    throw StateError(
+      'No workspace above $packageRoot, so there is no workspace clone to '
+      'scan. These suites need the Tom workspace.',
+    );
   }
+  final clone = await TomWorkspaceClone.acquire(
+    liveRoot: live,
+    log: (m) => print('    [workspace clone] $m'),
+  );
+  // This package's place in the clone, then the nearest repository above it
+  // — found in the clone, so nothing here reads the live tree.
+  var dir = Directory(
+    p.join(clone.root.path, p.relative(packageRoot, from: live.path)),
+  );
+  while (FileSystemEntity.typeSync(p.join(dir.path, '.git')) ==
+      FileSystemEntityType.notFound) {
+    if (p.equals(dir.path, clone.root.path)) break;
+    dir = dir.parent;
+  }
+  return WorkspaceCloneRoots._(clone, clone.root.path, dir.path);
 }
 
 /// Removes a temp tree created by [installZomFixture].

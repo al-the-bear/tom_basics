@@ -2,8 +2,7 @@
 # Use expanded reporter so per-test verbose output (TestLogger) is visible.
 reporter: expanded
 
-# Run test files one at a time. Each integration suite works in its own scratch
-# copy of the workspace (test/helpers/scratch_workspace.dart), so they no longer
-# share workspace files; running them in parallel has not been verified (they
-# still share .test-log/ and $HOME-level state).
+# Run test files one at a time. The integration suites share the machine's one
+# workspace clone (tom_test_support TomWorkspaceClone), held under an exclusive
+# lock: a second suite waits for the first to release it.
 concurrency: 1

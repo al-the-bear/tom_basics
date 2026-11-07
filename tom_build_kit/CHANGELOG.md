@@ -1,3 +1,14 @@
+## Unreleased
+
+### Tests run on the workspace clone
+
+The integration suites run on the machine's workspace clone (tom_test_support
+0.6.0 `TomWorkspaceClone`, a full clone with every submodule beside the
+workspace) instead of a skeleton copy of descriptor files. The clone is
+created on first use, brought to the live repositories' commits before a run
+and reset after it. Test-only; the published package is unchanged. See
+`_copilot_guidelines/testing.md`.
+
 ## 1.13.0
 
 ### Changed — `dcli` ^10

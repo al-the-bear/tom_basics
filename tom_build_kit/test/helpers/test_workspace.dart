@@ -4,7 +4,7 @@ import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 
-import 'scratch_workspace.dart';
+import 'package:tom_test_support/workspace_clone.dart';
 
 // ---------------------------------------------------------------------------
 // TestLogger — per-test verbose output and log capture
@@ -124,19 +124,22 @@ class TestLogger {
 /// Tests that use `buildkit_skip.yaml` markers can check
 /// [isSkippedRepo] to avoid git operations on those repos.
 class TestWorkspace {
-  /// Root of the workspace the tests work in: a private scratch copy of the
-  /// live workspace (see `scratch_workspace.dart`), never the live tree.
+  /// Root of the workspace the tests work in: the machine's workspace clone
+  /// (tom_test_support `TomWorkspaceClone`), never the live tree.
   final String workspaceRoot;
 
   /// Path to the tom_build_kit project (the live package under test).
   final String buildkitRoot;
 
-  /// Root of the live workspace the copy was made from; read-only for tests.
+  /// Root of the live workspace the clone follows; read-only for tests.
   final String? liveRoot;
 
-  /// buildkit compiled once to a kernel snapshot for this workspace, or null
-  /// to run it from source (`dart run`). `dart run` recompiles buildkit on
-  /// every call; the suites make hundreds of calls.
+  /// The clone held for this suite, given back by [dispose].
+  final TomWorkspaceClone? _clone;
+
+  /// buildkit compiled once to a kernel snapshot for this suite, or null to
+  /// run it from source (`dart run`). `dart run` recompiles buildkit on every
+  /// call; the suites make hundreds of calls.
   final String? _buildkitSnapshot;
 
   /// Saved HEAD SHA refs for main repo and submodules.
@@ -156,11 +159,13 @@ class TestWorkspace {
     required this.workspaceRoot,
     required this.buildkitRoot,
     this.liveRoot,
+    TomWorkspaceClone? clone,
     String? buildkitSnapshot,
-  }) : _buildkitSnapshot = buildkitSnapshot;
+  }) : _clone = clone,
+       _buildkitSnapshot = buildkitSnapshot;
 
   /// A workspace rooted at [root], for the tests of this helper. Every method
-  /// that changes the tree refuses a root that is not a scratch copy.
+  /// that changes the tree refuses a root that is not a workspace clone.
   @visibleForTesting
   TestWorkspace.forRoot(String root)
     : this._(workspaceRoot: root, buildkitRoot: _findBuildkitRoot());
@@ -168,83 +173,98 @@ class TestWorkspace {
   /// Absolute path to the workspace master config.
   String get masterConfigPath => p.join(workspaceRoot, 'buildkit_master.yaml');
 
-  /// A private copy of the live workspace (the one holding this package) for
-  /// one test file, deleted when the calling group ends.
+  /// The machine's workspace clone, held for one test file.
   ///
-  /// Call it in `setUpAll` (the copy takes several seconds to build, about 9k
-  /// files) and [dispose] as the LAST step of `tearDownAll`: the suites'
-  /// tear-downs still verify and clean the copy, so it must outlive them, and
-  /// an `addTearDown` registered in `setUpAll` runs before `tearDownAll` does.
-  /// `test/scratch_workspace_test.dart` (BK-ISO-8) checks that every suite
-  /// that calls this also disposes. Nothing a test does through
-  /// this workspace can touch the live tree, where other sessions may be
-  /// working: fixtures, `_build`, skip files and every `git checkout` happen
-  /// in the copy, and every method that changes the tree checks that its root
-  /// is one.
+  /// Call it in `setUpAll` and [dispose] as the LAST step of `tearDownAll`:
+  /// the suites' tear-downs still verify and clean the clone, so it must stay
+  /// held until they are done, and an `addTearDown` registered in `setUpAll`
+  /// runs before `tearDownAll` does. `test/workspace_isolation_test.dart`
+  /// (BK-ISO-5) checks that every suite that calls this also disposes.
+  ///
+  /// The clone is created on first use (minutes), brought to the live
+  /// workspace's commits and reset by tom_test_support's
+  /// `TomWorkspaceClone`; a second run on the machine waits for it. Nothing a
+  /// test does through this workspace can touch the live tree, where other
+  /// sessions may be working: fixtures, `_build`, skip files and every
+  /// `git checkout` happen in the clone, and every method that changes the
+  /// tree checks that its root is one.
   static Future<TestWorkspace> isolated() async {
     final buildkitRoot = _findBuildkitRoot();
-    final liveRoot = _findWorkspaceRoot(buildkitRoot);
-    final scratch = await createScratchWorkspace(liveRoot);
-    print('    🧪 Scratch workspace: ${scratch.path} (copy of $liveRoot)');
-    // The snapshot sits in the copy, excluded from its git status so the
-    // clean check does not see it.
-    final snapshot = p.join(scratch.path, _snapshotFileName);
-    final compiled = await Process.run('dart', [
-      'compile',
-      'kernel',
-      p.join(buildkitRoot, 'bin', 'buildkit.dart'),
-      '-o',
-      snapshot,
-    ], workingDirectory: buildkitRoot);
-    if (compiled.exitCode != 0) {
-      throw StateError(
-        'compiling buildkit failed:\n${compiled.stdout}${compiled.stderr}',
-      );
-    }
-    File(
-      p.join(scratch.path, '.git', 'info', 'exclude'),
-    ).writeAsStringSync('/$_snapshotFileName\n', mode: FileMode.append);
-    return TestWorkspace._(
-      workspaceRoot: scratch.path,
-      buildkitRoot: buildkitRoot,
-      liveRoot: liveRoot,
-      buildkitSnapshot: snapshot,
+    final clone = await TomWorkspaceClone.acquire(
+      liveRoot: TomWorkspaceClone.findLiveRoot(from: Directory(buildkitRoot)),
+      log: (m) => print('    🧪 $m'),
     );
+    try {
+      print('    🧪 Workspace clone: ${clone.root.path}');
+      // The snapshot lives in this package's .dart_tool, outside the clone.
+      final snapshotDir = Directory(
+        p.join(buildkitRoot, '.dart_tool', 'tom_build_kit_test'),
+      )..createSync(recursive: true);
+      final snapshot = p.join(
+        snapshotDir.path,
+        'buildkit_${pid}_${DateTime.now().microsecondsSinceEpoch}.dill',
+      );
+      final compiled = await Process.run('dart', [
+        'compile',
+        'kernel',
+        p.join(buildkitRoot, 'bin', 'buildkit.dart'),
+        '-o',
+        snapshot,
+      ], workingDirectory: buildkitRoot);
+      if (compiled.exitCode != 0) {
+        throw StateError(
+          'compiling buildkit failed:\n${compiled.stdout}${compiled.stderr}',
+        );
+      }
+      return TestWorkspace._(
+        workspaceRoot: clone.root.path,
+        buildkitRoot: buildkitRoot,
+        liveRoot: clone.liveRoot.path,
+        clone: clone,
+        buildkitSnapshot: snapshot,
+      );
+    } catch (_) {
+      await clone.release();
+      rethrow;
+    }
   }
-
-  static const _snapshotFileName = '.tom_build_kit_buildkit.dill';
 
   /// The `dart` arguments that start buildkit.
   List<String> get _buildkitInvocation => _buildkitSnapshot != null
       ? [_buildkitSnapshot]
       : ['run', p.join(buildkitRoot, 'bin', 'buildkit.dart')];
 
-  /// [workingDirectory] when it lies inside the copy (default: its root).
+  /// [workingDirectory] when it lies inside the clone (default: its root).
   String _workingDirectoryInside(String? workingDirectory) {
     final dir = p.normalize(p.absolute(workingDirectory ?? workspaceRoot));
     if (dir != workspaceRoot && !p.isWithin(workspaceRoot, dir)) {
       throw StateError(
-        'Refusing to run buildkit in $dir: outside the scratch workspace '
+        'Refusing to run buildkit in $dir: outside the workspace clone '
         '$workspaceRoot.',
       );
     }
     return dir;
   }
 
-  /// Delete the scratch copy. Call it last in `tearDownAll`.
+  /// Reset the clone and give it back. Call it last in `tearDownAll`.
   Future<void> dispose() async {
-    _requireScratch('delete the workspace');
-    deleteScratchWorkspace(Directory(workspaceRoot));
-    print('    🧹 Deleted scratch workspace $workspaceRoot');
+    _requireScratch('release the workspace');
+    final snapshot = _buildkitSnapshot;
+    if (snapshot != null && File(snapshot).existsSync()) {
+      File(snapshot).deleteSync();
+    }
+    await _clone?.release();
+    print('    🧹 Released workspace clone $workspaceRoot');
   }
 
-  /// Throws unless [workspaceRoot] is a scratch copy.
+  /// Throws unless [workspaceRoot] is a workspace clone's root.
   void _requireScratch(String operation) {
-    if (!isScratchWorkspace(workspaceRoot)) {
+    if (!tomIsWorkspaceClone(Directory(workspaceRoot))) {
       throw StateError(
-        'Refusing to $operation in $workspaceRoot: it is not a scratch copy '
-        '(no $scratchMarkerFileName). Integration tests change only the copy '
-        'TestWorkspace.isolated() makes, never a live workspace.',
+        'Refusing to $operation in $workspaceRoot: it is not a workspace '
+        'clone (no .git/$tomWorkspaceCloneMarker). Integration tests change '
+        'only the clone TestWorkspace.isolated() holds, never a live '
+        'workspace.',
       );
     }
   }
@@ -261,24 +281,6 @@ class TestWorkspace {
       dir = parent;
     }
     return dir;
-  }
-
-  /// Find workspace root by walking up looking for buildkit_master.yaml.
-  static String _findWorkspaceRoot(String startDir) {
-    var dir = startDir;
-    while (true) {
-      if (File(p.join(dir, 'buildkit_master.yaml')).existsSync()) {
-        return dir;
-      }
-      final parent = p.dirname(dir);
-      if (parent == dir) {
-        throw StateError(
-          'Could not find workspace root (no buildkit_master.yaml found '
-          'above $startDir)',
-        );
-      }
-      dir = parent;
-    }
   }
 
   // ---------------------------------------------------------------------------
@@ -998,7 +1000,8 @@ class TestWorkspace {
 ///   workspace); it is reported as its path;
 /// * a submodule whose HEAD merely differs from the commit the superproject
 ///   records (the normal state between pushes of the submodule tree) is NOT:
-///   the run cannot harm it.
+///   the run cannot harm it — nor is one whose only change is that its own
+///   submodules moved on (asked recursively).
 ///
 /// Read from `git status --porcelain=v2`, whose submodule field
 /// (`S<commit><modified><untracked>`) separates the cases; the v1 flags cannot
@@ -1048,6 +1051,12 @@ Future<List<String>> uncommittedChangesIn(String root) async {
       final modified = sub.length > 2 && sub[2] == 'M';
       final untracked = sub.length > 3 && sub[3] == 'U';
       if (!modified && !untracked) continue;
+      // "Modified" also means only that the submodule's OWN submodules
+      // moved on, which is not dirty either: ask the submodule itself.
+      if (!untracked &&
+          (await uncommittedChangesIn(p.join(root, path))).isEmpty) {
+        continue;
+      }
     }
     dirty.add('$xy $path');
   }

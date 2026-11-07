@@ -24,7 +24,7 @@ import 'helpers/test_workspace.dart';
 void main() {
   late TestWorkspace ws;
 
-  // One scratch copy for the file: provisioning only touches its `_build`,
+  // The clone, held for the whole file: provisioning only touches its `_build`,
   // which each test removes again in tearDown.
   setUpAll(() async {
     ws = await TestWorkspace.isolated();

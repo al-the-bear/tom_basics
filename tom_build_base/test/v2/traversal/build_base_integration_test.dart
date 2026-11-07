@@ -10,12 +10,14 @@ import '../../fixtures/zom_fixture.dart';
 ///
 /// These tests use the checked-in zom_analyzer_test fixture projects (copied to
 /// a throwaway temp dir per run) to verify that traversal, filtering, and
-/// nature detection work correctly. The git-traversal tests use the real
-/// enclosing multi-repo workspace, resolved via [workspaceRootDir].
+/// nature detection work correctly. The git-traversal tests scan a whole
+/// multi-repo workspace: the machine's workspace clone ([holdWorkspaceClone]),
+/// never the live tree.
 void main() {
   // The enclosing multi-repo workspace root (for GitTraversal tests, which
   // expect nested submodules to be discovered under it).
   late String workspaceRoot;
+  late WorkspaceCloneRoots clone;
   late String zomTestRoot;
 
   setUpAll(() async {
@@ -23,13 +25,16 @@ void main() {
     // any path helper reads it; the process cwd is shared across concurrently
     // running suites and is mutated by other tests.
     await resolvePackageRoot();
-    workspaceRoot = workspaceRootDir();
+    // The machine's workspace clone, never the live tree (aft_tclone-56).
+    clone = await holdWorkspaceClone();
+    workspaceRoot = clone.workspaceRoot;
     // Copy the checked-in zom fixture into a throwaway temp dir for this run.
     zomTestRoot = installZomFixture();
   });
 
-  tearDownAll(() {
+  tearDownAll(() async {
     removeZomFixture(zomTestRoot);
+    await clone.release();
   });
 
   group('BuildBase.traverse with ProjectTraversalInfo', () {
@@ -696,17 +701,13 @@ void main() {
       () async {
         final vsCodePath = p.join(
           workspaceRoot,
-          'xternal',
-          'tom_module_vscode',
+          'tom_ai',
+          'vscode',
           'tom_vscode_extension',
         );
-
-        // Skip if path doesn't exist in this workspace (for CI)
-        final vsCodeDir = Directory(vsCodePath);
-        if (!vsCodeDir.existsSync()) {
-          // Skip this test if running outside the main workspace
-          return;
-        }
+        // The clone always holds it: a missing folder means it moved, and the
+        // test must say so rather than pass without looking.
+        expect(Directory(vsCodePath).existsSync(), isTrue, reason: vsCodePath);
 
         final detector = NatureDetector();
         final folder = FsFolder(path: vsCodePath);
@@ -733,15 +734,14 @@ void main() {
       () async {
         final vsCodeModulePath = p.join(
           workspaceRoot,
-          'xternal',
-          'tom_module_vscode',
+          'tom_ai',
+          'vscode',
         );
-
-        // Skip if path doesn't exist in this workspace (for CI)
-        final moduleDir = Directory(vsCodeModulePath);
-        if (!moduleDir.existsSync()) {
-          return;
-        }
+        expect(
+          Directory(vsCodeModulePath).existsSync(),
+          isTrue,
+          reason: vsCodeModulePath,
+        );
 
         final info = ProjectTraversalInfo(
           executionRoot: vsCodeModulePath,

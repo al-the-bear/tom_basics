@@ -10,6 +10,7 @@ import '../../fixtures/zom_fixture.dart';
 void main() {
   // The package root is itself a git repo, used by the GitFolder tests.
   late String workspaceRoot;
+  late WorkspaceCloneRoots clone;
   late String zomTestRoot;
   late NatureDetector detector;
 
@@ -17,13 +18,17 @@ void main() {
     // Resolve the package root (cwd-independent) before any path helper reads
     // it; the process cwd is shared across concurrently running suites.
     await resolvePackageRoot();
-    workspaceRoot = nearestGitRoot();
+    // The clone's copy of this package's repository, never the live one
+    // (aft_tclone-56).
+    clone = await holdWorkspaceClone();
+    workspaceRoot = clone.repositoryRoot;
     // Copy the checked-in zom fixture into a throwaway temp dir for this run.
     zomTestRoot = installZomFixture();
   });
 
-  tearDownAll(() {
+  tearDownAll(() async {
     removeZomFixture(zomTestRoot);
+    await clone.release();
   });
 
   setUp(() {

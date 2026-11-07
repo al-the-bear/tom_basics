@@ -41,7 +41,10 @@ void main() {
   late String sub;
 
   setUp(() async {
-    scratch = Directory.systemTemp.createTempSync('bk_clean_');
+    // Package-local scratch, never the system temp directory.
+    final base = Directory(p.join(Directory.current.path, '.dart_tool'))
+      ..createSync();
+    scratch = base.createTempSync('bk_clean_');
     final upstream = p.join(scratch.path, 'upstream');
     await _initRepo(upstream);
     await _commitFile(upstream, 'a.txt', 'one');
@@ -98,5 +101,45 @@ void main() {
       '[2026-11-06]', () async {
     File(p.join(sub, 'scratch.txt')).writeAsStringSync('x');
     expect(await uncommittedChangesIn(root), [contains('child')]);
+  });
+
+  group('a submodule with a submodule of its own', () {
+    late String grandchild;
+
+    setUp(() async {
+      final deep = p.join(scratch.path, 'deep');
+      await _initRepo(deep);
+      await _commitFile(deep, 'd.txt', 'deep');
+      await _git([
+        '-c',
+        'protocol.file.allow=always',
+        'submodule',
+        'add',
+        '-q',
+        deep,
+        'grandchild',
+      ], sub);
+      await _git(['commit', '-q', '-m', 'add grandchild'], sub);
+      await _git(['add', 'child'], root);
+      await _git(['commit', '-q', '-m', 'move child'], root);
+      grandchild = p.join(sub, 'grandchild');
+      await _git(['config', 'user.email', 'test@example.com'], grandchild);
+      await _git(['config', 'user.name', 'Test'], grandchild);
+      await _git(['config', 'commit.gpgsign', 'false'], grandchild);
+      expect(await uncommittedChangesIn(root), isEmpty);
+    });
+
+    test('BK-CLEAN-7: only its own submodule moved on: not dirty — the state '
+        'of every superproject between pushes of its tree [2026-11-07]',
+        () async {
+      await _commitFile(grandchild, 'e.txt', 'moved on');
+      expect(await uncommittedChangesIn(root), isEmpty);
+    });
+
+    test('BK-CLEAN-8: a modified file two levels down is dirty '
+        '[2026-11-07]', () async {
+      File(p.join(grandchild, 'd.txt')).writeAsStringSync('edited');
+      expect(await uncommittedChangesIn(root), [contains('child')]);
+    });
   });
 }

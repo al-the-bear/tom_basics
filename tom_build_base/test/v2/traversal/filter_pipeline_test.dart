@@ -11,6 +11,7 @@ void main() {
   // A real git working tree enclosing this package (for git-filter tests,
   // whose module assertions match the enclosing repo's folder structure).
   late String workspaceRoot;
+  late WorkspaceCloneRoots clone;
   late String zomTestRoot;
   late FilterPipeline filter;
   late List<FsFolder> allFolders;
@@ -19,7 +20,9 @@ void main() {
     // Resolve the package root (cwd-independent) before any path helper reads
     // it; the process cwd is shared across concurrently running suites.
     await resolvePackageRoot();
-    workspaceRoot = workspaceRootDir();
+    // The machine's workspace clone, never the live tree (aft_tclone-56).
+    clone = await holdWorkspaceClone();
+    workspaceRoot = clone.workspaceRoot;
     // Copy the checked-in zom fixture into a throwaway temp dir for this run.
     zomTestRoot = installZomFixture();
 
@@ -35,8 +38,9 @@ void main() {
     }
   });
 
-  tearDownAll(() {
+  tearDownAll(() async {
     removeZomFixture(zomTestRoot);
+    await clone.release();
   });
 
   setUp(() {

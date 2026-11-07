@@ -21,6 +21,11 @@ dependencies:
 
 dev_dependencies:
   build_runner: ^2.4.15
+  # The workspace clone the integration suites run on (TomWorkspaceClone).
+  # By path, the workspace's development mode; the staged copy that
+  # publishes this package drops path dev dependencies.
+  tom_test_support:
+    path: ../tom_test_support
   lints: ^6.0.0
   test: ^1.25.6
 

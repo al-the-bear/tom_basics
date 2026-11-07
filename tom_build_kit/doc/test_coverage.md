@@ -424,25 +424,24 @@ workspace protocol, so it runs whatever the state of the workspace.
 | UNREF-8 | The command passes when everything is allowlisted | ✅ | And says how much it checked. |
 | UNREF-9 | A prefix that matches nothing | ✅ | NOT MEASURED, a failure. |
 
-## 16. Test Infrastructure — Scratch Workspace and Clean Check
+## 16. Test Infrastructure — Workspace Clone and Clean Check
 
-**Test files:** `test/scratch_workspace_test.dart`, `test/workspace_cleanliness_test.dart`
+**Test files:** `test/workspace_isolation_test.dart`, `test/workspace_cleanliness_test.dart`
 
-The integration suites run in a scratch copy of the workspace (`test/helpers/scratch_workspace.dart`); see `_copilot_guidelines/testing.md`.
+The integration suites run on the machine's workspace clone (tom_test_support `TomWorkspaceClone`, taken by `TestWorkspace.isolated()`); see `_copilot_guidelines/testing.md`.
 
 | ID | Feature | Status | How to Test |
 |----|---------|--------|-------------|
-| BK-ISO-1 | The copy is a scratch copy outside the live workspace and outside any git repository above it | ✅ | Marker present; no `.git` in any ancestor. |
-| BK-ISO-2 | It holds every project of the live workspace | ✅ | Every tracked descriptor file with identical content; every directory and every `bin/` file exists. |
-| BK-ISO-3 | It is clean, the buildkit snapshot excluded | ✅ | `uncommittedChangesIn` is empty. |
-| BK-ISO-4 | Fixtures, skip files and reverts stay in the copy | ✅ | The live `buildkit_master.yaml` is unchanged and no skip file appears in the live tree. |
-| BK-ISO-5 | buildkit is not run outside the copy | ✅ | `runTool` with a live `workingDirectory` throws. |
-| BK-ISO-6 | `dispose()` deletes the copy | ✅ | The directory is gone after the group. |
-| BK-ISO-7 | A root that is not a scratch copy is never changed | ✅ | Fixture, revert, provisioning, skip file, buildkit and deletion all throw; the file is untouched. |
-| BK-ISO-8 | Every suite that makes a copy disposes of it in `tearDownAll` | ✅ | Source scan of `test/`. |
+| BK-ISO-1 | The workspace is the clone, outside the live workspace | ✅ | Clone marker present; the root is not inside the live root; `liveRoot` is the live workspace. |
+| BK-ISO-2 | Fixtures, skip files and reverts stay in the clone | ✅ | The live `buildkit_master.yaml` is unchanged and no skip file appears in the live tree. |
+| BK-ISO-3 | buildkit is not run outside the clone | ✅ | `runTool` with a live `workingDirectory` throws. |
+| BK-ISO-4 | A root that is not a clone is never changed | ✅ | Fixture, revert, provisioning, skip file, buildkit and dispose all throw; the file is untouched. |
+| BK-ISO-5 | Every suite that holds the clone gives it back in `tearDownAll` | ✅ | Source scan of `test/`. |
 | BK-CLEAN-1 | A clean repository has no uncommitted changes | ✅ | Scratch superproject with a submodule. |
 | BK-CLEAN-2 | A submodule whose HEAD moved does not make it dirty | ✅ | Commit in the submodule only. |
 | BK-CLEAN-3 | A modified tracked file does | ✅ | |
 | BK-CLEAN-4 | An untracked file does | ✅ | |
 | BK-CLEAN-5 | A modified file inside a submodule does | ✅ | Reported as the submodule's path. |
 | BK-CLEAN-6 | An untracked file inside a submodule does | ✅ | |
+| BK-CLEAN-7 | A submodule whose only change is that its own submodule moved is not dirty | ✅ | Nested submodule two levels down. |
+| BK-CLEAN-8 | A modified file two levels down is | ✅ | Reported as the top submodule's path. |
