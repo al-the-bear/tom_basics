@@ -47,10 +47,10 @@ void main() {
     await _stage(projectB, sequential);
     final expected = _bundles(sequential);
     expect(
-      expected.keys,
+      expected.keys.map(_packageOf).toSet(),
       containsAll(<String>{
         for (final e in [...yamlStack.entries, ...globStack.entries])
-          '${e.key}@${e.value}.sum',
+          '${e.key}@${e.value}',
       }),
       reason: 'the sequential build caches every package',
     );
@@ -108,9 +108,11 @@ void main() {
 
     // No bundle of source_span, string_scanner, collection ...: yaml's
     // imports of them cannot resolve.
+    const fingerprint = 'a closure the test makes up';
     await expectLater(
       generator.generateSummary(
         yaml,
+        fingerprint: fingerprint,
         sdkSummaryPath: cache.getSdkSummaryPath(),
         librarySummaryPaths: const [],
       ),
@@ -124,7 +126,10 @@ void main() {
             ),
       ),
     );
-    expect(await cache.hasSummary(yaml.name, yaml.version), isFalse);
+    expect(
+      await cache.hasSummary(yaml.name, yaml.version, fingerprint: fingerprint),
+      isFalse,
+    );
     expect(
       Directory(
         cache.cacheDirectory,
@@ -138,6 +143,75 @@ void main() {
       reason: 'the pub-cache package directory is only read',
     );
   }, timeout: const Timeout(Duration(minutes: 5)));
+  test('stages whose closures for one package differ never delete each '
+      "other's bundles", () async {
+    final hosted = _pubCacheHosted();
+    final base = _available(hosted, _yamlStack);
+    final oldGlyph = _versionIn(
+      hosted,
+      'term_glyph',
+      exclude: base?['term_glyph'],
+    );
+    if (base == null || oldGlyph == null) {
+      markTestSkipped(
+        'the fixture packages, and a second term_glyph, are not all in the '
+        'pub cache',
+      );
+      return;
+    }
+    // One package set, two resolutions of term_glyph: source_span,
+    // string_scanner and yaml are the same name@version in both projects
+    // and are linked against different closures.
+    final projectA = _project(tempDir, 'closure_a', base);
+    final projectB = _project(tempDir, 'closure_b', {
+      ...base,
+      'term_glyph': oldGlyph,
+    });
+
+    // Each project alone: the bundles it must load.
+    final aloneA = await _stage(projectA, p.join(tempDir.path, 'alone_a'));
+    final aloneB = await _stage(projectB, p.join(tempDir.path, 'alone_b'));
+    final expectedA = _loaded(aloneA.paths);
+    final expectedB = _loaded(aloneB.paths);
+
+    // One after the other: B must not invalidate what A cached.
+    final shared = p.join(tempDir.path, 'shared');
+    await _stage(projectA, shared);
+    await _stage(projectB, shared);
+    final again = await _stage(projectA, shared);
+    expect(
+      again.logs,
+      contains(startsWith('All ')),
+      reason: "A's bundles survived B's run: ${again.logs.join(' | ')}",
+    );
+
+    // At once, several rounds into fresh partitions.
+    for (var round = 1; round <= 3; round++) {
+      final partition = p.join(tempDir.path, 'concurrent_$round');
+      final runs = await Future.wait([
+        Isolate.run(() => _stage(projectA, partition)),
+        Isolate.run(() => _stage(projectB, partition)),
+        Isolate.run(() => _stage(projectA, partition)),
+        Isolate.run(() => _stage(projectB, partition)),
+      ]);
+      for (final (i, run) in runs.indexed) {
+        final problems = run.logs.where(
+          (l) =>
+              l.contains('Warning') ||
+              l.contains('PathNotFoundException') ||
+              l.contains('not generated'),
+        );
+        expect(problems, isEmpty, reason: 'round $round, stage $i');
+        expect(
+          _loaded(run.paths),
+          i.isEven ? expectedA : expectedB,
+          reason:
+              'round $round, stage $i loads the bundles its project builds '
+              'alone',
+        );
+      }
+    }
+  }, timeout: const Timeout(Duration(minutes: 10)));
 }
 
 /// The `yaml` stack, by the versions this package itself resolves.
@@ -213,31 +287,67 @@ String _project(Directory parent, String name, Map<String, String> packages) {
   return dir.path;
 }
 
-Future<void> _stage(String project, String cacheDirectory) async {
+/// Runs the summary-cache stage of [project] against [cacheDirectory] and
+/// answers the bundles it loads and everything it logged.
+Future<({List<String> paths, List<String> logs})> _stage(
+  String project,
+  String cacheDirectory,
+) async {
+  final logs = <String>[];
   final result = await runSummaryCacheStage(
     project,
-    log: (_) {},
+    log: logs.add,
     cacheManager: SummaryCacheManager(project, cacheDirectory: cacheDirectory),
   );
   if (result == null) throw StateError('no summaries for $project');
+  return (paths: result.summaryPaths ?? const <String>[], logs: logs);
+}
+
+/// The bundles at [paths], read now, by `name@version`: their length, digest
+/// and library URIs.
+Map<String, String> _loaded(List<String> paths) => {
+  for (final path in paths) _packageOf(path): _describe(File(path)),
+};
+
+/// `name@version` of a bundle file, without any closure suffix.
+String _packageOf(String path) =>
+    p.basenameWithoutExtension(path).split('+').first;
+
+/// A second cached version of [name], other than [exclude], or `null`.
+String? _versionIn(String hosted, String name, {String? exclude}) {
+  final dir = Directory(hosted);
+  if (!dir.existsSync()) return null;
+  for (final entity in dir.listSync()) {
+    final match = RegExp(
+      '^${RegExp.escape(name)}-(\\d+\\.\\d+\\.\\d+)\$',
+    ).firstMatch(p.basename(entity.path));
+    if (match != null &&
+        match.group(1) != exclude &&
+        Directory(p.join(entity.path, 'lib')).existsSync()) {
+      return match.group(1);
+    }
+  }
+  return null;
 }
 
 /// Every package bundle in [cacheDirectory] (the SDK summary aside), by file
-/// name: its length, a digest of its bytes and the library URIs it holds, as
-/// one line a failure prints readably.
-Map<String, String> _bundles(String cacheDirectory) {
-  final out = <String, String>{};
-  for (final entity in Directory(cacheDirectory).listSync()) {
-    if (entity is! File || !entity.path.endsWith('.sum')) continue;
-    final name = p.basename(entity.path);
-    if (name.startsWith('sdk@')) continue;
-    final bytes = entity.readAsBytesSync();
-    final libraries = summaryLibraryUris(bytes)..sort();
-    out[name] =
-        '${bytes.length} bytes, digest ${_digest(bytes)}, '
-        '${libraries.length} libraries: ${libraries.join(' ')}';
-  }
-  return out;
+/// name, described by [_describe].
+Map<String, String> _bundles(String cacheDirectory) => {
+  for (final entity in Directory(cacheDirectory).listSync())
+    if (entity is File &&
+        entity.path.endsWith('.sum') &&
+        !p.basename(entity.path).startsWith('sdk@'))
+      p.basename(entity.path): _describe(entity),
+};
+
+/// A bundle's length, a digest of its bytes and the library URIs it holds, as
+/// one line a failure prints readably; `missing` when the file is gone.
+String _describe(File file) {
+  if (!file.existsSync()) return 'missing';
+  final bytes = file.readAsBytesSync();
+  final libraries = summaryLibraryUris(bytes)..sort();
+  return '${bytes.length} bytes, digest ${_digest(bytes)}, '
+      '${libraries.length} libraries: ${libraries.join(' ')}';
 }
 
 /// A cheap content digest (FNV-1a); collisions do not matter for a test that

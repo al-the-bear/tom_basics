@@ -5,36 +5,32 @@ import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 import 'package:tom_analyzer_shared/tom_analyzer_shared.dart';
 
-/// Tests for the dependency-closure fingerprint mechanism that keeps a
-/// `.sum` bundle from being loaded after a *transitive* dependency changes
-/// version.
+/// Tests for closure-keyed bundles: a package's bundle is named by the
+/// dependency closure it is linked against, so it is never loaded against
+/// another closure and never has to be deleted for one.
 ///
-/// The failure it guards against: a summary keyed only by its own
-/// `name@version` (e.g. `tom_crypto@1.0.0.sum`) is silently stale when a
-/// transitive dependency it linked against moves — `tom_basics@1.0.0`'s
-/// `src/exception_base.dart` becoming `tom_basics@1.0.1`'s
-/// `src/exceptions/exception_base.dart`. Loading the stale bundle throws
-/// "Missing library", which the bridge generator swallows and drops the
-/// affected classes. A per-bundle `.sum.deps` sidecar records the versioned
-/// closure the bundle was linked against so it can be invalidated precisely.
+/// Two failures they guard against:
+///
+/// * A bundle keyed only by its own `name@version` (`tom_crypto@1.0.0.sum`)
+///   is silently stale when a *transitive* dependency it linked against moves
+///   (`tom_basics@1.0.0` -> `1.0.1`): loading it throws "Missing library".
+/// * Two projects resolving different closures for one `name@version` each
+///   took the other's bundle for stale and deleted it, while a concurrent run
+///   was linking against it (tom_forge later22: PathNotFoundException, then
+///   lost types). Under its own name each closure's bundle stays valid.
 void main() {
   late Directory tempDir;
   late SummaryCacheManager cacheManager;
 
-  SummaryCacheManager makeCacheManager(String root) {
-    return SummaryCacheManager(
-      root,
-      dartSdkVersion: '3.10.4',
-      // The override is the tool-cache *root*; the manager appends its own
-      // `analyzer-cache/` below it. `<root>/.tom` is therefore what branch 2
-      // resolves to in production, so the fixture mirrors the real layout.
-      environment: {'TOM_TOOL_CACHE': p.join(root, '.tom')},
-    );
-  }
-
   setUp(() {
     tempDir = Directory.systemTemp.createTempSync('summary_fp_test_');
-    cacheManager = makeCacheManager(tempDir.path);
+    cacheManager = SummaryCacheManager(
+      tempDir.path,
+      dartSdkVersion: '3.10.4',
+      // The override is the tool-cache *root*; the manager appends its own
+      // `analyzer-cache/` below it, as in production.
+      environment: {'TOM_TOOL_CACHE': p.join(tempDir.path, '.tom')},
+    );
   });
 
   tearDown(() {
@@ -43,218 +39,178 @@ void main() {
     }
   });
 
-  group('fingerprint sidecar', () {
-    test('getFingerprintPath is the .sum path plus .deps', () {
-      final sum = cacheManager.getCachePath('tom_crypto', '1.0.0');
-      final fp = cacheManager.getFingerprintPath('tom_crypto', '1.0.0');
-      expect(fp, equals('$sum.deps'));
-      expect(fp, endsWith('tom_crypto@1.0.0.sum.deps'));
-    });
-
-    test('writeFingerprint then readFingerprint round-trips', () async {
-      await cacheManager.writeFingerprint(
+  group('closure-keyed file names', () {
+    test('the name carries a 16-digit hash of the closure', () {
+      final path = cacheManager.getCachePath(
         'tom_crypto',
         '1.0.0',
-        'tom_basics@1.0.1',
+        fingerprint: 'tom_basics@1.0.1',
       );
-      final recorded = await cacheManager.readFingerprint(
-        'tom_crypto',
-        '1.0.0',
-      );
-      expect(recorded, equals('tom_basics@1.0.1'));
+      final hash = SummaryCacheManager.closureHash('tom_basics@1.0.1');
+      expect(hash, matches(RegExp(r'^[0-9a-f]{16}$')));
+      expect(p.basename(path), equals('tom_crypto@1.0.0+$hash.sum'));
     });
 
-    test('readFingerprint returns null when sidecar is absent', () async {
-      final recorded = await cacheManager.readFingerprint(
+    test('one closure gives one name, another closure another', () {
+      String pathFor(String fingerprint) => cacheManager.getCachePath(
         'tom_crypto',
         '1.0.0',
+        fingerprint: fingerprint,
       );
-      expect(recorded, isNull);
+      expect(pathFor('tom_basics@1.0.1'), equals(pathFor('tom_basics@1.0.1')));
+      expect(
+        pathFor('tom_basics@1.0.1'),
+        isNot(equals(pathFor('tom_basics@1.0.0'))),
+      );
     });
 
-    test('a .sum.deps sidecar is not listed as a cached summary', () async {
+    test('a bundle is not found for another closure', () async {
       await cacheManager.writeSummary(
         'tom_crypto',
         '1.0.0',
         Uint8List.fromList([1, 2, 3]),
-      );
-      await cacheManager.writeFingerprint(
-        'tom_crypto',
-        '1.0.0',
-        'tom_basics@1.0.1',
-      );
-
-      final summaries = await cacheManager.listCachedSummaries();
-      expect(summaries.keys, equals(['tom_crypto@1.0.0']));
-    });
-  });
-
-  group('isSummaryFresh', () {
-    test('false when the summary bundle is absent', () async {
-      // No .sum at all — even a matching sidecar cannot make it fresh.
-      await cacheManager.writeFingerprint(
-        'tom_crypto',
-        '1.0.0',
-        'tom_basics@1.0.1',
+        fingerprint: 'tom_basics@1.0.0',
       );
       expect(
-        await cacheManager.isSummaryFresh(
+        await cacheManager.hasSummary(
           'tom_crypto',
           '1.0.0',
-          'tom_basics@1.0.1',
-        ),
-        isFalse,
-      );
-    });
-
-    test(
-      'false when the sidecar is missing (pre-fingerprint bundle)',
-      () async {
-        // Bundles produced before fingerprinting existed have no sidecar and
-        // must self-heal: they are treated as stale so they get regenerated.
-        await cacheManager.writeSummary(
-          'tom_crypto',
-          '1.0.0',
-          Uint8List.fromList([1, 2, 3]),
-        );
-        expect(
-          await cacheManager.isSummaryFresh(
-            'tom_crypto',
-            '1.0.0',
-            'tom_basics@1.0.1',
-          ),
-          isFalse,
-        );
-      },
-    );
-
-    test('false when a transitive dependency changed version', () async {
-      // Bundle was linked against tom_basics@1.0.0; the graph now resolves
-      // tom_basics@1.0.1 — the classic stale-transitive-dep poison.
-      await cacheManager.writeSummary(
-        'tom_crypto',
-        '1.0.0',
-        Uint8List.fromList([1, 2, 3]),
-      );
-      await cacheManager.writeFingerprint(
-        'tom_crypto',
-        '1.0.0',
-        'tom_basics@1.0.0',
-      );
-      expect(
-        await cacheManager.isSummaryFresh(
-          'tom_crypto',
-          '1.0.0',
-          'tom_basics@1.0.1',
-        ),
-        isFalse,
-      );
-    });
-
-    test('true when bundle and sidecar match the expected closure', () async {
-      await cacheManager.writeSummary(
-        'tom_crypto',
-        '1.0.0',
-        Uint8List.fromList([1, 2, 3]),
-      );
-      await cacheManager.writeFingerprint(
-        'tom_crypto',
-        '1.0.0',
-        'tom_basics@1.0.1',
-      );
-      expect(
-        await cacheManager.isSummaryFresh(
-          'tom_crypto',
-          '1.0.0',
-          'tom_basics@1.0.1',
+          fingerprint: 'tom_basics@1.0.0',
         ),
         isTrue,
       );
+      expect(
+        await cacheManager.hasSummary(
+          'tom_crypto',
+          '1.0.0',
+          fingerprint: 'tom_basics@1.0.1',
+        ),
+        isFalse,
+      );
     });
-  });
 
-  group('deleteSummary', () {
-    test('removes both the .sum bundle and its .deps sidecar', () async {
+    test('the bundles of two closures coexist', () async {
+      for (final fingerprint in ['tom_basics@1.0.0', 'tom_basics@1.0.1']) {
+        await cacheManager.writeSummary(
+          'tom_crypto',
+          '1.0.0',
+          Uint8List.fromList(fingerprint.codeUnits),
+          fingerprint: fingerprint,
+        );
+      }
+      final summaries = await cacheManager.listCachedSummaries();
+      expect(summaries, hasLength(2));
+      for (final fingerprint in ['tom_basics@1.0.0', 'tom_basics@1.0.1']) {
+        final path = cacheManager.getCachePath(
+          'tom_crypto',
+          '1.0.0',
+          fingerprint: fingerprint,
+        );
+        expect(File(path).readAsStringSync(), equals(fingerprint));
+      }
+    });
+
+    test('clearCache removes every file of the partition', () async {
       await cacheManager.writeSummary(
-        'tom_crypto',
+        'a',
         '1.0.0',
-        Uint8List.fromList([1, 2, 3]),
+        Uint8List.fromList([1]),
+        fingerprint: 'b@1.0.0',
       );
-      await cacheManager.writeFingerprint(
-        'tom_crypto',
-        '1.0.0',
-        'tom_basics@1.0.0',
-      );
-
-      final sumPath = cacheManager.getCachePath('tom_crypto', '1.0.0');
-      final fpPath = cacheManager.getFingerprintPath('tom_crypto', '1.0.0');
-      expect(File(sumPath).existsSync(), isTrue);
-      expect(File(fpPath).existsSync(), isTrue);
-
-      await cacheManager.deleteSummary('tom_crypto', '1.0.0');
-
-      expect(File(sumPath).existsSync(), isFalse);
-      expect(File(fpPath).existsSync(), isFalse);
-    });
-
-    test('is a no-op when neither file exists', () async {
-      // Should not throw.
-      await cacheManager.deleteSummary('missing', '9.9.9');
-    });
-  });
-
-  group('sidecar cleanup', () {
-    test('clearCache removes .sum.deps sidecars as well', () async {
-      await cacheManager.writeSummary('a', '1.0.0', Uint8List.fromList([1]));
-      await cacheManager.writeFingerprint('a', '1.0.0', 'b@1.0.0');
-
-      final fpPath = cacheManager.getFingerprintPath('a', '1.0.0');
-      expect(File(fpPath).existsSync(), isTrue);
+      File(
+        p.join(cacheManager.cacheDirectory, 'a@0.9.0.sum.deps'),
+      ).writeAsStringSync('left by an older release');
 
       await cacheManager.clearCache();
 
-      expect(File(fpPath).existsSync(), isFalse);
-      expect(await cacheManager.listCachedSummaries(), isEmpty);
+      expect(Directory(cacheManager.cacheDirectory).listSync(), isEmpty);
+    });
+  });
+
+  group('computeDependencyFingerprints', () {
+    final generator = SummaryGenerator(
+      cacheManager: SummaryCacheManager(
+        '.',
+        cacheDirectory: 'unused',
+        dartSdkVersion: '3.10.4',
+      ),
+      dependencyResolver: DependencyResolver(),
+    );
+
+    PackageDependency hosted(String name, String version) =>
+        PackageDependency(name: name, version: version, source: 'hosted');
+
+    // a -> b -> c, and d on its own.
+    final graph = {
+      'a': {'b'},
+      'b': {'c'},
+      'c': <String>{},
+      'd': <String>{},
+    };
+
+    Future<Map<String, String>> fingerprintsWith(String cVersion) =>
+        generator.computeDependencyFingerprints([
+          hosted('a', '1.0.0'),
+          hosted('b', '1.0.0'),
+          hosted('c', cVersion),
+          hosted('d', '1.0.0'),
+        ], directDependencyGraph: graph);
+
+    test('names the format and the sorted versioned closure', () async {
+      final fingerprints = await fingerprintsWith('1.0.0');
+      expect(
+        fingerprints['a'],
+        equals(
+          [SummaryGenerator.fingerprintFormat, 'b@1.0.0', 'c@1.0.0'].join('\n'),
+        ),
+      );
+      expect(fingerprints['d'], equals(SummaryGenerator.fingerprintFormat));
     });
 
     test(
-      'cleanUnusedSummaries removes the sidecar of a dropped package',
+      'a version change reaches every dependent, and nothing else',
       () async {
-        await cacheManager.writeSummary(
-          'old_pkg',
-          '1.0.0',
-          Uint8List.fromList([1]),
-        );
-        await cacheManager.writeFingerprint('old_pkg', '1.0.0', 'dep@1.0.0');
-        await cacheManager.writeSummary(
-          'current',
-          '2.0.0',
-          Uint8List.fromList([2]),
-        );
-        await cacheManager.writeFingerprint('current', '2.0.0', 'dep@2.0.0');
-
-        final removed = await cacheManager.cleanUnusedSummaries([
-          const PackageDependency(
-            name: 'current',
-            version: '2.0.0',
-            source: 'hosted',
-          ),
-        ]);
-        expect(removed, equals(1));
-
-        expect(
-          File(
-            cacheManager.getFingerprintPath('old_pkg', '1.0.0'),
-          ).existsSync(),
-          isFalse,
-        );
-        expect(
-          File(
-            cacheManager.getFingerprintPath('current', '2.0.0'),
-          ).existsSync(),
-          isTrue,
-        );
+        final before = await fingerprintsWith('1.0.0');
+        final after = await fingerprintsWith('1.0.1');
+        // c itself keeps its closure (it has no dependencies); b and a are
+        // linked against c, so their bundles get other names.
+        expect(after['c'], equals(before['c']));
+        expect(after['b'], isNot(equals(before['b'])));
+        expect(after['a'], isNot(equals(before['a'])));
+        expect(after['d'], equals(before['d']));
       },
     );
+
+    test('cycles are tolerated', () async {
+      final fingerprints = await generator.computeDependencyFingerprints(
+        [hosted('x', '1.0.0'), hosted('y', '2.0.0')],
+        directDependencyGraph: {
+          'x': {'y'},
+          'y': {'x'},
+        },
+      );
+      expect(fingerprints['x'], contains('y@2.0.0'));
+      expect(fingerprints['y'], contains('x@1.0.0'));
+    });
+  });
+
+  group('SummaryGenerator.dependencyClosure', () {
+    test('follows the edges transitively, not back to the start', () {
+      expect(
+        SummaryGenerator.dependencyClosure({
+          'a': {'b'},
+          'b': {'c'},
+          'c': <String>{},
+        }, 'a'),
+        equals({'b', 'c'}),
+      );
+    });
+
+    test('a package absent from the graph has an empty closure', () {
+      expect(
+        SummaryGenerator.dependencyClosure(<String, Set<String>>{}, 'z'),
+        isEmpty,
+      );
+    });
   });
 }

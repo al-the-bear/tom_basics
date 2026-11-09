@@ -47,9 +47,9 @@ class PackageDependency {
   /// version updates.
   bool get isCacheable => source == 'hosted' || source == 'sdk';
 
-  /// Returns a unique cache key for this dependency.
-  ///
-  /// Format: `{name}@{version}`
+  /// The `{name}@{version}` label of this dependency. A cached bundle's file
+  /// name adds the hash of the closure it is linked against
+  /// (SummaryCacheManager.getCachePath).
   String get cacheKey => '$name@$version';
 
   @override
@@ -76,10 +76,7 @@ class DependencySet {
   /// Dependencies that cannot be cached (path + git).
   final List<PackageDependency> uncacheable;
 
-  const DependencySet({
-    required this.cacheable,
-    required this.uncacheable,
-  });
+  const DependencySet({required this.cacheable, required this.uncacheable});
 
   /// All dependencies combined.
   List<PackageDependency> get all => [...cacheable, ...uncacheable];

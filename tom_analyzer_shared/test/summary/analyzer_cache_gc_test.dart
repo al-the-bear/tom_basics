@@ -22,9 +22,8 @@ String _makePartition(
     ..createSync(recursive: true);
   for (var i = 0; i < summaryCount; i++) {
     File(
-      p.join(dir.path, 'pkg$i@1.0.0.sum'),
+      p.join(dir.path, 'pkg$i@1.0.0+0123456789abcdef.sum'),
     ).writeAsBytesSync(List<int>.filled(bytesPerSummary, 0x41));
-    File(p.join(dir.path, 'pkg$i@1.0.0.sum.deps')).writeAsStringSync('fp$i');
   }
   return dir.path;
 }
@@ -92,11 +91,9 @@ void main() {
         all,
         cutoff: DateTime(2023, 1, 1), // exactly midPart.lastUsed
       );
-      expect(
-        doomed.map((e) => e.key),
-        ['10/3.0.0'],
-        reason: 'a partition whose lastUsed equals the cutoff is kept',
-      );
+      expect(doomed.map((e) => e.key), [
+        '10/3.0.0',
+      ], reason: 'a partition whose lastUsed equals the cutoff is kept');
     });
 
     test('never selects a protected (keep) partition', () {
@@ -161,8 +158,7 @@ void main() {
       final gc = AnalyzerCacheGarbageCollector(cacheRoot);
       final part = (await gc.listPartitions()).single;
       expect(part.summaryCount, 3);
-      // 3 * (.sum 100 bytes) + 3 * (.sum.deps "fpN" = 3 bytes) = 309.
-      expect(part.sizeBytes, 3 * 100 + 3 * 3);
+      expect(part.sizeBytes, 3 * 100);
     });
 
     test('lastUsed reflects the newest file mtime in the partition', () async {
@@ -244,6 +240,86 @@ void main() {
 
       expect(removed, isEmpty);
       expect(Directory(p.join(cacheRoot, '10', '3.12.0')).existsSync(), isTrue);
+    });
+  });
+
+  group('AnalyzerCacheGarbageCollector.sweepBundles (I/O)', () {
+    late Directory tmp;
+    late String cacheRoot;
+
+    setUp(() {
+      tmp = Directory.systemTemp.createTempSync('analyzer_gc_sweep_');
+      cacheRoot = p.join(tmp.path, 'analyzer-cache');
+    });
+
+    tearDown(() {
+      if (tmp.existsSync()) tmp.deleteSync(recursive: true);
+    });
+
+    /// A file in [dir] last used [daysAgo] days ago.
+    File usedDaysAgo(String dir, String name, int daysAgo) =>
+        File(p.join(dir, name))
+          ..writeAsStringSync(name)
+          ..setLastModifiedSync(
+            DateTime.now().subtract(Duration(days: daysAgo)),
+          );
+
+    test('removes the files of every partition unused since the cutoff, '
+        'the current one included', () async {
+      final live = Directory(p.join(cacheRoot, '14', '3.13.7+d752'))
+        ..createSync(recursive: true);
+      final stale = usedDaysAgo(live.path, 'meta@1.18.0+aaaa.sum', 120);
+      final leftover = usedDaysAgo(live.path, 'meta@1.17.0.sum.deps', 120);
+      final used = usedDaysAgo(live.path, 'meta@1.18.0+bbbb.sum', 2);
+
+      final gc = AnalyzerCacheGarbageCollector(cacheRoot);
+      final swept = await gc.sweepBundles(
+        cutoff: DateTime.now().subtract(const Duration(days: 90)),
+      );
+
+      expect(swept.map((f) => p.basename(f.path)).toSet(), {
+        'meta@1.18.0+aaaa.sum',
+        'meta@1.17.0.sum.deps',
+      });
+      expect(swept.first.partitionKey, '14/3.13.7+d752');
+      expect(stale.existsSync(), isFalse);
+      expect(leftover.existsSync(), isFalse);
+      expect(used.existsSync(), isTrue);
+    });
+
+    test('a dry run deletes nothing', () async {
+      final live = Directory(p.join(cacheRoot, '14', '3.13.7+d752'))
+        ..createSync(recursive: true);
+      final stale = usedDaysAgo(live.path, 'meta@1.18.0+aaaa.sum', 120);
+
+      final swept = await AnalyzerCacheGarbageCollector(cacheRoot).sweepBundles(
+        cutoff: DateTime.now().subtract(const Duration(days: 90)),
+        dryRun: true,
+      );
+
+      expect(swept, hasLength(1));
+      expect(stale.existsSync(), isTrue);
+    });
+
+    test('a bundle a run marks used is kept', () async {
+      final cache = SummaryCacheManager(
+        tmp.path,
+        cacheDirectory: p.join(cacheRoot, '14', '3.13.7+d752'),
+      );
+      await cache.ensureCacheDirectory();
+      final bundle = usedDaysAgo(
+        cache.cacheDirectory,
+        p.basename(cache.getCachePath('meta', '1.18.0', fingerprint: 'x')),
+        120,
+      );
+
+      await cache.markUsed(bundle.path);
+      final swept = await AnalyzerCacheGarbageCollector(
+        cacheRoot,
+      ).sweepBundles(cutoff: DateTime.now().subtract(const Duration(days: 90)));
+
+      expect(swept, isEmpty);
+      expect(bundle.existsSync(), isTrue);
     });
   });
 }

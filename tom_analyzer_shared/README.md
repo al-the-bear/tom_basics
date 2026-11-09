@@ -38,7 +38,8 @@ AnalysisContextCollectionImpl(
 The hard part is producing those summaries correctly: knowing *which* packages
 are safe to cache, locating their sources in the pub cache and the SDK, building
 each summary **after** the summaries it depends on, and storing them under a
-stable, version-keyed name so the next run finds them. `tom_analyzer_shared`
+stable name — the package, its version and the dependency closure it was linked
+against — so the next run finds them. `tom_analyzer_shared`
 owns that pipeline:
 
 ```text
@@ -49,7 +50,7 @@ pubspec.lock ──▶ DependencyResolver ──▶ which deps are cacheable?
                                           │  summary in topological order
                                           ▼
                  SummaryCacheManager ──▶ <tool-cache>/analyzer-cache/
-                                          │  {package}@{version}.sum
+                                          │  {package}@{version}+{closure}.sum
                                           ▼
             SummaryCacheResult { summaryPaths, sdkSummaryPath } ──▶ analyzer
 ```
@@ -66,12 +67,21 @@ control.
 
 ### Why only some dependencies are cached
 
-A summary is keyed by `{package}@{version}`. That key is only trustworthy when
-the version pins the *content* — which is true for **hosted** (pub.dev) and
-**SDK** packages, and false for **path** and **git** dependencies, whose files
-can change without the version changing. So `tom_analyzer_shared` caches hosted
-and SDK packages and leaves path/git dependencies to be analysed from source
-every run. This is the single rule encoded in `PackageDependency.isCacheable`.
+A summary is keyed by `{package}@{version}` and the dependency closure it was
+linked against. That key is only trustworthy when the version pins the
+*content* — which is true for **hosted** (pub.dev) and **SDK** packages, and
+false for **path** and **git** dependencies, whose files can change without the
+version changing. So `tom_analyzer_shared` caches hosted and SDK packages and
+leaves path/git dependencies to be analysed from source every run. This is the
+single rule encoded in `PackageDependency.isCacheable`.
+
+The closure is part of the key because one `name@version` is linked against
+different dependency versions in different projects: each closure has a bundle
+of its own (`{package}@{version}+{closure-hash}.sum`), a version change anywhere
+in a package's closure gives it — and every package depending on it — another
+name, and no run ever deletes a bundle another run may be linking against.
+Bundles of closures no project uses any more are reclaimed by
+`analyzer_cache_gc clean`.
 
 ---
 
@@ -272,9 +282,16 @@ it never guesses a layout the analyzer can't find:
 
 ```dart
 final cache = SummaryCacheManager(projectRoot);
+final resolver = DependencyResolver();
+final cacheable = await resolver.resolveCacheableDependencies(projectRoot);
+final fingerprints = await SummaryGenerator(
+  cacheManager: cache,
+  dependencyResolver: resolver,
+).computeDependencyFingerprints(cacheable);         // closure of each package
 
 print(cache.cacheDirectory);                       // <tool-cache>/analyzer-cache/<major>/<sdk>+d<data>
-print(cache.getCachePath('provider', '6.1.2'));    // …/provider@6.1.2.sum
+print(cache.getCachePath('provider', '6.1.2',      // …/provider@6.1.2+<closure-hash>.sum
+    fingerprint: fingerprints['provider']!));
 print(cache.getSdkSummaryPath());                  // …/sdk@<dart-version>.sum
 
 final stats = await cache.getStats();              // CacheStats
@@ -294,9 +311,14 @@ Pass `cacheDirectory:` to bypass the shared-cache resolution entirely (tests and
 callers that manage their own layout), or `environment:` to override the
 process environment the locator consults.
 
-It also offers `hasSummary`, `findMissingSummaries`, `loadSummary`,
-`clearCache`, and `cleanUnusedSummaries` for tools that manage the cache
-lifecycle directly.
+It also offers `hasSummary`, `findMissingSummaries`, `loadSummary`, `markUsed`
+and `clearCache` for tools that manage the cache lifecycle directly. The
+fingerprints come from `SummaryGenerator.computeDependencyFingerprints`.
+
+Nothing deletes a bundle on its own: a run marks every bundle it loads as used,
+and `analyzer_cache_gc clean --older-than <days>` removes retired partitions
+and, in the partitions that stay, the files no run has used since then
+(`--dry-run` shows what it would remove).
 
 ### Generating summaries directly
 
@@ -393,9 +415,11 @@ package:tom_analyzer_shared/tom_analyzer_shared.dart   (single entry point)
 | `CacheStats` | Cache file count and total size |
 | `ToolCacheLocator` | Resolves the shared Tom tool-cache root for all artefacts |
 
-The cache is keyed purely by package name and version, so it is safe to share
-across tools and across runs: two generators pointed at the same workspace reuse
-each other's summaries, and nothing in the key depends on which tool wrote it.
+The cache is keyed by package name, version and dependency closure, so it is
+safe to share across tools, projects and concurrent runs: two generators pointed
+at the same workspace reuse each other's summaries, two projects resolving
+different closures keep a bundle each, and nothing in the key depends on which
+tool wrote it.
 
 ---
 

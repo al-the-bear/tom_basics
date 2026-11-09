@@ -2,12 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:analyzer/src/summary/package_bundle_reader.dart';
 import 'package:analyzer/src/summary2/package_bundle_format.dart';
+import 'package:crypto/crypto.dart';
 import 'package:path/path.dart' as p;
 
 import '../cache/tool_cache_locator.dart';
@@ -22,7 +24,8 @@ const String _analyzerCacheSubDir = 'analyzer-cache';
 ///
 /// Summaries are stored in
 /// `<tool-cache>/analyzer-cache/<analyzer-major>/<toolchain>/` with
-/// filenames in the format `{package}@{version}.sum`, where `<tool-cache>` is
+/// filenames in the format `{package}@{version}+{closure-hash}.sum` (see
+/// [getCachePath]), where `<tool-cache>` is
 /// the shared Tom tool-cache directory resolved by [ToolCacheLocator] (so the
 /// same hosted-package summary is reused across projects and tools). Pass an
 /// explicit [cacheDirectory] to override that resolution.
@@ -53,16 +56,19 @@ const String _analyzerCacheSubDir = 'analyzer-cache';
 /// ```dart
 /// final cacheManager = SummaryCacheManager('/path/to/workspace');
 ///
+/// // The fingerprint of the dependency closure the bundle is linked against
+/// // (SummaryGenerator.computeDependencyFingerprints).
+/// final fingerprint = fingerprints['provider']!;
+///
 /// // Check if a summary exists
-/// if (await cacheManager.hasSummary('provider', '6.1.2')) {
+/// if (await cacheManager.hasSummary('provider', '6.1.2',
+///     fingerprint: fingerprint)) {
 ///   print('Cache hit!');
 /// }
 ///
-/// // Load all summaries for dependencies
-/// final store = await cacheManager.loadSummaries(dependencies);
-///
 /// // Write a new summary
-/// await cacheManager.writeSummary('provider', '6.1.2', summaryBytes);
+/// await cacheManager.writeSummary('provider', '6.1.2', summaryBytes,
+///     fingerprint: fingerprint);
 /// ```
 class SummaryCacheManager {
   /// The workspace root directory.
@@ -137,101 +143,41 @@ class SummaryCacheManager {
   /// Gets the Dart SDK version from Platform.version.
   static String _getDartSdkVersion() => currentDartSdkVersion();
 
-  /// Returns the cache file path for a package.
+  /// Returns the cache file path for a package's bundle linked against the
+  /// dependency closure [fingerprint] describes.
   ///
-  /// Format: `<cache-dir>/{package}@{version}.sum`
-  String getCachePath(String packageName, String version) {
-    final sanitizedName = _sanitizeFilename(packageName);
-    final sanitizedVersion = _sanitizeFilename(version);
-    return p.join(cacheDirectory, '$sanitizedName@$sanitizedVersion.sum');
-  }
-
-  /// Returns the path of the dependency-fingerprint sidecar for a package.
-  ///
-  /// Format: `<cache-dir>/{package}@{version}.sum.deps`. The sidecar records
-  /// the exact versioned dependency closure the `.sum` bundle was linked
-  /// against, so the bundle can be invalidated when any package in that
-  /// closure changes version — even though the package's own `name@version`
-  /// (and therefore its `.sum` filename) is unchanged. See [isSummaryFresh].
-  String getFingerprintPath(String packageName, String version) {
-    return '${getCachePath(packageName, version)}.deps';
-  }
-
-  /// Writes the dependency-closure [fingerprint] for a cached summary.
-  ///
-  /// Call immediately after [writeSummary] with the fingerprint computed from
-  /// the versioned dependency closure the bundle was generated against.
-  Future<void> writeFingerprint(
+  /// Format: `<cache-dir>/{package}@{version}+{closure-hash}.sum`, the hash
+  /// being [closureHash] of [fingerprint]. The closure is part of the name
+  /// because one `name@version` is linked against different closures in
+  /// different projects (another version of a dependency): keyed by
+  /// `name@version` alone, each project's run took the other's bundle for
+  /// stale and deleted it — while a concurrent run was linking against it
+  /// (tom_forge later22). Under its own name every closure's bundle is valid
+  /// for as long as it exists; nothing deletes one a run might be using, and
+  /// one no run uses any more is swept by age (`analyzer_cache_gc clean`).
+  String getCachePath(
     String packageName,
-    String version,
-    String fingerprint,
-  ) async {
-    await ensureCacheDirectory();
-    final path = getFingerprintPath(packageName, version);
-    final tempFile = File(_tempPathFor(path));
-    try {
-      await tempFile.writeAsString(fingerprint, flush: true);
-      await tempFile.rename(path);
-    } catch (e) {
-      await _safeDelete(tempFile);
-      rethrow;
-    }
-  }
+    String version, {
+    required String fingerprint,
+  }) => _pathFor(packageName, '$version+${closureHash(fingerprint)}');
 
-  /// Reads the recorded dependency-closure fingerprint for a cached summary.
-  ///
-  /// Returns `null` when the sidecar is absent (e.g. a bundle produced before
-  /// fingerprinting existed, which must be treated as stale).
-  Future<String?> readFingerprint(String packageName, String version) async {
-    final file = File(getFingerprintPath(packageName, version));
-    if (!await file.exists()) {
-      return null;
-    }
-    try {
-      return await file.readAsString();
-    } catch (_) {
-      return null;
-    }
-  }
+  /// The first 16 hex digits (64 bits) of the SHA-256 of [fingerprint]: the
+  /// closure part of a bundle's file name.
+  static String closureHash(String fingerprint) =>
+      sha256.convert(utf8.encode(fingerprint)).toString().substring(0, 16);
 
-  /// Whether a cached summary is present *and* was linked against the same
-  /// versioned dependency closure described by [expectedFingerprint].
-  ///
-  /// A summary is stale — and this returns `false` — when its `.sum` is
-  /// missing/empty, its fingerprint sidecar is absent, or the recorded
-  /// fingerprint differs from [expectedFingerprint] (a transitive dependency
-  /// changed version). Loading a stale summary produces "Missing library"
-  /// link failures because the bundle references a dependency layout that no
-  /// longer matches the resolved graph.
-  Future<bool> isSummaryFresh(
-    String packageName,
-    String version,
-    String expectedFingerprint,
-  ) async {
-    if (!await hasSummary(packageName, version)) {
-      return false;
-    }
-    final recorded = await readFingerprint(packageName, version);
-    return recorded == expectedFingerprint;
-  }
-
-  /// Deletes a cached summary and its fingerprint sidecar, if present.
-  Future<void> deleteSummary(String packageName, String version) async {
-    await _safeDelete(File(getCachePath(packageName, version)));
-    await _safeDelete(File(getFingerprintPath(packageName, version)));
-  }
+  String _pathFor(String packageName, String key) => p.join(
+    cacheDirectory,
+    '${_sanitizeFilename(packageName)}@${_sanitizeFilename(key)}.sum',
+  );
 
   /// Returns the cache file path for the SDK summary.
   ///
   /// Format: `<cache-dir>/sdk@{dart-version}.sum`
-  String getSdkSummaryPath() {
-    return getCachePath('sdk', dartSdkVersion);
-  }
+  String getSdkSummaryPath() => _pathFor('sdk', dartSdkVersion);
 
   /// Checks if a valid SDK summary exists in our cache.
-  Future<bool> hasSdkSummary() async {
-    return hasSummary('sdk', dartSdkVersion);
-  }
+  Future<bool> hasSdkSummary() => _isNonEmptyFile(getSdkSummaryPath());
 
   /// Sanitizes a string for use in a filename.
   String _sanitizeFilename(String name) {
@@ -239,37 +185,61 @@ class SummaryCacheManager {
     return name.replaceAll(RegExp(r'[<>:"/\\|?*]'), '_');
   }
 
-  /// Checks if a valid summary exists for the package.
+  /// Checks if a valid summary exists for the package, linked against the
+  /// closure [fingerprint] describes.
   ///
-  /// A summary is considered valid if the file exists and is not empty. Toolchain
-  /// (SDK / analyzer-major) compatibility is guaranteed *structurally* by the
-  /// `<analyzer-major>/<dart-sdk-version>` partition path (see the class
-  /// dartdoc), so there is nothing to verify from per-summary metadata here.
-  Future<bool> hasSummary(String packageName, String version) async {
-    final path = getCachePath(packageName, version);
-    final file = File(path);
+  /// A summary is considered valid if the file exists and is not empty: it is
+  /// written complete through a rename, and toolchain compatibility is
+  /// guaranteed *structurally* by the partition path and the closure by the
+  /// file name (see the class dartdoc and [getCachePath]).
+  Future<bool> hasSummary(
+    String packageName,
+    String version, {
+    required String fingerprint,
+  }) => _isNonEmptyFile(
+    getCachePath(packageName, version, fingerprint: fingerprint),
+  );
 
+  Future<bool> _isNonEmptyFile(String path) async {
+    final file = File(path);
     if (!await file.exists()) {
       return false;
     }
+    return (await file.stat()).size != 0;
+  }
 
-    // Check if file is not empty
-    final stat = await file.stat();
-    return stat.size != 0;
+  /// Marks the bundle at [path] as used now (its modification time), so that
+  /// `analyzer_cache_gc clean` keeps it: a bundle a run loads is never
+  /// swept with those no run has used for longer than the cutoff. A bundle
+  /// that cannot be touched (gone, read-only) is left as it is.
+  Future<void> markUsed(String path) async {
+    try {
+      await File(path).setLastModified(DateTime.now());
+    } on FileSystemException {
+      // Only the sweep's view of it is affected.
+    }
   }
 
   /// Checks which dependencies are missing from the cache.
   ///
   /// Returns a list of dependencies that don't have valid cached summaries.
+  ///
+  /// [fingerprints] holds each package's closure fingerprint by name (see
+  /// SummaryGenerator.computeDependencyFingerprints).
   Future<List<PackageDependency>> findMissingSummaries(
-    List<PackageDependency> dependencies,
-  ) async {
+    List<PackageDependency> dependencies, {
+    required Map<String, String> fingerprints,
+  }) async {
     final missing = <PackageDependency>[];
 
     for (final dep in dependencies) {
       if (!dep.isCacheable) continue;
 
-      if (!await hasSummary(dep.name, dep.version)) {
+      if (!await hasSummary(
+        dep.name,
+        dep.version,
+        fingerprint: fingerprints[dep.name] ?? '',
+      )) {
         missing.add(dep);
       }
     }
@@ -282,9 +252,10 @@ class SummaryCacheManager {
   /// Returns null if the summary doesn't exist or is invalid.
   Future<PackageBundleReader?> loadSummary(
     String packageName,
-    String version,
-  ) async {
-    final path = getCachePath(packageName, version);
+    String version, {
+    required String fingerprint,
+  }) async {
+    final path = getCachePath(packageName, version, fingerprint: fingerprint);
     final file = File(path);
 
     if (!await file.exists()) {
@@ -311,17 +282,28 @@ class SummaryCacheManager {
   /// 2. Have a valid cached summary file
   ///
   /// Dependencies without cached summaries are silently skipped.
+  /// [fingerprints] holds each package's closure fingerprint by name.
   Future<SummaryDataStore> loadSummaries(
-    List<PackageDependency> dependencies,
-  ) async {
+    List<PackageDependency> dependencies, {
+    required Map<String, String> fingerprints,
+  }) async {
     final store = SummaryDataStore();
 
     for (final dep in dependencies) {
       if (!dep.isCacheable) continue;
 
-      final bundle = await loadSummary(dep.name, dep.version);
+      final fingerprint = fingerprints[dep.name] ?? '';
+      final bundle = await loadSummary(
+        dep.name,
+        dep.version,
+        fingerprint: fingerprint,
+      );
       if (bundle != null) {
-        final path = getCachePath(dep.name, dep.version);
+        final path = getCachePath(
+          dep.name,
+          dep.version,
+          fingerprint: fingerprint,
+        );
         store.addBundle(path, bundle);
       }
     }
@@ -329,18 +311,29 @@ class SummaryCacheManager {
     return store;
   }
 
-  /// Writes a summary for a package.
+  /// Writes a summary for a package, linked against the closure
+  /// [fingerprint] describes.
   ///
-  /// Creates the cache directory if it doesn't exist.
-  /// Overwrites any existing summary for the same package@version.
+  /// Creates the cache directory if it doesn't exist. A summary already there
+  /// under the same name (one of the same closure, built by another run) is
+  /// replaced by an identical one through a rename, so a reader sees one
+  /// complete file or the other.
   Future<void> writeSummary(
     String packageName,
     String version,
-    Uint8List bytes,
-  ) async {
-    await ensureCacheDirectory();
+    Uint8List bytes, {
+    required String fingerprint,
+  }) => _writeAtomically(
+    getCachePath(packageName, version, fingerprint: fingerprint),
+    bytes,
+  );
 
-    final path = getCachePath(packageName, version);
+  /// Writes the SDK summary ([getSdkSummaryPath]).
+  Future<void> writeSdkSummary(Uint8List bytes) =>
+      _writeAtomically(getSdkSummaryPath(), bytes);
+
+  Future<void> _writeAtomically(String path, Uint8List bytes) async {
+    await ensureCacheDirectory();
 
     // Write atomically through a temp file of this writer's own.
     final tempFile = File(_tempPathFor(path));
@@ -374,7 +367,8 @@ class SummaryCacheManager {
 
   /// Lists all cached summaries.
   ///
-  /// Returns a map of package@version -> file path.
+  /// Returns a map of `package@version+closure-hash` (`sdk@<dart-version>` for
+  /// the SDK summary) -> file path.
   Future<Map<String, String>> listCachedSummaries() async {
     final dir = Directory(cacheDirectory);
     if (!await dir.exists()) {
@@ -393,43 +387,19 @@ class SummaryCacheManager {
     return summaries;
   }
 
-  /// Deletes all cached summaries and their fingerprint sidecars.
+  /// Deletes every file of this partition: what `--rebuild-cache` asks for.
+  ///
+  /// Unlike every other path through the cache this deletes bundles another
+  /// run may be linking against; it is only done on request.
   Future<void> clearCache() async {
     final dir = Directory(cacheDirectory);
     if (await dir.exists()) {
       await for (final entity in dir.list()) {
-        if (entity is File &&
-            (entity.path.endsWith('.sum') ||
-                entity.path.endsWith('.sum.deps'))) {
+        if (entity is File) {
           await _safeDelete(entity);
         }
       }
     }
-  }
-
-  /// Clears summaries that don't match current dependencies.
-  ///
-  /// Keeps only summaries that match a dependency in [currentDependencies].
-  /// This helps clean up old version summaries after pub upgrade.
-  Future<int> cleanUnusedSummaries(
-    List<PackageDependency> currentDependencies,
-  ) async {
-    final cached = await listCachedSummaries();
-    final current = <String>{
-      for (final dep in currentDependencies)
-        if (dep.isCacheable) dep.cacheKey,
-    };
-
-    var removed = 0;
-    for (final entry in cached.entries) {
-      if (!current.contains(entry.key)) {
-        await _safeDelete(File(entry.value));
-        await _safeDelete(File('${entry.value}.deps'));
-        removed++;
-      }
-    }
-
-    return removed;
   }
 
   /// Safely deletes a file, ignoring errors.

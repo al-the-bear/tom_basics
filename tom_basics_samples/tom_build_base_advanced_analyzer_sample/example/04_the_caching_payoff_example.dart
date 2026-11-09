@@ -5,7 +5,8 @@
 // a generator would have to do. Write its summary once, and the very next check
 // reports zero missing: the generator can load the summary instead of
 // re-analysing the source. Run after run, that miss never comes back (until the
-// version changes and the cache key with it).
+// version changes, of meta or of anything it depends on, and the cache key with
+// it).
 //
 // We write a clearly-labelled placeholder instead of a real analyzer summary
 // (`hasSummary` only checks the file exists and is non-empty, so any non-empty
@@ -25,24 +26,48 @@ Future<void> main() async {
   final workspace = await createFixtureWorkspace();
   try {
     final cache = SummaryCacheManager(workspace.path);
-    final deps = await DependencyResolver()
-        .resolveVersionedDependencies('${workspace.path}/data');
+    final resolver = DependencyResolver();
+    final deps = await resolver.resolveVersionedDependencies(
+      '${workspace.path}/data',
+    );
     final cacheable = deps.cacheable;
+    // Each summary is cached under the dependency closure it is linked
+    // against (meta depends on nothing, so its closure is empty).
+    final fingerprints = await SummaryGenerator(
+      cacheManager: cache,
+      dependencyResolver: resolver,
+    ).computeDependencyFingerprints(cacheable);
 
     // Cold: the work the cache will save.
-    final coldMissing = await cache.findMissingSummaries(cacheable);
-    print('cold:  ${coldMissing.length} missing '
-        '(${coldMissing.map((d) => d.cacheKey).join(', ')})');
+    final coldMissing = await cache.findMissingSummaries(
+      cacheable,
+      fingerprints: fingerprints,
+    );
+    print(
+      'cold:  ${coldMissing.length} missing '
+      '(${coldMissing.map((d) => d.cacheKey).join(', ')})',
+    );
 
     // Warm it: write a (placeholder) summary for each missing dependency.
     for (final dep in coldMissing) {
-      await cache.writeSummary(dep.name, dep.version, _placeholder(dep));
+      await cache.writeSummary(
+        dep.name,
+        dep.version,
+        _placeholder(dep),
+        fingerprint: fingerprints[dep.name]!,
+      );
     }
 
     // Warm: the same check now finds nothing to do.
-    final warmMissing = await cache.findMissingSummaries(cacheable);
+    final warmMissing = await cache.findMissingSummaries(
+      cacheable,
+      fingerprints: fingerprints,
+    );
     print('warm:  ${warmMissing.length} missing');
-    print('hasSummary(meta@1.16.0): ${await cache.hasSummary('meta', '1.16.0')}');
+    print(
+      'hasSummary(meta@1.16.0): '
+      '${await cache.hasSummary('meta', '1.16.0', fingerprint: fingerprints['meta']!)}',
+    );
 
     final stats = await cache.getStats();
     print('cached summaries on disk: ${stats.summaryCount}');

@@ -98,8 +98,13 @@ Future<SummaryCacheResult?> runSummaryCacheStage(
     }
   }
 
+  final generator = SummaryGenerator(
+    cacheManager: cache,
+    dependencyResolver: depResolver,
+  );
+
   if (showCacheStatus) {
-    await _printCacheStatus(cache, cacheable, out);
+    await _printCacheStatus(cache, generator, cacheable, out);
     return null;
   }
 
@@ -113,11 +118,6 @@ Future<SummaryCacheResult?> runSummaryCacheStage(
     await cache.clearCache();
   }
 
-  final generator = SummaryGenerator(
-    cacheManager: cache,
-    dependencyResolver: depResolver,
-  );
-
   // SDK summary first — package summaries resolve `dart:core` and
   // (when Flutter is on the path) `dart:ui` from it.
   await generator.generateSdkSummary();
@@ -125,63 +125,28 @@ Future<SummaryCacheResult?> runSummaryCacheStage(
   final sdkSummaryPath = cache.getSdkSummaryPath();
   final hasSdkSummary = await File(sdkSummaryPath).exists();
 
-  // Dependency-closure fingerprints. A summary keyed only by its own
-  // `name@version` is silently stale when a *transitive* dependency changes
-  // version (the classic case: `tom_crypto@1.0.0.sum` linked against
-  // `tom_basics@1.0.0` after `tom_basics` moved to `1.0.1`). Compute the
-  // expected closure fingerprint for every package, delete any cached bundle
-  // whose recorded fingerprint no longer matches, and regenerate it against
-  // the current graph. Bundles with no fingerprint sidecar (produced before
-  // this mechanism existed) are treated as stale so the cache self-heals.
-  // Build the cacheable direct-dependency graph once and reuse it for both
-  // fingerprinting and the stale-set cascade below (avoids reading every
-  // pubspec twice per run).
+  // Dependency-closure fingerprints. A package's bundle is linked against its
+  // dependency closure, and the same `name@version` resolves different
+  // closures in different projects, so the fingerprint of the closure is part
+  // of the bundle's file name (SummaryCacheManager.getCachePath): a run only
+  // ever reads bundles of its own closures and never deletes one. Keyed by
+  // `name@version` alone, a run deleted the bundles another project's run had
+  // linked against another closure — while that run was linking against them
+  // (tom_forge later22: PathNotFoundException, then lost types). A bundle no
+  // run uses any more is swept by age (`analyzer_cache_gc clean`).
+  //
+  // The cacheable direct-dependency graph is built once and serves both the
+  // fingerprints and the generation order.
   final directDeps = await generator.buildDirectDependencyGraph(cacheable);
   final fingerprints = await generator.computeDependencyFingerprints(
     cacheable,
     directDependencyGraph: directDeps,
   );
 
-  // Seed the stale set with every present bundle whose recorded closure
-  // fingerprint no longer matches (or whose sidecar is absent — a
-  // pre-fingerprint bundle).
-  final stale = <String>{};
-  for (final dep in cacheable) {
-    final expected = fingerprints[dep.name] ?? '';
-    if (await cache.hasSummary(dep.name, dep.version) &&
-        !await cache.isSummaryFresh(dep.name, dep.version, expected)) {
-      stale.add(dep.name);
-    }
-  }
-
-  // Cascade the invalidation to dependents. A bundle that (transitively)
-  // depends on a stale one was linked against that bundle's OLD layout;
-  // regenerating the stale bundle alone leaves the dependent referencing a
-  // bundle that has just been deleted, so loading it — or feeding it to the
-  // analyzer while generating a third package — throws "Missing library".
-  // Deleting the whole dependent closure up front makes invalidation and
-  // regeneration atomic within this single pass: every affected bundle is
-  // regenerated (in dependency order) before any consumer loads it, so the
-  // cache reaches steady state in one run instead of self-healing over several.
-  final nameToDep = {for (final d in cacheable) d.name: d};
-  final invalidationSet = SummaryGenerator.dependentsClosure(directDeps, stale);
-  var invalidated = 0;
-  for (final name in invalidationSet) {
-    final dep = nameToDep[name];
-    if (dep == null) continue;
-    if (await cache.hasSummary(dep.name, dep.version)) {
-      await cache.deleteSummary(dep.name, dep.version);
-      invalidated++;
-    }
-  }
-  if (invalidated > 0) {
-    out(
-      'Invalidated $invalidated stale summaries (dependency version change, '
-      'or dependent of one); they will be regenerated.',
-    );
-  }
-
-  final missing = await cache.findMissingSummaries(cacheable);
+  final missing = await cache.findMissingSummaries(
+    cacheable,
+    fingerprints: fingerprints,
+  );
 
   if (missing.isNotEmpty) {
     out('Generating ${missing.length} missing summaries...');
@@ -192,6 +157,8 @@ Future<SummaryCacheResult?> runSummaryCacheStage(
     final result = await generator.generateMissingSummaries(
       cacheable,
       sdkSummaryPath: hasSdkSummary ? sdkSummaryPath : null,
+      directDependencyGraph: directDeps,
+      fingerprints: fingerprints,
       onProgress: (pkg, current, total) {
         out('  Generating summary ($current/$total): $pkg');
       },
@@ -214,38 +181,31 @@ Future<SummaryCacheResult?> runSummaryCacheStage(
     out('All ${cacheable.length} summaries are cached.');
   }
 
-  // Record the dependency-closure fingerprint next to every present bundle so
-  // the next run can detect a transitive version change. Idempotent overwrite.
-  for (final dep in cacheable) {
-    if (await cache.hasSummary(dep.name, dep.version)) {
-      await cache.writeFingerprint(
-        dep.name,
-        dep.version,
-        fingerprints[dep.name] ?? '',
-      );
-    }
-  }
-
-  // Load only fresh bundles. A summary whose regeneration failed above is
-  // still stale — loading it would crash the analyzer with "Missing library",
-  // so skip it and let the caller fall back to scanning that package's source.
+  // Load the bundles of this run's closures; a package without one is
+  // analysed from source by the caller. Each is marked used, which keeps it
+  // from the age sweep.
   final summaryPaths = <String>[];
   for (final dep in cacheable) {
-    final cachePath = cache.getCachePath(dep.name, dep.version);
-    final expected = fingerprints[dep.name] ?? '';
-    if (await cache.isSummaryFresh(dep.name, dep.version, expected)) {
+    final fingerprint = fingerprints[dep.name] ?? '';
+    if (await cache.hasSummary(
+      dep.name,
+      dep.version,
+      fingerprint: fingerprint,
+    )) {
+      final cachePath = cache.getCachePath(
+        dep.name,
+        dep.version,
+        fingerprint: fingerprint,
+      );
+      await cache.markUsed(cachePath);
       summaryPaths.add(cachePath);
       if (verbose) {
         // Per-summary trace so a run can be audited for actual cache use.
-        out('  using ${dep.name}@${dep.version}.sum from cache at $cachePath');
+        out('  using ${dep.name}@${dep.version} from cache at $cachePath');
       }
-    } else if (await File(cachePath).exists()) {
-      out(
-        '  Warning: skipping stale summary ${dep.name}@${dep.version} '
-        '(could not be refreshed for the current dependency graph).',
-      );
     }
   }
+  if (hasSdkSummary) await cache.markUsed(sdkSummaryPath);
 
   if (summaryPaths.isEmpty && !hasSdkSummary) {
     return null;
@@ -265,9 +225,11 @@ Future<SummaryCacheResult?> runSummaryCacheStage(
 
 Future<void> _printCacheStatus(
   SummaryCacheManager cacheManager,
+  SummaryGenerator generator,
   List<PackageDependency> cacheable,
   void Function(String) out,
 ) async {
+  final fingerprints = await generator.computeDependencyFingerprints(cacheable);
   final stats = await cacheManager.getStats();
   out('Summary Cache Status:');
   out('  Cache directory: ${cacheManager.cacheDirectory}');
@@ -282,7 +244,11 @@ Future<void> _printCacheStatus(
   var missing = 0;
 
   for (final dep in cacheable) {
-    final hasSummary = await cacheManager.hasSummary(dep.name, dep.version);
+    final hasSummary = await cacheManager.hasSummary(
+      dep.name,
+      dep.version,
+      fingerprint: fingerprints[dep.name] ?? '',
+    );
     final status = hasSummary ? 'CACHED' : 'MISSING';
     if (hasSummary) {
       cached++;

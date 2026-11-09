@@ -66,7 +66,8 @@ const cleanCommand = CommandDefinition(
   name: 'clean',
   aliases: ['gc'],
   description:
-      'Delete cache partitions unused for longer than --older-than days',
+      'Delete cache partitions, and bundles in the remaining ones, unused '
+      'for longer than --older-than days',
   options: cleanOptions,
   requiresTraversal: false,
   supportsProjectTraversal: false,
@@ -80,7 +81,7 @@ const cleanCommand = CommandDefinition(
 /// Tool version — tracks the `tom_analyzer_shared` pubspec version.
 ///
 /// Bump in lockstep with `pubspec.yaml` when publishing.
-const analyzerCacheGcVersion = '0.7.5';
+const analyzerCacheGcVersion = '0.13.0';
 
 /// The `analyzer_cache_gc` tool definition (multi-command, both global).
 final analyzerCacheGcTool = ToolDefinition(
@@ -108,8 +109,9 @@ never reclaimed automatically because the cache is shared across every project
 on the machine. This tool lets a human or CI reclaim that space deliberately:
 
   analyzer_cache_gc list                      # inspect partitions
-  analyzer_cache_gc clean --older-than 90     # prune stale partitions
+  analyzer_cache_gc clean --older-than 90     # prune stale partitions and bundles
 
-The live partition is always protected unless --include-current is given.
+The live partition is always protected unless --include-current is given; the
+bundles inside it that no run has used since the cutoff are swept either way.
 ''',
 );

@@ -18,6 +18,13 @@
 /// reclaimer: it enumerates the partitions with their last-used time and size,
 /// and deletes those older than a caller-supplied cutoff — never touching the
 /// live partition unless explicitly told to.
+///
+/// Inside a partition, every dependency closure of a package has a bundle of
+/// its own (SummaryCacheManager.getCachePath), so bundles of closures no
+/// project resolves any more accumulate in the live partition too. Nothing
+/// deletes them while a run might use them; [AnalyzerCacheGarbageCollector.
+/// sweepBundles] removes the files of every partition no run has used since
+/// the cutoff (a run marks each bundle it loads as used).
 library;
 
 import 'dart:io';
@@ -36,8 +43,8 @@ const String _analyzerCacheSubDir = 'analyzer-cache';
 
 /// One `<analyzer-major>/<toolchain>` partition in the shared cache.
 ///
-/// A partition is the leaf directory that actually holds `.sum` bundles and
-/// their `.sum.deps` fingerprint sidecars for a single toolchain identity.
+/// A partition is the leaf directory that actually holds the `.sum` bundles
+/// (one per package and dependency closure) of a single toolchain identity.
 class AnalyzerCachePartition {
   /// The analyzer major version segment of the partition path.
   final int analyzerMajor;
@@ -53,9 +60,9 @@ class AnalyzerCachePartition {
 
   /// The most recent modification time among the partition's files.
   ///
-  /// A partition is only written to when its toolchain is active (bundles are
-  /// generated on cache miss), so the newest file mtime is a reliable proxy for
-  /// "last used". Falls back to the directory's own mtime when it is empty.
+  /// A run marks every bundle it loads as used (its modification time), so
+  /// the newest file mtime is when a run last used the partition. Falls back
+  /// to the directory's own mtime when it is empty.
   final DateTime lastUsed;
 
   /// Total size on disk of the partition's files, in bytes.
@@ -226,6 +233,44 @@ class AnalyzerCacheGarbageCollector {
     ];
   }
 
+  /// Deletes, in every partition, the files no run has used since [cutoff]
+  /// (modification time strictly before it): bundles of dependency closures
+  /// no project resolves any more, and anything else left there (temp files of
+  /// an interrupted write, files of an older layout). A bundle a run loads is
+  /// marked used then, so one in use is not swept. When [dryRun] is true the
+  /// files are returned and nothing is deleted.
+  Future<List<SweptCacheFile>> sweepBundles({
+    required DateTime cutoff,
+    bool dryRun = false,
+  }) async {
+    final swept = <SweptCacheFile>[];
+    for (final partition in await listPartitions()) {
+      await for (final entity in Directory(
+        partition.path,
+      ).list(followLinks: false)) {
+        if (entity is! File) continue;
+        final stat = await entity.stat();
+        if (!stat.modified.isBefore(cutoff)) continue;
+        swept.add(
+          SweptCacheFile(
+            partitionKey: partition.key,
+            path: entity.path,
+            lastUsed: stat.modified,
+            sizeBytes: stat.size,
+          ),
+        );
+        if (!dryRun) {
+          try {
+            await entity.delete();
+          } on FileSystemException {
+            // Gone meanwhile, or not ours to delete: nothing to reclaim.
+          }
+        }
+      }
+    }
+    return swept;
+  }
+
   /// Deletes partitions last used before [cutoff], returning those removed.
   ///
   /// Partitions whose [AnalyzerCachePartition.key] is in [keep] are never
@@ -249,4 +294,27 @@ class AnalyzerCacheGarbageCollector {
     }
     return doomed;
   }
+}
+
+/// A file [AnalyzerCacheGarbageCollector.sweepBundles] removed (or, on a dry
+/// run, would remove).
+class SweptCacheFile {
+  /// The `"<analyzer-major>/<toolchain>"` key of its partition.
+  final String partitionKey;
+
+  /// Absolute path of the file.
+  final String path;
+
+  /// When a run last used it (its modification time).
+  final DateTime lastUsed;
+
+  /// Its size in bytes.
+  final int sizeBytes;
+
+  const SweptCacheFile({
+    required this.partitionKey,
+    required this.path,
+    required this.lastUsed,
+    required this.sizeBytes,
+  });
 }

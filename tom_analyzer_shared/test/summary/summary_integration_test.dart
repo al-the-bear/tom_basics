@@ -14,6 +14,10 @@ import 'package:tom_analyzer_shared/tom_analyzer_shared.dart';
 ///
 /// Tagged as 'integration' since they require analyzer context creation
 /// and take longer than unit tests.
+/// The closure fingerprint every bundle of this file is cached under: one
+/// fixed value, as the lookups default to it (`fingerprints[name] ?? ''`).
+const _fp = '';
+
 void main() {
   late Directory tempDir;
   late SummaryCacheManager cacheManager;
@@ -25,7 +29,8 @@ void main() {
   /// Returns a PackageDependency for the first available package from
   /// a list of known small packages, or null if none are available.
   PackageDependency? findTestPackage() {
-    final pubCache = Platform.environment['PUB_CACHE'] ??
+    final pubCache =
+        Platform.environment['PUB_CACHE'] ??
         '${Platform.environment['HOME']}/.pub-cache';
     final hostedDir = Directory('$pubCache/hosted/pub.dev');
 
@@ -37,9 +42,9 @@ void main() {
       for (final entity in hostedDir.listSync()) {
         if (entity is Directory) {
           final dirName = entity.path.split('/').last;
-          final match =
-              RegExp('^${RegExp.escape(name)}-(\\d+\\.\\d+\\.\\d+)\$')
-                  .firstMatch(dirName);
+          final match = RegExp(
+            '^${RegExp.escape(name)}-(\\d+\\.\\d+\\.\\d+)\$',
+          ).firstMatch(dirName);
           if (match != null) {
             final version = match.group(1)!;
             // Verify it has a lib/ directory
@@ -88,26 +93,40 @@ void main() {
 
       // Verify no summary exists yet
       expect(
-        await cacheManager.hasSummary(testPkg.name, testPkg.version),
+        await cacheManager.hasSummary(
+          testPkg.name,
+          testPkg.version,
+          fingerprint: _fp,
+        ),
         isFalse,
       );
 
       // Generate summary
-      final result = await generator.generateSummary(testPkg);
+      final result = await generator.generateSummary(testPkg, fingerprint: _fp);
       expect(result, isTrue, reason: 'Summary generation should succeed');
 
       // Verify summary was written to cache
       expect(
-        await cacheManager.hasSummary(testPkg.name, testPkg.version),
+        await cacheManager.hasSummary(
+          testPkg.name,
+          testPkg.version,
+          fingerprint: _fp,
+        ),
         isTrue,
       );
 
       // Verify the cached file is non-trivial
-      final cachePath =
-          cacheManager.getCachePath(testPkg.name, testPkg.version);
+      final cachePath = cacheManager.getCachePath(
+        testPkg.name,
+        testPkg.version,
+        fingerprint: _fp,
+      );
       final fileSize = File(cachePath).lengthSync();
-      expect(fileSize, greaterThan(0),
-          reason: 'Summary file should not be empty');
+      expect(
+        fileSize,
+        greaterThan(0),
+        reason: 'Summary file should not be empty',
+      );
     }, timeout: const Timeout(Duration(minutes: 2)));
 
     test('skips already-cached package on second run', () async {
@@ -118,11 +137,17 @@ void main() {
       }
 
       // First run: generates
-      final firstResult = await generator.generateSummary(testPkg);
+      final firstResult = await generator.generateSummary(
+        testPkg,
+        fingerprint: _fp,
+      );
       expect(firstResult, isTrue);
 
       // Second run: skips (already cached)
-      final secondResult = await generator.generateSummary(testPkg);
+      final secondResult = await generator.generateSummary(
+        testPkg,
+        fingerprint: _fp,
+      );
       expect(secondResult, isFalse);
     }, timeout: const Timeout(Duration(minutes: 2)));
 
@@ -134,11 +159,14 @@ void main() {
       }
 
       // Generate
-      await generator.generateSummary(testPkg);
+      await generator.generateSummary(testPkg, fingerprint: _fp);
 
       // Load back
-      final reader =
-          await cacheManager.loadSummary(testPkg.name, testPkg.version);
+      final reader = await cacheManager.loadSummary(
+        testPkg.name,
+        testPkg.version,
+        fingerprint: _fp,
+      );
       expect(reader, isNotNull, reason: 'Should load generated summary');
     }, timeout: const Timeout(Duration(minutes: 2)));
 
@@ -168,33 +196,6 @@ void main() {
       expect(result2.generated, equals(0));
       expect(result2.skipped, equals(1));
     }, timeout: const Timeout(Duration(minutes: 2)));
-
-    test('cleanUnusedSummaries removes old package versions', () async {
-      final testPkg = findTestPackage();
-      if (testPkg == null) {
-        markTestSkipped('No suitable package found in pub cache');
-        return;
-      }
-
-      // Generate a real summary
-      await generator.generateSummary(testPkg);
-
-      // Simulate upgrading the package to a new version
-      final upgradedDeps = [
-        PackageDependency(
-          name: testPkg.name,
-          version: '99.99.99', // fake new version
-          source: 'hosted',
-        ),
-      ];
-
-      final removed = await cacheManager.cleanUnusedSummaries(upgradedDeps);
-      expect(removed, equals(1));
-      expect(
-        await cacheManager.hasSummary(testPkg.name, testPkg.version),
-        isFalse,
-      );
-    }, timeout: const Timeout(Duration(minutes: 2)));
   });
 
   group('Edge cases with real filesystem', () {
@@ -206,8 +207,9 @@ void main() {
       // NONEXISTENT path instead, which is now a failure of its own.
       final project = Directory('${tempDir.path}/project')..createSync();
       final fakePkgDir = Directory('${tempDir.path}/fake_pkg')..createSync();
-      File('${fakePkgDir.path}/pubspec.yaml')
-          .writeAsStringSync('name: fake_pkg\n');
+      File(
+        '${fakePkgDir.path}/pubspec.yaml',
+      ).writeAsStringSync('name: fake_pkg\n');
       File('${project.path}/pubspec.lock').writeAsStringSync('''
 packages:
   fake_pkg:
@@ -232,7 +234,10 @@ packages:
         dependencyResolver: resolver,
       );
 
-      expect(await localGenerator.generateSummary(dep), isFalse);
+      expect(
+        await localGenerator.generateSummary(dep, fingerprint: _fp),
+        isFalse,
+      );
     });
 
     test('cache stats reflect real summary files', () async {
@@ -248,7 +253,7 @@ packages:
       expect(stats.totalSizeBytes, equals(0));
 
       // Generate one summary
-      await generator.generateSummary(testPkg);
+      await generator.generateSummary(testPkg, fingerprint: _fp);
 
       // Stats should reflect it
       stats = await cacheManager.getStats();

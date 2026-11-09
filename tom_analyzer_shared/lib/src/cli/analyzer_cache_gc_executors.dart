@@ -142,20 +142,32 @@ class CleanPartitionsExecutor extends CommandExecutor {
     );
 
     if (removed.isEmpty) {
-      print('Nothing to reclaim — no partition is older than the cutoff.');
-      return const ToolResult.success();
+      print('No partition is older than the cutoff.');
+    } else {
+      var reclaimed = 0;
+      print(dryRun ? 'Would delete:' : 'Deleted:');
+      for (final part in removed) {
+        reclaimed += part.sizeBytes;
+        print('  ${part.key}  (${_mb(part.sizeBytes)}, last used '
+            '${_stamp(part.lastUsed)})');
+      }
+      print('');
+      final verb = dryRun ? 'Would reclaim' : 'Reclaimed';
+      print('$verb ${_mb(reclaimed)} across ${removed.length} partition(s).');
     }
 
-    var reclaimed = 0;
-    print(dryRun ? 'Would delete:' : 'Deleted:');
-    for (final part in removed) {
-      reclaimed += part.sizeBytes;
-      print('  ${part.key}  (${_mb(part.sizeBytes)}, last used '
-          '${_stamp(part.lastUsed)})');
-    }
+    // Inside the partitions that stay, the current one included: bundles of
+    // dependency closures no run has used since the cutoff.
+    final swept = await gc.sweepBundles(cutoff: cutoff, dryRun: dryRun);
     print('');
-    final verb = dryRun ? 'Would reclaim' : 'Reclaimed';
-    print('$verb ${_mb(reclaimed)} across ${removed.length} partition(s).');
+    if (swept.isEmpty) {
+      print('No bundle in the remaining partitions is older than the cutoff.');
+    } else {
+      final bytes = swept.fold<int>(0, (sum, f) => sum + f.sizeBytes);
+      final verb = dryRun ? 'Would sweep' : 'Swept';
+      print('$verb ${swept.length} file(s) unused since the cutoff '
+          '(${_mb(bytes)}) from the remaining partitions.');
+    }
     return const ToolResult.success();
   }
 }

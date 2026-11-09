@@ -48,7 +48,8 @@ import 'package:tom_build_base/tom_build_base.dart';
 /// `globalOptions` are flags the executor reads from `args.extraOptions`.
 const sumkitTool = ToolDefinition(
   name: 'sumkit',
-  description: 'Report analyzer-summary cache coverage for the Dart projects '
+  description:
+      'Report analyzer-summary cache coverage for the Dart projects '
       'in a workspace (and optionally warm the cache).',
   version: '1.0.0',
   mode: ToolMode.singleCommand,
@@ -56,7 +57,8 @@ const sumkitTool = ToolDefinition(
   globalOptions: [
     OptionDefinition.flag(
       name: 'warm',
-      description: 'Write placeholder summaries for the missing cacheable '
+      description:
+          'Write placeholder summaries for the missing cacheable '
           'dependencies (stand-in for real summary generation).',
     ),
     OptionDefinition.flag(
@@ -129,15 +131,30 @@ Future<ItemResult> _scan(
   // Only hosted + SDK packages have version-stable, cacheable summaries; path
   // and git dependencies are re-analysed from source every run.
   final set = DependencySet.from(deps);
-  final missing = await cache.findMissingSummaries(set.cacheable);
+  // A summary is cached under the dependency closure it is linked against.
+  final fingerprints = await SummaryGenerator(
+    cacheManager: cache,
+    dependencyResolver: resolver,
+  ).computeDependencyFingerprints(set.cacheable);
+  final missing = await cache.findMissingSummaries(
+    set.cacheable,
+    fingerprints: fingerprints,
+  );
   final hits = set.cacheable.length - missing.length;
 
   if (args.extraOptions['warm'] == true) {
     for (final dep in missing) {
-      await cache.writeSummary(dep.name, dep.version, _placeholderSummary(dep));
+      await cache.writeSummary(
+        dep.name,
+        dep.version,
+        _placeholderSummary(dep),
+        fingerprint: fingerprints[dep.name]!,
+      );
     }
-    out.writeln('${context.name}: warmed ${missing.length} '
-        '($hits already cached, ${set.uncacheable.length} uncacheable)');
+    out.writeln(
+      '${context.name}: warmed ${missing.length} '
+      '($hits already cached, ${set.uncacheable.length} uncacheable)',
+    );
     return ItemResult.success(
       path: context.path,
       name: context.name,
@@ -145,9 +162,11 @@ Future<ItemResult> _scan(
     );
   }
 
-  out.writeln('${context.name}: ${set.cacheable.length} cacheable, '
-      '$hits cached, ${missing.length} missing '
-      '(${set.uncacheable.length} uncacheable)');
+  out.writeln(
+    '${context.name}: ${set.cacheable.length} cacheable, '
+    '$hits cached, ${missing.length} missing '
+    '(${set.uncacheable.length} uncacheable)',
+  );
   return ItemResult.success(
     path: context.path,
     name: context.name,
@@ -157,8 +176,9 @@ Future<ItemResult> _scan(
 
 /// A placeholder for a real analyzer summary.
 ///
-/// `SummaryCacheManager.hasSummary` only checks that the `.sum` file exists and
-/// is non-empty, so any non-empty bytes make a dependency read as "cached". A
+/// `SummaryCacheManager.hasSummary` only checks that the `.sum` file of the
+/// dependency's closure exists and is non-empty, so any non-empty bytes make a
+/// dependency read as "cached". A
 /// real summary is the analyzer's serialised type information; this is a clearly
 /// labelled stand-in so the cache-lookup half of the pipeline can be exercised
 /// offline. See the library doc comment for the real generation path.

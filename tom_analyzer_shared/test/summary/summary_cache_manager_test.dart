@@ -5,6 +5,10 @@ import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 import 'package:tom_analyzer_shared/tom_analyzer_shared.dart';
 
+/// The closure fingerprint every bundle of this file is cached under: one
+/// fixed value, as the lookups default to it (`fingerprints[name] ?? ''`).
+const _fp = '';
+
 void main() {
   late Directory tempDir;
   late SummaryCacheManager cacheManager;
@@ -49,19 +53,36 @@ void main() {
   group('SummaryCacheManager', () {
     group('getCachePath', () {
       test('returns correct path for package@version', () {
-        final path = cacheManager.getCachePath('provider', '6.1.2');
-        expect(path, endsWith('provider@6.1.2.sum'));
+        final path = cacheManager.getCachePath(
+          'provider',
+          '6.1.2',
+          fingerprint: _fp,
+        );
+        expect(
+          path,
+          endsWith(
+            'provider@6.1.2+${SummaryCacheManager.closureHash(_fp)}.sum',
+          ),
+        );
         expect(path, contains('.tom'));
         expect(path, contains('analyzer-cache'));
       });
 
       test('sanitizes special characters in package name', () {
-        final path = cacheManager.getCachePath('my:pkg', '1.0.0');
-        expect(path, contains('my_pkg@1.0.0.sum'));
+        final path = cacheManager.getCachePath(
+          'my:pkg',
+          '1.0.0',
+          fingerprint: _fp,
+        );
+        expect(path, contains('my_pkg@1.0.0+'));
       });
 
       test('sanitizes special characters in version', () {
-        final path = cacheManager.getCachePath('pkg', '1.0.0+1');
+        final path = cacheManager.getCachePath(
+          'pkg',
+          '1.0.0+1',
+          fingerprint: _fp,
+        );
         // '+' is not in the sanitize regex, so it stays
         expect(path, endsWith('.sum'));
       });
@@ -100,8 +121,10 @@ void main() {
           isNot(equals(manager10.cacheDirectory)),
         );
         expect(
-          manager8.getCachePath('async', '2.13.0'),
-          isNot(equals(manager10.getCachePath('async', '2.13.0'))),
+          manager8.getCachePath('async', '2.13.0', fingerprint: _fp),
+          isNot(
+            equals(manager10.getCachePath('async', '2.13.0', fingerprint: _fp)),
+          ),
         );
         expect(
           manager8.cacheDirectory,
@@ -117,8 +140,8 @@ void main() {
         final a = makeCacheManager(tempDir.path, analyzerMajor: 10);
         final b = makeCacheManager(tempDir.path, analyzerMajor: 10);
         expect(
-          a.getCachePath('pkg', '1.0.0'),
-          equals(b.getCachePath('pkg', '1.0.0')),
+          a.getCachePath('pkg', '1.0.0', fingerprint: _fp),
+          equals(b.getCachePath('pkg', '1.0.0', fingerprint: _fp)),
         );
       });
 
@@ -130,11 +153,18 @@ void main() {
           'async',
           '2.13.0',
           Uint8List.fromList([1, 2, 3]),
+          fingerprint: _fp,
         );
 
         // The analyzer-10 partition must not see the analyzer-8 bundle.
-        expect(await manager10.hasSummary('async', '2.13.0'), isFalse);
-        expect(await manager8.hasSummary('async', '2.13.0'), isTrue);
+        expect(
+          await manager10.hasSummary('async', '2.13.0', fingerprint: _fp),
+          isFalse,
+        );
+        expect(
+          await manager8.hasSummary('async', '2.13.0', fingerprint: _fp),
+          isTrue,
+        );
       });
     });
 
@@ -158,11 +188,23 @@ void main() {
           'async',
           '2.13.0',
           Uint8List.fromList([1, 2, 3]),
+          fingerprint: _fp,
         );
-        await writer.writeSummary('sdk', '3.13.7', Uint8List.fromList([4]));
+        await writer.writeSummary(
+          'sdk',
+          '3.13.7',
+          Uint8List.fromList([4]),
+          fingerprint: _fp,
+        );
 
-        expect(await writer.hasSummary('async', '2.13.0'), isTrue);
-        expect(await reader.hasSummary('async', '2.13.0'), isFalse);
+        expect(
+          await writer.hasSummary('async', '2.13.0', fingerprint: _fp),
+          isTrue,
+        );
+        expect(
+          await reader.hasSummary('async', '2.13.0', fingerprint: _fp),
+          isFalse,
+        );
         expect(await reader.hasSdkSummary(), isFalse);
         expect(reader.cacheDirectory, isNot(writer.cacheDirectory));
         expect(reader.cacheDirectory, endsWith('3.13.7+d752'));
@@ -171,25 +213,45 @@ void main() {
 
     group('hasSummary', () {
       test('returns false when no file exists', () async {
-        final result = await cacheManager.hasSummary('nonexistent', '1.0.0');
+        final result = await cacheManager.hasSummary(
+          'nonexistent',
+          '1.0.0',
+          fingerprint: _fp,
+        );
         expect(result, isFalse);
       });
 
       test('returns false when file is empty', () async {
         await cacheManager.ensureCacheDirectory();
-        final path = cacheManager.getCachePath('empty', '1.0.0');
+        final path = cacheManager.getCachePath(
+          'empty',
+          '1.0.0',
+          fingerprint: _fp,
+        );
         File(path).writeAsBytesSync(Uint8List(0));
 
-        final result = await cacheManager.hasSummary('empty', '1.0.0');
+        final result = await cacheManager.hasSummary(
+          'empty',
+          '1.0.0',
+          fingerprint: _fp,
+        );
         expect(result, isFalse);
       });
 
       test('returns true when valid file exists', () async {
         await cacheManager.ensureCacheDirectory();
-        final path = cacheManager.getCachePath('valid', '1.0.0');
+        final path = cacheManager.getCachePath(
+          'valid',
+          '1.0.0',
+          fingerprint: _fp,
+        );
         File(path).writeAsBytesSync(Uint8List.fromList([1, 2, 3, 4]));
 
-        final result = await cacheManager.hasSummary('valid', '1.0.0');
+        final result = await cacheManager.hasSummary(
+          'valid',
+          '1.0.0',
+          fingerprint: _fp,
+        );
         expect(result, isTrue);
       });
     });
@@ -197,9 +259,18 @@ void main() {
     group('writeSummary', () {
       test('creates cache directory and writes file', () async {
         final bytes = Uint8List.fromList([10, 20, 30, 40]);
-        await cacheManager.writeSummary('test_pkg', '2.0.0', bytes);
+        await cacheManager.writeSummary(
+          'test_pkg',
+          '2.0.0',
+          bytes,
+          fingerprint: _fp,
+        );
 
-        final path = cacheManager.getCachePath('test_pkg', '2.0.0');
+        final path = cacheManager.getCachePath(
+          'test_pkg',
+          '2.0.0',
+          fingerprint: _fp,
+        );
         final file = File(path);
         expect(file.existsSync(), isTrue);
         expect(file.readAsBytesSync(), equals(bytes));
@@ -209,10 +280,24 @@ void main() {
         final bytes1 = Uint8List.fromList([1, 2, 3]);
         final bytes2 = Uint8List.fromList([4, 5, 6]);
 
-        await cacheManager.writeSummary('pkg', '1.0.0', bytes1);
-        await cacheManager.writeSummary('pkg', '1.0.0', bytes2);
+        await cacheManager.writeSummary(
+          'pkg',
+          '1.0.0',
+          bytes1,
+          fingerprint: _fp,
+        );
+        await cacheManager.writeSummary(
+          'pkg',
+          '1.0.0',
+          bytes2,
+          fingerprint: _fp,
+        );
 
-        final path = cacheManager.getCachePath('pkg', '1.0.0');
+        final path = cacheManager.getCachePath(
+          'pkg',
+          '1.0.0',
+          fingerprint: _fp,
+        );
         expect(File(path).readAsBytesSync(), equals(bytes2));
       });
     });
@@ -238,7 +323,10 @@ void main() {
           ),
         ];
 
-        final missing = await cacheManager.findMissingSummaries(deps);
+        final missing = await cacheManager.findMissingSummaries(
+          deps,
+          fingerprints: const {},
+        );
         expect(missing, hasLength(2));
         expect(missing.map((d) => d.name), containsAll(['a', 'b']));
       });
@@ -248,6 +336,7 @@ void main() {
           'a',
           '1.0.0',
           Uint8List.fromList([1, 2, 3]),
+          fingerprint: _fp,
         );
 
         final deps = [
@@ -263,7 +352,10 @@ void main() {
           ),
         ];
 
-        final missing = await cacheManager.findMissingSummaries(deps);
+        final missing = await cacheManager.findMissingSummaries(
+          deps,
+          fingerprints: const {},
+        );
         expect(missing, hasLength(1));
         expect(missing.first.name, equals('b'));
       });
@@ -283,7 +375,10 @@ void main() {
           ),
         ];
 
-        final missing = await cacheManager.findMissingSummaries(deps);
+        final missing = await cacheManager.findMissingSummaries(
+          deps,
+          fingerprints: const {},
+        );
         expect(missing, isEmpty);
       });
     });
@@ -299,16 +394,22 @@ void main() {
           'pkg_a',
           '1.0.0',
           Uint8List.fromList([1]),
+          fingerprint: _fp,
         );
         await cacheManager.writeSummary(
           'pkg_b',
           '2.0.0',
           Uint8List.fromList([2]),
+          fingerprint: _fp,
         );
 
         final summaries = await cacheManager.listCachedSummaries();
         expect(summaries, hasLength(2));
-        expect(summaries.keys, containsAll(['pkg_a@1.0.0', 'pkg_b@2.0.0']));
+        final hash = SummaryCacheManager.closureHash(_fp);
+        expect(
+          summaries.keys,
+          containsAll(['pkg_a@1.0.0+$hash', 'pkg_b@2.0.0+$hash']),
+        );
       });
 
       test('ignores non-.sum files', () async {
@@ -320,18 +421,32 @@ void main() {
           'real',
           '1.0.0',
           Uint8List.fromList([1]),
+          fingerprint: _fp,
         );
 
         final summaries = await cacheManager.listCachedSummaries();
         expect(summaries, hasLength(1));
-        expect(summaries.keys.first, equals('real@1.0.0'));
+        expect(
+          summaries.keys.first,
+          equals('real@1.0.0+${SummaryCacheManager.closureHash(_fp)}'),
+        );
       });
     });
 
     group('clearCache', () {
       test('removes all .sum files', () async {
-        await cacheManager.writeSummary('a', '1.0.0', Uint8List.fromList([1]));
-        await cacheManager.writeSummary('b', '2.0.0', Uint8List.fromList([2]));
+        await cacheManager.writeSummary(
+          'a',
+          '1.0.0',
+          Uint8List.fromList([1]),
+          fingerprint: _fp,
+        );
+        await cacheManager.writeSummary(
+          'b',
+          '2.0.0',
+          Uint8List.fromList([2]),
+          fingerprint: _fp,
+        );
 
         await cacheManager.clearCache();
 
@@ -342,84 +457,6 @@ void main() {
       test('no-op when cache directory does not exist', () async {
         // Should not throw
         await cacheManager.clearCache();
-      });
-    });
-
-    group('cleanUnusedSummaries', () {
-      test('removes summaries not in current dependencies', () async {
-        await cacheManager.writeSummary(
-          'old_pkg',
-          '1.0.0',
-          Uint8List.fromList([1]),
-        );
-        await cacheManager.writeSummary(
-          'current',
-          '2.0.0',
-          Uint8List.fromList([2]),
-        );
-
-        final currentDeps = [
-          const PackageDependency(
-            name: 'current',
-            version: '2.0.0',
-            source: 'hosted',
-          ),
-        ];
-
-        final removed = await cacheManager.cleanUnusedSummaries(currentDeps);
-        expect(removed, equals(1));
-
-        final remaining = await cacheManager.listCachedSummaries();
-        expect(remaining, hasLength(1));
-        expect(remaining.keys.first, equals('current@2.0.0'));
-      });
-
-      test('removes old version when dependency upgraded', () async {
-        await cacheManager.writeSummary(
-          'pkg',
-          '1.0.0',
-          Uint8List.fromList([1]),
-        );
-        await cacheManager.writeSummary(
-          'pkg',
-          '2.0.0',
-          Uint8List.fromList([2]),
-        );
-
-        final currentDeps = [
-          const PackageDependency(
-            name: 'pkg',
-            version: '2.0.0',
-            source: 'hosted',
-          ),
-        ];
-
-        final removed = await cacheManager.cleanUnusedSummaries(currentDeps);
-        expect(removed, equals(1));
-
-        final has1 = await cacheManager.hasSummary('pkg', '1.0.0');
-        final has2 = await cacheManager.hasSummary('pkg', '2.0.0');
-        expect(has1, isFalse);
-        expect(has2, isTrue);
-      });
-
-      test('returns 0 when all summaries are current', () async {
-        await cacheManager.writeSummary(
-          'pkg',
-          '1.0.0',
-          Uint8List.fromList([1]),
-        );
-
-        final currentDeps = [
-          const PackageDependency(
-            name: 'pkg',
-            version: '1.0.0',
-            source: 'hosted',
-          ),
-        ];
-
-        final removed = await cacheManager.cleanUnusedSummaries(currentDeps);
-        expect(removed, equals(0));
       });
     });
 
@@ -434,8 +471,8 @@ void main() {
         final bytes4 = Uint8List.fromList([1, 2, 3, 4]);
         final bytes8 = Uint8List.fromList([1, 2, 3, 4, 5, 6, 7, 8]);
 
-        await cacheManager.writeSummary('a', '1.0.0', bytes4);
-        await cacheManager.writeSummary('b', '2.0.0', bytes8);
+        await cacheManager.writeSummary('a', '1.0.0', bytes4, fingerprint: _fp);
+        await cacheManager.writeSummary('b', '2.0.0', bytes8, fingerprint: _fp);
 
         final stats = await cacheManager.getStats();
         expect(stats.summaryCount, equals(2));
@@ -446,17 +483,29 @@ void main() {
 
     group('loadSummary', () {
       test('returns null when file does not exist', () async {
-        final result = await cacheManager.loadSummary('missing', '1.0.0');
+        final result = await cacheManager.loadSummary(
+          'missing',
+          '1.0.0',
+          fingerprint: _fp,
+        );
         expect(result, isNull);
       });
 
       test('returns null and deletes corrupted file', () async {
         await cacheManager.ensureCacheDirectory();
-        final path = cacheManager.getCachePath('corrupt', '1.0.0');
+        final path = cacheManager.getCachePath(
+          'corrupt',
+          '1.0.0',
+          fingerprint: _fp,
+        );
         // Write invalid bytes that aren't a valid summary bundle
         File(path).writeAsBytesSync(Uint8List.fromList([0xFF, 0xFF, 0xFF]));
 
-        final result = await cacheManager.loadSummary('corrupt', '1.0.0');
+        final result = await cacheManager.loadSummary(
+          'corrupt',
+          '1.0.0',
+          fingerprint: _fp,
+        );
         expect(result, isNull);
         // Corrupted file should be deleted
         expect(File(path).existsSync(), isFalse);
@@ -503,10 +552,13 @@ void main() {
           dartSdkVersion: '3.10.0',
         );
 
-        final pathA = managerA.getCachePath('pkg', '1.0.0');
-        final pathB = managerB.getCachePath('pkg', '1.0.0');
+        final pathA = managerA.getCachePath('pkg', '1.0.0', fingerprint: _fp);
+        final pathB = managerB.getCachePath('pkg', '1.0.0', fingerprint: _fp);
         expect(pathA, isNot(equals(pathB)));
-        expect(managerA.cacheDirectory, endsWith('3.8.0+d$analyzerDataVersion'));
+        expect(
+          managerA.cacheDirectory,
+          endsWith('3.8.0+d$analyzerDataVersion'),
+        );
         expect(
           managerB.cacheDirectory,
           endsWith('3.10.0+d$analyzerDataVersion'),
@@ -533,11 +585,21 @@ void main() {
             'async',
             '2.13.0',
             Uint8List.fromList([1, 2, 3]),
+            fingerprint: _fp,
           );
 
-          expect(await newToolchain.hasSummary('async', '2.13.0'), isFalse);
-          expect(await newToolchain.loadSummary('async', '2.13.0'), isNull);
-          expect(await oldToolchain.hasSummary('async', '2.13.0'), isTrue);
+          expect(
+            await newToolchain.hasSummary('async', '2.13.0', fingerprint: _fp),
+            isFalse,
+          );
+          expect(
+            await newToolchain.loadSummary('async', '2.13.0', fingerprint: _fp),
+            isNull,
+          );
+          expect(
+            await oldToolchain.hasSummary('async', '2.13.0', fingerprint: _fp),
+            isTrue,
+          );
         },
       );
     });
@@ -552,7 +614,10 @@ void main() {
           ),
         ];
 
-        final store = await cacheManager.loadSummaries(deps);
+        final store = await cacheManager.loadSummaries(
+          deps,
+          fingerprints: const {},
+        );
         // SummaryDataStore doesn't expose a count, but should not throw
         expect(store, isNotNull);
       });
@@ -566,7 +631,10 @@ void main() {
           ),
         ];
 
-        final store = await cacheManager.loadSummaries(deps);
+        final store = await cacheManager.loadSummaries(
+          deps,
+          fingerprints: const {},
+        );
         expect(store, isNotNull);
       });
     });

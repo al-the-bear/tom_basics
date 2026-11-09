@@ -35,6 +35,10 @@ String _hosted(String name, String version) =>
     version: "$version"
 ''';
 
+/// The closure fingerprint every bundle of this file is cached under: one
+/// fixed value, as the lookups default to it (`fingerprints[name] ?? ''`).
+const _fp = '';
+
 void main() {
   late Directory tempDir;
 
@@ -145,7 +149,7 @@ void main() {
           'the cache then treats as fresh',
     );
     expect(result.generated, 0);
-    expect(await cache.hasSummary('zom_b', '1.0.0'), isFalse);
+    expect(await cache.hasSummary('zom_b', '1.0.0', fingerprint: _fp), isFalse);
   });
 
   test('F-SCF32-3: a bundle fingerprinted before the complete-link rule is '
@@ -180,11 +184,20 @@ void main() {
     );
     expect(fingerprints['zom_a'], SummaryGenerator.fingerprintFormat);
 
-    // The sidecar a pre-SCF32 build wrote for the same closure.
-    await cache.writeSummary('zom_b', '1.0.0', Uint8List.fromList([1]));
-    await cache.writeFingerprint('zom_b', '1.0.0', 'zom_a@1.0.0');
+    // A bundle a pre-SCF32 build linked against the same closure, recorded
+    // without the format line: another name, never found for this closure.
+    await cache.writeSummary(
+      'zom_b',
+      '1.0.0',
+      Uint8List.fromList([1]),
+      fingerprint: 'zom_a@1.0.0',
+    );
     expect(
-      await cache.isSummaryFresh('zom_b', '1.0.0', fingerprints['zom_b']!),
+      await cache.hasSummary(
+        'zom_b',
+        '1.0.0',
+        fingerprint: fingerprints['zom_b']!,
+      ),
       isFalse,
     );
   });

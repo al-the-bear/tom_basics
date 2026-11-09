@@ -324,21 +324,31 @@ Future<ItemResult> _scan(CommandContext context, CliArgs args, StringSink out) a
     await cache.clearCache();
   }
 
+  final resolver = DependencyResolver();
   final List<PackageDependency> deps;
   try {
-    deps = await DependencyResolver().resolveVersionedDependencies(context.path);
+    deps = await resolver.resolveVersionedDependencies(context.path);
   } on FileSystemException {
     out.writeln('${context.name}: skipped (no pubspec.lock)');
     return ItemResult.skipped(path: context.path, name: context.name, message: 'no pubspec.lock');
   }
 
   final set = DependencySet.from(deps);
-  final missing = await cache.findMissingSummaries(set.cacheable);
+  // A summary is cached under the dependency closure it is linked against.
+  final fingerprints = await SummaryGenerator(
+    cacheManager: cache,
+    dependencyResolver: resolver,
+  ).computeDependencyFingerprints(set.cacheable);
+  final missing = await cache.findMissingSummaries(
+    set.cacheable,
+    fingerprints: fingerprints,
+  );
   final hits = set.cacheable.length - missing.length;
 
   if (args.extraOptions['warm'] == true) {
     for (final dep in missing) {
-      await cache.writeSummary(dep.name, dep.version, _placeholderSummary(dep));
+      await cache.writeSummary(dep.name, dep.version, _placeholderSummary(dep),
+          fingerprint: fingerprints[dep.name]!);
     }
     out.writeln('${context.name}: warmed ${missing.length} '
         '($hits already cached, ${set.uncacheable.length} uncacheable)');
@@ -481,31 +491,40 @@ real data.
 [`03_the_cache_directory_example.dart`](example/03_the_cache_directory_example.dart)
 
 `SummaryCacheManager` owns one cache per workspace, at
-`<workspace>/.tom/analyzer-cache/`, with one `{name}@{version}.sum` file per
-cached dependency. A "hit" is nothing more than that file existing and being
+`<workspace>/.tom/analyzer-cache/`, with one `{name}@{version}+{closure}.sum`
+file per cached dependency and dependency closure (the hash of the versions the
+summary is linked against). A "hit" is nothing more than that file existing and
+being
 non-empty (`hasSummary`); `findMissingSummaries` runs that check over the
 cacheable dependencies. Pointed at a fresh workspace — a **cold cache** —
 everything is missing.
 
 ```dart
 final cache = SummaryCacheManager(workspace.path);
+final resolver = DependencyResolver();
+final deps =
+    await resolver.resolveVersionedDependencies('${workspace.path}/service');
+final cacheable = deps.cacheable;
+final fingerprints = await SummaryGenerator(
+  cacheManager: cache,
+  dependencyResolver: resolver,
+).computeDependencyFingerprints(cacheable);
 
 print('cache file for meta@1.16.0: '
-    '${p.basename(cache.getCachePath('meta', '1.16.0'))}');
+    '${p.basename(cache.getCachePath('meta', '1.16.0', fingerprint: fingerprints['meta']!))}');
 
-final deps = await DependencyResolver()
-    .resolveVersionedDependencies('${workspace.path}/service');
-final cacheable = deps.cacheable;
-final missing = await cache.findMissingSummaries(cacheable);
+final missing =
+    await cache.findMissingSummaries(cacheable, fingerprints: fingerprints);
 
-print('hasSummary(meta@1.16.0): ${await cache.hasSummary('meta', '1.16.0')}');
+print('hasSummary(meta@1.16.0): '
+    '${await cache.hasSummary('meta', '1.16.0', fingerprint: fingerprints['meta']!)}');
 print('cacheable: ${cacheable.length}, missing: ${missing.length}');
 print('missing names: ${missing.map((d) => d.name).join(', ')}');
 print('cached summaries on disk: ${(await cache.getStats()).summaryCount}');
 ```
 
 ```text
-cache file for meta@1.16.0: meta@1.16.0.sum
+cache file for meta@1.16.0: meta@1.16.0+f58902aa61db148b.sum
 hasSummary(meta@1.16.0): false
 cacheable: 2, missing: 2
 missing names: collection, meta
@@ -526,25 +545,35 @@ This is the whole point of the cache, in miniature. Take the `data` project (one
 cacheable dependency, `meta`). Cold, it is a miss — the work a generator would
 do. Write the summary once, and the next check reports zero missing: the
 generator can load the summary instead of re-analysing the source. Run after run,
-that miss never comes back (until the version, and the cache key, changes).
+that miss never comes back (until the version of meta or of anything it depends
+on, and so the cache key, changes).
 
 ```dart
 final cache = SummaryCacheManager(workspace.path);
-final deps = await DependencyResolver()
-    .resolveVersionedDependencies('${workspace.path}/data');
+final resolver = DependencyResolver();
+final deps =
+    await resolver.resolveVersionedDependencies('${workspace.path}/data');
 final cacheable = deps.cacheable;
+final fingerprints = await SummaryGenerator(
+  cacheManager: cache,
+  dependencyResolver: resolver,
+).computeDependencyFingerprints(cacheable);
 
-final coldMissing = await cache.findMissingSummaries(cacheable);
+final coldMissing =
+    await cache.findMissingSummaries(cacheable, fingerprints: fingerprints);
 print('cold:  ${coldMissing.length} missing '
     '(${coldMissing.map((d) => d.cacheKey).join(', ')})');
 
 for (final dep in coldMissing) {
-  await cache.writeSummary(dep.name, dep.version, _placeholder(dep));
+  await cache.writeSummary(dep.name, dep.version, _placeholder(dep),
+      fingerprint: fingerprints[dep.name]!);
 }
 
-final warmMissing = await cache.findMissingSummaries(cacheable);
+final warmMissing =
+    await cache.findMissingSummaries(cacheable, fingerprints: fingerprints);
 print('warm:  ${warmMissing.length} missing');
-print('hasSummary(meta@1.16.0): ${await cache.hasSummary('meta', '1.16.0')}');
+print('hasSummary(meta@1.16.0): '
+    '${await cache.hasSummary('meta', '1.16.0', fingerprint: fingerprints['meta']!)}');
 print('cached summaries on disk: ${(await cache.getStats()).summaryCount}');
 ```
 

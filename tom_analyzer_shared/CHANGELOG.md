@@ -1,5 +1,42 @@
 # Changelog
 
+## 0.13.0
+
+- **Breaking: a bundle is named by its dependency closure,
+  `{package}@{version}+{closure-hash}.sum`.** Keyed by `name@version` alone,
+  one package linked against different closures in two projects shared a
+  file: each project's run took the other's bundle for stale and deleted it —
+  while a concurrent run was linking against it (`PathNotFoundException`, then
+  lost types; measured in `dart test -j 4` of tom_d4rt_generator). Each
+  closure now has a bundle of its own, valid for as long as it exists, and no
+  run deletes one: the invalidation pass, the dependents cascade and the
+  `.sum.deps` fingerprint sidecars are gone. A version change anywhere in a
+  package's closure gives it — and every package depending on it — another
+  name.
+  - `getCachePath`, `hasSummary`, `writeSummary`, `loadSummary` and
+    `SummaryGenerator.generateSummary` take `fingerprint:` (the closure,
+    `SummaryGenerator.computeDependencyFingerprints`);
+    `findMissingSummaries` and `loadSummaries` take `fingerprints:`;
+    `SummaryCacheManager.closureHash` is the name's closure part.
+  - Removed: `getFingerprintPath`, `writeFingerprint`, `readFingerprint`,
+    `isSummaryFresh`, `deleteSummary`, `cleanUnusedSummaries` and
+    `SummaryGenerator.dependentsClosure`.
+  - `writeSdkSummary` writes the SDK summary; `clearCache` removes every file
+    of the partition.
+  - `generateMissingSummaries` takes the graph and fingerprints it is given
+    (`directDependencyGraph:`, `fingerprints:`) or computes them.
+- **Bundles no run uses are swept by age.** A run marks every bundle it loads
+  as used (`SummaryCacheManager.markUsed`, the file's modification time);
+  `AnalyzerCacheGarbageCollector.sweepBundles` removes, in every partition, the
+  files unused since a cutoff (bundles of closures no project resolves any
+  more, temp files of an interrupted write, files of an older layout), and
+  `analyzer_cache_gc clean --older-than <days>` runs it after the partition
+  sweep. `SweptCacheFile` describes a removed file.
+- `analyzer_cache_gc --version` reports the package version again (it was
+  left at 0.7.5).
+- The stage's verbose trace reads `using {package}@{version} from cache at
+  <path>`.
+
 ## 0.12.0
 
 - **A cached summary is complete, or it is not cached.** Two processes (or

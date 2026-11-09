@@ -132,8 +132,13 @@ class SummaryGenerator {
   /// from the bundle, or an import of the package's own or a declared
   /// dependency's library that cannot be resolved (its summary is not among
   /// [librarySummaryPaths]).
+  ///
+  /// [fingerprint] describes the dependency closure the bundle is linked
+  /// against ([computeDependencyFingerprints]); it is part of the bundle's
+  /// file name (SummaryCacheManager.getCachePath).
   Future<bool> generateSummary(
     PackageDependency dependency, {
+    required String fingerprint,
     String? sdkSummaryPath,
     List<String>? librarySummaryPaths,
   }) async {
@@ -142,7 +147,11 @@ class SummaryGenerator {
     }
 
     // Check if already cached
-    if (await cacheManager.hasSummary(dependency.name, dependency.version)) {
+    if (await cacheManager.hasSummary(
+      dependency.name,
+      dependency.version,
+      fingerprint: fingerprint,
+    )) {
       return false;
     }
 
@@ -195,6 +204,7 @@ class SummaryGenerator {
       dependency.name,
       dependency.version,
       summaryBytes,
+      fingerprint: fingerprint,
     );
 
     final sizeKB = (summaryBytes.length / 1024).toStringAsFixed(1);
@@ -243,11 +253,7 @@ class SummaryGenerator {
       embedderYamlPath: embedderYamlPath,
     );
 
-    await cacheManager.writeSummary(
-      'sdk',
-      cacheManager.dartSdkVersion,
-      summaryBytes,
-    );
+    await cacheManager.writeSdkSummary(summaryBytes);
 
     final sizeKB = (summaryBytes.length / 1024).toStringAsFixed(1);
     stdout.writeln('  Cached SDK summary ($sizeKB KB)');
@@ -267,15 +273,29 @@ class SummaryGenerator {
   ///
   /// Skips dependencies that are already cached or not cacheable.
   /// Continues processing on individual failures, collecting errors.
+  ///
+  /// Every bundle is looked up and written under its closure's fingerprint
+  /// ([computeDependencyFingerprints]); pass [directDependencyGraph] and
+  /// [fingerprints] when the caller has them already.
   Future<SummaryGenerationResult> generateMissingSummaries(
     List<PackageDependency> dependencies, {
     String? sdkSummaryPath,
     void Function(String package, int current, int total)? onProgress,
+    Map<String, Set<String>>? directDependencyGraph,
+    Map<String, String>? fingerprints,
   }) async {
     final cacheable = dependencies.where((d) => d.isCacheable).toList();
 
     // Build topological generation order so dependencies come first
-    final graph = await buildDirectDependencyGraph(cacheable);
+    final graph =
+        directDependencyGraph ?? await buildDirectDependencyGraph(cacheable);
+    final closureOf =
+        fingerprints ??
+        await computeDependencyFingerprints(
+          cacheable,
+          directDependencyGraph: graph,
+        );
+    String fingerprintOf(String name) => closureOf[name] ?? '';
     final ordered = await _buildGenerationOrder(
       cacheable,
       directDependencyGraph: graph,
@@ -294,10 +314,15 @@ class SummaryGenerator {
     // (tom_forge later21).
     final availableSummaries = <String, String>{};
     for (final dep in cacheable) {
-      if (await cacheManager.hasSummary(dep.name, dep.version)) {
+      if (await cacheManager.hasSummary(
+        dep.name,
+        dep.version,
+        fingerprint: fingerprintOf(dep.name),
+      )) {
         availableSummaries[dep.name] = cacheManager.getCachePath(
           dep.name,
           dep.version,
+          fingerprint: fingerprintOf(dep.name),
         );
       }
     }
@@ -313,10 +338,15 @@ class SummaryGenerator {
 
       // Check if already cached — by this pass, an earlier one, or another
       // process sharing the partition.
-      if (await cacheManager.hasSummary(dep.name, dep.version)) {
+      if (await cacheManager.hasSummary(
+        dep.name,
+        dep.version,
+        fingerprint: fingerprintOf(dep.name),
+      )) {
         availableSummaries[dep.name] = cacheManager.getCachePath(
           dep.name,
           dep.version,
+          fingerprint: fingerprintOf(dep.name),
         );
         skipped++;
         continue;
@@ -344,18 +374,23 @@ class SummaryGenerator {
       }
 
       // Link only against final bundles: every package in the dependency
-      // closure must have one now. A dependency without one (deleted by
-      // another process's invalidation meanwhile, or in a cycle not yet
-      // built) would be resolved from nowhere.
+      // closure must have one now. A dependency without one (in a cycle not
+      // yet built, or removed by `clearCache` / the age sweep meanwhile)
+      // would be resolved from nowhere.
       final missing = <String>[];
       for (final name in dependencyClosure(graph, dep.name)) {
         if (name == dep.name || availableSummaries.containsKey(name)) continue;
         final other = nameToDep[name];
         if (other != null &&
-            await cacheManager.hasSummary(other.name, other.version)) {
+            await cacheManager.hasSummary(
+              other.name,
+              other.version,
+              fingerprint: fingerprintOf(name),
+            )) {
           availableSummaries[name] = cacheManager.getCachePath(
             other.name,
             other.version,
+            fingerprint: fingerprintOf(name),
           );
           continue;
         }
@@ -374,6 +409,7 @@ class SummaryGenerator {
       try {
         final success = await generateSummary(
           dep,
+          fingerprint: fingerprintOf(dep.name),
           sdkSummaryPath: sdkSummaryPath,
           librarySummaryPaths: availableSummaries.isNotEmpty
               ? availableSummaries.values.toList()
@@ -385,6 +421,7 @@ class SummaryGenerator {
           availableSummaries[dep.name] = cacheManager.getCachePath(
             dep.name,
             dep.version,
+            fingerprint: fingerprintOf(dep.name),
           );
         } else {
           skipped++;
@@ -440,13 +477,16 @@ class SummaryGenerator {
   /// transitive cacheable dependency closure under the current resolution.
   /// Two runs that resolve the same closure produce the same fingerprint; a
   /// version change anywhere in a package's closure changes its fingerprint,
-  /// which invalidates the cached summary even though the package's own
-  /// `name@version` (and hence its `.sum` filename) is unchanged.
+  /// and with it the bundle's file name (SummaryCacheManager.getCachePath),
+  /// though the package's own `name@version` is unchanged. Each closure has
+  /// its own bundle, which stays valid for as long as it exists.
   ///
   /// This is what prevents the "stale transitive dependency" cache poison: a
-  /// bundle such as `tom_crypto@1.0.0.sum` linked against `tom_basics@1.0.0`
-  /// must be regenerated once `tom_basics` resolves to `1.0.1`, or loading it
-  /// fails with "Missing library" for the moved source file.
+  /// `tom_crypto@1.0.0` bundle linked against `tom_basics@1.0.0` is never
+  /// loaded once `tom_basics` resolves to `1.0.1` (loading it fails with
+  /// "Missing library" for a moved source file); the new closure gets its
+  /// own bundle. A version change is also how dependents follow: their
+  /// closures contain the changed package, so their names change too.
   ///
   /// Dependency edges come from each package's `pubspec.yaml` `dependencies`
   /// section (see [_readPackageDependencies]); versions come from the resolved
@@ -489,8 +529,7 @@ class SummaryGenerator {
   /// over the packages we actually cache.
   ///
   /// This is the single source of the dependency graph reused by
-  /// [computeDependencyFingerprints], [_buildGenerationOrder], and the
-  /// stale-set cascade in the summary-cache stage.
+  /// [computeDependencyFingerprints] and [_buildGenerationOrder].
   Future<Map<String, Set<String>>> buildDirectDependencyGraph(
     List<PackageDependency> dependencies,
   ) async {
@@ -520,40 +559,6 @@ class SummaryGenerator {
       final next = queue.removeLast();
       if (result.add(next)) {
         queue.addAll(directDeps[next] ?? const <String>{});
-      }
-    }
-    return result;
-  }
-
-  /// Expands [seeds] to include every package that transitively depends on any
-  /// seed, following the reverse of [directDeps].
-  ///
-  /// Given `directDeps[A] = {B}` (A depends on B) and `seeds = {B}`, the result
-  /// is `{B, A}`: B is stale, and A — linked against B's old layout — must be
-  /// regenerated too. This is what makes the summary-cache invalidation
-  /// *closure-complete*: deleting a stale bundle without deleting its
-  /// dependents would leave those dependents referencing a bundle that was just
-  /// removed, which the analyzer reports as "Missing library" when it links
-  /// them. A pure function (no I/O) so the cascade logic is unit-testable in
-  /// isolation. Cycles are tolerated (the result is a set).
-  static Set<String> dependentsClosure(
-    Map<String, Set<String>> directDeps,
-    Iterable<String> seeds,
-  ) {
-    // Reverse the edges: dependents[B] = {A : A depends on B}.
-    final dependents = <String, Set<String>>{};
-    for (final entry in directDeps.entries) {
-      for (final dep in entry.value) {
-        dependents.putIfAbsent(dep, () => <String>{}).add(entry.key);
-      }
-    }
-
-    final result = <String>{};
-    final queue = <String>[...seeds];
-    while (queue.isNotEmpty) {
-      final next = queue.removeLast();
-      if (result.add(next)) {
-        queue.addAll(dependents[next] ?? const <String>{});
       }
     }
     return result;

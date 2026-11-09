@@ -5,6 +5,10 @@ import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 import 'package:tom_analyzer_shared/tom_analyzer_shared.dart';
 
+/// The closure fingerprint every bundle of this file is cached under: one
+/// fixed value, as the lookups default to it (`fingerprints[name] ?? ''`).
+const _fp = '';
+
 void main() {
   late Directory tempDir;
   late SummaryCacheManager cacheManager;
@@ -42,7 +46,7 @@ void main() {
           path: '/some/path',
         );
 
-        final result = await generator.generateSummary(dep);
+        final result = await generator.generateSummary(dep, fingerprint: _fp);
         expect(result, isFalse);
       });
 
@@ -52,6 +56,7 @@ void main() {
           'cached_pkg',
           '1.0.0',
           Uint8List.fromList([1, 2, 3, 4]),
+          fingerprint: _fp,
         );
 
         const dep = PackageDependency(
@@ -60,12 +65,11 @@ void main() {
           source: 'hosted',
         );
 
-        final result = await generator.generateSummary(dep);
+        final result = await generator.generateSummary(dep, fingerprint: _fp);
         expect(result, isFalse);
       });
 
-      test('throws for a hosted package that is not on disk (SCF32)',
-          () async {
+      test('throws for a hosted package that is not on disk (SCF32)', () async {
         // This used to return false as though the package were EMPTY. That is
         // the answer every hosted package got on Windows, where the pub-cache
         // guess was wrong, and it let dependents be summarised without them.
@@ -78,12 +82,14 @@ void main() {
         );
 
         expect(
-          () => generator.generateSummary(dep),
-          throwsA(isA<StateError>().having(
-            (e) => e.message,
-            'message',
-            contains('not found at'),
-          )),
+          () => generator.generateSummary(dep, fingerprint: _fp),
+          throwsA(
+            isA<StateError>().having(
+              (e) => e.message,
+              'message',
+              contains('not found at'),
+            ),
+          ),
         );
       });
 
@@ -99,7 +105,7 @@ void main() {
         // getSdkPackagePath returns null for unknown SDKs
         // generateSummary throws StateError when path is null
         expect(
-          () => generator.generateSummary(dep),
+          () => generator.generateSummary(dep, fingerprint: _fp),
           throwsA(isA<StateError>()),
         );
       });
@@ -109,9 +115,15 @@ void main() {
       test('returns all skipped for non-cacheable deps', () async {
         final deps = [
           const PackageDependency(
-              name: 'local', version: '1.0.0', source: 'path'),
+            name: 'local',
+            version: '1.0.0',
+            source: 'path',
+          ),
           const PackageDependency(
-              name: 'remote', version: '1.0.0', source: 'git'),
+            name: 'remote',
+            version: '1.0.0',
+            source: 'git',
+          ),
         ];
 
         final result = await generator.generateMissingSummaries(deps);
@@ -126,11 +138,16 @@ void main() {
           'cached',
           '1.0.0',
           Uint8List.fromList([1, 2, 3]),
+          // No dependencies: the closure is the format line alone.
+          fingerprint: SummaryGenerator.fingerprintFormat,
         );
 
         final deps = [
           const PackageDependency(
-              name: 'cached', version: '1.0.0', source: 'hosted'),
+            name: 'cached',
+            version: '1.0.0',
+            source: 'hosted',
+          ),
         ];
 
         final result = await generator.generateMissingSummaries(deps);
@@ -139,33 +156,42 @@ void main() {
         expect(result.failed, equals(0));
       });
 
-      test('counts a hosted package missing from disk as failed (SCF32)',
-          () async {
-        // getHostedPackagePath returns a path, but the package doesn't exist
-        // on disk: that is a failure, not a package with no libraries.
-        final deps = [
-          const PackageDependency(
-            name: 'nonexistent_xyz',
-            version: '99.0.0',
-            source: 'hosted',
-            hostedUrl: 'https://pub.dev',
-          ),
-        ];
+      test(
+        'counts a hosted package missing from disk as failed (SCF32)',
+        () async {
+          // getHostedPackagePath returns a path, but the package doesn't exist
+          // on disk: that is a failure, not a package with no libraries.
+          final deps = [
+            const PackageDependency(
+              name: 'nonexistent_xyz',
+              version: '99.0.0',
+              source: 'hosted',
+              hostedUrl: 'https://pub.dev',
+            ),
+          ];
 
-        final result = await generator.generateMissingSummaries(deps);
-        expect(result.skipped, equals(0));
-        expect(result.generated, equals(0));
-        expect(result.failed, equals(1));
-        expect(result.errors['nonexistent_xyz'], contains('not found at'));
-      });
+          final result = await generator.generateMissingSummaries(deps);
+          expect(result.skipped, equals(0));
+          expect(result.generated, equals(0));
+          expect(result.failed, equals(1));
+          expect(result.errors['nonexistent_xyz'], contains('not found at'));
+        },
+      );
 
       test('calls progress callback', () async {
         await cacheManager.writeSummary(
-          'a', '1.0.0', Uint8List.fromList([1]));
+          'a',
+          '1.0.0',
+          Uint8List.fromList([1]),
+          fingerprint: _fp,
+        );
 
         final deps = [
           const PackageDependency(
-              name: 'a', version: '1.0.0', source: 'hosted'),
+            name: 'a',
+            version: '1.0.0',
+            source: 'hosted',
+          ),
         ];
 
         final progress = <String>[];
@@ -186,6 +212,8 @@ void main() {
           'cached_a',
           '1.0.0',
           Uint8List.fromList([1, 2]),
+          // No dependencies: the closure is the format line alone.
+          fingerprint: SummaryGenerator.fingerprintFormat,
         );
 
         final deps = [
@@ -210,32 +238,34 @@ void main() {
         expect(result.generated, equals(0));
       });
 
-      test('processes packages independently (no circular dependency issue)',
-          () async {
-        // Packages that might depend on each other in reality are each
-        // analyzed independently — each gets its own AnalysisContextCollection.
-        // This means circular transitive dependencies between packages
-        // can't cause infinite loops during summary generation.
-        final deps = [
-          const PackageDependency(
-            name: 'nonexistent_a',
-            version: '1.0.0',
-            source: 'hosted',
-            hostedUrl: 'https://pub.dev',
-          ),
-          const PackageDependency(
-            name: 'nonexistent_b',
-            version: '1.0.0',
-            source: 'hosted',
-            hostedUrl: 'https://pub.dev',
-          ),
-        ];
+      test(
+        'processes packages independently (no circular dependency issue)',
+        () async {
+          // Packages that might depend on each other in reality are each
+          // analyzed independently — each gets its own AnalysisContextCollection.
+          // This means circular transitive dependencies between packages
+          // can't cause infinite loops during summary generation.
+          final deps = [
+            const PackageDependency(
+              name: 'nonexistent_a',
+              version: '1.0.0',
+              source: 'hosted',
+              hostedUrl: 'https://pub.dev',
+            ),
+            const PackageDependency(
+              name: 'nonexistent_b',
+              version: '1.0.0',
+              source: 'hosted',
+              hostedUrl: 'https://pub.dev',
+            ),
+          ];
 
-        // Should complete without hanging — each package is processed
-        // sequentially and independently
-        final result = await generator.generateMissingSummaries(deps);
-        expect(result.total, equals(2));
-      });
+          // Should complete without hanging — each package is processed
+          // sequentially and independently
+          final result = await generator.generateMissingSummaries(deps);
+          expect(result.total, equals(2));
+        },
+      );
     });
   });
 
