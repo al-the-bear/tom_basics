@@ -116,19 +116,11 @@ class TomWorkspaceClone {
   final Set<String> _fresh = {};
 
   /// The live workspace above [from] (default: the current directory): the
-  /// nearest directory holding both `.tom_metadata/` and `tom_workspace.yaml`,
-  /// or null.
-  ///
-  /// Stricter than [tomFindWorkspaceRoot]: tools write a `.tom_metadata/`
-  /// state folder into whatever directory they run in (seen in `tom_ai/` and
-  /// `_scripts/` of the live tree), and a clone of one of those would be made
-  /// inside the live workspace. `tom_workspace.yaml` is tracked and sits only
-  /// at the root.
+  /// nearest directory holding both `.tom_metadata/` and `tom_workspace.yaml`
+  /// ([tomFindWorkspaceRoot]), or null. A stray `.tom_metadata/` below the
+  /// root would otherwise put the clone inside the live workspace.
   static Directory? findLiveRoot({Directory? from}) =>
-      tomFindUp(from ?? Directory.current, (dir) {
-        return Directory(p.join(dir.path, tomWorkspaceMarker)).existsSync() &&
-            File(p.join(dir.path, 'tom_workspace.yaml')).existsSync();
-      });
+      tomFindWorkspaceRoot(from: from);
 
   /// Where the clone of [liveRoot] lives: [tomTestWorkspaceEnv] when set,
   /// else `<parent>/<name>_testclone`.

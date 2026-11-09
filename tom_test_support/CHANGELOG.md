@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.6.1
+
+- `tomFindWorkspaceRoot` (and so `tomWorkspaceZtmp`) needs `tom_workspace.yaml`
+  beside `.tom_metadata/`: a `.tom_metadata/` alone is a state folder a tool
+  wrote into the directory it ran in (`tom_ai/`, `_scripts/` of the live tree),
+  and the walk used to stop there, putting a suite's ztmp inside the tree.
+  `tomWorkspaceFile` names the file. `TomWorkspaceClone.findLiveRoot` is now
+  `tomFindWorkspaceRoot`. Test TSUP-ROOT-6.
+
 ## 0.6.0
 
 - `workspace_clone.dart`: `TomWorkspaceClone`, the clone of the workspace the

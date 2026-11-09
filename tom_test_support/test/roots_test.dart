@@ -45,12 +45,16 @@ void main() {
         Directory(p.join(workspace.path, tomWorkspaceMarker)).existsSync(),
         isTrue,
       );
+      expect(
+        File(p.join(workspace.path, tomWorkspaceFile)).existsSync(),
+        isTrue,
+      );
       final repository = tomFindRepositoryRoot().path;
       expect(
         p.equals(workspace.path, repository) ||
             p.isWithin(workspace.path, repository),
         isTrue,
-        reason: 'a repository may itself be a workspace root (tom_ai is one)',
+        reason: 'a repository may itself be a workspace root',
       );
       expect(tomWorkspaceZtmp().path, p.join(workspace.path, 'ztmp'));
     });
@@ -69,6 +73,38 @@ void main() {
             contains(tomRepositoryMarker),
           ),
         ),
+      );
+    });
+
+    test('TSUP-ROOT-6: a stray .tom_metadata/ without tom_workspace.yaml '
+        'beside it is not the workspace root [2026-11-09]', () {
+      // Tools wrote `.tom_metadata/` state folders into the directories they
+      // ran in (`tom_ai/`, `_scripts/`); taking one for the root put a suite's
+      // ztmp, and once a workspace clone, inside the live tree.
+      final scratch = Directory(
+        p.join(Directory.current.path, '.dart_tool', 'roots_test_stray'),
+      );
+      if (scratch.existsSync()) scratch.deleteSync(recursive: true);
+      addTearDown(() {
+        if (scratch.existsSync()) scratch.deleteSync(recursive: true);
+      });
+      final workspace = Directory(p.join(scratch.path, 'ws'));
+      Directory(p.join(workspace.path, tomWorkspaceMarker))
+          .createSync(recursive: true);
+      File(p.join(workspace.path, tomWorkspaceFile)).writeAsStringSync('');
+      final stray = Directory(p.join(workspace.path, 'tom_ai'));
+      Directory(p.join(stray.path, tomWorkspaceMarker))
+          .createSync(recursive: true);
+      final start = Directory(p.join(stray.path, 'basics', 'pkg'))
+        ..createSync(recursive: true);
+
+      expect(
+        tomFindWorkspaceRoot(from: start)!.path,
+        workspace.absolute.path,
+      );
+      expect(
+        tomWorkspaceZtmp(from: start).path,
+        p.join(workspace.absolute.path, 'ztmp'),
       );
     });
 
