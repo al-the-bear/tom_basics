@@ -1,4 +1,12 @@
-## Unreleased
+## 1.13.1
+
+### Changed — `dcli` ^10.4.7
+
+`dcli: ^10.4.7` (from ^10.0.0), the version this package is tested on. 1.13.0
+had to admit 10.0.0 because `tom_d4rt_dcli` pinned `pubspec_manager ^3.2.1`,
+which only dcli 10.0.0 accepts; `tom_d4rt_dcli` 1.14.0 and `tom_dcli_exec`
+1.15.0 are on dcli ^10.4.7 / `pubspec_manager` ^4.1.0, so a package taking
+both now resolves dcli 10.4.7.
 
 ### Tests run on the workspace clone
 
@@ -6,7 +14,7 @@ The integration suites run on the machine's workspace clone (tom_test_support
 0.6.0 `TomWorkspaceClone`, a full clone with every submodule beside the
 workspace) instead of a skeleton copy of descriptor files. The clone is
 created on first use, brought to the live repositories' commits before a run
-and reset after it. Test-only; the published package is unchanged. See
+and reset after it. Test-only: the library is unchanged by it. See
 `_copilot_guidelines/testing.md`.
 
 ## 1.13.0
