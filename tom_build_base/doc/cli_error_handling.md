@@ -71,7 +71,6 @@ and `issuekit` set `exitCode`. Both produced exit code 1, but the hard exit was
 output-buffering zone. Aligning all three on `exitCode = 1; return` makes
 failure semantics identical and flush-safe.
 
-A future base-first refactor may fold the "run → print summary → set exitCode"
-tail into a single shared `ToolRunner` helper so entrypoints cannot drift again
-— tracked as quest todo **AF1** in
-`_ai/quests/cli_tools/todos.cli_tools.todo.yaml`.
+The "run → print summary → set exitCode" tail is one shared helper,
+`ToolRunner.runToCompletion`, which buildkit, testkit and issuekit call, so
+their entrypoints cannot drift apart again.

@@ -8,7 +8,8 @@
 /// buildkit.yaml opts out of being compiled by a running buildkit — resolving
 /// the Windows self-overwrite file lock (buildkit/tom_bs cannot overwrite their
 /// own in-use .exe). The skip is a configured success, not a failure. See
-/// tool_run_analysis §b.5 / §b.7 and cli_tools todo #15.
+/// tool_run_analysis §b.5 / §b.7 and tool_run_analysis_todos.md #15 (build_tom quest,
+/// cli_tools/).
 ///
 /// Test IDs: CMP_SKIP01–CMP_SKIP09
 @TestOn('!browser')

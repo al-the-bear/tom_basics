@@ -1,5 +1,5 @@
 # yaml-schema: https://tom.ai/schemas/yaml/todo.schema.json
-quest: cli_tools
+quest: build_tom
 scope:
   project: tom_build_base
   files:

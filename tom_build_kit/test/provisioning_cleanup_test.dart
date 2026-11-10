@@ -5,8 +5,8 @@ import 'package:test/test.dart';
 
 import 'helpers/test_workspace.dart';
 
-/// Regression coverage for the `_build` provisioning lifecycle (cli_tools
-/// quest, tool_run_analysis_todos.md #20).
+/// Regression coverage for the `_build` provisioning lifecycle (build_tom
+/// quest, cli_tools/tool_run_analysis_todos.md #20).
 ///
 /// The buildkit integration suite copies a `_build` project to the workspace
 /// root for each test and removes it afterwards. Two invariants must hold so
