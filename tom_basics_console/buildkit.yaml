@@ -1,0 +1,3 @@
+# Regenerate lib/src/version.versioner.dart (TomVersionInfo) with buildkit :versioner;
+# _bin/check_version_stamps.py holds it to the pubspec version.
+versioner: {}

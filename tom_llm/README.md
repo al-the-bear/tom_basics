@@ -1,6 +1,6 @@
 # tom_llm
 
-Published on pub.dev as [`tom_llm` 0.1.0](https://pub.dev/packages/tom_llm).
+Published on pub.dev as [`tom_llm` 0.1.1](https://pub.dev/packages/tom_llm).
 
 > **Attribution.** The Tom Framework is developed by Peter Nicolai Alexis Kyaw.
 > These packages are BSD-3-Clause licensed and published on pub.dev.
@@ -66,7 +66,7 @@ Add it from pub.dev:
 
 ```yaml
 dependencies:
-  tom_llm: ^0.1.0
+  tom_llm: ^0.1.1
 ```
 
 Dart SDK `^3.10.0`. No Flutter dependency. The default entry point,
@@ -170,7 +170,7 @@ Future<void> main() async {
 
 ## Status
 
-Version **0.1.0**. `dart test` runs the unit suite — the value types, the run
+Version **0.1.1**. `dart test` runs the unit suite — the value types, the run
 events and their round trip through a map, the account, sessions and the
 trail fold, the live-trail file held to fixtures the VS Code extension's own
 writer produced (`tool/live_trail_fixture/generate.js` regenerates them), the

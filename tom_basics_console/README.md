@@ -74,7 +74,7 @@ Flutter target, the equivalent implementation lives in `tom_core_flutter`.
 
 ```yaml
 dependencies:
-  tom_basics_console: ^1.0.0
+  tom_basics_console: ^1.0.1
 ```
 
 ```bash
@@ -375,7 +375,7 @@ the [samples learning path](../README.md#samples-learning-path).
 
 ## Status
 
-- **Version:** 1.0.0
+- **Version:** 1.0.1
 - **SDK:** Dart `^3.10.4`
 - **Tests:** none yet (the standalone implementation is exercised through
   consuming packages and the `tom_basics_console_sample`); the package ships a

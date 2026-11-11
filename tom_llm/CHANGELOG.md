@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.1
+
+### Documentation
+
+- `LlmSessionBusyException` says when it is raised: an app whose user starts runs
+  refuses a second run of a session rather than queueing it, and a backend
+  serving its own lanes may queue instead and then never raises it.
+
 ## 0.1.0
 
 ### Package

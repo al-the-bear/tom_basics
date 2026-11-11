@@ -59,16 +59,15 @@ rather than a hand-written Markdown parser, so marker grammar and edge cases
 
 ## Installation
 
-This is a **workspace-internal** package (`publish_to: none`); it is consumed by
-path, not from pub.dev:
+It is on [pub.dev](https://pub.dev/packages/tom_markdown_merge):
 
 ```yaml
 dependencies:
-  tom_markdown_merge:
-    path: ../../basics/tom_markdown_merge
+  tom_markdown_merge: ^1.0.0
 ```
 
-It depends (by path) on
+Inside the Tom workspace packages take it by path, as they take each other. It
+depends on
 [`tom_doc_specs`](../../ai_build/tom_doc_specs/), which provides the
 insert-marker engine. Requires the Dart SDK `^3.10.4`. Pure Dart — no Flutter,
 no I/O of its own (you read and write the files).
@@ -329,5 +328,5 @@ regions of the READMEs and doc pages they produce.
 ## Status
 
 Stable (`1.0.0`). The public surface is a single stateless class; all 19 tests
-pass and `dart analyze` is clean. Workspace-internal (`publish_to: none`),
+pass and `dart analyze` is clean. Published on pub.dev; inside the workspace
 consumed by path.

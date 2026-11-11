@@ -53,16 +53,16 @@ the single source of truth for "what's in the tree".
 
 ## Installation
 
-This is a **workspace-internal** package (`publish_to: none`); it is consumed by
-path, not from pub.dev:
+It is on [pub.dev](https://pub.dev/packages/tom_package_scanner):
 
 ```yaml
 dependencies:
-  tom_package_scanner:
-    path: ../../basics/tom_package_scanner
+  tom_package_scanner: ^1.0.0
 ```
 
-It depends (by path) on [`tom_build_base`](../tom_build_base) for folder scanning
+Inside the Tom workspace packages take it by path, as they take each other. It
+depends on [`tom_build_base`](https://pub.dev/packages/tom_build_base) (from
+pub.dev) for folder scanning
 and nature detection, plus `path` and `yaml`. Requires the Dart SDK `^3.10.4`.
 The scanner reads the filesystem (`dart:io`) but never spawns a process and never
 touches the network.
@@ -345,7 +345,7 @@ website's license-seed tooling as the single classification source of truth.
 
 ## Status
 
-Stable (`1.0.0`). Workspace-internal (`publish_to: none`), consumed by path. The
+Stable (`1.0.0`). Published on pub.dev; inside the workspace consumed by path. The
 public surface is one engine class plus four value/helper types; all 35 tests
 pass and `dart analyze` is clean. No process calls, no network — the scan is pure
 filesystem reads against the caller-supplied `repoIsPublic` signal.

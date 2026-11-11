@@ -1,6 +1,6 @@
 name: tom_basics_console
 description: Console and standalone platform utilities for Tom applications - platform detection, console output, and HTTP client support.
-version: 1.0.0
+version: 1.0.1
 repository: https://github.com/al-the-bear/tom_basics
 homepage: https://github.com/al-the-bear/tom_basics/tree/main/tom_basics_console
 topics:

@@ -5,7 +5,6 @@ description: >-
   refresh designated regions of a Markdown file without clobbering
   hand-authored prose.
 version: 1.0.0
-publish_to: none
 repository: https://github.com/al-the-bear/tom_basics
 homepage: https://github.com/al-the-bear/tom_basics/tree/main/tom_markdown_merge
 topics:
