@@ -411,6 +411,17 @@ Unit tests for argument parsing and command shorthand resolution.
 | BK-SORT-1 | Dev dependencies do not order by default | ✅ | Two packages, one a dev dependency of the other; `:buildsorter --names` lists them alphabetically. |
 | BK-SORT-2 | `--include-dev` after the command orders by dev dependencies | ✅ | Same fixture with `--include-dev`; the dev dependency comes first. |
 
+### Bootstrap — Shell Setup
+
+**Test file:** `test/bootstrap_binaries_test.dart` (sources `bootstrap_binaries.sh`'s functions in a temporary `HOME`; nothing is built)
+
+| ID | Feature | Status | How to Test |
+|----|---------|--------|-------------|
+| BK-BOOT-1 | zsh users get `~/.zshenv`, bash users `~/.bashrc` | ✅ | `shell_env_files` with `SHELL=/bin/zsh` and `/bin/bash` in an empty `HOME`. |
+| BK-BOOT-2 | The block goes above the interactive guard of `~/.bashrc` | ✅ | Write it into a distribution-style `~/.bashrc`; a non-interactive bash sourcing it gets `TOM_BINARY_PATH` and the platform folder first on `PATH`. |
+| BK-BOOT-3 | A rerun replaces the block, never adds one | ✅ | Write it three times with two paths; one block, the latest path, the rest of the file intact. |
+| BK-BOOT-4 | A non-interactive zsh gets the binaries from `~/.zshenv` | ✅ | `zsh -c` with that `HOME`/`ZDOTDIR` prints the exported values. |
+
 ---
 
 ## 15. Unreferenced — Export Audit

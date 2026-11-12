@@ -90,6 +90,14 @@ dart pub get
 dart run bin/buildkit.dart --help     # or, once on PATH: buildkit --help
 ```
 
+Inside the Tom workspace, `bootstrap_binaries.sh` (`bootstrap_binaries.ps1` on
+Windows) compiles `buildkit` and `findproject` into
+`$TOM_BINARY_PATH/<platform>/` (`~/tac/tom_binaries/tom/<platform>/`), and with
+`--setup-shell` puts that folder on `PATH` for every shell, non-interactive ones
+included (`~/.zshenv`, the top of `~/.bashrc`). `buildkit setup` then builds
+the other tools. The workspace's `_copilot_guidelines/tool_dependencies.md`
+describes the sequence.
+
 A short alias and a `cd`-helper are conventional:
 
 ```bash

@@ -89,25 +89,68 @@ detect_platform() {
     echo "unsupported"
 }
 
-detect_rc_file() {
-    if [[ -n "${ZSH_VERSION:-}" ]] || [[ "${SHELL:-}" == *"zsh" ]]; then
-        echo "$HOME/.zshrc"
-    else
+# The shell startup files that every shell of the user reads — interactive or
+# not, so an agent's tool shell, a script started from an editor and
+# `ssh host 'cmd'` get the binaries too:
+#   zsh  → ~/.zshenv (read by every zsh; ~/.zshrc is interactive only)
+#   bash → ~/.bashrc, at its top: bash reads it for `ssh host 'cmd'`, and a
+#          distribution's ~/.bashrc returns early for non-interactive shells,
+#          so anything below that guard never runs there.
+shell_env_files() {
+    if [[ "${SHELL:-}" == *zsh ]] || [[ -e "$HOME/.zshenv" ]] || [[ -e "$HOME/.zshrc" ]]; then
+        echo "$HOME/.zshenv"
+    fi
+    if [[ "${SHELL:-}" == *bash ]] || [[ -e "$HOME/.bashrc" ]]; then
         echo "$HOME/.bashrc"
     fi
 }
 
-append_if_missing() {
-    local file="$1"
-    local line="$2"
-    touch "$file"
-    if ! grep -Fq "$line" "$file"; then
-        echo "$line" >> "$file"
-        CHANGED_PROFILE=1
-    fi
+ENV_BLOCK_BEGIN="# >>> tom binaries (managed by tom_build_kit/bootstrap_binaries.sh) >>>"
+ENV_BLOCK_END="# <<< tom binaries <<<"
+
+# shell_env_block <tom-binary-path> <platform>
+shell_env_block() {
+    printf '%s\n' "$ENV_BLOCK_BEGIN"
+    printf 'export TOM_BINARY_PATH="%s"\n' "$1"
+    printf 'case ":$PATH:" in *":$TOM_BINARY_PATH/%s:"*) ;; *) export PATH="$TOM_BINARY_PATH/%s:$PATH" ;; esac\n' "$2" "$2"
+    printf '%s\n' "$ENV_BLOCK_END"
 }
 
-PLATFORM="$(detect_platform "${1:-}")"
+# write_shell_env_block <file> <block>
+#
+# Puts <block> at the top of <file>, replacing a block written earlier, and
+# leaves every other line as it was.
+write_shell_env_block() {
+    local file="$1" block="$2" rest
+    touch "$file"
+    rest="$(awk -v b="$ENV_BLOCK_BEGIN" -v e="$ENV_BLOCK_END" '
+        $0 == b { skip = 1; next }
+        skip && $0 == e { skip = 0; next }
+        !skip { print }' "$file")"
+    { printf '%s\n' "$block"; [[ -n "$rest" ]] && printf '%s\n' "$rest"; } > "$file.tom_bootstrap.tmp"
+    mv "$file.tom_bootstrap.tmp" "$file"
+    echo "  Wrote the Tom binaries block to the top of $file"
+    CHANGED_PROFILE=1
+}
+
+# Sourced (by test/bootstrap_binaries_test.dart): define the functions above,
+# run nothing.
+if [[ "${BASH_SOURCE[0]}" != "$0" ]]; then
+    return 0
+fi
+
+PLATFORM_ARG=""
+SETUP_SHELL=""
+for arg in "$@"; do
+    case "$arg" in
+        --setup-shell) SETUP_SHELL=y ;;
+        --no-setup-shell) SETUP_SHELL=n ;;
+        -*) echo "Unknown option: $arg"; echo "Usage: $0 [--setup-shell|--no-setup-shell] [platform]"; exit 2 ;;
+        *) PLATFORM_ARG="$arg" ;;
+    esac
+done
+
+PLATFORM="$(detect_platform "$PLATFORM_ARG")"
 if [[ "$PLATFORM" == "unsupported" ]]; then
     echo "Unsupported platform '$OSTYPE'. Use bootstrap_binaries.ps1 on Windows."
     exit 1
@@ -144,21 +187,9 @@ fi
 
 DEFAULT_TOM_BINARY_PATH="$TAC_LINK/tom_binaries/tom"
 if [[ -z "${TOM_BINARY_PATH:-}" ]]; then
-    warn "TOM_BINARY_PATH is not defined."
-    RC_FILE="$(detect_rc_file)"
-    # Auto-no when non-interactive: don't silently edit a host's rc file. The
-    # fleet build always exports TOM_BINARY_PATH, so this branch isn't reached
-    # there; an interactive user is still offered the convenience.
-    if ask_yes_no "Add TOM_BINARY_PATH=$DEFAULT_TOM_BINARY_PATH to $RC_FILE?" n; then
-        append_if_missing "$RC_FILE" "export TOM_BINARY_PATH=$DEFAULT_TOM_BINARY_PATH"
-        export TOM_BINARY_PATH="$DEFAULT_TOM_BINARY_PATH"
-        CHANGED_ENV=1
-        # shellcheck disable=SC1090
-        source "$RC_FILE" || true
-    else
-        echo "Aborted: TOM_BINARY_PATH is required."
-        exit 1
-    fi
+    warn "TOM_BINARY_PATH is not defined; using $DEFAULT_TOM_BINARY_PATH."
+    export TOM_BINARY_PATH="$DEFAULT_TOM_BINARY_PATH"
+    CHANGED_ENV=1
 fi
 
 EXPECTED_PLATFORM_DIR="$TOM_BINARY_PATH/$PLATFORM"
@@ -173,19 +204,32 @@ if [[ ! -d "$EXPECTED_PLATFORM_DIR" ]]; then
     fi
 fi
 
-if [[ ":$PATH:" != *":$EXPECTED_PLATFORM_DIR:"* ]]; then
-    warn "$EXPECTED_PLATFORM_DIR is not in PATH"
-    RC_FILE="$(detect_rc_file)"
-    # Optional convenience: the build addresses binaries by absolute path via
-    # TOM_BINARY_PATH, so PATH is not needed for it to succeed. Auto-no when
-    # non-interactive — skip the rc edit rather than hang on the prompt.
-    if ask_yes_no "Add $EXPECTED_PLATFORM_DIR to PATH in $RC_FILE?" n; then
-        append_if_missing "$RC_FILE" "export PATH=\"\$PATH:$EXPECTED_PLATFORM_DIR\""
-        export PATH="$PATH:$EXPECTED_PLATFORM_DIR"
-        CHANGED_PATH=1
-        # shellcheck disable=SC1090
-        source "$RC_FILE" || true
+# TOM_BINARY_PATH and the platform directory on PATH, for every shell: the
+# tools (testkit, buildkit, dcli, ...) are run by scripts and agents in
+# non-interactive shells as much as by hand. The build itself addresses the
+# binaries through TOM_BINARY_PATH and does not need this, so a non-interactive
+# run (the fleet build over SSH) leaves the startup files alone unless it is
+# given --setup-shell.
+ENV_BLOCK="$(shell_env_block "$TOM_BINARY_PATH" "$PLATFORM")"
+for env_file in $(shell_env_files); do
+    if [[ "$(head -n 4 "$env_file" 2>/dev/null)" == "$ENV_BLOCK" ]]; then
+        continue
     fi
+    case "$SETUP_SHELL" in
+        y) write_shell_env_block "$env_file" "$ENV_BLOCK" ;;
+        n) warn "$env_file does not put the Tom binaries on PATH (--no-setup-shell)" ;;
+        *)
+            if ask_yes_no "Put TOM_BINARY_PATH and $EXPECTED_PLATFORM_DIR on PATH in $env_file (read by every shell)?" n; then
+                write_shell_env_block "$env_file" "$ENV_BLOCK"
+            else
+                warn "$env_file does not put the Tom binaries on PATH; rerun with --setup-shell"
+            fi
+            ;;
+    esac
+done
+if [[ ":$PATH:" != *":$EXPECTED_PLATFORM_DIR:"* ]]; then
+    export PATH="$EXPECTED_PLATFORM_DIR:$PATH"
+    CHANGED_PATH=1
 fi
 
 OUTPUT_DIR="$EXPECTED_PLATFORM_DIR"
