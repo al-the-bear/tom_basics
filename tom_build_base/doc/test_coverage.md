@@ -55,7 +55,8 @@ This document lists all testable features across `tom_build_base` and tracks tes
 | 40 | [CI Process Runner](#40-ci-process-runner) | 4 | 4✅ | `ci/ci_process_test.dart` | [→](#40-ci-process-runner) |
 | 41 | [CI Run, Summary and Tool](#41-ci-run-summary-and-tool) | 14 | 14✅ | `ci/ci_run_test.dart` | [→](#41-ci-run-summary-and-tool) |
 | 42 | [Flutter Package Check](#42-flutter-package-check) | 8 | 8✅ | `v2/traversal/flutter_package_test.dart` | [→](#42-flutter-package-check) |
-| — | **Total** | **965** | **965✅** | | |
+| 43 | [Context Boundaries](#43-context-boundaries) | 14 | 14✅ | `v2/boundaries/context_boundaries_test.dart` | [→](#43-context-boundaries) |
+| — | **Total** | **979** | **979✅** | | |
 
 > Every row links to a section, and the counts are measured from
 > `dart test --reporter json -j 1` rather than maintained by hand. Run it
@@ -895,6 +896,32 @@ detector, `ci.dart` and the tools (testkit's choice of `flutter test`) share.
 
 ---
 
+## 43. Context Boundaries
+
+**Test file:** `test/v2/boundaries/context_boundaries_test.dart`
+
+`checkContextBoundaries` over fixture packages (two contexts and shared code, written to a temporary folder), and the
+directive scanner it reads imports with.
+
+| ID | Feature | Status | Description |
+|----|---------|--------|-------------|
+| BB-CB-1 | Directives | ✅ | Imports, exports, parts, `part of` and conditional imports, with their URIs and lines. |
+| BB-CB-2 | Comments and strings | ✅ | A directive inside a comment, a string or an interpolation does not count. |
+| BB-CB-3 | Clean package | ✅ | Public entries, shared code and a part file: clean, with library and import counts. |
+| BB-CB-4 | `internal-import` | ✅ | Importing another context's internal library names file, line, imported library and context. |
+| BB-CB-5 | `undeclared-dependency` | ✅ | Importing a context not in `dependsOn`, even its public entry. |
+| BB-CB-6 | Exports | ✅ | An export crosses a boundary like an import. |
+| BB-CB-7 | Part files | ✅ | A part file's imports belong to its library's context. |
+| BB-CB-8 | Shared code | ✅ | Libraries no context claims import and are imported freely. |
+| BB-CB-9 | Rotted rules | ✅ | A glob, a public entry and a dependency that match nothing are rule errors. |
+| BB-CB-10 | Overlap | ✅ | A library two contexts claim is a rule error. |
+| BB-CB-11 | No rules | ✅ | Not measured, never clean. |
+| BB-CB-12 | Invalid section | ✅ | A section without contexts, or a context defined twice. |
+| BB-CB-13 | Tests | ✅ | `test/` is read only when asked; its context globs can rot too. |
+| BB-CB-14 | JSON | ✅ | The report renders every finding with file, line and imported library. |
+
+---
+
 ## Test Gaps & Potential Additions
 
 The current test suite is comprehensive. Areas where additional tests could be valuable:
@@ -907,4 +934,4 @@ The current test suite is comprehensive. Areas where additional tests could be v
 | `--dump-definitions` output format | Tested in ToolRunner | Validate complete YAML structure | Low |
 | ConfigLoader with nested `@{...}` in `@[...]` | ✅ Recursive test exists | Additional nesting depth scenarios | Low |
 
-Overall coverage assessment: **Excellent — 965 tests covering all features.**
+Overall coverage assessment: **Excellent — 979 tests covering all features.**

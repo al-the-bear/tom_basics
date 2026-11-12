@@ -126,6 +126,8 @@ server, and CLI hosts, not the web.
 | `TomBuildConfig` | class | Two-tier `…_master.yaml` + project-level config loading |
 | `HelpGenerator` / `CompletionGenerator` | class | Auto-generated help and shell completion |
 | `yamlToMap` / `yamlListToList` / `toStringList` | function | YAML-node conversion helpers |
+| `checkContextBoundaries` / `ContextBoundaryRules` / `BoundaryReport` | function / class | The context-boundary check: a package's bounded contexts (`boundaries:` in its `buildkit.yaml`) against its import/export graph; buildkit runs it as `:boundaries` |
+| `scanDartDirectives` | function | The `import` / `export` / `part` directives of a source file, without the analyzer |
 | `isFlutterPackage` / `pubspecDeclaresFlutterSdk` | function | Whether a package declares the Flutter SDK (`dependencies: flutter: sdk: flutter`); the one rule the nature detector, `ci.dart` and the tools share |
 | `MkLinkExecutor` / `createSymLink` | API | Cross-platform symlink creation for tool commands |
 

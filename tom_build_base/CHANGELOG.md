@@ -1,3 +1,22 @@
+## 2.21.0
+
+### Added — the context-boundary check
+
+A package built as several bounded contexts keeps them apart only by
+convention. `checkContextBoundaries` reads the contexts from a `boundaries:`
+section of the package's `buildkit.yaml` (the libraries forming each context as
+globs under `lib/`, its public entries, the contexts it may depend on, and
+optionally its tests under `test/`) and checks the package's import and export
+graph against them: an import of another context's internal library
+(`internal-import`), or of a context not in `dependsOn`
+(`undeclared-dependency`), is a violation naming file, line and imported
+library. A rule that matches nothing, a library two contexts claim, an unknown
+dependency or an invalid section is a rule error, so a rotted rule is reported
+rather than skipped; a package without the section is not measured, never
+clean. `scanDartDirectives` reads the directives without the analyzer,
+ignoring comments and strings. buildkit runs the check as `:boundaries`.
+Tests BB-CB-1..14.
+
 ## 2.20.1
 
 ### Changed — `-r` / `--recursive` says what it does
