@@ -30,7 +30,7 @@ This document lists all testable features across `tom_build_base` and tracks tes
 | 15 | [ToolRunner](#15-toolrunner) | 64 | 64✅ | `v2/core/tool_runner_test.dart` | [→](#15-toolrunner) |
 | 16 | [ToolRunner — Nested Tools](#16-toolrunner--nested-tools) | 20 | 20✅ | `v2/core/tool_runner_nested_test.dart` | [→](#16-toolrunner--nested-tools) |
 | 17 | [Nested Tool Executor](#17-nested-tool-executor) | 16 | 16✅ | `v2/core/nested_tool_executor_test.dart` | [→](#17-nested-tool-executor) |
-| 18 | [Folder Scanner](#18-folder-scanner) | 19 | 19✅ | `v2/traversal/folder_scanner_test.dart` | [→](#18-folder-scanner) |
+| 18 | [Folder Scanner](#18-folder-scanner) | 23 | 23✅ | `v2/traversal/folder_scanner_test.dart` | [→](#18-folder-scanner) |
 | 19 | [Nature Detector](#19-nature-detector) | 38 | 38✅ | `v2/traversal/nature_detector_test.dart` | [→](#19-nature-detector) |
 | 20 | [Nature Filter](#20-nature-filter) | 20 | 20✅ | `v2/traversal/nature_filter_test.dart` | [→](#20-nature-filter) |
 | 21 | [Filter Pipeline](#21-filter-pipeline) | 44 | 44✅ | `v2/traversal/filter_pipeline_test.dart` | [→](#21-filter-pipeline) |
@@ -54,7 +54,7 @@ This document lists all testable features across `tom_build_base` and tracks tes
 | 39 | [CI Lock](#39-ci-lock) | 4 | 4✅ | `ci/ci_lock_test.dart` | [→](#39-ci-lock) |
 | 40 | [CI Process Runner](#40-ci-process-runner) | 4 | 4✅ | `ci/ci_process_test.dart` | [→](#40-ci-process-runner) |
 | 41 | [CI Run, Summary and Tool](#41-ci-run-summary-and-tool) | 14 | 14✅ | `ci/ci_run_test.dart` | [→](#41-ci-run-summary-and-tool) |
-| — | **Total** | **953** | **953✅** | | |
+| — | **Total** | **957** | **957✅** | | |
 
 > Every row links to a section, and the counts are measured from
 > `dart test --reporter json -j 1` rather than maintained by hand. Run it
@@ -429,6 +429,10 @@ Tests for the recently implemented features: modes, persistent defines, runtime 
 | BB_FSC_9–12 | Exclusion patterns | ✅ | Glob-based dir exclusion during scan. |
 | BB_FSC_13–15 | Hidden folder handling | ✅ | `.hidden` directories skipped. |
 | BB_FSC_16–17 | Symlink behavior | ✅ | Symlinks not followed by default. |
+| BB-V2-SCN-ALWAYS-1 | Always-skip folders at any depth | ✅ | Nested `ztmp/`, `build/`, `node_modules/` and `_ai/` holding a `pubspec.yaml` are never scanned. |
+| BB-V2-SCN-ALWAYS-2 | Symlinked `_ai` mount | ✅ | A `_ai` link is not followed. |
+| BB-V2-SCN-ALWAYS-3 | The set | ✅ | `kAlwaysSkipDirectories` holds `ztmp`, `_ai`, `build`. |
+| BB-V2-SCN-ALWAYS-4 | `--no-skip` | ✅ | `ignoreSkipMarkers` walks into a marked folder but still not into `ztmp/` or `build/`. |
 
 ---
 

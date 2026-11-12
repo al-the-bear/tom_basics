@@ -222,7 +222,7 @@ These options are part of `commonOptions` in the V2 `ToolRunner` framework and a
 | `--dry-run` | `-n` | Show what would be done without executing |
 | `--test` | | Include test projects in traversal |
 | `--test-only` | | Process only test projects |
-| `--no-skip` | | Ignore skip markers (`tom_skip.yaml`, `<tool>_skip.yaml`) |
+| `--no-skip` | | Ignore skip markers (`tom_skip.yaml`, `<tool>_skip.yaml`); the [always-skipped folders](#always-skipped-folders) stay skipped |
 | `--nested` | | Run in nested mode (skip traversal, single-project execution) |
 | `--dump-definitions` | | Dump complete tool definition as YAML |
 
@@ -454,6 +454,15 @@ Skip files allow directories to be excluded from tool processing without command
 # Optional skip reason
 reason: "Legacy project, not actively maintained"
 ```
+
+### Always-Skipped Folders
+
+Some folder names never hold a project to process, at any depth and for every tool:
+`kAlwaysSkipDirectories` (`workspace_utils.dart`) — `.dart_tool`, `.git`, `.idea`, `.vscode`, `build`,
+`node_modules`, `coverage`, `.pub-cache`, `.pub`, `__pycache__`, `.fvm`, `ztmp` (scratch copies of projects, with
+stale constraints) and `_ai` (the AI state mount, symlinked or not). The traversal (`FolderScanner`) and
+`scanForDartProjects` never descend into them, so a nested `ztmp/<copy>/pubspec.yaml` is not discovered, pub-updated
+or built. No skip file is needed for them, and `--no-skip` does not reach them: it lifts skip markers only.
 
 ### NavigationResult Properties
 

@@ -305,6 +305,26 @@ void main() {
           reason: 'the _ai link must not be followed (found: $rel)');
     });
 
+    test('BB-V2-SCN-ALWAYS-4: --no-skip lifts skip markers, not the '
+        'always-skip folders', () async {
+      createFile('pkg/real/pubspec.yaml');
+      createFile('marked/tom_skip.yaml');
+      createFile('marked/inner/pubspec.yaml');
+      createFile('tools/ztmp/doc_blocks/pubspec.yaml');
+      createFile('pkg/real/build/out/pubspec.yaml');
+
+      final results = await FolderScanner(ignoreSkipMarkers: true)
+          .scan(tempPath, recursive: true);
+      final rel = results.map((f) => p.relative(f.path, from: tempPath)).toList();
+
+      expect(rel, contains(p.join('marked', 'inner')),
+          reason: '--no-skip walks into a folder with a skip marker');
+      for (final skipped in ['ztmp', 'build']) {
+        expect(rel.where((r) => p.split(r).contains(skipped)), isEmpty,
+            reason: '$skipped is never scanned, --no-skip or not (found: $rel)');
+      }
+    });
+
     test('BB-V2-SCN-ALWAYS-3: _ai is in kAlwaysSkipDirectories', () {
       expect(kAlwaysSkipDirectories, containsAll(<String>['ztmp', '_ai', 'build']));
     });
