@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.13.1
+
+- **The tool cache's workspace root is the nearest `buildkit_master.yaml`**
+  (tom_build_base 2.23.0's `findWorkspaceRootOrNull`, now required).
+  `tom_workspace.yaml` and `.tom_metadata/tom_master.yaml` no longer mark a
+  workspace; `ToolCacheLocator.workspaceRootMarkers` lists the one marker.
+
 ## 0.13.0
 
 - **Breaking: a bundle is named by its dependency closure,

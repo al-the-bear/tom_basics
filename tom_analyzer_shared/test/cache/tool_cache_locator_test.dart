@@ -47,11 +47,12 @@ void main() {
       );
     });
 
-    test('branch 2: resolves the workspace-root .tom via tom_workspace.yaml', () {
+    test('branch 2: resolves the workspace-root .tom via buildkit_master.yaml',
+        () {
       final root = Directory.systemTemp.createTempSync('tcl_ws_');
       addTearDown(() => root.deleteSync(recursive: true));
 
-      File(p.join(root.path, 'tom_workspace.yaml')).writeAsStringSync('name: ws');
+      File(p.join(root.path, 'buildkit_master.yaml')).writeAsStringSync('');
 
       final deepStart = Directory(p.join(root.path, 'a', 'b', 'c'))
         ..createSync(recursive: true);
@@ -72,15 +73,19 @@ void main() {
       );
     });
 
-    test('branch 2: also recognises .tom_metadata/tom_master.yaml', () {
+    test('branch 2: the retired markers (tom_workspace.yaml, '
+        '.tom_metadata/tom_master.yaml) below the root mark nothing', () {
       final root = Directory.systemTemp.createTempSync('tcl_meta_');
       addTearDown(() => root.deleteSync(recursive: true));
 
-      File(p.join(root.path, '.tom_metadata', 'tom_master.yaml'))
+      File(p.join(root.path, 'buildkit_master.yaml')).writeAsStringSync('');
+      final stray = Directory(p.join(root.path, 'x'))..createSync();
+      File(p.join(stray.path, 'tom_workspace.yaml')).writeAsStringSync('');
+      File(p.join(stray.path, '.tom_metadata', 'tom_master.yaml'))
         ..createSync(recursive: true)
         ..writeAsStringSync('projects: []');
 
-      final deepStart = Directory(p.join(root.path, 'x', 'y'))
+      final deepStart = Directory(p.join(stray.path, 'y'))
         ..createSync(recursive: true);
 
       final resolved = ToolCacheLocator.resolve(
@@ -104,7 +109,7 @@ void main() {
       final root = Directory.systemTemp.createTempSync('tcl_nested_');
       addTearDown(() => root.deleteSync(recursive: true));
 
-      File(p.join(root.path, 'tom_workspace.yaml')).writeAsStringSync('name: ws');
+      File(p.join(root.path, 'buildkit_master.yaml')).writeAsStringSync('');
 
       final nested = Directory(p.join(root.path, 'proj'))..createSync();
       Directory(p.join(nested.path, ToolCacheLocator.workspaceCacheDirName))

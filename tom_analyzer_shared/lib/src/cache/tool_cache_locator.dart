@@ -5,6 +5,8 @@
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
+import 'package:tom_build_base/tom_build_base.dart'
+    show findWorkspaceRootOrNull, kBuildkitMasterYaml;
 
 /// Resolves the **Tom tool-cache directory** — a *workspace-local* location for
 /// build artefacts that can be reused across the projects and tools of a single
@@ -26,9 +28,9 @@ import 'package:path/path.dart' as p;
 ///    directory.
 /// 2. **The workspace-root `.tom` directory.** Walking up from [resolve]'s
 ///    `startDirectory`, the first ancestor that is a **workspace root** — a
-///    directory containing one of the [workspaceRootMarkers] (`tom_workspace.yaml`
-///    or `.tom_metadata/tom_master.yaml`) — wins, and its `.tom` sub-directory is
-///    the cache root. This deliberately identifies the *workspace* root rather
+///    directory holding `buildkit_master.yaml`, the build tools' one workspace
+///    marker (tom_build_base's `findWorkspaceRootOrNull`) — wins, and its `.tom`
+///    sub-directory is the cache root. This deliberately identifies the *workspace* root rather
 ///    than the nearest `.tom`, so nested project-level `.tom` directories never
 ///    fragment the cache: every tool in the tree shares the one
 ///    `<workspace>/.tom/analyzer-cache/`.
@@ -48,13 +50,12 @@ abstract final class ToolCacheLocator {
   /// of the workspace-local fallback directory (branch 3).
   static const String workspaceCacheDirName = '.tom';
 
-  /// Marker files whose presence in a directory identifies it as a **workspace
-  /// root** (branch 2). Any one of them is sufficient. Both are committed at the
-  /// Tom workspace root, so the search reliably resolves to the workspace's
-  /// `.tom` cache and skips nested project-level `.tom` directories.
+  /// The marker file whose presence in a directory identifies it as a
+  /// **workspace root** (branch 2): `buildkit_master.yaml`, committed at the
+  /// workspace root, so the search resolves to the workspace's `.tom` cache and
+  /// skips nested project-level `.tom` directories.
   static const List<String> workspaceRootMarkers = <String>[
-    'tom_workspace.yaml',
-    '.tom_metadata/tom_master.yaml',
+    kBuildkitMasterYaml,
   ];
 
   /// Resolves the tool-cache root directory.
@@ -81,7 +82,7 @@ abstract final class ToolCacheLocator {
         p.normalize(p.absolute(startDirectory ?? Directory.current.path));
 
     // 2. Nearest ancestor workspace root → its `.tom`.
-    final workspaceRoot = _findWorkspaceRoot(start);
+    final workspaceRoot = findWorkspaceRootOrNull(start);
     if (workspaceRoot != null) {
       return p.join(workspaceRoot, workspaceCacheDirName);
     }
@@ -89,24 +90,5 @@ abstract final class ToolCacheLocator {
     // 3. Workspace-local fallback — always inside the tree, never a
     //    machine-global directory.
     return p.join(start, workspaceCacheDirName);
-  }
-
-  /// Walks up from [startDirectory] returning the first ancestor that contains a
-  /// [workspaceRootMarkers] entry, or `null` if none exists up to the filesystem
-  /// root.
-  static String? _findWorkspaceRoot(String startDirectory) {
-    var dir = startDirectory;
-    while (true) {
-      for (final marker in workspaceRootMarkers) {
-        final markerPath = p.join(dir, marker);
-        if (FileSystemEntity.typeSync(markerPath) !=
-            FileSystemEntityType.notFound) {
-          return dir;
-        }
-      }
-      final parent = p.dirname(dir);
-      if (parent == dir) return null; // Reached the filesystem root.
-      dir = parent;
-    }
   }
 }

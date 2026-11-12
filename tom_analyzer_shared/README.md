@@ -249,8 +249,8 @@ the root — the first branch that applies wins:
 1. **`TOM_TOOL_CACHE` environment variable** — set it to point the cache at a
    fast disk, a shared CI cache, or a RAM-backed directory.
 2. **The workspace root's `.tom` directory** — the search walks up from the
-   start directory to the nearest **workspace root** (a directory containing
-   `tom_workspace.yaml` or `.tom_metadata/tom_master.yaml`) and returns that
+   start directory to the nearest **workspace root** (a directory holding
+   `buildkit_master.yaml`, the build tools' one workspace marker) and returns that
    root's `.tom` directory as the cache root (analyzer summaries then live in
    `.tom/analyzer-cache/`). Keying off the committed workspace-root marker rather
    than the nearest `.tom` means nested project-level `.tom` directories never
