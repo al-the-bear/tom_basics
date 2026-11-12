@@ -18,7 +18,7 @@ environment:
 dependencies:
   # FolderScanner / NatureDetector / yamlToMap. From pub.dev, as every package
   # on tom_build_base takes it (_copilot_guidelines/dart/project_republishing.md).
-  tom_build_base: ^2.18.0
+  tom_build_base: ^2.19.1
   path: ^1.9.0
   yaml: ^3.1.3
 
