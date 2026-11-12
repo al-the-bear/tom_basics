@@ -1,3 +1,14 @@
+## 2.20.0
+
+### Added — `isFlutterPackage` / `pubspecDeclaresFlutterSdk`
+
+One public answer to "is this a Flutter package?": the pubspec declares
+`dependencies: flutter: sdk: flutter`. Three copies existed — the nature
+detector's private check (any `sdk:` key), `ciIsFlutterPackage` (which threw on
+an unreadable pubspec) and one in testkit, which picks `flutter test` by it. The
+nature detector and `ciIsFlutterPackage` now use it, and a missing or
+unreadable pubspec is not a Flutter package. Tests BB-FLP-1..8.
+
 ## 2.19.1
 
 ### Fixed — a package search does not enter scratch or build folders

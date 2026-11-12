@@ -10,8 +10,8 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
-import 'package:yaml/yaml.dart';
 
+import '../v2/traversal/flutter_package.dart';
 import 'ci_lock.dart';
 import 'ci_process.dart';
 
@@ -50,15 +50,9 @@ class CiPackage {
 }
 
 /// Whether the package in [directory] declares a `flutter` SDK dependency.
-bool ciIsFlutterPackage(String directory) {
-  final file = File(p.join(directory, 'pubspec.yaml'));
-  if (!file.existsSync()) return false;
-  final yaml = loadYaml(file.readAsStringSync());
-  if (yaml is! YamlMap) return false;
-  final dependencies = yaml['dependencies'];
-  final flutter = dependencies is YamlMap ? dependencies['flutter'] : null;
-  return flutter is YamlMap && flutter['sdk'] == 'flutter';
-}
+///
+/// The same rule as [isFlutterPackage], which it delegates to.
+bool ciIsFlutterPackage(String directory) => isFlutterPackage(directory);
 
 /// The tags among [candidates] that some test file under [directory]`/test`
 /// declares in an `@Tags([...])` annotation, in [candidates]' order.

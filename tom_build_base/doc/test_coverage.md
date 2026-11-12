@@ -54,7 +54,8 @@ This document lists all testable features across `tom_build_base` and tracks tes
 | 39 | [CI Lock](#39-ci-lock) | 4 | 4✅ | `ci/ci_lock_test.dart` | [→](#39-ci-lock) |
 | 40 | [CI Process Runner](#40-ci-process-runner) | 4 | 4✅ | `ci/ci_process_test.dart` | [→](#40-ci-process-runner) |
 | 41 | [CI Run, Summary and Tool](#41-ci-run-summary-and-tool) | 14 | 14✅ | `ci/ci_run_test.dart` | [→](#41-ci-run-summary-and-tool) |
-| — | **Total** | **957** | **957✅** | | |
+| 42 | [Flutter Package Check](#42-flutter-package-check) | 8 | 8✅ | `v2/traversal/flutter_package_test.dart` | [→](#42-flutter-package-check) |
+| — | **Total** | **965** | **965✅** | | |
 
 > Every row links to a section, and the counts are measured from
 > `dart test --reporter json -j 1` rather than maintained by hand. Run it
@@ -874,6 +875,26 @@ one that must pass.
 
 ---
 
+## 42. Flutter Package Check
+
+**Test file:** `test/v2/traversal/flutter_package_test.dart`
+
+`isFlutterPackage` / `pubspecDeclaresFlutterSdk`: the one rule for "is this a Flutter package?" that the nature
+detector, `ci.dart` and the tools (testkit's choice of `flutter test`) share.
+
+| ID | Feature | Status | Description |
+|----|---------|--------|-------------|
+| BB-FLP-1 | Flutter SDK dependency | ✅ | `dependencies: flutter: sdk: flutter` counts. |
+| BB-FLP-2 | Plain Dart package | ✅ | No Flutter dependency, or none at all. |
+| BB-FLP-3 | `flutter_test` alone | ✅ | A dev dependency on `flutter_test` does not count. |
+| BB-FLP-4 | `flutter` from pub.dev | ✅ | A hosted `flutter` constraint is not the SDK. |
+| BB-FLP-5 | Map input | ✅ | A plain `Map` works like a `YamlMap`; null and text are false. |
+| BB-FLP-6 | From disk | ✅ | `isFlutterPackage` reads the pubspec. |
+| BB-FLP-7 | Missing or unreadable pubspec | ✅ | False, no exception. |
+| BB-FLP-8 | One rule | ✅ | `ciIsFlutterPackage` and `NatureDetector` agree on a Flutter package. |
+
+---
+
 ## Test Gaps & Potential Additions
 
 The current test suite is comprehensive. Areas where additional tests could be valuable:
@@ -886,4 +907,4 @@ The current test suite is comprehensive. Areas where additional tests could be v
 | `--dump-definitions` output format | Tested in ToolRunner | Validate complete YAML structure | Low |
 | ConfigLoader with nested `@{...}` in `@[...]` | ✅ Recursive test exists | Additional nesting depth scenarios | Low |
 
-Overall coverage assessment: **Excellent — 892 tests covering all features.**
+Overall coverage assessment: **Excellent — 965 tests covering all features.**

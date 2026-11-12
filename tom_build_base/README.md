@@ -126,6 +126,7 @@ server, and CLI hosts, not the web.
 | `TomBuildConfig` | class | Two-tier `…_master.yaml` + project-level config loading |
 | `HelpGenerator` / `CompletionGenerator` | class | Auto-generated help and shell completion |
 | `yamlToMap` / `yamlListToList` / `toStringList` | function | YAML-node conversion helpers |
+| `isFlutterPackage` / `pubspecDeclaresFlutterSdk` | function | Whether a package declares the Flutter SDK (`dependencies: flutter: sdk: flutter`); the one rule the nature detector, `ci.dart` and the tools share |
 | `MkLinkExecutor` / `createSymLink` | API | Cross-platform symlink creation for tool commands |
 
 ### CI run by hand (`ci.dart`)
@@ -137,7 +138,7 @@ server, and CLI hosts, not the web.
 | `CiProcessRunner` / `CiCommand` / `CiStepResult` | class | Child processes under the lock, every output line written to the log as it arrives |
 | `CiLock` | class | The workspace flutter lock (`ztmp/flutter.lock`), taken with `mkdir` the way sessions take it |
 | `ciSummaryLine` / `CiOutcome` | function / class | The one line a run ends with: green, or every red step and its log |
-| `CiPackage` / `ciIsFlutterPackage` / `ciTestTagsOf` | class / function | A package a stage runs over; Flutter detection; tags read from test annotations |
+| `CiPackage` / `ciIsFlutterPackage` / `ciTestTagsOf` | class / function | A package a stage runs over; Flutter detection (`isFlutterPackage`); tags read from test annotations |
 | `resolveCiStages` / `ciFlutterLockPath` / `ciFlutterExecutable` | function | `all` expansion, the lock path, finding `flutter` |
 | `ciToolDefinition` / `ciToolRunner` | function | One command per stage plus `all`, on this package's tool framework |
 

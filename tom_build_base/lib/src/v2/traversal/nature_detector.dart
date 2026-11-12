@@ -5,6 +5,7 @@ import 'package:path/path.dart' as p;
 import 'package:yaml/yaml.dart';
 
 import '../folder/fs_folder.dart';
+import 'flutter_package.dart';
 import '../folder/run_folder.dart';
 import '../folder/natures/git_folder.dart';
 import '../folder/natures/dart_project_folder.dart';
@@ -206,7 +207,7 @@ class NatureDetector {
     }
 
     // Determine project type
-    final hasFlutter = _hasFlutterSdk(pubspec);
+    final hasFlutter = pubspecDeclaresFlutterSdk(pubspec);
     final hasBin = Directory(p.join(folder.path, 'bin')).existsSync();
     final hasLibSrc = Directory(p.join(folder.path, 'lib', 'src')).existsSync();
 
@@ -258,17 +259,6 @@ class NatureDetector {
         pubspec: pubspec,
       );
     }
-  }
-
-  bool _hasFlutterSdk(Map<String, dynamic> pubspec) {
-    final deps = pubspec['dependencies'];
-    if (deps is Map) {
-      final flutter = deps['flutter'];
-      if (flutter is Map && flutter.containsKey('sdk')) {
-        return true;
-      }
-    }
-    return false;
   }
 
   List<String> _detectFlutterPlatforms(String path) {
