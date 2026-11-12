@@ -1,3 +1,20 @@
+## 2.22.0
+
+### Added — an item's own exit code, and `killProcessTree`
+
+- `ItemResult.failure(exitCode: n)` lets a command say how badly an item
+  failed (testkit's mutation sweep exits with its count of surviving and
+  invalid mutants). `ToolResult.exitCode` is 0 on success, else the sum of the
+  failed items' codes (1 for an item without one), capped at 125 — an exit
+  status is one byte, and 256 would read as success. `runToCompletion` sets
+  the process exit code to it; the result tagging kept every field but this
+  one, and now carries it too.
+- `killProcessTree(pid)` kills a process and every process it started
+  (`pgrep -P` walk, then SIGKILL; `taskkill /T /F` on Windows), for a hung
+  `dart test` whose test VMs would otherwise keep running.
+
+Tests BB-EXIT-1..4, BB-KILL-1.
+
 ## 2.21.0
 
 ### Added — the context-boundary check

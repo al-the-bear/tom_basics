@@ -47,6 +47,22 @@ class ToolResult {
   /// Detailed results per item.
   final List<ItemResult> itemResults;
 
+  /// The highest exit code a process may end with for a run: 126 and above
+  /// have shell meanings, and an exit status is one byte, so a count of 256
+  /// would be read as success.
+  static const maxExitCode = 125;
+
+  /// The exit code of the run: 0 on success; on failure the sum of the
+  /// failed items' own [ItemResult.exitCode]s (1 for an item without one, and
+  /// 1 for a failure with no items), capped at [maxExitCode].
+  int get exitCode {
+    if (success) return 0;
+    final failed = itemResults.where((i) => !i.success);
+    if (failed.isEmpty) return 1;
+    final sum = failed.fold<int>(0, (n, i) => n + (i.exitCode ?? 1));
+    return sum.clamp(1, maxExitCode);
+  }
+
   const ToolResult({
     this.success = true,
     this.processedCount = 0,
@@ -159,6 +175,11 @@ class ItemResult {
   /// Error message if failed.
   final String? error;
 
+  /// The exit code this failure stands for (e.g. a mutation sweep's count of
+  /// surviving and invalid mutants); null counts 1. See
+  /// [ToolResult.exitCode].
+  final int? exitCode;
+
   const ItemResult({
     required this.path,
     required this.name,
@@ -167,6 +188,7 @@ class ItemResult {
     this.skipped = false,
     this.message,
     this.error,
+    this.exitCode,
   });
 
   const ItemResult.success({
@@ -176,7 +198,8 @@ class ItemResult {
     this.message,
   }) : success = true,
        skipped = false,
-       error = null;
+       error = null,
+       exitCode = null;
 
   /// A deliberately skipped item — a configured or conditional skip, reported
   /// as a (non-failing) success so it does not affect the exit code, but
@@ -189,13 +212,15 @@ class ItemResult {
     this.message,
   }) : success = true,
        skipped = true,
-       error = null;
+       error = null,
+       exitCode = null;
 
   const ItemResult.failure({
     required this.path,
     required this.name,
     this.commandName,
     required this.error,
+    this.exitCode,
   }) : success = false,
        skipped = false,
        message = null;
@@ -370,7 +395,8 @@ class ToolRunner {
   /// 2. writes `result.renderRunSummary()` (with a leading blank line) to
   ///    [output] when it is non-empty — empty for single-shot commands that
   ///    traverse nothing (`--version`, `--help`);
-  /// 3. sets the process [exitCode] to `1` when the run failed — and **never**
+  /// 3. sets the process [exitCode] to [ToolResult.exitCode] (1 unless items
+  ///    carry their own) when the run failed — and **never**
   ///    calls `exit()`, so `main` can return and the VM drains buffered output
   ///    first (a bare `exit(1)` can truncate the summary just written).
   ///
@@ -385,7 +411,7 @@ class ToolRunner {
     }
 
     if (!result.success) {
-      exitCode = 1;
+      exitCode = result.exitCode;
     }
 
     return result;
@@ -783,6 +809,7 @@ class ToolRunner {
             skipped: result.skipped,
             message: result.message,
             error: result.error,
+            exitCode: result.exitCode,
           );
           results.add(tagged);
 

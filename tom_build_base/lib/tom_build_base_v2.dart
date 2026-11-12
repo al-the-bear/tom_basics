@@ -40,6 +40,7 @@ export 'src/v2/traversal/command_context.dart';
 export 'src/v2/traversal/folder_scanner.dart' hide kTomSkipYaml;
 export 'src/v2/traversal/filter_pipeline.dart';
 export 'src/v2/boundaries/context_boundaries.dart';
+export 'src/v2/core/process_tree.dart';
 export 'src/v2/boundaries/dart_directives.dart';
 export 'src/v2/traversal/flutter_package.dart';
 export 'src/v2/traversal/nature_detector.dart';

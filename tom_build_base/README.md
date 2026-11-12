@@ -127,6 +127,8 @@ server, and CLI hosts, not the web.
 | `HelpGenerator` / `CompletionGenerator` | class | Auto-generated help and shell completion |
 | `yamlToMap` / `yamlListToList` / `toStringList` | function | YAML-node conversion helpers |
 | `checkContextBoundaries` / `ContextBoundaryRules` / `BoundaryReport` | function / class | The context-boundary check: a package's bounded contexts (`boundaries:` in its `buildkit.yaml`) against its import/export graph; buildkit runs it as `:boundaries` |
+| `ItemResult.exitCode` / `ToolResult.exitCode` | field / getter | A failure's own exit code; the run exits with the sum over failed items (capped at 125) |
+| `killProcessTree` | function | Kill a process and everything it started (a hung `dart test` and its test VMs) |
 | `scanDartDirectives` | function | The `import` / `export` / `part` directives of a source file, without the analyzer |
 | `isFlutterPackage` / `pubspecDeclaresFlutterSdk` | function | Whether a package declares the Flutter SDK (`dependencies: flutter: sdk: flutter`); the one rule the nature detector, `ci.dart` and the tools share |
 | `MkLinkExecutor` / `createSymLink` | API | Cross-platform symlink creation for tool commands |

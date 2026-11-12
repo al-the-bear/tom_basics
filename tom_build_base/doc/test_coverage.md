@@ -56,7 +56,8 @@ This document lists all testable features across `tom_build_base` and tracks tes
 | 41 | [CI Run, Summary and Tool](#41-ci-run-summary-and-tool) | 14 | 14✅ | `ci/ci_run_test.dart` | [→](#41-ci-run-summary-and-tool) |
 | 42 | [Flutter Package Check](#42-flutter-package-check) | 8 | 8✅ | `v2/traversal/flutter_package_test.dart` | [→](#42-flutter-package-check) |
 | 43 | [Context Boundaries](#43-context-boundaries) | 14 | 14✅ | `v2/boundaries/context_boundaries_test.dart` | [→](#43-context-boundaries) |
-| — | **Total** | **979** | **979✅** | | |
+| 44 | [Item Exit Codes and Process Trees](#44-item-exit-codes-and-process-trees) | 5 | 5✅ | `v2/core/item_exit_code_test.dart` | [→](#44-item-exit-codes-and-process-trees) |
+| — | **Total** | **984** | **984✅** | | |
 
 > Every row links to a section, and the counts are measured from
 > `dart test --reporter json -j 1` rather than maintained by hand. Run it
@@ -922,6 +923,20 @@ directive scanner it reads imports with.
 
 ---
 
+## 44. Item Exit Codes and Process Trees
+
+**Test file:** `test/v2/core/item_exit_code_test.dart`
+
+| ID | Feature | Status | Description |
+|----|---------|--------|-------------|
+| BB-EXIT-1 | Default exit codes | ✅ | A success is 0, a failure without its own code 1. |
+| BB-EXIT-2 | Items' own codes | ✅ | Failed items' `exitCode`s add up; one without a code counts 1. |
+| BB-EXIT-3 | Cap | ✅ | Capped at 125, so a count of 256 never reads as success. |
+| BB-EXIT-4 | Through the runner | ✅ | The tagged results keep an executor's code; `runToCompletion` sets the process exit code to it. |
+| BB-KILL-1 | `killProcessTree` | ✅ | A shell and the two processes it started are all gone. |
+
+---
+
 ## Test Gaps & Potential Additions
 
 The current test suite is comprehensive. Areas where additional tests could be valuable:
@@ -934,4 +949,4 @@ The current test suite is comprehensive. Areas where additional tests could be v
 | `--dump-definitions` output format | Tested in ToolRunner | Validate complete YAML structure | Low |
 | ConfigLoader with nested `@{...}` in `@[...]` | ✅ Recursive test exists | Additional nesting depth scenarios | Low |
 
-Overall coverage assessment: **Excellent — 979 tests covering all features.**
+Overall coverage assessment: **Excellent — 984 tests covering all features.**
