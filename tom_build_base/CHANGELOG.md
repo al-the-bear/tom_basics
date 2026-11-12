@@ -1,3 +1,14 @@
+## 2.19.1
+
+### Fixed — a package search does not enter scratch or build folders
+
+`prefixedPackagesIn` (`seams.dart`) skipped only hidden folders and
+`node_modules`, so a tool that unpacks published archives into `ztmp/`
+(`ztmp/path_deps_archives/tom_forge_core-2.0.0/`) made that folder a repository
+of the prefix, and a licence audit over it read 47 unresolved scratch copies as
+packages. It now also skips `ztmp`, `build` and `testlog`; the set is
+`unsearchedPackageFolders`.
+
 ## 2.19.0
 
 ### Changed — build order ignores `dev_dependencies` by default

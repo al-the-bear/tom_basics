@@ -96,9 +96,14 @@ List<Pubspec> packagesIn(String root) {
   return found;
 }
 
+/// Folders a package search never enters: scratch (`ztmp`, where tools unpack
+/// published archives of the same packages), generated output, test logs and
+/// dependency caches. None holds a package of the workspace's own.
+const unsearchedPackageFolders = {'ztmp', 'build', 'testlog', 'node_modules'};
+
 /// Every package whose directory is named [prefix]`*` under [workspaceRoot],
 /// searched to [maxDepth] so a moved repository is found without walking the
-/// whole workspace.
+/// whole workspace. Hidden folders and [unsearchedPackageFolders] are skipped.
 List<Pubspec> prefixedPackagesIn(
   String workspaceRoot,
   String prefix, {
@@ -115,7 +120,9 @@ List<Pubspec> prefixedPackagesIn(
     }
     for (final entity in children.whereType<Directory>()) {
       final name = p.basename(entity.path);
-      if (name.startsWith('.') || name == 'node_modules') continue;
+      if (name.startsWith('.') || unsearchedPackageFolders.contains(name)) {
+        continue;
+      }
       if (name.startsWith(prefix)) {
         final pubspec = Pubspec.read(entity.path);
         if (pubspec != null) {

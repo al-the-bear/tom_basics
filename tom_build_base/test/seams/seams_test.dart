@@ -201,6 +201,23 @@ String _private() => '';
       ]);
     });
 
+    test('SEAMS-GRAPH-5b: packages by prefix are never found in scratch, '
+        'build or dependency folders', () {
+      // A tool that unpacks published archives into ztmp/ (the publishing
+      // survey writes ztmp/path_deps_archives/tom_forge_core-2.0.0/) must not
+      // turn that folder into a repository of the prefix.
+      final root = tree({
+        'repo/tom_x_a/pubspec.yaml': 'name: tom_x_a\n',
+        'ztmp/archives/tom_x_b-1.0.0/pubspec.yaml': 'name: tom_x_b\n',
+        'repo/build/tom_x_c/pubspec.yaml': 'name: tom_x_c\n',
+        'repo/node_modules/tom_x_d/pubspec.yaml': 'name: tom_x_d\n',
+        'repo/testlog/tom_x_e/pubspec.yaml': 'name: tom_x_e\n',
+      });
+      expect(prefixedPackagesIn(root, 'tom_x_').map((x) => x.name), [
+        'tom_x_a',
+      ]);
+    });
+
     test('SEAMS-GRAPH-6: dependency reach follows path dependencies and '
         'names the chain; an unresolved hosted one is reported, not '
         'assumed clean', () {

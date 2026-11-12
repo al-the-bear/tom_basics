@@ -13,7 +13,8 @@
 ///   [externalImportsOf], [reachableNamesOf], [packageImportsUnder],
 ///   [exportedDeclarationsOf].
 /// - The package graph: [Pubspec], [packagesIn], [prefixedPackagesIn],
-///   [resolvedPackagesOf], [dependencyReach], [declaredTypeNamesUnder].
+///   [unsearchedPackageFolders], [resolvedPackagesOf], [dependencyReach],
+///   [declaredTypeNamesUnder].
 /// - Rules: [EntryPointRule] with [auditEntryPointRules]; [upwardPathDerivations]
 ///   for tests that count their way to a root.
 /// - Running: [SeamViolation], [SeamAudit], [runSeamAudits],
