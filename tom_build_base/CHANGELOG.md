@@ -1,3 +1,13 @@
+## 2.22.1
+
+### Fixed — a repeated multi option kept only its last value
+
+`OptionDefinition.multi` options given more than once (`testkit :mutations
+--module cache --module cmdline`, `testkit :fuzz --target a --target b`) were
+stored one over the other, so only the last value reached the command, in
+either position. Repeated values are now kept as a list; a single occurrence
+stays a plain string, as before. Tests BB-MULTI-1..5.
+
 ## 2.22.0
 
 ### Added — an item's own exit code, and `killProcessTree`

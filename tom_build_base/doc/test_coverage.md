@@ -57,7 +57,8 @@ This document lists all testable features across `tom_build_base` and tracks tes
 | 42 | [Flutter Package Check](#42-flutter-package-check) | 8 | 8✅ | `v2/traversal/flutter_package_test.dart` | [→](#42-flutter-package-check) |
 | 43 | [Context Boundaries](#43-context-boundaries) | 14 | 14✅ | `v2/boundaries/context_boundaries_test.dart` | [→](#43-context-boundaries) |
 | 44 | [Item Exit Codes and Process Trees](#44-item-exit-codes-and-process-trees) | 5 | 5✅ | `v2/core/item_exit_code_test.dart` | [→](#44-item-exit-codes-and-process-trees) |
-| — | **Total** | **984** | **984✅** | | |
+| 45 | [Repeated Multi Options](#45-repeated-multi-options) | 5 | 5✅ | `v2/core/multi_option_repeat_test.dart` | [→](#45-repeated-multi-options) |
+| — | **Total** | **989** | **989✅** | | |
 
 > Every row links to a section, and the counts are measured from
 > `dart test --reporter json -j 1` rather than maintained by hand. Run it
@@ -937,6 +938,20 @@ directive scanner it reads imports with.
 
 ---
 
+## 45. Repeated Multi Options
+
+**Test file:** `test/v2/core/multi_option_repeat_test.dart`
+
+| ID | Feature | Status | Description |
+|----|---------|--------|-------------|
+| BB-MULTI-1 | After the command | ✅ | `--module a --module b` keeps both, `=` form too. |
+| BB-MULTI-2 | Before the command | ✅ | The same for an option written before the command name. |
+| BB-MULTI-3 | Once | ✅ | A single occurrence stays a plain string. |
+| BB-MULTI-4 | Single-value option | ✅ | Still takes the last value. |
+| BB-MULTI-5 | Alias | ✅ | Repeated after a command alias as well. |
+
+---
+
 ## Test Gaps & Potential Additions
 
 The current test suite is comprehensive. Areas where additional tests could be valuable:
@@ -949,4 +964,4 @@ The current test suite is comprehensive. Areas where additional tests could be v
 | `--dump-definitions` output format | Tested in ToolRunner | Validate complete YAML structure | Low |
 | ConfigLoader with nested `@{...}` in `@[...]` | ✅ Recursive test exists | Additional nesting depth scenarios | Low |
 
-Overall coverage assessment: **Excellent — 984 tests covering all features.**
+Overall coverage assessment: **Excellent — 989 tests covering all features.**

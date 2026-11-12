@@ -651,14 +651,24 @@ class CliArgParser {
       // version via the global handling below.
       if (value != null &&
           _commandDeclaresValueOption(state.currentCommand!, name)) {
-        cmdState.options[name] = value;
+        _store(
+          cmdState.options,
+          name,
+          value,
+          multi: _declaresMultiOption(name, state.currentCommand),
+        );
         return;
       }
       // Global navigation/feature flags remain global even when placed after
       // a command name, so `buildkit :cmd --dry-run` works the same as
       // `buildkit --dry-run :cmd`.
       if (!_isGlobalNavigationFlag(name)) {
-        cmdState.options[name] = value ?? true;
+        if (value != null &&
+            _declaresMultiOption(name, state.currentCommand)) {
+          _store(cmdState.options, name, value, multi: true);
+        } else {
+          cmdState.options[name] = value ?? true;
+        }
         return;
       }
       // Fall through to global handling.
@@ -793,10 +803,50 @@ class CliArgParser {
         final negated = _negatableFlagStem(name);
         if (negated != null) {
           state.extraOptions[negated] = false;
+        } else if (value != null && _declaresMultiOption(name, null)) {
+          _store(state.extraOptions, name, value, multi: true);
         } else {
           state.extraOptions[name] = value ?? true;
         }
     }
+  }
+
+  /// Stores [value] under [name]; a [multi] option given again keeps every
+  /// value as a list (a single occurrence stays a plain string).
+  static void _store(
+    Map<String, dynamic> options,
+    String name,
+    String value, {
+    required bool multi,
+  }) {
+    final previous = options[name];
+    if (!multi || previous == null || previous is bool) {
+      options[name] = value;
+    } else if (previous is List) {
+      previous.add(value);
+    } else {
+      options[name] = <String>['$previous', value];
+    }
+  }
+
+  /// Whether [name] is a multi option of [command] (of any command, or a
+  /// global one, when [command] is null).
+  bool _declaresMultiOption(String name, String? command) {
+    final def = toolDefinition;
+    if (def == null) return false;
+    bool matches(OptionDefinition opt) =>
+        (opt.name == name || opt.abbr == name) &&
+        opt.type == OptionType.multiOption;
+    if (command != null) {
+      for (final cmd in def.commands) {
+        if (cmd.name == command || cmd.aliases.contains(command)) {
+          return cmd.options.any(matches);
+        }
+      }
+      return false;
+    }
+    return def.globalOptions.any(matches) ||
+        def.commands.any((c) => c.options.any(matches));
   }
 
   /// For `--no-x`, the name `x` when a DECLARED flag `x` is `negatable: true`.
