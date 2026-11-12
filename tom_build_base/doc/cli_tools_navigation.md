@@ -152,10 +152,10 @@ not all contain the project.
 | `--root=<path>` | `-R` | Use specified path as workspace root |
 | `--workspace-recursion` | `-w` | Shell out to sub-workspaces for mixed command+pipeline invocations (pipeline-only invocations recurse by default) |
 
-**Workspace detection** looks for these files (in order):
-- `buildkit_master.yaml`
-- `tom_workspace.yaml`
-- `tom.code-workspace`
+**Workspace detection:** the workspace root is the nearest directory at or above
+the current one that holds `buildkit_master.yaml`. Nothing else marks a
+workspace. Outside a workspace, a bare `-R` and the default execution root are
+the current directory.
 
 ### Git Repository Traversal
 
@@ -394,7 +394,8 @@ void _printUsage(ArgParser parser) {
 | `preprocessRootFlag(args)` | Detect bare `-R` and preprocess for parsing |
 | `parseNavigationArgs(results, bareRoot)` | Parse navigation options from ArgResults |
 | `resolveExecutionRoot(navArgs, currentDir)` | Resolve workspace root based on nav args |
-| `findWorkspaceRoot(startPath)` | Find workspace root by traversing up |
+| `findWorkspaceRootOrNull(startPath)` | The nearest directory at or above `startPath` holding `buildkit_master.yaml`, or null |
+| `findWorkspaceRoot(startPath)` | Deprecated: the same, falling back to `startPath` |
 | `isWorkspaceBoundary(dirPath)` | Check if directory has buildkit_master.yaml |
 | `printNavigationOptionsHelp()` | Print navigation options help to stdout |
 | `getNavigationOptionsHelpLines()` | Get navigation options help as list of strings |

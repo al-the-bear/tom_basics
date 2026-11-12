@@ -1,3 +1,22 @@
+## 2.23.0
+
+### Changed — `buildkit_master.yaml` is the one workspace marker
+
+- New `findWorkspaceRootOrNull(startPath)`: the nearest directory at or above
+  `startPath` holding `buildkit_master.yaml`, or null. `tom.code-workspace` no
+  longer marks a workspace, and a stray `tom_workspace.yaml` or `.tom_metadata/`
+  below the root is not mistaken for one.
+- `findWorkspaceRoot` and `kTomCodeWorkspace` are deprecated. `findWorkspaceRoot`
+  keeps its fallback to `startPath`, so existing callers compile and behave as
+  before apart from the dropped marker.
+- `resolveWorkspaceRoot` (seams) finds the workspace by `buildkit_master.yaml`
+  instead of `.tom_metadata/`, and names it in its error.
+- Inside the tool runner, every lookup decides what no workspace means: the
+  execution root and a bare `-R` stay the current directory; a tool's master
+  yaml, its defines, macros, pipelines, traversal defaults and required
+  environment are read only inside a workspace, and the missing-master message
+  says when the directory is not in one.
+
 ## 2.22.1
 
 ### Fixed — a repeated multi option kept only its last value

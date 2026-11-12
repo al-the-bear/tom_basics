@@ -680,10 +680,8 @@ flowchart TD
 **Workspace boundary detection:**
 ```dart
 bool isWorkspaceBoundary(String dirPath) {
-  // Check for workspace marker files
-  return File('$dirPath/buildkit_master.yaml').existsSync() ||
-         File('$dirPath/tom_workspace.yaml').existsSync() ||
-         File('$dirPath/tom.code-workspace').existsSync();
+  // buildkit_master.yaml is the one workspace marker.
+  return File('$dirPath/buildkit_master.yaml').existsSync();
 }
 ```
 

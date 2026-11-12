@@ -5,6 +5,8 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 
+import '../v2/workspace_utils.dart';
+
 /// One boundary crossing, named by the seam it belongs to.
 class SeamViolation {
   const SeamViolation(this.seam, this.message);
@@ -70,18 +72,14 @@ int runSeamAudits({
   return 0;
 }
 
-/// The workspace: the nearest ancestor of [from] holding a `.tom_metadata`
-/// directory, which is what makes it the workspace.
+/// The workspace: the nearest ancestor of [from] holding a
+/// `buildkit_master.yaml`, which is what makes it the workspace.
 String resolveWorkspaceRoot(String from) {
-  var dir = p.normalize(p.absolute(from));
-  while (!Directory(p.join(dir, '.tom_metadata')).existsSync()) {
-    final parent = p.dirname(dir);
-    if (parent == dir) {
-      throw StateError('no .tom_metadata above $from');
-    }
-    dir = parent;
+  final root = findWorkspaceRootOrNull(from);
+  if (root == null) {
+    throw StateError('no $kBuildkitMasterYaml above $from');
   }
-  return dir;
+  return root;
 }
 
 /// The repository: the nearest ancestor of [from] holding a

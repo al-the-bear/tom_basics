@@ -162,7 +162,8 @@ class ToolPipelineConfigLoader {
   }
 
   static File? _findMasterFile(String toolName, String fromDirectory) {
-    final root = findWorkspaceRoot(fromDirectory);
+    final root = findWorkspaceRootOrNull(fromDirectory);
+    if (root == null) return null;
     final file = File('$root/${toolName}_master.yaml');
     return file.existsSync() ? file : null;
   }

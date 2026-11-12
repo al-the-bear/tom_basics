@@ -57,7 +57,8 @@ version: 1.0.0
 environment:
   sdk: ^3.0.0
 ''');
-  // Create master yaml
+  // The workspace root marker, then the test tool's master yaml beside it.
+  File(p.join(workspace.path, 'buildkit_master.yaml')).writeAsStringSync('');
   File(p.join(workspace.path, 'testtool_master.yaml')).writeAsStringSync('''
 testtool:
   defines:

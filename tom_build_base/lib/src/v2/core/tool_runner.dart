@@ -699,7 +699,10 @@ class ToolRunner {
     if (cliArgs.root != null) {
       executionRoot = cliArgs.root!;
     } else {
-      executionRoot = findWorkspaceRoot(Directory.current.path);
+      // Outside a workspace a tool runs on the directory it was started in.
+      executionRoot =
+          findWorkspaceRootOrNull(Directory.current.path) ??
+          Directory.current.path;
     }
 
     // Reject any --project path (global *or* per-command) that is outside the
@@ -1063,7 +1066,10 @@ class ToolRunner {
       executionRoot = cliArgs.root!;
     } else {
       // Default: use workspace root (as if bare -R was passed)
-      executionRoot = findWorkspaceRoot(Directory.current.path);
+      // Outside a workspace a tool runs on the directory it was started in.
+      executionRoot =
+          findWorkspaceRootOrNull(Directory.current.path) ??
+          Directory.current.path;
     }
 
     // Reject any --project path (global *or* per-command) that is outside the
@@ -1354,7 +1360,9 @@ class ToolRunner {
   /// Returns `true` if wiring succeeded, `false` if a required binary
   /// was missing and execution should be aborted.
   Future<bool> _lazyWireNestedTools(CliArgs cliArgs) async {
-    final workspaceRoot = findWorkspaceRoot(Directory.current.path);
+    final workspaceRoot =
+        findWorkspaceRootOrNull(Directory.current.path) ??
+        Directory.current.path;
     final loader = WiringLoader(tool: tool);
 
     // Determine which commands are requested
@@ -1613,10 +1621,14 @@ Options:
   /// or `null` when the file exists and everything is fine.
   ToolResult? _checkMasterYamlMissing() {
     if (_isMacroDefineFeatureEligible()) return null;
-    final wsRoot = findWorkspaceRoot(Directory.current.path);
+    final wsRoot = findWorkspaceRootOrNull(Directory.current.path);
     final expected = '${_effectiveTool.name}_master.yaml';
+    final where = wsRoot == null
+        ? 'Not inside a workspace: no $kBuildkitMasterYaml above '
+              '${Directory.current.path}.'
+        : 'Cannot find $expected in workspace root ($wsRoot).';
     output.writeln(
-      'Cannot find $expected in workspace root ($wsRoot).\n'
+      '$where\n'
       'Make sure you are running ${_effectiveTool.name} from inside the '
       'workspace that contains $expected.',
     );
@@ -1911,7 +1923,8 @@ Options:
   }
 
   Map<String, dynamic>? _readMasterYaml() {
-    final wsRoot = findWorkspaceRoot(Directory.current.path);
+    final wsRoot = findWorkspaceRootOrNull(Directory.current.path);
+    if (wsRoot == null) return null;
     final path = '$wsRoot/${tool.name}_master.yaml';
     final file = File(path);
     if (!file.existsSync()) return null;
@@ -1922,7 +1935,12 @@ Options:
   }
 
   ToolResult? _withMasterYaml(void Function(Map<String, dynamic> doc) mutate) {
-    final wsRoot = findWorkspaceRoot(Directory.current.path);
+    final wsRoot = findWorkspaceRootOrNull(Directory.current.path);
+    if (wsRoot == null) {
+      return const ToolResult.failure(
+        'Not inside a workspace (no $kBuildkitMasterYaml found)',
+      );
+    }
     final path = '$wsRoot/${tool.name}_master.yaml';
     final file = File(path);
     if (!file.existsSync()) {
@@ -2181,7 +2199,8 @@ Options:
 
   /// Load traversal defaults from buildkit_master.yaml navigation section.
   TraversalDefaults? _loadTraversalDefaults(String basePath) {
-    final wsRoot = findWorkspaceRoot(basePath);
+    final wsRoot = findWorkspaceRootOrNull(basePath);
+    if (wsRoot == null) return null;
     final masterFile = File('$wsRoot/$kBuildkitMasterYaml');
     if (!masterFile.existsSync()) return null;
 
@@ -2246,8 +2265,10 @@ Options:
   }
 
   _RequirementCheckResult _runRequiredEnvironmentChecks() {
-    final wsRoot = findWorkspaceRoot(Directory.current.path);
-    final requiredMap = _loadRequiredEnvironmentSection(wsRoot);
+    final wsRoot = findWorkspaceRootOrNull(Directory.current.path);
+    final requiredMap = wsRoot == null
+        ? null
+        : _loadRequiredEnvironmentSection(wsRoot);
     if (requiredMap == null) {
       return const _RequirementCheckResult();
     }

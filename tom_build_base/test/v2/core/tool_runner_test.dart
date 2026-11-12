@@ -1050,7 +1050,7 @@ void main() {
         final tempRoot = await Directory.systemTemp.createTemp(
           'bb_help_checks_',
         );
-        final workspace = Directory('${tempRoot.path}/ws')..createSync();
+        final workspace = _workspace(tempRoot);
         final master = File('${workspace.path}/testtool_master.yaml');
         master.writeAsStringSync('''
 required-environment:
@@ -1107,7 +1107,7 @@ required-environment:
         final tempRoot = await Directory.systemTemp.createTemp(
           'bb_run_checks_',
         );
-        final workspace = Directory('${tempRoot.path}/ws')..createSync();
+        final workspace = _workspace(tempRoot);
         final master = File('${workspace.path}/testtool_master.yaml');
         master.writeAsStringSync('''
 required-environment:
@@ -1148,7 +1148,7 @@ required-environment:
         final tempRoot = await Directory.systemTemp.createTemp(
           'bb_doctor_checks_',
         );
-        final workspace = Directory('${tempRoot.path}/ws')..createSync();
+        final workspace = _workspace(tempRoot);
         final master = File('${workspace.path}/testtool_master.yaml');
         master.writeAsStringSync('''
 required-environment:
@@ -1186,7 +1186,7 @@ required-environment:
       test('BB-RUN-41: ToolRunner dispatches pipeline invocation '
           '[2026-02-28]', () async {
         final tempRoot = await Directory.systemTemp.createTemp('bb_pipe_run_');
-        final workspace = Directory('${tempRoot.path}/ws')..createSync();
+        final workspace = _workspace(tempRoot);
         final master = File('${workspace.path}/testtool_master.yaml');
         master.writeAsStringSync('''
 required-environment:
@@ -1233,7 +1233,7 @@ required-environment:
         final tempRoot = await Directory.systemTemp.createTemp(
           'bb_pipe_unknown_',
         );
-        final workspace = Directory('${tempRoot.path}/ws')..createSync();
+        final workspace = _workspace(tempRoot);
         final master = File('${workspace.path}/testtool_master.yaml');
         master.writeAsStringSync('''
 required-environment:
@@ -1269,7 +1269,7 @@ required-environment:
       test('BB-RUN-42: macro/macros runtime built-ins work when eligible '
           '[2026-02-28]', () async {
         final tempRoot = await Directory.systemTemp.createTemp('bb_macro_');
-        final workspace = Directory('${tempRoot.path}/ws')..createSync();
+        final workspace = _workspace(tempRoot);
         File('${workspace.path}/testtool_master.yaml')
           ..createSync()
           ..writeAsStringSync('required-environment:\n  pipelines: {}\n');
@@ -1301,7 +1301,7 @@ required-environment:
         final tempRoot = await Directory.systemTemp.createTemp(
           'bb_macro_persist_',
         );
-        final workspace = Directory('${tempRoot.path}/ws')..createSync();
+        final workspace = _workspace(tempRoot);
         File('${workspace.path}/testtool_master.yaml')
           ..createSync()
           ..writeAsStringSync('required-environment:\n  pipelines: {}\n');
@@ -1370,7 +1370,7 @@ required-environment:
       test('BB-RUN-43: define/undefine persist sorted defines in master yaml '
           '[2026-02-28]', () async {
         final tempRoot = await Directory.systemTemp.createTemp('bb_define_');
-        final workspace = Directory('${tempRoot.path}/ws')..createSync();
+        final workspace = _workspace(tempRoot);
         final master = File('${workspace.path}/testtool_master.yaml')
           ..createSync()
           ..writeAsStringSync('required-environment:\n  pipelines: {}\n');
@@ -1415,7 +1415,7 @@ required-environment:
       test('BB-RUN-44: built-in define commands show master yaml error when '
           'file is missing [2026-02-28]', () async {
         final tempRoot = await Directory.systemTemp.createTemp('bb_gate_');
-        final workspace = Directory('${tempRoot.path}/ws')..createSync();
+        final workspace = _workspace(tempRoot);
 
         final previousCwd = Directory.current.path;
         final output = StringBuffer();
@@ -1442,7 +1442,7 @@ required-environment:
         final tempRoot = await Directory.systemTemp.createTemp(
           'bb_macro_master_',
         );
-        final workspace = Directory('${tempRoot.path}/ws')..createSync();
+        final workspace = _workspace(tempRoot);
         final master = File('${workspace.path}/testtool_master.yaml')
           ..createSync()
           ..writeAsStringSync('required-environment:\n  pipelines: {}\n');
@@ -1495,7 +1495,7 @@ required-environment:
         final tempRoot = await Directory.systemTemp.createTemp(
           'bb_define_mode_',
         );
-        final workspace = Directory('${tempRoot.path}/ws')..createSync();
+        final workspace = _workspace(tempRoot);
         final master = File('${workspace.path}/testtool_master.yaml')
           ..createSync()
           ..writeAsStringSync('required-environment:\n  pipelines: {}\n');
@@ -1548,7 +1548,7 @@ required-environment:
         final tempRoot = await Directory.systemTemp.createTemp(
           'bb_define_default_',
         );
-        final workspace = Directory('${tempRoot.path}/ws')..createSync();
+        final workspace = _workspace(tempRoot);
         final master = File('${workspace.path}/testtool_master.yaml')
           ..createSync()
           ..writeAsStringSync('required-environment:\n  pipelines: {}\n');
@@ -1585,7 +1585,7 @@ required-environment:
         final tempRoot = await Directory.systemTemp.createTemp(
           'bb_defines_list_',
         );
-        final workspace = Directory('${tempRoot.path}/ws')..createSync();
+        final workspace = _workspace(tempRoot);
         File('${workspace.path}/testtool_master.yaml')
           ..createSync()
           ..writeAsStringSync('''
@@ -1626,7 +1626,7 @@ testtool:
         final tempRoot = await Directory.systemTemp.createTemp(
           'bb_undefine_mode_',
         );
-        final workspace = Directory('${tempRoot.path}/ws')..createSync();
+        final workspace = _workspace(tempRoot);
         final master = File('${workspace.path}/testtool_master.yaml')
           ..createSync()
           ..writeAsStringSync('''
@@ -1669,8 +1669,9 @@ testtool:
 
       test('BB-RUN-50: macro/define commands show error when master yaml '
           'is missing [2026-03-01]', () async {
-        // Use a temp dir with NO master yaml file.
+        // A workspace (buildkit_master.yaml) without the tool's master yaml.
         final tempRoot = await Directory.systemTemp.createTemp('bb_no_master_');
+        File('${tempRoot.path}/buildkit_master.yaml').writeAsStringSync('');
         final previousCwd = Directory.current.path;
         final output = StringBuffer();
         try {
@@ -1690,6 +1691,16 @@ testtool:
           final result2 = await runner.run([':macros']);
           expect(result2.success, isFalse);
           expect(output.toString(), contains('testtool_master.yaml'));
+
+          // Outside any workspace the error says so instead.
+          File('${tempRoot.path}/buildkit_master.yaml').deleteSync();
+          output.clear();
+          final result3 = await runner.run([':define', 'x=1']);
+          expect(result3.success, isFalse);
+          expect(
+            output.toString(),
+            contains('Not inside a workspace: no buildkit_master.yaml above'),
+          );
         } finally {
           Directory.current = previousCwd;
           if (tempRoot.existsSync()) {
@@ -1707,6 +1718,7 @@ testtool:
         final output = StringBuffer();
         try {
           // Create master yaml with defines
+          File('${tempRoot.path}/buildkit_master.yaml').writeAsStringSync('');
           final master = File('${tempRoot.path}/testtool_master.yaml');
           master.writeAsStringSync('''
 testtool:
@@ -1763,6 +1775,7 @@ testtool:
         final previousCwd = Directory.current.path;
         final output = StringBuffer();
         try {
+          File('${tempRoot.path}/buildkit_master.yaml').writeAsStringSync('');
           final master = File('${tempRoot.path}/testtool_master.yaml');
           master.writeAsStringSync('''
 testtool:
@@ -1822,6 +1835,7 @@ testtool:
         final previousCwd = Directory.current.path;
         final output = StringBuffer();
         try {
+          File('${tempRoot.path}/buildkit_master.yaml').writeAsStringSync('');
           final master = File('${tempRoot.path}/testtool_master.yaml');
           master.writeAsStringSync('''
 testtool:
@@ -1881,6 +1895,7 @@ defines:
         final previousCwd = Directory.current.path;
         final output = StringBuffer();
         try {
+          File('${tempRoot.path}/buildkit_master.yaml').writeAsStringSync('');
           final master = File('${tempRoot.path}/testtool_master.yaml');
           master.writeAsStringSync('''
 testtool:
@@ -1968,6 +1983,7 @@ testtool:
         final previousCwd = Directory.current.path;
         final output = StringBuffer();
         try {
+          File('${tempRoot.path}/buildkit_master.yaml').writeAsStringSync('');
           File(
             '${tempRoot.path}/testtool_master.yaml',
           ).writeAsStringSync('testtool:\n  defines:\n    mode: PROD\n');
@@ -2186,3 +2202,11 @@ const _twoTraversalCommandsTool = ToolDefinition(
     ),
   ],
 );
+
+/// A workspace for a test tool's master yaml: the directory `ws` under
+/// [tempRoot], marked as the workspace root by its `buildkit_master.yaml`.
+Directory _workspace(Directory tempRoot) {
+  final ws = Directory('${tempRoot.path}/ws')..createSync();
+  File('${ws.path}/buildkit_master.yaml').writeAsStringSync('');
+  return ws;
+}

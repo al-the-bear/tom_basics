@@ -5,7 +5,11 @@ import 'package:path/path.dart' as p;
 /// Filename for the workspace-level buildkit configuration.
 const kBuildkitMasterYaml = 'buildkit_master.yaml';
 
-/// Filename for the VS Code workspace file.
+/// Filename of a VS Code workspace file that once marked the workspace root.
+///
+/// No longer a marker: the workspace root is the directory holding
+/// [kBuildkitMasterYaml] (see [findWorkspaceRootOrNull]).
+@Deprecated('Not a workspace marker any more; buildkit_master.yaml is.')
 const kTomCodeWorkspace = 'tom.code-workspace';
 
 /// Filename for the buildkit skip marker.
@@ -40,24 +44,33 @@ const kAlwaysSkipDirectories = <String>{
   '_ai',
 };
 
-/// Find the workspace root by traversing upwards looking for workspace markers.
+/// The workspace root: the nearest directory at or above [startPath] that
+/// holds `buildkit_master.yaml`, or null when there is none.
 ///
-/// Returns the directory containing `buildkit_master.yaml`
-/// or `tom.code-workspace`, or [startPath] if none is found.
-String findWorkspaceRoot(String startPath) {
+/// `buildkit_master.yaml` is the one workspace marker. Nothing else marks a
+/// workspace, so a `tom_workspace.yaml`, a `.tom_metadata/` folder or a
+/// `.code-workspace` file below the root is not mistaken for it. A caller that
+/// can work outside a workspace decides itself what to use instead.
+String? findWorkspaceRootOrNull(String startPath) {
   var current = p.normalize(p.absolute(startPath));
-  final root = p.rootPrefix(current);
-
-  while (current != root) {
-    if (File(p.join(current, kBuildkitMasterYaml)).existsSync() ||
-        File(p.join(current, kTomCodeWorkspace)).existsSync()) {
+  while (true) {
+    if (File(p.join(current, kBuildkitMasterYaml)).existsSync()) {
       return current;
     }
-    current = p.dirname(current);
+    final parent = p.dirname(current);
+    if (parent == current) return null;
+    current = parent;
   }
-
-  return startPath;
 }
+
+/// The workspace root of [startPath] ([findWorkspaceRootOrNull]), or
+/// [startPath] itself when it is not inside a workspace.
+@Deprecated(
+  'Use findWorkspaceRootOrNull and decide at the call site what no '
+  'workspace means.',
+)
+String findWorkspaceRoot(String startPath) =>
+    findWorkspaceRootOrNull(startPath) ?? startPath;
 
 /// Validate that no absolute `--project` pattern points outside [executionRoot].
 ///

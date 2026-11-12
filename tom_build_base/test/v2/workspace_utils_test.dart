@@ -47,6 +47,56 @@ void main() {
     });
   });
 
+  group('findWorkspaceRootOrNull', () {
+    late Directory tmp;
+
+    setUp(() => tmp = Directory.systemTemp.createTempSync('ws_root_'));
+    tearDown(() => tmp.deleteSync(recursive: true));
+
+    String dir(String rel) =>
+        (Directory(p.join(tmp.path, rel))..createSync(recursive: true)).path;
+    void file(String rel) => File(p.join(tmp.path, rel))
+      ..parent.createSync(recursive: true)
+      ..writeAsStringSync('');
+
+    test('the nearest buildkit_master.yaml at or above the start is the '
+        'root', () {
+      file('ws/buildkit_master.yaml');
+      expect(findWorkspaceRootOrNull(dir('ws/a/b')), p.join(tmp.path, 'ws'));
+      expect(findWorkspaceRootOrNull(dir('ws')), p.join(tmp.path, 'ws'));
+    });
+
+    test('a nested workspace wins over the one around it', () {
+      file('ws/buildkit_master.yaml');
+      file('ws/inner/buildkit_master.yaml');
+      expect(
+        findWorkspaceRootOrNull(dir('ws/inner/pkg')),
+        p.join(tmp.path, 'ws', 'inner'),
+      );
+    });
+
+    test('the retired markers below the root mark nothing', () {
+      file('ws/buildkit_master.yaml');
+      file('ws/a/tom_workspace.yaml');
+      file('ws/a/tom.code-workspace');
+      dir('ws/a/.tom_metadata');
+      expect(findWorkspaceRootOrNull(dir('ws/a/b')), p.join(tmp.path, 'ws'));
+    });
+
+    test('without buildkit_master.yaml there is no root: null, not the '
+        'start path', () {
+      file('ws/tom_workspace.yaml');
+      file('ws/tom.code-workspace');
+      expect(findWorkspaceRootOrNull(dir('ws/a')), isNull);
+    });
+
+    test('the deprecated findWorkspaceRoot keeps its start-path fallback', () {
+      final start = dir('lonely');
+      // ignore: deprecated_member_use_from_same_package
+      expect(findWorkspaceRoot(start), start);
+    });
+  });
+
   group('validateProjectPathsWithinRoot', () {
     final root = p.normalize(p.absolute(p.join('home', 'user', 'workspace')));
 

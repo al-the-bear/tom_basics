@@ -559,7 +559,8 @@ String resolveExecutionRoot(
   }
 
   if (navArgs.bareRoot) {
-    return findWorkspaceRoot(currentDir);
+    // Bare -R outside a workspace: the start directory, as without -R.
+    return findWorkspaceRootOrNull(currentDir) ?? currentDir;
   } else if (navArgs.root != null) {
     final specifiedPath = p.isAbsolute(navArgs.root!)
         ? navArgs.root!

@@ -473,7 +473,9 @@ String _private() => '';
     test('SEAMS-RUN-3: the roots are found by their landmarks, and their '
         'absence is an error naming the landmark', () {
       final root = tree({
-        'ws/.tom_metadata/x': '',
+        'ws/buildkit_master.yaml': '',
+        'ws/repo/.tom_metadata/x': '',
+        'ws/repo/tom_workspace.yaml': '',
         'ws/repo/tom_repository.yaml': '',
         'ws/repo/pkg/lib/a.dart': '',
       });
@@ -488,6 +490,16 @@ String _private() => '';
             (e) => e.message,
             'message',
             contains('tom_repository.yaml'),
+          ),
+        ),
+      );
+      expect(
+        () => resolveWorkspaceRoot(p.rootPrefix(root)),
+        throwsA(
+          isA<StateError>().having(
+            (e) => e.message,
+            'message',
+            contains('buildkit_master.yaml'),
           ),
         ),
       );
