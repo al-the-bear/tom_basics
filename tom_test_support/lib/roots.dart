@@ -17,12 +17,10 @@
 /// ## The two landmarks
 ///
 /// `tom_repository.yaml` marks the root of a code repository. The workspace
-/// root is the directory holding **both** `.tom_metadata/` and
-/// `tom_workspace.yaml`. `.tom_metadata/` alone is not enough: tools write
-/// their state into a `.tom_metadata/` of the directory they run in, so stray
-/// ones turn up below the root (`tom_ai/`, `_scripts/`), while
-/// `tom_workspace.yaml` is tracked and sits only at the root. The walk reads
-/// neither file and regenerates nothing, the same use a `.git` directory gets.
+/// root is the nearest directory holding `buildkit_master.yaml`, the one
+/// workspace marker of the build tools (tom_build_base's
+/// `findWorkspaceRootOrNull` applies the same rule). The walk reads neither
+/// file and regenerates nothing, the same use a `.git` directory gets.
 library;
 
 import 'dart:io';
@@ -32,24 +30,18 @@ import 'package:path/path.dart' as p;
 /// The file that marks the root of a code repository.
 const tomRepositoryMarker = 'tom_repository.yaml';
 
-/// The metadata directory at the workspace root.
-const tomWorkspaceMarker = '.tom_metadata';
+/// The file that marks the workspace root.
+const tomWorkspaceMarker = 'buildkit_master.yaml';
 
-/// The workspace configuration file beside [tomWorkspaceMarker] at the root.
-const tomWorkspaceFile = 'tom_workspace.yaml';
-
-/// The workspace root — the nearest directory holding both
-/// [tomWorkspaceMarker] and [tomWorkspaceFile] — or null when the run is not
-/// inside one.
+/// The workspace root — the nearest directory holding [tomWorkspaceMarker] —
+/// or null when the run is not inside one.
 ///
 /// Null is a real answer and not a failure: a repository can be cloned on its
 /// own, and a suite that reaches for the workspace has to be able to say
 /// "there is no workspace here" rather than guess.
 Directory? tomFindWorkspaceRoot({Directory? from}) => tomFindUp(
   from ?? Directory.current,
-  (dir) =>
-      Directory(p.join(dir.path, tomWorkspaceMarker)).existsSync() &&
-      File(p.join(dir.path, tomWorkspaceFile)).existsSync(),
+  (dir) => File(p.join(dir.path, tomWorkspaceMarker)).existsSync(),
 );
 
 /// The root of the repository the run is in — the nearest directory holding

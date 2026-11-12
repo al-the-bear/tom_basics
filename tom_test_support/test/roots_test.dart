@@ -42,11 +42,7 @@ void main() {
         return;
       }
       expect(
-        Directory(p.join(workspace.path, tomWorkspaceMarker)).existsSync(),
-        isTrue,
-      );
-      expect(
-        File(p.join(workspace.path, tomWorkspaceFile)).existsSync(),
+        File(p.join(workspace.path, tomWorkspaceMarker)).existsSync(),
         isTrue,
       );
       final repository = tomFindRepositoryRoot().path;
@@ -76,11 +72,9 @@ void main() {
       );
     });
 
-    test('TSUP-ROOT-6: a stray .tom_metadata/ without tom_workspace.yaml '
-        'beside it is not the workspace root [2026-11-09]', () {
-      // Tools wrote `.tom_metadata/` state folders into the directories they
-      // ran in (`tom_ai/`, `_scripts/`); taking one for the root put a suite's
-      // ztmp, and once a workspace clone, inside the live tree.
+    test('TSUP-ROOT-6: the retired markers (.tom_metadata/, '
+        'tom_workspace.yaml, tom.code-workspace) below the root mark nothing; '
+        'the root is the directory with buildkit_master.yaml [2026-11-13]', () {
       final scratch = Directory(
         p.join(Directory.current.path, '.dart_tool', 'roots_test_stray'),
       );
@@ -88,13 +82,14 @@ void main() {
       addTearDown(() {
         if (scratch.existsSync()) scratch.deleteSync(recursive: true);
       });
-      final workspace = Directory(p.join(scratch.path, 'ws'));
-      Directory(p.join(workspace.path, tomWorkspaceMarker))
-          .createSync(recursive: true);
-      File(p.join(workspace.path, tomWorkspaceFile)).writeAsStringSync('');
+      final workspace = Directory(p.join(scratch.path, 'ws'))
+        ..createSync(recursive: true);
+      File(p.join(workspace.path, tomWorkspaceMarker)).writeAsStringSync('');
       final stray = Directory(p.join(workspace.path, 'tom_ai'));
-      Directory(p.join(stray.path, tomWorkspaceMarker))
+      Directory(p.join(stray.path, '.tom_metadata'))
           .createSync(recursive: true);
+      File(p.join(stray.path, 'tom_workspace.yaml')).writeAsStringSync('');
+      File(p.join(stray.path, 'tom.code-workspace')).writeAsStringSync('');
       final start = Directory(p.join(stray.path, 'basics', 'pkg'))
         ..createSync(recursive: true);
 
@@ -106,6 +101,25 @@ void main() {
         tomWorkspaceZtmp(from: start).path,
         p.join(workspace.absolute.path, 'ztmp'),
       );
+    });
+
+    test('TSUP-ROOT-7: the retired markers alone are no workspace '
+        '[2026-11-13]', () {
+      final scratch = Directory(
+        p.join(Directory.current.path, '.dart_tool', 'roots_test_retired'),
+      );
+      if (scratch.existsSync()) scratch.deleteSync(recursive: true);
+      addTearDown(() {
+        if (scratch.existsSync()) scratch.deleteSync(recursive: true);
+      });
+      Directory(p.join(scratch.path, '.tom_metadata'))
+          .createSync(recursive: true);
+      File(p.join(scratch.path, 'tom_workspace.yaml')).writeAsStringSync('');
+      final start = Directory(p.join(scratch.path, 'pkg'))..createSync();
+      final found = tomFindWorkspaceRoot(from: start);
+      // Above the scratch folder is the real workspace (or nothing, in a
+      // standalone checkout); never the scratch folder itself.
+      expect(found?.path, isNot(scratch.absolute.path));
     });
 
     test('TSUP-ROOT-5: the walk stops at the nearest landmark, not the '

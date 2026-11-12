@@ -1,3 +1,13 @@
+## 0.7.0
+
+- **The workspace root is the nearest `buildkit_master.yaml`**, the one
+  workspace marker of the build tools (tom_build_base 2.23.0 applies the same
+  rule). `tomWorkspaceMarker` is now `buildkit_master.yaml`; `tomWorkspaceFile`
+  is removed. `.tom_metadata/`, `tom_workspace.yaml` and `tom.code-workspace`
+  mark nothing, below the root or alone (TSUP-ROOT-6, TSUP-ROOT-7, WC-13).
+  `TomWorkspaceClone.findLiveRoot` follows, and the clone tests' workspace
+  carries the new marker.
+
 # Changelog
 
 ## 0.6.2

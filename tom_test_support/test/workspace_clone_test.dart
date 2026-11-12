@@ -79,8 +79,7 @@ void main() {
 
     live = p.join(scratch.path, 'ws');
     await _initRepo(live, 'git@example.com:al/ws.git');
-    await _commit(live, '.tom_metadata/tom_master.yaml', 'master\n');
-    await _commit(live, 'tom_workspace.yaml', 'name: ws\n');
+    await _commit(live, 'buildkit_master.yaml', 'master\n');
     await _commit(live, '.gitignore', '.dart_tool/\n');
     await _git(live, ['submodule', 'add', '-q', mid, 'pkgs/mid']);
     await _git(live, ['commit', '-q', '-m', 'mid']);
@@ -231,7 +230,7 @@ void main() {
     final rootHead = await _head(root);
     final midHead = await _head(mid);
 
-    File(p.join(root, '.tom_metadata/tom_master.yaml')).writeAsStringSync('x');
+    File(p.join(root, 'buildkit_master.yaml')).writeAsStringSync('x');
     File(p.join(root, 'untracked.txt')).writeAsStringSync('x');
     File(p.join(root, '.dart_tool', 'kept.json'))
       ..parent.createSync()
@@ -245,7 +244,7 @@ void main() {
     await clone.release();
 
     expect(
-      File(p.join(root, '.tom_metadata/tom_master.yaml')).readAsStringSync(),
+      File(p.join(root, 'buildkit_master.yaml')).readAsStringSync(),
       'master\n',
     );
     expect(File(p.join(root, 'untracked.txt')).existsSync(), isFalse);
@@ -344,14 +343,15 @@ void main() {
     tomRequireWorkspaceClone(Directory(p.join(cloneDir.path, 'pkgs/mid')));
   });
 
-  test('WC-13: the live root is the directory with .tom_metadata/ AND '
-      'tom_workspace.yaml, not a stray .tom_metadata/ a tool left lower down '
-      '[2026-11-07]', () {
+  test('WC-13: the live root is the directory with buildkit_master.yaml; '
+      'the retired markers lower down mark nothing [2026-11-13]', () {
     final mid = Directory(p.join(live, 'pkgs/mid'));
     Directory(p.join(mid.path, '.tom_metadata')).createSync();
     File(
       p.join(mid.path, '.tom_metadata', 'workspace_state.yaml'),
     ).writeAsStringSync('state\n');
+    File(p.join(mid.path, 'tom_workspace.yaml')).writeAsStringSync('');
+    File(p.join(mid.path, 'tom.code-workspace')).writeAsStringSync('');
     expect(TomWorkspaceClone.findLiveRoot(from: mid)?.path, live);
   });
 

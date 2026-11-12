@@ -116,9 +116,8 @@ class TomWorkspaceClone {
   final Set<String> _fresh = {};
 
   /// The live workspace above [from] (default: the current directory): the
-  /// nearest directory holding both `.tom_metadata/` and `tom_workspace.yaml`
-  /// ([tomFindWorkspaceRoot]), or null. A stray `.tom_metadata/` below the
-  /// root would otherwise put the clone inside the live workspace.
+  /// nearest directory holding `buildkit_master.yaml` ([tomFindWorkspaceRoot]),
+  /// or null.
   static Directory? findLiveRoot({Directory? from}) =>
       tomFindWorkspaceRoot(from: from);
 
@@ -151,8 +150,7 @@ class TomWorkspaceClone {
     if (live == null) {
       throw StateError(
         'No workspace above ${Directory.current.path} (no directory holding '
-        'both $tomWorkspaceMarker/ and tom_workspace.yaml), so there is '
-        'nothing to clone.',
+        '$tomWorkspaceMarker), so there is nothing to clone.',
       );
     }
     final livePath = p.normalize(live.absolute.path);
