@@ -422,6 +422,19 @@ Unit tests for argument parsing and command shorthand resolution.
 | BK-SORT-1 | Dev dependencies do not order by default | ✅ | Two packages, one a dev dependency of the other; `:buildsorter --names` lists them alphabetically. |
 | BK-SORT-2 | `--include-dev` after the command orders by dev dependencies | ✅ | Same fixture with `--include-dev`; the dev dependency comes first. |
 
+### Boundaries
+
+**Test file:** `test/boundaries_test.dart` (runs `bin/buildkit.dart` on fixture packages under `.dart_tool`, rooted there with `-R`)
+
+| ID | Feature | Status | How to Test |
+|----|---------|--------|-------------|
+| BK-BND-1 | A package that keeps its boundaries exits 0 | ✅ | `:boundaries` in the package; `clean`. |
+| BK-BND-2 | A violation exits 1 and names file and line | ✅ | A billing library imports identity's internal library. |
+| BK-BND-3 | `--json` | ✅ | One JSON line with the verdict and the violation (file, line, kind). |
+| BK-BND-4 | A rotted rule exits 1 | ✅ | A `libraries:` glob that matches nothing. |
+| BK-BND-5 | No rules, asked for: NOT MEASURED, exit 1 | ✅ | `:boundaries` inside a package without the section. |
+| BK-BND-6 | No rules, met in a traversal: skipped by name | ✅ | A folder with a clean package and one without rules; exit 0. |
+
 ### Bootstrap — Shell Setup
 
 **Test file:** `test/bootstrap_binaries_test.dart` (sources `bootstrap_binaries.sh`'s functions in a temporary `HOME`; nothing is built)

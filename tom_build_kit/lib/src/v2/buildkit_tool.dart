@@ -187,6 +187,18 @@ const pubOptions = <OptionDefinition>[
 ];
 
 /// Options for status command.
+/// Options for the boundaries command.
+const boundariesOptions = <OptionDefinition>[
+  OptionDefinition.flag(
+    name: 'json',
+    description: 'One JSON report per project, one per line',
+  ),
+  OptionDefinition.flag(
+    name: 'tests',
+    description: 'Also check test/ (overrides the rules\' tests: flag)',
+  ),
+];
+
 const statusOptions = <OptionDefinition>[
   OptionDefinition.flag(name: 'json', description: 'Output in JSON format'),
   OptionDefinition.flag(
@@ -602,6 +614,24 @@ const dependenciesCommand = CommandDefinition(
     'buildkit :dependencies',
     'buildkit :deps --dev',
     'buildkit :deps --deep',
+  ],
+);
+
+const boundariesCommand = CommandDefinition(
+  name: 'boundaries',
+  description:
+      'Context-boundary check: imports across the bounded contexts in '
+      'buildkit.yaml',
+  options: boundariesOptions,
+  worksWithNatures: {DartProjectFolder},
+  supportsProjectTraversal: true,
+  supportsGitTraversal: false,
+  requiresTraversal: true,
+  canRunStandalone: true,
+  examples: [
+    'buildkit :boundaries',
+    'buildkit :boundaries --json',
+    'buildkit -s . -r :boundaries --tests',
   ],
 );
 
@@ -1066,6 +1096,7 @@ final buildkitTool = ToolDefinition(
     runnerCommand,
     cleanupCommand,
     dependenciesCommand,
+    boundariesCommand,
     publisherCommand,
     statusCommand,
     buildsorterCommand,

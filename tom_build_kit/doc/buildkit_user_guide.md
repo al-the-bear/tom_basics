@@ -38,6 +38,7 @@ This package extends the shared infrastructure from **tom_build_base**:
 - [Built-in Commands](#built-in-commands)
   - [DCli Command](#dcli-command)
   - [Execute Command](#execute-command)
+  - [Boundaries Command](#boundaries-command)
   - [Status Command](#status-command)
 - [Command Prefix Matching](#command-prefix-matching)
 - [Help Topics](#help-topics)
@@ -396,6 +397,7 @@ Built-in commands run the respective tools directly via their Dart implementatio
 | `runner` | `build_runner` wrapper with builder filtering |
 | `cleanup` | Clean generated and temporary files |
 | `dependencies` | Dependency tree visualization |
+| `boundaries` | Context-boundary check: imports across a package's bounded contexts |
 | `pubget` | Run `dart pub get` on projects |
 | `pubgetall` | Shortcut for `pubget --scan . --recursive` |
 | `pubupdate` | Run `dart pub upgrade` on projects |
@@ -553,6 +555,68 @@ buildkit -i :execute "echo ${dart.publishable?(Ready to publish):(Local only)}"
 ```
 
 > See [tools_user_guide.md — Execute](tools_user_guide.md#execute) for the full placeholder reference.
+
+### Boundaries Command
+
+The `boundaries` command checks that a package built as several bounded contexts (a modular monolith) keeps them apart:
+it reads the contexts from a `boundaries:` section of the package's `buildkit.yaml` and checks every `import` and
+`export` of the package's own libraries against them. The check itself is tom_build_base's `checkContextBoundaries`.
+
+**Syntax:**
+
+```bash
+bk :boundaries [--json] [--tests]
+bk -s . -r :boundaries          # every package under the folder
+```
+
+**Rules** (`buildkit.yaml` of the package):
+
+```yaml
+boundaries:
+  tests: false                       # also check test/ (default false; --tests turns it on)
+  contexts:
+    - name: billing
+      libraries: [src/billing/**]    # globs under lib/ forming the context
+      public: [src/billing/billing.dart]
+      dependsOn: [identity]          # contexts it may import from
+      tests: [billing/**]            # globs under test/ belonging to it
+    - name: identity
+      libraries: [src/identity/**]
+      public: [src/identity/identity.dart]
+```
+
+A library no context matches is shared: anyone may import it, and it may import anything. A `part` file belongs to
+its library. Relative and `package:` URIs of the package itself are followed; other packages and `dart:` are not.
+
+**Findings** (each with the importing file and line and the imported library):
+
+| Kind | Meaning |
+|------|---------|
+| `undeclared-dependency` | A library of context A imports context B, which A does not list in `dependsOn` |
+| `internal-import` | A library of context A imports a library of B that is not one of B's `public` entries |
+| `rotted-glob`, `rotted-public` | A `libraries:` / `tests:` glob or a `public:` entry matches nothing |
+| `unknown-dependency` | `dependsOn` names a context that does not exist |
+| `overlap` | A library is matched by two contexts |
+| `invalid-section`, `duplicate-context` | The section is malformed, or a context is defined twice |
+
+A rule that matches nothing is reported, not skipped, so a rule that has rotted fails the check.
+
+**Verdicts and exit code:**
+
+- **clean**: no finding; exit 0.
+- **violations**: any finding; the project fails and buildkit exits 1.
+- **NOT MEASURED**: the package has no `boundaries:` section. Asked for by name (`-p`) or run inside the package, that
+  fails (exit 1): a check that measured nothing is not a pass. Met while traversing a folder of packages, it is listed
+  under *Skipped* and does not fail the run.
+
+**Options:**
+
+| Option | Description |
+|--------|-------------|
+| `--json` | One JSON report per project, one per line: `project`, `verdict` (`clean` / `violations` / `not-measured`), `librariesChecked`, `importsChecked`, `violations`, `ruleErrors` |
+| `--tests` | Also check `test/`, whatever the rules' `tests:` says |
+
+Run it by hand from the repository, or from a project's own check script; it is never scheduled.
 
 ### Status Command
 

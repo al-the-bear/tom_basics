@@ -1,3 +1,18 @@
+## 1.14.0
+
+### Added — `:boundaries`, the context-boundary check
+
+Runs tom_build_base's `checkContextBoundaries` (2.21.0) over the traversal: the
+bounded contexts of a package, read from the `boundaries:` section of its
+`buildkit.yaml`, against its imports and exports. A violation or a rotted rule
+fails the project (exit 1) and names file, line and imported library; a package
+without the section is NOT MEASURED, which fails when the package was asked
+for by name or the command runs inside it, and is skipped by name in a wider
+traversal. `--json` prints one report per project per line, written past the
+console-markdown layer so the JSON stays intact; `--tests` adds `test/`.
+Documented in `doc/buildkit_user_guide.md`; tests BK-BND-1..6.
+`tom_build_base: ^2.21.0`.
+
 ## 1.13.4
 
 ### Changed — `:compiler` names every listed target it does not build
