@@ -93,7 +93,7 @@ This package is published to pub.dev. See [Project Republishing](../../../../_co
 | `-o`, `--outer-first-git` | git-traversal | Process shallowest repos first (parents before submodules) |
 | `-T`, `--top-repo` | git-traversal | Find topmost git repo by walking up from cwd |
 | `-s`, `--scan` | project-traversal | Starting directory for project scan |
-| `-r`, `--recursive` | project-traversal | Recurse into subdirectories during scan |
+| `-r`, `--recursive` | project-traversal | Also scan inside projects for nested projects (e.g. `test/` fixtures); folders without a `pubspec.yaml` are always scanned |
 | `-R`, `--root` | both | Set/detect workspace root |
 | `-p`, `--project` | project-traversal | Filter projects by glob pattern |
 

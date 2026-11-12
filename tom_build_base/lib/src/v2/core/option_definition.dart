@@ -131,7 +131,9 @@ const List<OptionDefinition> projectTraversalOptions = [
   OptionDefinition.flag(
     name: 'recursive',
     abbr: 'r',
-    description: 'Recurse into subdirectories',
+    description:
+        'Also scan inside projects for nested projects (e.g. test/ fixtures); '
+        'folders without a pubspec.yaml are always scanned',
   ),
   OptionDefinition.flag(
     name: 'not-recursive',

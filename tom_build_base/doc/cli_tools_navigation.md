@@ -111,7 +111,7 @@ astgen -i                    # Inner-first git mode
 | Option | Abbr | Description |
 |--------|------|-------------|
 | `--scan=<path>` | `-s` | Scan directory for projects |
-| `--recursive` | `-r` | Scan directories recursively |
+| `--recursive` | `-r` | Also scan inside projects for nested projects (e.g. `test/` fixtures); folders without a `pubspec.yaml` are always scanned |
 | `--build-order` | `-b` | Sort projects in dependency build order (`dependencies` only by default) |
 | `--include-dev` | | Also order by `dev_dependencies` |
 | `--exclude-dev` | | Leave `dev_dependencies` out of build-order sorting (the default; wins over `--include-dev`) |
@@ -478,7 +478,7 @@ or built. No skip file is needed for them, and `--no-skip` does not reach them: 
 | Property | Type | Description |
 |----------|------|-------------|
 | `scan` | `String?` | Scan directory path |
-| `recursive` | `bool` | Recursive scanning enabled |
+| `recursive` | `bool` | Descend into projects for nested ones (containers are always scanned) |
 | `buildOrder` | `bool` | Sort by dependency order |
 | `project` | `String?` | Project pattern(s) |
 | `root` | `String?` | Explicit workspace root path |

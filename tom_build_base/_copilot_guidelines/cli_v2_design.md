@@ -1115,7 +1115,7 @@ The framework provides separate traversal info types for different traversal mod
 | Option | Abbr | Description |
 |--------|------|-------------|
 | `--scan` | `-s` | Starting path for scan (default: `.`) |
-| `--recursive` | `-r` | Recurse into subdirectories |
+| `--recursive` | `-r` | Also scan inside projects for nested projects (e.g. `test/` fixtures); folders without a `pubspec.yaml` are always scanned |
 | `--not-recursive` | | Do not recurse (overrides -r) |
 | `--recursion-exclude` | | Patterns to skip during descent |
 | `--project` | `-p` | Project names/IDs to include (glob patterns) |
@@ -1797,7 +1797,7 @@ Project-focused traversal with project name filtering:
 /// Configuration for project-based traversal.
 class ProjectTraversalInfo extends BaseTraversalInfo {
   final String scan;                    // Starting path for scan (default: '.')
-  final bool recursive;                 // Recurse into subdirectories
+  final bool recursive;                 // Descend into projects (containers always)
   final List<String> recursionExclude;  // Patterns to skip during descent
   final List<String> projectPatterns;   // Project names/IDs to include (glob, empty = all)
   final List<String> excludeProjects;   // Project names to exclude

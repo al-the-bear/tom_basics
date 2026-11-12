@@ -48,7 +48,11 @@ class ProjectTraversalInfo extends BaseTraversalInfo {
   /// Starting path for scan (default: '.').
   final String scan;
 
-  /// Recurse into subdirectories.
+  /// Whether to descend into **project** directories (those with a
+  /// `pubspec.yaml`) to find projects nested inside them, e.g. a project's
+  /// `test/` or `example/` fixtures. Folders without a `pubspec.yaml`
+  /// (containers) are always scanned, so `false` still finds every project
+  /// that is not inside another project. See [FolderScanner.scan].
   final bool recursive;
 
   /// Patterns to skip during recursive descent (e.g., 'node_modules').

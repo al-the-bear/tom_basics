@@ -466,7 +466,7 @@ The `navigation:` section in the master file provides shared defaults (scan, rec
 | `projects` | `List<String>` | Glob patterns for project discovery |
 | `scan` | `String?` | Root directory to scan |
 | `config` | `String?` | Explicit config file path |
-| `recursive` | `bool` | Recurse into found projects |
+| `recursive` | `bool` | Descend into found projects for nested ones (containers are always scanned) |
 | `exclude` | `List<String>` | Glob patterns to exclude projects |
 | `excludeProjects` | `List<String>` | Exclusions matched against directory basename only |
 | `recursionExclude` | `List<String>` | Directories to skip during recursive traversal |

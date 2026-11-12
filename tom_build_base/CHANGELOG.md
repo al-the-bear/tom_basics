@@ -1,3 +1,14 @@
+## 2.20.1
+
+### Changed — `-r` / `--recursive` says what it does
+
+The help every tool printed for `-r` was "Recurse into subdirectories", which
+reads as if a non-recursive scan stayed in the top folder. It does not: folders
+without a `pubspec.yaml` (containers) are always scanned, and `-r` only adds
+descent into projects, for the projects nested inside them (`test/` and
+`example/` fixtures). The help now says so, as do `TraversalInfo.recursive` and
+the navigation docs. Behaviour is unchanged; TRV-PROJ-2 pins it.
+
 ## 2.20.0
 
 ### Added — `isFlutterPackage` / `pubspecDeclaresFlutterSdk`

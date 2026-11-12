@@ -145,7 +145,7 @@ Usage: buildkit [options] <pipeline|:command> [args...] [<pipeline|:command> [ar
 | `--dry-run` | `-n` | Show what would be executed without running |
 | `--list` | `-l` | List available pipelines |
 | `--scan <dir>` | `-s` | Scan directory for projects |
-| `--recursive` | `-r` | Scan directories recursively |
+| `--recursive` | `-r` | Also scan inside projects for nested projects (e.g. `test/` fixtures); folders without a `pubspec.yaml` are always scanned |
 | `--build-order` | `-b` | Sort projects in dependency build order |
 | `--project <path>` | `-p` | Project(s) to run on |
 | `--root [dir]` | `-R` | Workspace root (bare: detected, path: specified workspace) |
