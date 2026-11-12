@@ -315,8 +315,8 @@ void main() {
 ```
 
 The vocabulary `out` understands: `**bold**`, `*italic*`, `__underline__`,
-`` `code` `` (dimmed), plus colours and nested tags. See the workspace
-[`console_markdown` guideline](../../../../_copilot_guidelines/console_markdown.md)
+`` `code` `` (dimmed), plus colours and nested tags. See
+[`tom_basics_console`'s Console Markdown page](../../tom_basics_console/doc/console_markdown.md)
 for the full set.
 
 > **Marker caveat.** `console_markdown` v0.0.3 renders `*italic*` (single
@@ -555,7 +555,7 @@ package.
   manual (the seam relationship, every member, architecture).
 - [`tom_basics` README](../../tom_basics/) — the abstract seam, logger, and
   exception base this package implements and re-exports.
-- [`console_markdown` guideline](../../../../_copilot_guidelines/console_markdown.md)
+- [Console Markdown](../../tom_basics_console/doc/console_markdown.md)
   — the Markdown-to-ANSI vocabulary used by `out` / `outError`.
 - [`tom_basics_samples` README](../) — the samples index and learning path.
 

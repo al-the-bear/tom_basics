@@ -684,8 +684,6 @@ of the framework speaks.
 - [`tom_basics` source](../../tom_basics/lib/tom_basics.dart) — the single
   public export surface.
 - [`tom_basics_samples` README](../) — the samples index and learning path.
-- [`component_module_readme_example.md`](../../../../_copilot_guidelines/component_module_readme_example.md)
-  — the guideline this sample's shape follows.
 
 ---
 

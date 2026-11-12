@@ -2,8 +2,6 @@
 
 This document lists all testable features across buildkit tools and tracks test implementation status.
 
-For the testing strategy, safety protocol, and test infrastructure, see [_copilot_guidelines/testing.md](../_copilot_guidelines/testing.md).
-
 ## Status Legend
 
 - ✅ Test implemented and passing

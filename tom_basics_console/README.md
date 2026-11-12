@@ -207,8 +207,8 @@ p.outError('**error:** could not open `config.yaml`');
 
 In a terminal, `**Build complete**` is bold, `*2.3s*` is italic, and the
 backtick-wrapped `config.yaml` is dimmed; the markers themselves are consumed.
-See the workspace
-[`console_markdown` guideline](../../../_copilot_guidelines/console_markdown.md)
+See
+[doc/console_markdown.md](doc/console_markdown.md)
 for the full formatting vocabulary (colours, underline, nested tags).
 
 Because the logger's default console sink routes through the platform seam,
@@ -366,7 +366,7 @@ the [samples learning path](../README.md#samples-learning-path).
 - [`tom_basics` README](../tom_basics/README.md) — the abstract platform seam,
   the logger, and the exception base this package implements and re-exports.
 - [Basics repository README](../README.md) — the map of all ten basics packages.
-- [`console_markdown` guideline](../../../_copilot_guidelines/console_markdown.md)
+- [Console Markdown](doc/console_markdown.md)
   — the Markdown-to-ANSI vocabulary used by `out` / `outError`.
 - [`console_markdown` on pub.dev](https://pub.dev/packages/console_markdown) —
   the upstream package providing `.toConsole()`.
