@@ -1,3 +1,13 @@
+## 1.13.2
+
+### Changed — build order without dev dependencies (tom_build_base 2.19.0)
+
+`tom_build_base: ^2.19.0`. buildkit's build order ignores `dev_dependencies`
+by default (`--include-dev` opts in), so the two dev-only cycles in the
+workspace (tom_reflection / tom_reflection_generator, tom_ast_generator /
+tom_d4rt_exec) no longer make every run fall back to scan order. A remaining
+cycle is reported with its members and edges only.
+
 ## 1.13.1
 
 ### Changed — `dcli` ^10.4.7
