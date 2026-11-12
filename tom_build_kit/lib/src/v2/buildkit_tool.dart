@@ -82,12 +82,15 @@ const compilerOptions = <OptionDefinition>[
   OptionDefinition.flag(
     name: 'all-platforms',
     description:
-        'Compile all configured targets for the current build platform',
+        'Compile every target a section lists, not only the current '
+        'platform (cross-compilation reaches Linux targets only)',
   ),
   OptionDefinition.multi(
     name: 'targets',
     abbr: 't',
-    description: 'Target platform(s) filter (e.g., linux-x64,darwin-arm64)',
+    description:
+        'Compile the listed targets a section matches '
+        '(e.g., linux-x64,darwin-arm64)',
     valueName: 'platform',
   ),
   OptionDefinition.multi(

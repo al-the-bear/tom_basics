@@ -110,6 +110,19 @@ Target project: `_build` or another project with `compiler:` config.
 | CMP_PLC01 | Placeholder resolution in commandlines | ✅ | Configure `commandline` with `${file}`, `${target-platform}`. Run. Verify placeholders resolved in verbose output. |
 | CMP_PHS01 | Precompile/postcompile phases execute | ✅ | Configure pre/postcompile steps (e.g., `echo` commands). Run. Verify all phases execute in order. |
 
+**Target plan** — `test/compiler_target_plan_test.dart` (pure; nothing is compiled): which of a section's `targets:` a run
+builds, and the named reason for every other one.
+
+| ID | Feature | Status | How to Test |
+|----|---------|--------|-------------|
+| CMP_PLAN01 | A plain run builds the host and names the rest | ✅ | `planTargets` on darwin-arm64 for `[darwin-arm64, linux-x64]`; linux-x64 is not built, with `--all-platforms` in the reason. |
+| CMP_PLAN02 | `--all-platforms` builds every listed target | ✅ | Same list with `allPlatforms`; both built. |
+| CMP_PLAN03 | A target the host cannot build is a named skip | ✅ | `win32-x64` listed, built from darwin-arm64: in `unbuildable` with the reason. |
+| CMP_PLAN04 | `--targets` builds the matching targets only | ✅ | Filter `linux-x64`; darwin-arm64 is not built, reason names `--targets`. |
+| CMP_PLAN05 | A host outside the list builds nothing by default | ✅ | win32-x64 host; nothing built, both targets named. |
+| CMP_PLAN06 | `--targets` naming an unbuildable target skips it by name | ✅ | win32-x64 requested from linux-x64; in `unbuildable`. |
+| CMP_PLAN07 | Cross-compilation reaches Linux only | ✅ | `PlatformUtils.canBuildOn` for host, Linux, Windows and macOS targets. |
+
 ---
 
 ## 5. Runner — Build Runner Wrapper

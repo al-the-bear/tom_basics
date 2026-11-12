@@ -112,6 +112,16 @@ class PlatformUtils {
     return normalizedPlatforms.contains(normalizedTarget);
   }
 
+  /// Whether `dart compile exe` on [host] can produce a binary for [target]:
+  /// the host's own platform, or a Linux target — the only cross-compilation
+  /// the Dart SDK supports (`Unsupported target platform windows_x64` from
+  /// macOS, for example).
+  static bool canBuildOn(String host, String target) {
+    final h = host.toLowerCase().trim().replaceAll('_', '-');
+    final t = target.toLowerCase().trim().replaceAll('_', '-');
+    return h == t || t.startsWith('linux-');
+  }
+
   /// Get OS name from VS Code platform for dart compile --target-os.
   /// Returns: linux, macos, windows (dart compile option format)
   static String getTargetOS(String platform) {

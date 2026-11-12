@@ -681,8 +681,15 @@ precompile:
 Two independent platform filters exist:
 
 - **`platforms:`** on a section → restricts which **host OS** the section runs on
-- **`targets:`** on a compile section → restricts which **target platforms** are compiled for
-- **`--targets` CLI option** → further restricts the `targets:` list
+- **`targets:`** on a compile section → the **target platforms** it may compile for
+- **`--targets` CLI option** → compiles the listed targets it matches
+
+Without `--all-platforms` or `--targets`, a compile section builds the **current platform** only, when `targets:` lists
+it: each platform's binaries are built on a host of that platform. `--all-platforms` builds every listed target.
+`dart compile exe` cross-compiles to Linux targets only, so a selected target the host cannot build (Windows or macOS
+from another platform) is skipped by name (`Skipping win32-x64: dart compile exe cannot build win32-x64 on
+darwin-arm64`), not failed. With `-v` every listed target that is not built is named with the reason
+(`Not building linux-x64: current platform only; --all-platforms or --targets builds it`).
 
 ```yaml
 precompile:

@@ -312,39 +312,27 @@ class CompilerExecutor extends CommandExecutor {
         final allowedTargets = section.targets.isNotEmpty
             ? _expandTargets(section.targets)
             : [currentPlatform];
-
-        List<String> targets;
-        if (config.targetFilter.isNotEmpty) {
-          targets = allowedTargets.where((t) {
-            return config.targetFilter.any(
-              (f) => PlatformUtils.matchesPlatform(f, t),
+        final plan = planTargets(
+          allowedTargets: allowedTargets,
+          currentPlatform: currentPlatform,
+          targetFilter: config.targetFilter,
+          allPlatforms: compileAllPlatforms,
+        );
+        if (args.verbose) {
+          plan.notBuilt.forEach((t, why) => print('  Not building $t: $why'));
+        }
+        // Asked for and impossible on this host: named whether verbose or
+        // not, so a run that built less than requested never reads as done.
+        plan.unbuildable.forEach((t, why) => print('  Skipping $t: $why'));
+        final targets = plan.build;
+        if (targets.isEmpty) {
+          if (args.verbose) {
+            print(
+              '  Skipping compile section: nothing to build on '
+              '$currentPlatform (targets: ${allowedTargets.join(', ')})',
             );
-          }).toList();
-          if (targets.isEmpty) {
-            if (args.verbose) print('  No targets match filter');
-            continue;
           }
-        } else if (compileAllPlatforms) {
-          targets = allowedTargets;
-          if (targets.isEmpty) {
-            if (args.verbose) print('  No allowed targets for this section');
-            continue;
-          }
-        } else {
-          if (allowedTargets.any(
-            (t) => PlatformUtils.matchesPlatform(currentPlatform, t),
-          )) {
-            targets = [currentPlatform];
-          } else {
-            if (args.verbose) {
-              print(
-                '  Skipping compile section: current platform '
-                '$currentPlatform not in allowed targets '
-                '(${allowedTargets.join(', ')})',
-              );
-            }
-            continue;
-          }
+          continue;
         }
 
         // Get files to compile, applying executable filter
@@ -1003,6 +991,58 @@ class CompilerExecutor extends CommandExecutor {
         .replaceAll('[target-platform-vs]', targetPlatform);
   }
 
+  /// Which of a compile section's [allowedTargets] a run builds.
+  ///
+  /// Without flags only the host is built (each platform has its own build
+  /// host); `--all-platforms` builds every listed target and `--targets` the
+  /// listed ones it matches. Every listed target that is not built is in
+  /// [CompileTargetPlan.notBuilt] or [CompileTargetPlan.unbuildable] with the
+  /// reason, so the trace names it instead of dropping it.
+  static CompileTargetPlan planTargets({
+    required List<String> allowedTargets,
+    required String currentPlatform,
+    List<String> targetFilter = const [],
+    bool allPlatforms = false,
+  }) {
+    final selected = <String>[];
+    final notBuilt = <String, String>{};
+    for (final target in allowedTargets) {
+      final String? reason;
+      if (targetFilter.isNotEmpty) {
+        reason =
+            targetFilter.any((f) => PlatformUtils.matchesPlatform(f, target))
+            ? null
+            : 'not in --targets';
+      } else if (allPlatforms) {
+        reason = null;
+      } else {
+        reason = PlatformUtils.matchesPlatform(currentPlatform, target)
+            ? null
+            : 'current platform only; --all-platforms or --targets builds it';
+      }
+      if (reason == null) {
+        if (!selected.contains(target)) selected.add(target);
+      } else {
+        notBuilt[target] = reason;
+      }
+    }
+    final build = <String>[];
+    final unbuildable = <String, String>{};
+    for (final target in selected) {
+      if (PlatformUtils.canBuildOn(currentPlatform, target)) {
+        build.add(target);
+      } else {
+        unbuildable[target] =
+            'dart compile exe cannot build $target on $currentPlatform';
+      }
+    }
+    return CompileTargetPlan(
+      build: build,
+      notBuilt: notBuilt,
+      unbuildable: unbuildable,
+    );
+  }
+
   List<String> _expandTargets(List<String> targets) {
     final expanded = <String>[];
     for (final target in targets) {
@@ -1049,4 +1089,22 @@ class CompilerExecutor extends CommandExecutor {
     }
   }
 
+}
+
+/// The outcome of [CompilerExecutor.planTargets].
+class CompileTargetPlan {
+  /// The targets to compile, in the section's order.
+  final List<String> build;
+
+  /// Listed targets this run does not select, with the reason.
+  final Map<String, String> notBuilt;
+
+  /// Selected targets the host cannot compile for, with the reason.
+  final Map<String, String> unbuildable;
+
+  const CompileTargetPlan({
+    required this.build,
+    required this.notBuilt,
+    required this.unbuildable,
+  });
 }

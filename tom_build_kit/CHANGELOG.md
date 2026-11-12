@@ -1,3 +1,19 @@
+## 1.13.4
+
+### Changed — `:compiler` names every listed target it does not build
+
+A compile section's `targets:` lists what it may build; a plain run builds the
+current platform only (each platform is built on its own host), and
+`--all-platforms` / `--targets` build more. The listed targets a run did not
+build used to vanish from the trace, so `targets: [darwin-arm64, linux-x64,
+linux-arm64, linux-armhf]` looked like a fan-out that never happened. With
+`-v` each is now named with the reason (`Not building linux-x64: current
+platform only; --all-platforms or --targets builds it`). A selected target the
+host cannot build (`dart compile exe` cross-compiles to Linux only, so Windows
+or macOS from another platform) is skipped by name, verbose or not, instead of
+running a compile that fails. `CompilerExecutor.planTargets`,
+`PlatformUtils.canBuildOn`; tests CMP_PLAN01..07.
+
 ## 1.13.3
 
 ### Fixed — `:buildsorter --include-dev` was ignored
