@@ -450,10 +450,6 @@ const buildsorterOptions = <OptionDefinition>[
     name: 'names',
     description: 'Show package names instead of paths',
   ),
-  OptionDefinition.flag(
-    name: 'include-dev',
-    description: 'Include dev_dependencies in the graph',
-  ),
 ];
 
 /// Options for execute command.

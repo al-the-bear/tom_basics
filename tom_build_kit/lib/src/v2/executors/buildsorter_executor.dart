@@ -28,7 +28,6 @@ class BuildSorterExecutor extends CommandExecutor {
     final cmdOpts = _getCmdOpts(args);
     final reverse = cmdOpts['reverse'] == true;
     final showNames = cmdOpts['names'] == true;
-    final includeDev = cmdOpts['include-dev'] == true;
 
     final executionRoot = args.root ?? Directory.current.path;
     final traversalInfo =
@@ -53,9 +52,12 @@ class BuildSorterExecutor extends CommandExecutor {
     }
 
     // Delegate to BuildOrderComputer from tom_build_base
+    // `--include-dev` is tom_build_base's traversal option (off by default,
+    // `--exclude-dev` wins), so it reaches the graph through the traversal
+    // info whether it is written before or after `:buildsorter`.
     final sorted = BuildOrderComputer.computeBuildOrder(
       projectPaths,
-      includeDev: includeDev,
+      includeDev: traversalInfo.includeDevDependencies,
     );
 
     if (sorted == null) {

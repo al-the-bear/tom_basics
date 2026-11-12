@@ -402,6 +402,15 @@ Unit tests for argument parsing and command shorthand resolution.
 | BIC_ISB03 | Unique shorthand recognized | ✅ | Check `isBuiltin(:vers)`. Verify true. |
 | BIC_ISB04 | Ambiguous/unknown rejected | ✅ | Check `isBuiltin(:xyz)`. Verify false. |
 
+### Build Sorter
+
+**Test file:** `test/buildsorter_test.dart`
+
+| ID | Feature | Status | How to Test |
+|----|---------|--------|-------------|
+| BK-SORT-1 | Dev dependencies do not order by default | ✅ | Two packages, one a dev dependency of the other; `:buildsorter --names` lists them alphabetically. |
+| BK-SORT-2 | `--include-dev` after the command orders by dev dependencies | ✅ | Same fixture with `--include-dev`; the dev dependency comes first. |
+
 ---
 
 ## 15. Unreferenced — Export Audit

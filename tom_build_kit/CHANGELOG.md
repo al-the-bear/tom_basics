@@ -1,3 +1,13 @@
+## 1.13.3
+
+### Fixed — `:buildsorter --include-dev` was ignored
+
+tom_build_base 2.19.0 added `--include-dev` as a traversal option, which took
+the flag before `:buildsorter`'s own option of the same name could, so
+`:buildsorter --include-dev` sorted without dev dependencies. The command now
+reads the traversal setting (`--exclude-dev` still wins) and no longer defines
+its own option. Tests BK-SORT-1/2. `tom_build_base: ^2.19.1`.
+
 ## 1.13.2
 
 ### Changed — build order without dev dependencies (tom_build_base 2.19.0)
