@@ -163,6 +163,33 @@ void main() {
     expect(status, isNot(startsWith('-')));
   });
 
+  test('WC-14: an update succeeds when a live gitlink names a submodule '
+      'commit its origin never received [2026-11-12]', () async {
+    // As on mbp on 2026-11-12: the superproject recorded a submodule commit
+    // that was later dropped from the submodule and never pushed. git's
+    // on-demand submodule fetch then asks the submodule's origin for it and
+    // fails ('not our ref'), although the clone takes every submodule from its
+    // own live repository anyway.
+    final liveMid = p.join(live, 'pkgs/mid');
+    final bare = p.join(scratch.path, 'bare', 'mid.git');
+    Directory(bare).parent.createSync(recursive: true);
+    await _git(scratch.path, ['clone', '-q', '--bare', liveMid, bare]);
+    await _git(liveMid, ['remote', 'set-url', 'origin', bare]);
+    await (await acquire()).release();
+
+    await _commit(liveMid, 'lib/dropped.dart', 'never pushed');
+    await _git(live, ['add', 'pkgs/mid']);
+    await _git(live, ['commit', '-q', '-m', 'bump mid']);
+    await _git(liveMid, ['reset', '-q', '--hard', 'HEAD~1']);
+    await _git(liveMid, ['reflog', 'expire', '--expire=now', '--all']);
+    await _git(liveMid, ['gc', '-q', '--prune=now']);
+
+    final clone = await acquire();
+    addTearDown(clone.release);
+    expect(await _head(cloneDir.path), await _head(live));
+    expect(await _head(p.join(cloneDir.path, 'pkgs/mid')), await _head(liveMid));
+  });
+
   test('WC-2: an update follows the live commits, unpushed ones included, '
       'and takes no uncommitted edit [2026-11-07]', () async {
     await (await acquire()).release();

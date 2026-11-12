@@ -238,7 +238,8 @@ void main() {
           expect(info.executionRoot, equals('/workspace'));
           expect(info.projectPatterns, equals(['tom_*']));
           expect(info.excludeProjects, equals(['tom_test_*']));
-          expect(info.includeDevDependencies, isTrue);
+          // Dev dependencies stay out of the build order unless asked for.
+          expect(info.includeDevDependencies, isFalse);
         },
       );
 
@@ -249,6 +250,28 @@ void main() {
 
           final info = args.toProjectTraversalInfo(executionRoot: '/workspace');
           expect(info.includeDevDependencies, isFalse);
+        },
+      );
+
+      test(
+        'BB-CLI-8c: --include-dev puts dev dependencies into the build order '
+        '[2026-11-12]',
+        () {
+          const args = CliArgs(includeDev: true);
+          expect(
+            args
+                .toProjectTraversalInfo(executionRoot: '/workspace')
+                .includeDevDependencies,
+            isTrue,
+          );
+          const both = CliArgs(includeDev: true, excludeDev: true);
+          expect(
+            both
+                .toProjectTraversalInfo(executionRoot: '/workspace')
+                .includeDevDependencies,
+            isFalse,
+            reason: '--exclude-dev wins when both are given',
+          );
         },
       );
 
@@ -451,6 +474,11 @@ void main() {
       test('BB-CLI-32: Parses --build-order [2026-02-12]', () {
         final args = parser.parse(['--build-order']);
         expect(args.buildOrder, isTrue);
+      });
+
+      test('BB-CLI-32c: Parses --include-dev [2026-11-12]', () {
+        final args = parser.parse(['--include-dev']);
+        expect(args.includeDev, isTrue);
       });
 
       test('BB-CLI-32b: Parses --exclude-dev [2026-03-11]', () {
@@ -1223,6 +1251,7 @@ const CliArgs _populatedArgs = CliArgs(
   topRepo: true,
   buildOrder: false,
   excludeDev: true,
+  includeDev: true,
   workspaceRecursion: true,
   verbose: true,
   dryRun: true,
@@ -1280,6 +1309,7 @@ Map<String, Object?> _fieldsOf(CliArgs a) => {
   'topRepo': a.topRepo,
   'buildOrder': a.buildOrder,
   'excludeDev': a.excludeDev,
+  'includeDev': a.includeDev,
   'workspaceRecursion': a.workspaceRecursion,
   'verbose': a.verbose,
   'dryRun': a.dryRun,

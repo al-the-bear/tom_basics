@@ -209,16 +209,20 @@ abstract class BuildBase {
         );
         if (orderResult.hasCycle) {
           // A dependency cycle means no valid build order exists. Rather than
-          // silently proceeding in scan order, warn clearly and name the
-          // projects involved so the cycle can be broken.
-          final participants = orderResult.cycleParticipants.isEmpty
-              ? 'the scanned projects'
-              : orderResult.cycleParticipants.join(', ');
-          stderr.writeln(
-            'Warning: circular dependency detected among $participants; '
-            'a valid build order could not be computed. Falling back to '
-            'scan order for build-order traversal.',
+          // silently proceeding in scan order, warn clearly and name each
+          // cycle with its edges, so the reader sees where to cut it.
+          final buffer = StringBuffer(
+            'Warning: circular dependency detected; a valid build order could '
+            'not be computed. Falling back to scan order for build-order '
+            'traversal.',
           );
+          for (final cycle in orderResult.cycles) {
+            buffer.write(
+              '\n  cycle: ${cycle.members.join(', ')}'
+              '\n    edges: ${cycle.edges.join(', ')}',
+            );
+          }
+          stderr.writeln(buffer);
         }
         final globalOrder = orderResult.order ?? [];
         ordered = sorter.sortByBuildOrder(contexts, (c) => c.path, globalOrder);

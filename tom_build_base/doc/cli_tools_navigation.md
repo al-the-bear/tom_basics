@@ -112,8 +112,9 @@ astgen -i                    # Inner-first git mode
 |--------|------|-------------|
 | `--scan=<path>` | `-s` | Scan directory for projects |
 | `--recursive` | `-r` | Scan directories recursively |
-| `--build-order` | `-b` | Sort projects in dependency build order (includes `dev_dependencies` by default) |
-| `--exclude-dev` | | Exclude `dev_dependencies` from build-order sorting |
+| `--build-order` | `-b` | Sort projects in dependency build order (`dependencies` only by default) |
+| `--include-dev` | | Also order by `dev_dependencies` |
+| `--exclude-dev` | | Leave `dev_dependencies` out of build-order sorting (the default; wins over `--include-dev`) |
 | `--project=<pattern>` | `-p` | Project(s) to run (comma-separated, globs supported) |
 | `--allow-empty` | | Succeed even if a `--project` selector matches nothing |
 

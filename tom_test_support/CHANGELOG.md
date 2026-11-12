@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.6.2
+
+- `TomWorkspaceClone`: updating a repository fetches the live HEAD with
+  `--no-recurse-submodules`. Every submodule is updated from its own live
+  repository anyway; git's on-demand recursion asked each submodule's origin for
+  the commit its gitlink names, and failed ('not our ref') for a commit that was
+  never pushed, which failed every suite holding the clone. Test WC-14.
+
 ## 0.6.1
 
 - `tomFindWorkspaceRoot` (and so `tomWorkspaceZtmp`) needs `tom_workspace.yaml`

@@ -101,6 +101,7 @@ class CliArgs {
   // Build options
   final bool buildOrder;
   final bool excludeDev;
+  final bool includeDev;
   final bool workspaceRecursion;
 
   // Common options
@@ -158,6 +159,7 @@ class CliArgs {
     this.topRepo = false,
     this.buildOrder = true,
     this.excludeDev = false,
+    this.includeDev = false,
     this.workspaceRecursion = false,
     this.verbose = false,
     this.dryRun = false,
@@ -238,7 +240,9 @@ class CliArgs {
       recursionExclude: mergedRecursionExclude,
       projectPatterns: projectPatterns,
       buildOrder: buildOrder,
-      includeDevDependencies: !excludeDev,
+      // Dev dependencies stay out of the build order unless --include-dev;
+      // --exclude-dev (the default) wins when both are given.
+      includeDevDependencies: includeDev && !excludeDev,
       includeTestProjects: includeTestProjects,
       testProjectsOnly: testProjectsOnly,
       ignoreSkipMarkers: noSkip,
@@ -359,6 +363,7 @@ class CliArgs {
     bool? topRepo,
     bool? buildOrder,
     bool? excludeDev,
+    bool? includeDev,
     bool? workspaceRecursion,
     bool? verbose,
     bool? dryRun,
@@ -402,6 +407,7 @@ class CliArgs {
       topRepo: topRepo ?? this.topRepo,
       buildOrder: buildOrder ?? this.buildOrder,
       excludeDev: excludeDev ?? this.excludeDev,
+      includeDev: includeDev ?? this.includeDev,
       workspaceRecursion: workspaceRecursion ?? this.workspaceRecursion,
       verbose: verbose ?? this.verbose,
       dryRun: dryRun ?? this.dryRun,
@@ -725,6 +731,9 @@ class CliArgParser {
       case 'exclude-dev':
         state.excludeDev = true;
         break;
+      case 'include-dev':
+        state.includeDev = true;
+        break;
       case 'workspace-recursion':
         state.workspaceRecursion = true;
         break;
@@ -851,6 +860,7 @@ class CliArgParser {
       'root', 'R',
       'build-order', 'b',
       'exclude-dev',
+      'include-dev',
       'workspace-recursion',
       'inner-first-git', 'i',
       'outer-first-git', 'o',
@@ -1099,6 +1109,7 @@ class _ParseState {
   bool topRepo = false;
   bool buildOrder = true;
   bool excludeDev = false;
+  bool includeDev = false;
   bool workspaceRecursion = false;
   bool verbose = false;
   bool dryRun = false;
@@ -1143,6 +1154,7 @@ class _ParseState {
       topRepo: topRepo,
       buildOrder: buildOrder,
       excludeDev: excludeDev,
+      includeDev: includeDev,
       workspaceRecursion: workspaceRecursion,
       verbose: verbose,
       dryRun: dryRun,

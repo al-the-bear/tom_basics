@@ -1,6 +1,6 @@
 # tom_test_support
 
-Published on pub.dev as [`tom_test_support` 0.6.1](https://pub.dev/packages/tom_test_support).
+Published on pub.dev as [`tom_test_support` 0.6.2](https://pub.dev/packages/tom_test_support).
 
 Test support any Tom package's suite can use: the repository and workspace
 roots found by landmark, the workspace clone the build tools' suites run on,

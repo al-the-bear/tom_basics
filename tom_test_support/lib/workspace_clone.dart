@@ -240,7 +240,17 @@ class TomWorkspaceClone {
         await _checkout(cloneDir, head);
         moved++;
       } else if (await _headOf(cloneDir) != head.sha) {
-        await _git(cloneDir, ['fetch', '--quiet', live.path, 'HEAD']);
+        // No submodule recursion: every submodule is updated from its own
+        // live repository in this loop. git's on-demand recursion would ask
+        // each submodule's origin for the commit its gitlink names, which
+        // fails ('not our ref') for a commit that was never pushed.
+        await _git(cloneDir, [
+          'fetch',
+          '--quiet',
+          '--no-recurse-submodules',
+          live.path,
+          'HEAD',
+        ]);
         await _checkout(cloneDir, head);
         moved++;
       } else if (await _branchOf(cloneDir) != head.branch) {

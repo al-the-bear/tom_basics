@@ -1,3 +1,24 @@
+## 2.19.0
+
+### Changed — build order ignores `dev_dependencies` by default
+
+A dev dependency is not needed to build a package, and pub allows a cycle
+through one (a package whose tests use a tool that depends on the package, e.g.
+tom_reflection → tom_reflection_generator, tom_ast_generator → tom_d4rt_exec).
+Counting them made buildkit's build order fail on every run over the workspace.
+`ProjectTraversalInfo.includeDevDependencies` now defaults to `false`;
+`--include-dev` (`CliArgs.includeDev`, `NavigationArgs.includeDev`) opts in, and
+`--exclude-dev`, now the default, still wins when both are given.
+
+### Changed — the cycle report names the cycles, not everything behind them
+
+`BuildOrderResult.cycleParticipants` lists only the members of a cycle (its
+strongly connected component), no longer every project that merely depends on
+one; `BuildOrderResult.cycles` gives each cycle with its edges
+(`BuildOrderCycle`, `BuildOrderEdge`, dev edges marked). The traversal warning
+prints one line per cycle with its edges. Tests BO-COMP-9..12, BO-TRAV-5,
+BB-CLI-8c, BB-CLI-32c.
+
 ## 2.18.0
 
 ### Removed — `short-id` in tom_project.yaml

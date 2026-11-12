@@ -65,7 +65,9 @@ class ProjectTraversalInfo extends BaseTraversalInfo {
 
   /// Include `dev_dependencies` when computing dependency build order.
   ///
-  /// Enabled by default. Use `--exclude-dev` to opt out.
+  /// Off by default: a dev dependency is not needed to build a package, and a
+  /// cycle through one (allowed by pub) would otherwise break the order. Use
+  /// `--include-dev` to opt in.
   final bool includeDevDependencies;
 
   /// When true, ignore workspace boundaries and *_skip.yaml markers.
@@ -83,7 +85,7 @@ class ProjectTraversalInfo extends BaseTraversalInfo {
     this.projectPatterns = const [],
     this.excludeProjects = const [],
     this.buildOrder = true,
-    this.includeDevDependencies = true,
+    this.includeDevDependencies = false,
     this.ignoreSkipMarkers = false,
   });
 

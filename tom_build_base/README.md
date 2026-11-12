@@ -61,7 +61,7 @@ source-level package-boundary audit.
 
 ```yaml
 dependencies:
-  tom_build_base: ^2.17.2
+  tom_build_base: ^2.19.0
 ```
 
 Or from the command line:

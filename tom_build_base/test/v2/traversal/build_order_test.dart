@@ -157,6 +157,84 @@ void main() {
       },
     );
 
+    test(
+      'BO-COMP-9: a cycle through a dev dependency does not block the default '
+      'order [2026-11-12]',
+      () {
+        // lib_x's tests use lib_y; lib_y depends on lib_x at runtime. pub allows
+        // this, and a dev dependency is not needed to build lib_x.
+        createProject('lib_x', devDeps: ['lib_y']);
+        createProject('lib_y', deps: ['lib_x']);
+        final paths = ['${tempDir.path}/lib_y', '${tempDir.path}/lib_x'];
+
+        final result = BuildOrderComputer.computeBuildOrderResult(paths);
+        expect(result.hasCycle, isFalse);
+        expect(
+          result.order!.map((p) => p.split('/').last).toList(),
+          equals(['lib_x', 'lib_y']),
+        );
+      },
+    );
+
+    test(
+      'BO-COMP-10: only the members of a cycle are reported, not the projects '
+      'that depend on it [2026-11-12]',
+      () {
+        createProject('cycle_a', deps: ['cycle_b']);
+        createProject('cycle_b', deps: ['cycle_a']);
+        createProject('downstream', deps: ['cycle_a']);
+        final paths = [
+          for (final n in ['cycle_a', 'cycle_b', 'downstream'])
+            '${tempDir.path}/$n',
+        ];
+
+        final result = BuildOrderComputer.computeBuildOrderResult(paths);
+        expect(result.hasCycle, isTrue);
+        expect(result.cycleParticipants, equals(['cycle_a', 'cycle_b']));
+        expect(result.cycles, hasLength(1));
+        expect(result.cycles.single.members, equals(['cycle_a', 'cycle_b']));
+      },
+    );
+
+    test('BO-COMP-11: two separate cycles are both named [2026-11-12]', () {
+      createProject('a1', deps: ['a2']);
+      createProject('a2', deps: ['a1']);
+      createProject('b1', deps: ['b2']);
+      createProject('b2', deps: ['b1']);
+      final paths = [
+        for (final n in ['a1', 'a2', 'b1', 'b2']) '${tempDir.path}/$n',
+      ];
+
+      final result = BuildOrderComputer.computeBuildOrderResult(paths);
+      expect(
+        result.cycles.map((c) => c.members).toList(),
+        equals([
+          ['a1', 'a2'],
+          ['b1', 'b2'],
+        ]),
+      );
+    });
+
+    test(
+      'BO-COMP-12: a cycle names its edges and whether each is a dev '
+      'dependency [2026-11-12]',
+      () {
+        createProject('lib_x', devDeps: ['lib_y']);
+        createProject('lib_y', deps: ['lib_x']);
+        final paths = ['${tempDir.path}/lib_x', '${tempDir.path}/lib_y'];
+
+        final result = BuildOrderComputer.computeBuildOrderResult(
+          paths,
+          includeDev: true,
+        );
+        expect(result.hasCycle, isTrue);
+        expect(
+          result.cycles.single.edges.map((e) => e.toString()).toList(),
+          equals(['lib_x -> lib_y (dev)', 'lib_y -> lib_x']),
+        );
+      },
+    );
+
     test('BO-COMP-5: External deps are ignored [2026-02-20]', () {
       createProject('my_app', deps: ['http', 'path']); // external
       createProject('my_lib');
@@ -367,6 +445,38 @@ void main() {
         // Without buildOrder, order is filesystem scan order (not guaranteed)
         // Just verify all three are present
         expect(names, containsAll(['lib_core', 'lib_utils', 'app']));
+      },
+    );
+
+    test(
+      'BO-TRAV-5: a cycle through a dev dependency produces no warning by '
+      'default [2026-11-12]',
+      () async {
+        // lib_core's tests use app; app depends on lib_core at runtime.
+        File('${tempDir.path}/lib_core/pubspec.yaml').writeAsStringSync(
+          'name: lib_core\ndev_dependencies:\n  app:\n    path: ../app\n',
+        );
+
+        final names = <String>[];
+        final err = StringBuffer();
+        await IOOverrides.runZoned(() async {
+          await BuildBase.traverse(
+            info: ProjectTraversalInfo(
+              scan: tempDir.path,
+              recursive: true,
+              executionRoot: tempDir.path,
+              buildOrder: true,
+            ),
+            requiredNatures: {FsFolder},
+            run: (ctx) async {
+              names.add(ctx.name);
+              return true;
+            },
+          );
+        }, stderr: () => _CaptureStdout(err));
+
+        expect(err.toString().toLowerCase(), isNot(contains('circular')));
+        expect(names.indexOf('lib_core'), lessThan(names.indexOf('app')));
       },
     );
 

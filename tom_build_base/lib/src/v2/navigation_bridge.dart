@@ -53,8 +53,11 @@ class WorkspaceNavigationArgs {
   /// Sort projects in dependency build order.
   final bool buildOrder;
 
-  /// Exclude `dev_dependencies` from build-order sorting.
+  /// Exclude `dev_dependencies` from build-order sorting (the default).
   final bool excludeDev;
+
+  /// Include `dev_dependencies` in build-order sorting.
+  final bool includeDev;
 
   /// Specific project(s) to run on.
   final String? project;
@@ -118,6 +121,7 @@ class WorkspaceNavigationArgs {
     this.recursiveExplicitlySet = false,
     this.buildOrder = false,
     this.excludeDev = false,
+    this.includeDev = false,
     this.project,
     this.root,
     this.bareRoot = false,
@@ -176,6 +180,7 @@ class WorkspaceNavigationArgs {
       recursiveExplicitlySet: recursiveExplicitlySet,
       buildOrder: needsScanDefault || buildOrder,
       excludeDev: excludeDev,
+      includeDev: includeDev,
       project: project,
       root: root,
       bareRoot: bareRoot,
@@ -199,6 +204,7 @@ class WorkspaceNavigationArgs {
     bool? recursiveExplicitlySet,
     bool? buildOrder,
     bool? excludeDev,
+    bool? includeDev,
     String? project,
     String? root,
     bool? bareRoot,
@@ -220,6 +226,7 @@ class WorkspaceNavigationArgs {
           recursiveExplicitlySet ?? this.recursiveExplicitlySet,
       buildOrder: buildOrder ?? this.buildOrder,
       excludeDev: excludeDev ?? this.excludeDev,
+      includeDev: includeDev ?? this.includeDev,
       project: project ?? this.project,
       root: root ?? this.root,
       bareRoot: bareRoot ?? this.bareRoot,
@@ -267,6 +274,9 @@ class WorkspaceNavigationArgs {
     }
     if (excludeDev) {
       args.add('--exclude-dev');
+    }
+    if (includeDev) {
+      args.add('--include-dev');
     }
     if (project != null && !suppress.contains('p')) {
       args.addAll(['--project', project!]);
@@ -335,7 +345,12 @@ void addNavigationOptions(ArgParser parser) {
   parser.addFlag(
     'exclude-dev',
     negatable: false,
-    help: 'Exclude dev_dependencies from build-order sorting',
+    help: 'Exclude dev_dependencies from build-order sorting (the default)',
+  );
+  parser.addFlag(
+    'include-dev',
+    negatable: false,
+    help: 'Include dev_dependencies in build-order sorting',
   );
   parser.addOption(
     'project',
@@ -499,6 +514,7 @@ WorkspaceNavigationArgs parseNavigationArgs(
     recursiveExplicitlySet: recursiveExplicitlySet,
     buildOrder: results['build-order'] as bool? ?? false,
     excludeDev: results['exclude-dev'] as bool? ?? false,
+    includeDev: results['include-dev'] as bool? ?? false,
     project: results['project'] as String?,
     root: root,
     bareRoot: bareRoot,
