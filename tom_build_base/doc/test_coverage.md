@@ -63,7 +63,8 @@ This document lists all testable features across `tom_build_base` and tracks tes
 | 48 | [Project Listing](#48-project-listing) | 7 | 7✅ | `v2/traversal/project_listing_test.dart` | [→](#48-project-listing) |
 | 49 | [Broken Pipe](#49-broken-pipe) | 3 | 3✅ | `v2/core/broken_pipe_test.dart` | [→](#49-broken-pipe) |
 | 50 | [Option Suppression Refused](#50-option-suppression-refused) | 4 | 4✅ | `v2/core/option_suppression_test.dart` | [→](#50-option-suppression-refused) |
-| — | **Total** | **1037** | **1037✅** | | |
+| 51 | [--list Runs Nothing](#51---list-runs-nothing) | 7 | 7✅ | `v2/core/list_flag_test.dart` | [→](#51---list-runs-nothing) |
+| — | **Total** | **1044** | **1044✅** | | |
 
 > Every row links to a section, and the counts are measured from
 > `dart test --reporter json -j 1` rather than maintained by hand. Run it
@@ -1059,6 +1060,25 @@ option with the value `-`.
 | BB-SUPP-2 | Every form, either side of a command | ✅ | `-v-`, `-n-`, `-r-`, `--scan-`, `--verbose-` before and after a command; two at once give two errors. |
 | BB-SUPP-3 | Values are untouched | ✅ | `-sdir-`, `--scan dir-`, `--scan=-`, a lone `-` and ordinary options give no error. |
 | BB-SUPP-4 | ToolRunner refuses the run | ✅ | An `Error:` line naming `-v-`, a failed result, no command runs. |
+
+---
+
+## 51. --list Runs Nothing
+
+**Test file:** `test/v2/core/list_flag_test.dart`
+
+`--list` lists and never runs: alone the commands and pipelines, with a
+command the projects it would run on, with a pipeline its steps.
+
+| ID | Feature | Status | Description |
+|----|---------|--------|-------------|
+| BB-LIST-1 | `--list :cmd` | ✅ | Each project the command would visit is listed; its executor is never called. |
+| BB-LIST-2 | Several commands, `-l`, flag after the command | ✅ | No executor called. |
+| BB-LIST-3 | A command without traversal | ✅ | Named, not run. |
+| BB-LIST-4 | `--list` alone | ✅ | Lists the commands (no "No command specified"). |
+| BB-LIST-5 | `--list :define` | ✅ | The master file is unchanged. |
+| BB-LIST-6 | `--list <pipeline>` | ✅ | Its steps are listed; its shell step does not run. |
+| BB-LIST-7 | `handlesListMode` | ✅ | An executor with its own list mode is called with `listOnly` set; the others are not. |
 
 ---
 

@@ -26,6 +26,13 @@ abstract class CommandExecutor {
     return const ToolResult.success();
   }
 
+  /// Whether this executor has its own `--list` mode ([CliArgs.listOnly]):
+  /// it then lists what it would work on, writes nothing and runs no
+  /// process. ToolRunner calls such an executor under `--list`; every other
+  /// executor is replaced by a stand-in that names the project and runs
+  /// nothing, so `--list` never runs a command.
+  bool get handlesListMode => false;
+
   /// A failure [ItemResult] when [context]'s project locks packages the pub
   /// cache cannot supply, or null when it can supply them all.
   ///

@@ -591,7 +591,8 @@ const _pipelinesContent = r'''
 
     {TOOL} <pipeline-name>                Run a named pipeline
     {TOOL} <pipeline-name> --dry-run      Show commands without executing
-    {TOOL} --list                         List available pipelines
+    {TOOL} --list                         List the commands and pipelines
+    {TOOL} <pipeline-name> --list         List the pipeline's steps, run none
 
   Pipelines are invoked by their name as a positional argument
   (without the : prefix used for commands).

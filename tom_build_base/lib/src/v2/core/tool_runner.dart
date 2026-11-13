@@ -467,6 +467,8 @@ class ToolRunner {
       );
     }
 
+    _listOnly = cliArgs.listOnly;
+
     // --dump-definitions: serialize tool definition and exit immediately.
     // Intercepted before any wiring or traversal.
     if (cliArgs.dumpDefinitions) {
@@ -626,6 +628,10 @@ class ToolRunner {
         return pipelineAttempt;
       }
 
+      if (cliArgs.commands.isEmpty && _listOnly) {
+        return _listCommandsAndPipelines();
+      }
+
       if (cliArgs.commands.isEmpty) {
         if (_effectiveTool.defaultCommand != null) {
           return _runCommand(_effectiveTool.defaultCommand!, cliArgs);
@@ -639,7 +645,7 @@ class ToolRunner {
     }
 
     // Single command mode - run default executor
-    final executor = executors['default'];
+    final executor = _listing(executors['default'], 'default');
     if (executor == null) {
       return const ToolResult.failure('No default executor configured');
     }
@@ -803,7 +809,10 @@ class ToolRunner {
 
         if (runnable.isEmpty) return true;
 
-        output.writeln('>>> ${context.relativePath}');
+        // The stand-in under --list prints its own line per project.
+        if (!runnable.every((e) => e.executor is _ListingExecutor)) {
+          output.writeln('>>> ${context.relativePath}');
+        }
 
         for (final runEntry in runnable) {
           final result = await _executeItemGuarded(
@@ -825,9 +834,11 @@ class ToolRunner {
           );
           results.add(tagged);
 
-          output.writeln(
-            '  -> :${runEntry.cmd.name} ${_formatCommandStatus(tagged)}',
-          );
+          if (runEntry.executor is! _ListingExecutor) {
+            output.writeln(
+              '  -> :${runEntry.cmd.name} ${_formatCommandStatus(tagged)}',
+            );
+          }
 
           if (!tagged.success) {
             // Stop remaining commands for this folder, continue traversal.
@@ -925,6 +936,22 @@ class ToolRunner {
     final definition = loaded.pipelines[candidateName];
     if (definition == null) return null;
 
+    if (_listOnly) {
+      output.writeln('Pipeline $candidateName: not run (--list)');
+      for (final (phase, steps) in [
+        ('precore', definition.precore),
+        ('core', definition.core),
+        ('postcore', definition.postcore),
+      ]) {
+        for (final step in steps) {
+          for (final command in step.commands) {
+            output.writeln('  $phase: ${command.raw}');
+          }
+        }
+      }
+      return const ToolResult.success();
+    }
+
     final executor = ToolPipelineExecutor(
       tool: _effectiveTool,
       output: output,
@@ -945,6 +972,15 @@ class ToolRunner {
 
   /// Run a specific command.
   Future<ToolResult> _runCommand(String cmdName, CliArgs cliArgs) async {
+    if (_listOnly &&
+        _macroDefineCommands.contains(cmdName) &&
+        _effectiveTool.mode == ToolMode.multiCommand) {
+      output.writeln(
+        ':$cmdName works on ${_effectiveTool.name}_master.yaml, not on '
+        'projects: not run (--list)',
+      );
+      return const ToolResult.success();
+    }
     final builtIn = _tryHandleBuiltInMacroDefineCommand(cmdName, cliArgs);
     if (builtIn != null) {
       return builtIn;
@@ -1311,7 +1347,7 @@ class ToolRunner {
 
     // Single command: nested mode skips traversal, so run the default
     // executor's non-traversal entry point.
-    final executor = executors['default'];
+    final executor = _listing(executors['default'], 'default');
     if (executor == null) {
       return const ToolResult.failure('No default executor configured');
     }
@@ -1325,7 +1361,7 @@ class ToolRunner {
       return ToolResult.failure('Unknown command in nested mode: $cmdName');
     }
 
-    final executor = executors[cmd.name];
+    final executor = _listing(executors[cmd.name], cmd.name);
     if (executor == null) {
       return ToolResult.failure('No executor for command: ${cmd.name}');
     }
@@ -1434,9 +1470,48 @@ class ToolRunner {
   /// Wired executors merged during lazy wiring.
   final Map<String, CommandExecutor> _wiredExecutors = {};
 
+  /// `--list` was given: every executor is replaced by a [_ListingExecutor],
+  /// so the run names what it would do and does none of it.
+  bool _listOnly = false;
+
   /// Look up an executor by command name (checks both native and wired).
   CommandExecutor? _findExecutor(String cmdName) {
-    return executors[cmdName] ?? _wiredExecutors[cmdName];
+    return _listing(executors[cmdName] ?? _wiredExecutors[cmdName], cmdName);
+  }
+
+  /// [executor] itself, or under `--list` the stand-in that runs nothing
+  /// (unless the executor has its own read-only list mode).
+  CommandExecutor? _listing(CommandExecutor? executor, String commandName) {
+    if (executor == null || !_listOnly || executor.handlesListMode) {
+      return executor;
+    }
+    return _ListingExecutor(commandName, output);
+  }
+
+  /// `--list` without a command: the commands and the pipelines.
+  ToolResult _listCommandsAndPipelines() {
+    output.writeln('Commands:');
+    for (final cmd in _effectiveTool.commands.where((c) => !c.hidden)) {
+      output.writeln('  :${cmd.name.padRight(18)} ${cmd.description}');
+    }
+    ToolPipelineConfig? loaded;
+    try {
+      loaded = ToolPipelineConfigLoader.load(tool: _effectiveTool);
+    } on FormatException {
+      loaded = null;
+    }
+    final pipelines = loaded?.pipelines ?? const {};
+    if (pipelines.isNotEmpty) {
+      output.writeln('Pipelines:');
+      for (final name in pipelines.keys) {
+        output.writeln('  $name');
+      }
+    }
+    output.writeln(
+      'With a command, --list names the projects it would run on and runs '
+      'nothing.',
+    );
+    return const ToolResult.success();
   }
 
   /// Handle `--completion <shell>`: print a shell completion script.
@@ -2459,5 +2534,32 @@ Options:
       int.parse(m.group(2)!),
       int.parse(m.group(3) ?? '0'),
     ];
+  }
+}
+
+/// Stands in for every executor under `--list`: names the project (or, for a
+/// command without traversal, the command) and runs nothing.
+class _ListingExecutor extends CommandExecutor {
+  final String commandName;
+  final StringSink output;
+
+  _ListingExecutor(this.commandName, this.output);
+
+  @override
+  Future<ItemResult> execute(CommandContext context, CliArgs args) async {
+    output.writeln('${context.relativePath}  :$commandName  not run (--list)');
+    return ItemResult.success(
+      path: context.path,
+      name: context.name,
+      message: 'not run (--list)',
+    );
+  }
+
+  @override
+  Future<ToolResult> executeWithoutTraversal(CliArgs args) async {
+    output.writeln(
+      ':$commandName runs once, without visiting projects: not run (--list)',
+    );
+    return const ToolResult.success();
   }
 }

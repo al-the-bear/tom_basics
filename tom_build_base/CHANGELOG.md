@@ -1,3 +1,26 @@
+## 2.29.0
+
+### Fixed — `--list` runs nothing
+
+`--list` (`-l`) is documented as a listing, but given with a command it ran
+the command: `buildkit --list :pubgetall` ran `pub get` in every project.
+Alone it said "No command specified". Now:
+
+- alone it lists the commands and the pipelines;
+- with commands it lists the projects each would run on, one line per
+  project and command (`<path>  :<command>  not run (--list)`), and calls no
+  executor;
+- with a pipeline name it lists the pipeline's steps and runs none;
+- the built-in macro / define commands, which write `<tool>_master.yaml`, are
+  named, not run.
+
+### Added — `CommandExecutor.handlesListMode`
+
+An executor whose own `--list` mode (`CliArgs.listOnly`) lists what it would
+work on, writing nothing and running no process, returns true and is called
+under `--list` as before; every other executor is replaced by the stand-in
+above. Default false. BB-LIST-1..7.
+
 ## 2.28.0
 
 ### Changed — `-X-` is refused, not read as an option with the value `-`

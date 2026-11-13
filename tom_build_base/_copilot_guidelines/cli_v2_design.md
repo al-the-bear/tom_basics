@@ -1621,7 +1621,7 @@ v2 provides these standard options automatically:
 |--------|------|-------------|
 | `--verbose` | `-v` | Enable verbose output |
 | `--dry-run` | `-n` | Show what would be done without doing it |
-| `--list` | `-l` | List matching projects (no action) |
+| `--list` | `-l` | Runs nothing. Alone: the commands and pipelines; with a command: the projects it would run on (an executor with its own read-only list mode, `handlesListMode`, lists them itself); with a pipeline: its steps |
 | `--help` | `-h` | Show help |
 | `--config` | `-c` | Path to configuration file |
 | `--dump-config` | | Print effective configuration |

@@ -244,6 +244,7 @@ These options are part of `commonOptions` in the V2 `ToolRunner` framework and a
 |--------|------|-------------|
 | `--verbose` | `-v` | Enable verbose output |
 | `--dry-run` | `-n` | Show what would be done without executing |
+| `--list` | `-l` | Run nothing: alone, list the commands and pipelines; with a command, the projects it would run on; with a pipeline name, its steps |
 | `--test` | | Include test projects in traversal |
 | `--test-only` | | Process only test projects |
 | `--no-skip` | | Ignore skip markers (`tom_skip.yaml`, `<tool>_skip.yaml`); the [always-skipped folders](#always-skipped-folders) stay skipped |
