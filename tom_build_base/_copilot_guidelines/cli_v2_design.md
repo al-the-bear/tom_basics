@@ -717,8 +717,7 @@ class FolderScanner {
 
   bool _hasSkipMarker(String dirPath) {
     if (File(p.join(dirPath, 'buildkit_skip.yaml')).existsSync()) return true;
-    if (File(p.join(dirPath, 'buildkit_master.yaml')).existsSync() ||
-        File(p.join(dirPath, 'tom_workspace.yaml')).existsSync()) return true;
+    if (File(p.join(dirPath, 'buildkit_master.yaml')).existsSync()) return true;
     return false;
   }
 }
@@ -730,7 +729,6 @@ class FolderScanner {
 |-------------|----------|
 | `buildkit_skip.yaml` | Skip this folder and all descendants |
 | `buildkit_master.yaml` | Buildkit workspace root — treated as boundary |
-| `tom_workspace.yaml` | Tom workspace root — treated as boundary |
 
 **Project subfolders:** By default, the scanner continues into directories even after finding a project folder — this allows detecting nested projects. This can be prevented in two ways:
 
@@ -948,7 +946,6 @@ Understanding filter order is critical for predictable behavior:
 │  • buildkit_skip.yaml      → Skip entire subtree during scan    │
 │  • Workspace boundaries    → Skip nested workspaces:            │
 │      - buildkit_master.yaml                                     │
-│      - tom_workspace.yaml                                       │
 │  • --recursion-exclude     → Prevents entering project subfolders│
 ├─────────────────────────────────────────────────────────────────┤
 │ GLOBAL FILTERS (applied to all commands)                        │
