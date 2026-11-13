@@ -1,0 +1,6 @@
+# buildkit configuration of zom_test_package
+
+project_id: ZTP
+name: test-pkg
+description: >-
+  Test package for validating workspace analyzer features

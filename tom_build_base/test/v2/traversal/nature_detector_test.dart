@@ -295,50 +295,72 @@ void main() {
       });
     });
 
-    group('TomBuildFolder detection', () {
+    group('Project identity (buildkit.yaml)', () {
       test(
-        'BB-NAT-14: Detects TomBuildFolder when tom_project.yaml exists [2026-02-12]',
+        'BB-NAT-14: BuildkitFolder carries the identity from buildkit.yaml '
+        '[2026-11-13]',
         () {
           final path = p.join(zomTestRoot, 'zom_test_flutter');
-          final folder = FsFolder(path: path);
-
-          final natures = detector.detectNatures(folder);
-
-          expect(
-            natures.any((n) => n is TomBuildFolder),
-            isTrue,
-            reason: 'Should detect TomBuildFolder from tom_project.yaml',
-          );
+          final buildkit = detector
+              .detectNatures(FsFolder(path: path))
+              .whereType<BuildkitFolder>()
+              .single;
+          expect(buildkit.projectId, 'ZTF');
+          expect(buildkit.projectName, 'test-flutter');
         },
       );
 
-      TomBuildFolder tomFolderWith(String name, String yaml) {
+      BuildkitFolder buildkitFolderWith(String name, String yaml) {
         final dir = Directory(p.join(zomTestRoot, name))..createSync();
-        File(p.join(dir.path, 'tom_project.yaml')).writeAsStringSync(yaml);
+        File(p.join(dir.path, 'buildkit.yaml')).writeAsStringSync(yaml);
         return detector
             .detectNatures(FsFolder(path: dir.path))
-            .whereType<TomBuildFolder>()
+            .whereType<BuildkitFolder>()
             .single;
       }
 
-      test('BB-NAT-39: project_id is the project\'s id [2026-11-06]', () {
-        final folder = tomFolderWith(
+      test('BB-NAT-39: project_id, name, description and license are the '
+          'project\'s identity [2026-11-13]', () {
+        final folder = buildkitFolderWith(
           'nat39_project_id',
-          'project_id: PID\nname: pid-name\n',
+          'project_id: PID\nname: pid-name\ndescription: >-\n  What it is.\n'
+              'license: BSD-3-Clause\nversioner: {}\n',
         );
-        expect(folder.shortId, 'PID');
+        expect(folder.projectId, 'PID');
         expect(folder.projectName, 'pid-name');
+        expect(folder.description, 'What it is.');
+        expect(folder.license, 'BSD-3-Clause');
       });
 
-      test('BB-NAT-40: a short-id key is not an id [2026-11-06]', () {
-        final folder = tomFolderWith('nat40_short_id', 'short-id: OLD\n');
-        expect(folder.shortId, isNull);
+      test('BB-NAT-40: a project-id or short-id key is not an id '
+          '[2026-11-13]', () {
+        expect(
+          buildkitFolderWith('nat40_hyphen', 'project-id: OLD\n').projectId,
+          isNull,
+        );
+        expect(
+          buildkitFolderWith('nat40_short_id', 'short-id: OLD\n').projectId,
+          isNull,
+        );
+      });
+
+      test('BB-NAT-41: tom_project.yaml marks nothing any more '
+          '[2026-11-13]', () {
+        final dir = Directory(p.join(zomTestRoot, 'nat41_tom_project'))
+          ..createSync();
+        File(
+          p.join(dir.path, 'tom_project.yaml'),
+        ).writeAsStringSync('project_id: OLD\nname: old\n');
+        final natures = detector.detectNatures(FsFolder(path: dir.path));
+        expect(natures.whereType<BuildkitFolder>(), isEmpty);
+        // ignore: deprecated_member_use_from_same_package
+        expect(natures.whereType<TomBuildFolder>(), isEmpty);
       });
     });
 
     group('Multiple natures', () {
       test('BB-NAT-15: Folder can have multiple natures [2026-02-12]', () {
-        // zom_test_flutter has: FlutterProjectFolder, TomBuildFolder
+        // zom_test_flutter has: FlutterProjectFolder, BuildkitFolder
         final path = p.join(zomTestRoot, 'zom_test_flutter');
         final folder = FsFolder(path: path);
 
@@ -350,9 +372,9 @@ void main() {
           reason: 'Flutter project should have multiple natures',
         );
 
-        // Should have at least Flutter and TomBuild natures
+        // Should have at least the Flutter and buildkit natures
         expect(natures.any((n) => n is FlutterProjectFolder), isTrue);
-        expect(natures.any((n) => n is TomBuildFolder), isTrue);
+        expect(natures.any((n) => n is BuildkitFolder), isTrue);
       });
 
       test(
@@ -721,21 +743,21 @@ void main() {
       );
     });
 
-    test('BB-NAT-37: TomBuildFolder: tom_project.yaml exists [2026-02-12]', () {
+    test('BB-NAT-37: BuildkitFolder: buildkit.yaml exists [2026-11-13]', () {
       final path = p.join(zomTestRoot, 'zom_test_flutter');
       expect(
-        File(p.join(path, 'tom_project.yaml')).existsSync(),
+        File(p.join(path, 'buildkit.yaml')).existsSync(),
         isTrue,
-        reason: 'Test precondition: should have tom_project.yaml',
+        reason: 'Test precondition: should have buildkit.yaml',
       );
 
       final folder = FsFolder(path: path);
       final natures = NatureDetector().detectNatures(folder);
 
       expect(
-        natures.any((n) => n is TomBuildFolder),
+        natures.any((n) => n is BuildkitFolder),
         isTrue,
-        reason: 'Folder with tom_project.yaml should be TomBuildFolder',
+        reason: 'Folder with buildkit.yaml should be BuildkitFolder',
       );
     });
 

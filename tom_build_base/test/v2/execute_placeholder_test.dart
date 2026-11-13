@@ -536,14 +536,15 @@ void main() {
         );
       });
 
-      test('BB-EPH-51: tom-project.exists returns false (no tom project)', () {
+      test('BB-EPH-51: tom-project.exists is no placeholder any more '
+          '(tom_project.yaml is retired) [2026-11-13]', () {
         ctx = ExecutePlaceholderContext(rootPath: '/workspace', folder: folder);
         expect(
-          ExecutePlaceholderResolver.resolvePlaceholder(
+          () => ExecutePlaceholderResolver.resolvePlaceholder(
             'tom-project.exists',
             ctx,
           ),
-          equals('false'),
+          throwsA(isA<UnresolvedPlaceholderException>()),
         );
       });
 

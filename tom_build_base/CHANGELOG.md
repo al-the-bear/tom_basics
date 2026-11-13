@@ -1,3 +1,19 @@
+## 2.25.0
+
+### Changed — `buildkit.yaml` is the one project file
+
+- `BuildkitFolder` carries the project's identity from the top level of
+  `buildkit.yaml`: `project_id`, `name`, and new `description` and `license`.
+  The id was read from a `project-id` key no file used, so an id written in
+  `buildkit.yaml` was never matched by `--project`; it is now.
+- `tom_project.yaml` is no longer read: the `TomBuildFolder` nature is not
+  detected any more and is deprecated, as are `ExecutePlaceholderContext`'s
+  `hasTomProject` / `tomProject`; the `%{tom-project.exists}` placeholder is
+  gone. `--project` matches ids and names from `buildkit.yaml` (and pubspec
+  names) only.
+- Tests BB-NAT-14, 37, 39–41 and the BB-FLT id/name filters run on
+  `buildkit.yaml` fixtures.
+
 ## 2.24.0
 
 ### Added — `--group`, groups derived from the directory walk

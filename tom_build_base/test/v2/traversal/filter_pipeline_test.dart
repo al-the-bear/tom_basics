@@ -113,7 +113,7 @@ void main() {
 
     group('Project ID and Name filtering (--project, -p)', () {
       test(
-        'BB-FLT-30: Filters by project_id from tom_project.yaml [2026-02-14]',
+        'BB-FLT-30: Filters by project_id from buildkit.yaml [2026-02-14]',
         () {
           final info = ProjectTraversalInfo(
             executionRoot: zomTestRoot,
@@ -145,7 +145,7 @@ void main() {
       );
 
       test(
-        'BB-FLT-32: Filters by project name from tom_project.yaml [2026-02-14]',
+        'BB-FLT-32: Filters by project name from buildkit.yaml [2026-02-14]',
         () {
           final info = ProjectTraversalInfo(
             executionRoot: zomTestRoot,

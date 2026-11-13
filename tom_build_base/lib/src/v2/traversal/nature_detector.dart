@@ -30,9 +30,6 @@ class NatureDetector {
       natures.add(_createBuildkitNature(folder));
     }
     if (_hasBuildYaml(folder.path)) natures.add(BuildRunnerFolder(folder));
-    if (_hasTomProjectYaml(folder.path)) {
-      natures.add(_createTomProjectNature(folder));
-    }
     if (_hasTomMasterYaml(folder.path)) {
       natures.add(TomBuildMasterFolder(folder));
     }
@@ -67,9 +64,6 @@ class NatureDetector {
 
   bool _hasBuildYaml(String path) =>
       File(p.join(path, 'build.yaml')).existsSync();
-
-  bool _hasTomProjectYaml(String path) =>
-      File(p.join(path, 'tom_project.yaml')).existsSync();
 
   bool _hasTomMasterYaml(String path) =>
       File(p.join(path, 'buildkit_master.yaml')).existsSync();
@@ -335,33 +329,11 @@ class NatureDetector {
     );
   }
 
-  TomBuildFolder _createTomProjectNature(FsFolder folder) {
-    String? projectName;
-    String? shortId;
-    Map<String, dynamic> config = {};
-
-    try {
-      final tomProjectFile = File(p.join(folder.path, 'tom_project.yaml'));
-      final content = tomProjectFile.readAsStringSync();
-      final yaml = loadYaml(content);
-      if (yaml is Map) {
-        config = Map<String, dynamic>.from(yaml);
-        projectName = config['name'] as String?;
-        shortId = config['project_id'] as String?;
-      }
-    } catch (_) {}
-
-    return TomBuildFolder(
-      folder,
-      projectName: projectName,
-      shortId: shortId,
-      config: config,
-    );
-  }
-
   BuildkitFolder _createBuildkitNature(FsFolder folder) {
     String? projectId;
     String? projectName;
+    String? description;
+    String? license;
     bool recursive = true;
     Map<String, dynamic> config = {};
 
@@ -371,8 +343,10 @@ class NatureDetector {
       final yaml = loadYaml(content);
       if (yaml is Map) {
         config = Map<String, dynamic>.from(yaml);
-        projectId = config['project-id'] as String?;
-        projectName = config['name'] as String?;
+        projectId = _string(config['project_id']);
+        projectName = _string(config['name']);
+        description = _string(config['description']);
+        license = _string(config['license']);
         recursive = config['recursive'] as bool? ?? true;
       }
     } catch (_) {}
@@ -381,8 +355,16 @@ class NatureDetector {
       folder,
       projectId: projectId,
       projectName: projectName,
+      description: description,
+      license: license,
       recursive: recursive,
       config: config,
     );
+  }
+
+  /// A YAML scalar as a trimmed string, or null when absent or empty.
+  static String? _string(Object? value) {
+    final text = value?.toString().trim();
+    return text == null || text.isEmpty ? null : text;
   }
 }

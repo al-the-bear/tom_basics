@@ -31,7 +31,7 @@ This document lists all testable features across `tom_build_base` and tracks tes
 | 16 | [ToolRunner — Nested Tools](#16-toolrunner--nested-tools) | 20 | 20✅ | `v2/core/tool_runner_nested_test.dart` | [→](#16-toolrunner--nested-tools) |
 | 17 | [Nested Tool Executor](#17-nested-tool-executor) | 16 | 16✅ | `v2/core/nested_tool_executor_test.dart` | [→](#17-nested-tool-executor) |
 | 18 | [Folder Scanner](#18-folder-scanner) | 23 | 23✅ | `v2/traversal/folder_scanner_test.dart` | [→](#18-folder-scanner) |
-| 19 | [Nature Detector](#19-nature-detector) | 38 | 38✅ | `v2/traversal/nature_detector_test.dart` | [→](#19-nature-detector) |
+| 19 | [Nature Detector](#19-nature-detector) | 39 | 39✅ | `v2/traversal/nature_detector_test.dart` | [→](#19-nature-detector) |
 | 20 | [Nature Filter](#20-nature-filter) | 20 | 20✅ | `v2/traversal/nature_filter_test.dart` | [→](#20-nature-filter) |
 | 21 | [Filter Pipeline](#21-filter-pipeline) | 44 | 44✅ | `v2/traversal/filter_pipeline_test.dart` | [→](#21-filter-pipeline) |
 | 22 | [Build Order](#22-build-order) | 15 | 15✅ | `v2/traversal/build_order_test.dart` | [→](#22-build-order) |
@@ -59,7 +59,7 @@ This document lists all testable features across `tom_build_base` and tracks tes
 | 44 | [Item Exit Codes and Process Trees](#44-item-exit-codes-and-process-trees) | 5 | 5✅ | `v2/core/item_exit_code_test.dart` | [→](#44-item-exit-codes-and-process-trees) |
 | 45 | [Repeated Multi Options](#45-repeated-multi-options) | 5 | 5✅ | `v2/core/multi_option_repeat_test.dart` | [→](#45-repeated-multi-options) |
 | 46 | [Project Groups](#46-project-groups) | 7 | 7✅ | `v2/traversal/project_groups_test.dart` | [→](#46-project-groups) |
-| — | **Total** | **1001** | **1001✅** | | |
+| — | **Total** | **1002** | **1002✅** | | |
 
 > Every row links to a section, and the counts are measured from
 > `dart test --reporter json -j 1` rather than maintained by hand. Run it
@@ -119,7 +119,7 @@ Comprehensive tests for `ExecutePlaceholderResolver` — 55 tests covering all p
 | ID | Feature | Status | Description |
 |----|---------|--------|-------------|
 | BB_EPH_08–11 | `dart.exists`, `git.exists`, `flutter.exists`, `package.exists` | ✅ | Nature existence checks. |
-| BB_EPH_44–53 | `console.exists`, `typescript.exists`, `vscode-extension.exists`, `buildkit.exists`, `tom-project.exists` + negatives | ✅ | All nature types covered. |
+| BB_EPH_44–53 | `console.exists`, `typescript.exists`, `vscode-extension.exists`, `buildkit.exists` + negatives | ✅ | All nature types covered. |
 
 ### Attribute Placeholders (BB-EPH-12–24)
 
@@ -453,7 +453,8 @@ Tests for the recently implemented features: modes, persistent defines, runtime 
 | BB_NAT_19–24 | TypeScript detection | ✅ | `package.json` / `tsconfig.json`. |
 | BB_NAT_25–30 | VS Code extension detection | ✅ | `package.json` with VS Code fields. |
 | BB_NAT_31–34 | BuildKit project detection | ✅ | `buildkit.yaml` / `buildkit_master.yaml`. |
-| BB_NAT_35–38 | Tom project detection | ✅ | `tom_project.yaml` / `tom_master.yaml`. |
+| BB_NAT_35–38 | Tom project detection | ✅ | `buildkit.yaml` / `tom_master.yaml`. |
+| BB-NAT-39–41 | Project identity | ✅ | `project_id`, `name`, `description`, `license` from `buildkit.yaml`; `project-id` / `short-id` are no id; `tom_project.yaml` marks nothing. |
 
 ---
 
@@ -989,4 +990,4 @@ The current test suite is comprehensive. Areas where additional tests could be v
 | `--dump-definitions` output format | Tested in ToolRunner | Validate complete YAML structure | Low |
 | ConfigLoader with nested `@{...}` in `@[...]` | ✅ Recursive test exists | Additional nesting depth scenarios | Low |
 
-Overall coverage assessment: **Excellent — 1001 tests covering all features.**
+Overall coverage assessment: **Excellent — 1002 tests covering all features.**

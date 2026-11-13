@@ -324,20 +324,8 @@ class FilterPipeline {
     return false;
   }
 
-  /// Check if folder has a matching project ID in buildkit.yaml.
+  /// Check if folder has a matching `project_id` in buildkit.yaml.
   bool _matchesProjectId(FsFolder folder, List<String> patterns) {
-    // First check TomBuildFolder for its project_id
-    for (final nature in folder.natures) {
-      if (nature is TomBuildFolder && nature.shortId != null) {
-        final id = nature.shortId!.toLowerCase();
-        for (final pattern in patterns) {
-          if (id == pattern.toLowerCase()) {
-            return true;
-          }
-        }
-      }
-    }
-    // Fallback: check BuildkitFolder for project-id
     for (final nature in folder.natures) {
       if (nature is BuildkitFolder && nature.projectId != null) {
         final id = nature.projectId!.toLowerCase();
@@ -351,21 +339,13 @@ class FilterPipeline {
     return false;
   }
 
-  /// Check if folder has a matching project name in tom_project.yaml or buildkit.yaml.
+  /// Check if folder has a matching project name in pubspec.yaml or
+  /// buildkit.yaml.
   bool _matchesProjectName(FsFolder folder, List<String> patterns) {
     for (final nature in folder.natures) {
       // Check DartProjectFolder (pubspec.yaml name)
       if (nature is DartProjectFolder && nature.projectName.isNotEmpty) {
         final name = nature.projectName.toLowerCase();
-        for (final pattern in patterns) {
-          if (name == pattern.toLowerCase()) {
-            return true;
-          }
-        }
-      }
-      // Check TomBuildFolder (tom_project.yaml)
-      if (nature is TomBuildFolder && nature.projectName != null) {
-        final name = nature.projectName!.toLowerCase();
         for (final pattern in patterns) {
           if (name == pattern.toLowerCase()) {
             return true;

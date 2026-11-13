@@ -832,7 +832,6 @@ class NatureDetector {
     if (_isTypeScriptProject(folder)) natures.add(TypeScriptFolder(folder));
     if (_hasBuildkitYaml(folder)) natures.add(_createBuildkitNature(folder));
     if (_hasBuildYaml(folder)) natures.add(BuildRunnerFolder(folder));
-    if (_hasTomProjectYaml(folder)) natures.add(TomBuildFolder(folder));
     if (_hasTomMasterYaml(folder)) natures.add(TomBuildMasterFolder(folder));
     return natures;
   }
@@ -850,15 +849,12 @@ class NatureDetector {
 
   BuildkitFolder _createBuildkitNature(FsFolder folder) {
     final yaml = loadYaml(File(p.join(folder.path, 'buildkit.yaml')).readAsStringSync()) as Map?;
-    return BuildkitFolder(folder, config: yaml ?? {});
-  }
-  
-  TomProjectFolder _createTomProjectNature(FsFolder folder) {
-    final yaml = loadYaml(File(p.join(folder.path, 'tom_project.yaml')).readAsStringSync()) as Map?;
-    return TomProjectFolder(
-      folder, 
-      name: yaml?['name'] as String?,
-      shortId: yaml?['project_id'] as String?,
+    return BuildkitFolder(
+      folder,
+      projectId: yaml?['project_id'] as String?,
+      projectName: yaml?['name'] as String?,
+      description: yaml?['description'] as String?,
+      license: yaml?['license'] as String?,
       config: yaml ?? {},
     );
   }
@@ -867,16 +863,19 @@ class NatureDetector {
 
 **Project ID and Name extraction:**
 
-Project names and IDs are short identifiers defined in `tom_project.yaml`:
+Project names and IDs are short identifiers at the top level of the project's `buildkit.yaml`:
 
 ```yaml
-# tom_project.yaml
-name: buildkit     # Display name (lowercase, hyphen-separated)
+# buildkit.yaml
 project_id: BK     # Short identifier (uppercase)
-# ... other config
+name: buildkit     # Display name (lowercase, hyphen-separated)
+description: >-
+  Build orchestration tool.
+license: BSD-3-Clause
+# ... the tools' sections (versioner, compiler, ...)
 ```
 
-When scanning, the `NatureDetector` extracts these and stores them in `TomProjectFolder`. The filter pipeline uses this for `--project` and `--exclude-projects` matching:
+When scanning, the `NatureDetector` extracts these and stores them in `BuildkitFolder`. The filter pipeline uses this for `--project` and `--exclude-projects` matching:
 
 ```dart
 /// Check if folder matches by project ID (exact match, case-insensitive)
@@ -1330,10 +1329,6 @@ classDiagram
         +Map~String, dynamic~ buildConfig
     }
     
-    class TomBuildFolder {
-        +Map~String, dynamic~ projectConfig
-    }
-    
     class TomBuildMasterFolder {
         +List~String~ projects
     }
@@ -1347,7 +1342,6 @@ classDiagram
     RunFolder <|-- TypeScriptFolder
     RunFolder <|-- BuildkitFolder
     RunFolder <|-- BuildRunnerFolder
-    RunFolder <|-- TomBuildFolder
     RunFolder <|-- TomBuildMasterFolder
 ```
 
@@ -1366,9 +1360,8 @@ classDiagram
 | `JavaFolder` | `pom.xml` or `build.gradle` exists |
 | `PythonFolder` | `pyproject.toml`, `setup.py`, or `setup.cfg` exists |
 | **Tom Framework Natures** | |
-| `BuildkitFolder` | `buildkit.yaml` exists (also extracts `project-id`) |
+| `BuildkitFolder` | `buildkit.yaml` exists (also extracts the identity: `project_id`, `name`, `description`, `license`) |
 | `BuildRunnerFolder` | `build.yaml` exists (Dart build_runner config) |
-| `TomBuildFolder` | `tom_project.yaml` exists |
 | `TomBuildMasterFolder` | `tom_master.yaml` exists |
 
 **Note:** `buildkit_master.yaml` is treated as a skip marker during scan phase (see Phase 3), not as a nature. This prevents accidentally entering nested buildkit workspaces.
@@ -1683,16 +1676,16 @@ class ToolDefinition {
 
 ### Project Names and IDs
 
-Short mnemonics and display names for projects, defined in `tom_project.yaml`:
+Short mnemonics and display names for projects, defined at the top level of `buildkit.yaml`:
 
 ```yaml
-# In tom_build_base/tom_project.yaml
-name: buildkit        # Lowercase display name
+# In tom_build_kit/buildkit.yaml
 project_id: BK        # Short uppercase identifier
+name: buildkit        # Lowercase display name
 
-# In tom_d4rt_generator/tom_project.yaml
-name: d4rt-gen
+# In tom_d4rt_generator/buildkit.yaml
 project_id: D4G
+name: d4rtgen
 ```
 
 **Global reference:** See `_copilot_guidelines/projects_and_repos.md` for the complete list of project names and IDs.
@@ -1706,8 +1699,8 @@ buildkit -x d4rt :cleanup       # Exclude by project name
 ```
 
 **Resolution hierarchy for `--project` / `-p`:**
-1. Check if value matches a project ID (from `tom_project.yaml` `project_id`)
-2. Check if value matches a project name (from `tom_project.yaml` `name`)
+1. Check if value matches a project ID (`buildkit.yaml` `project_id`)
+2. Check if value matches a project name (`pubspec.yaml` or `buildkit.yaml` `name`)
 3. Check if value matches a folder name pattern (glob on folder name)
 
 **Note:** Pattern matching (with `*`, `?`, `**`) only works on folder names, not on project names or IDs.

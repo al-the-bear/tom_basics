@@ -135,6 +135,9 @@ class ExecutePlaceholderContext {
   bool get hasTypeScript => hasNature<TypeScriptFolder>();
   bool get hasVsCodeExtension => hasNature<VsCodeExtensionFolder>();
   bool get hasBuildkit => hasNature<BuildkitFolder>();
+  /// Always false: tom_project.yaml is retired.
+  @Deprecated('tom_project.yaml is retired; use hasBuildkit.')
+  // ignore: deprecated_member_use_from_same_package
   bool get hasTomProject => hasNature<TomBuildFolder>();
 
   // Nature accessors
@@ -147,6 +150,9 @@ class ExecutePlaceholderContext {
   VsCodeExtensionFolder? get vscodeExtension =>
       getNature<VsCodeExtensionFolder>();
   BuildkitFolder? get buildkit => getNature<BuildkitFolder>();
+  /// Always null: tom_project.yaml is retired.
+  @Deprecated('tom_project.yaml is retired; use buildkit.')
+  // ignore: deprecated_member_use_from_same_package
   TomBuildFolder? get tomProject => getNature<TomBuildFolder>();
 }
 
@@ -173,7 +179,6 @@ class ExecutePlaceholderResolver {
     'typescript.exists',
     'vscode-extension.exists',
     'buildkit.exists',
-    'tom-project.exists',
     'dart.publishable',
     'flutter.isPlugin',
     'git.isSubmodule',
@@ -247,8 +252,6 @@ class ExecutePlaceholderResolver {
         return ctx.hasVsCodeExtension.toString();
       case 'buildkit.exists':
         return ctx.hasBuildkit.toString();
-      case 'tom-project.exists':
-        return ctx.hasTomProject.toString();
 
       // Dart attributes
       case 'dart.name':
@@ -497,7 +500,6 @@ class ExecutePlaceholderResolver {
       'typescript.exists': 'true if TypeScript project',
       'vscode-extension.exists': 'true if VS Code extension',
       'buildkit.exists': 'true if has buildkit.yaml',
-      'tom-project.exists': 'true if has tom_project.yaml',
 
       // Dart/Flutter attributes
       'dart.name': 'Project name from pubspec',

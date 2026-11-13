@@ -1,0 +1,6 @@
+# buildkit configuration of zom_test_standalone
+
+project_id: ZTC
+name: test-cli
+description: >-
+  Test standalone CLI app for validating workspace analyzer features

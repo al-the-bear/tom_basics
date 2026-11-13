@@ -65,7 +65,7 @@ This package is published to pub.dev. See [Project Republishing](../../../../_co
 
 **Key Components:**
 - **Workspace navigation** — `-s`, `-r`, `-R`, `-p`, `-x` options for directory targeting
-- **Project discovery** — Scanning for pubspec.yaml, tom_project.yaml files
+- **Project discovery** — Scanning for pubspec.yaml, buildkit.yaml files
 - **Configuration loading** — TomBuildConfig, TomProjectConfig classes
 - **CLI helpers** — `isHelpCommand()`, `isVersionCommand()`, help text generation
 
@@ -76,7 +76,7 @@ This package is published to pub.dev. See [Project Republishing](../../../../_co
 | Term | Description |
 |------|-------------|
 | **git-traversal** | Traversal mode that discovers and processes git repositories. Uses `-i` (inner-first) or `-o` (outer-first) flags. Inner-first processes submodules before parent repos; outer-first does the reverse. Required for git commands (`:gitstatus`, `:gitcommit`). |
-| **project-traversal** | Traversal mode that discovers and processes projects by markers (pubspec.yaml, tom_project.yaml, etc.). Uses `-s`/`--scan` and `-r`/`--recursive` flags. Default mode when no git flags specified. |
+| **project-traversal** | Traversal mode that discovers and processes projects by markers (pubspec.yaml, buildkit.yaml, etc.). Uses `-s`/`--scan` and `-r`/`--recursive` flags. Default mode when no git flags specified. |
 
 ### Execution Modes
 

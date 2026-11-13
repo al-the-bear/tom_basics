@@ -283,9 +283,8 @@ Natures are auto-detected for each folder during traversal:
 | `GitFolder` | `.git/` exists | `currentBranch`, `hasUncommittedChanges`, `remotes` |
 | `VsCodeExtensionFolder` | `package.json` with VS Code engine | `extensionName`, `displayName` |
 | `TypeScriptFolder` | `tsconfig.json` exists | `projectName`, `isNodeProject` |
-| `BuildkitFolder` | `buildkit.yaml` exists | `config`, `projectId` |
+| `BuildkitFolder` | `buildkit.yaml` exists | `projectId`, `projectName`, `description`, `license`, `config` |
 | `BuildRunnerFolder` | `build.yaml` exists | `config` |
-| `TomBuildFolder` | Various Tom config files | `projectName`, `shortId` |
 
 ### Common Options
 
@@ -558,7 +557,6 @@ if (config.hasProjectOptions) {
 | `TypeScriptFolder` | folder/natures | `tsconfig.json` |
 | `BuildkitFolder` | folder/natures | `buildkit.yaml` |
 | `BuildRunnerFolder` | folder/natures | `build.yaml` |
-| `TomBuildFolder` | folder/natures | Tom config files |
 
 ### Utility Classes
 

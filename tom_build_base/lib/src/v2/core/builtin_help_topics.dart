@@ -96,7 +96,6 @@ Each system is independent and uses its own syntax.
     %{typescript.exists}       true if TypeScript project
     %{vscode-extension.exists} true if VS Code extension
     %{buildkit.exists}         true if has buildkit.yaml
-    %{tom-project.exists}      true if has tom_project.yaml
 
   <cyan>Nature Attributes</cyan>
 
