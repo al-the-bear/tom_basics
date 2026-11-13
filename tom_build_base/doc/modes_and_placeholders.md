@@ -45,10 +45,10 @@ Define placeholders reference values from the `defines:` section of configuratio
 # buildkit_master.yaml
 buildkit:
   defines:
-    binaryPath: $HOME/.tom/bin
+    binaryPath: $TOM_BINARY_PATH
     outputDir: @[binaryPath]/output  # Can reference other defines
   DEV-defines:
-    binaryPath: $HOME/.tom/bin/dev
+    binaryPath: $TOM_BINARY_PATH/dev
 
 # project/buildkit.yaml
 compiler:
@@ -160,7 +160,7 @@ Environment variables from the shell environment. Two syntaxes are supported:
 compiler:
   compiles:
     - pipeline:
-        - shell mkdir -p $HOME/.tom/bin      # $HOME followed by /
+        - shell mkdir -p $TOM_BINARY_PATH/dev  # $TOM_BINARY_PATH followed by /
         - shell echo $[USER]_backup          # $[USER] allows _backup suffix
 ```
 
@@ -235,9 +235,9 @@ Any configuration key can have mode-prefixed variants. **Mode prefixes are UPPER
 # buildkit_master.yaml
 buildkit:
   defines:
-    binaryPath: $HOME/.tom/bin
+    binaryPath: $TOM_BINARY_PATH
   DEV-defines:
-    binaryPath: $HOME/.tom/bin/dev
+    binaryPath: $TOM_BINARY_PATH/dev
   DOCKER-defines:
     binaryPath: /app/bin
 
@@ -277,24 +277,24 @@ For YAML map nodes (like `defines:`), mode-prefixed versions are **merged** with
 buildkit:
   modes: DEV, CLOUD
   defines:
-    binaryPath: $HOME/.tom/bin
+    binaryPath: $TOM_BINARY_PATH
     cloudProvider: AWS
   DEV-defines:
-    binaryPath: $HOME/.tom/bin/dev
+    binaryPath: $TOM_BINARY_PATH/dev
   CLOUD-defines:
     cloudProvider: GCP
 ```
 
 **Resolution with `modes: DEV, CLOUD`:**
 
-1. Start with base `defines:` → `{ binaryPath: $HOME/.tom/bin, cloudProvider: AWS }`
-2. Merge `DEV-defines:` → `{ binaryPath: $HOME/.tom/bin/dev, cloudProvider: AWS }`
-3. Merge `CLOUD-defines:` → `{ binaryPath: $HOME/.tom/bin/dev, cloudProvider: GCP }`
+1. Start with base `defines:` → `{ binaryPath: $TOM_BINARY_PATH, cloudProvider: AWS }`
+2. Merge `DEV-defines:` → `{ binaryPath: $TOM_BINARY_PATH/dev, cloudProvider: AWS }`
+3. Merge `CLOUD-defines:` → `{ binaryPath: $TOM_BINARY_PATH/dev, cloudProvider: GCP }`
 
 **Final result:**
 ```yaml
 defines:
-  binaryPath: $HOME/.tom/bin/dev   # from DEV-defines
+  binaryPath: $TOM_BINARY_PATH/dev   # from DEV-defines
   cloudProvider: GCP               # from CLOUD-defines (overrides AWS)
 ```
 
@@ -356,10 +356,10 @@ Run with `--modes DEV,LOCAL`:
 # buildkit_master.yaml
 buildkit:
   defines:
-    binaryPath: $HOME/.tom/bin
+    binaryPath: $TOM_BINARY_PATH
     buildOutputPath: $HOME/.tom/build
   DEV-defines:
-    binaryPath: $HOME/.tom/bin/dev
+    binaryPath: $TOM_BINARY_PATH/dev
     buildOutputPath: ./build
   DOCKER-defines:
     binaryPath: /app/bin
@@ -380,7 +380,7 @@ compiler:
 ```
 
 **With modes `DEV, LOCAL`:**
-- `@[binaryPath]` → `$HOME/.tom/bin/dev`
+- `@[binaryPath]` → `$TOM_BINARY_PATH/dev`
 - `target-restriction` → `darwin-arm64`
 - Only `darwin-arm64` compiled
 
@@ -434,17 +434,17 @@ String resolvePlaceholders(
 **Example:**
 ```dart
 final values = {
-  'binaryPath': '\$HOME/.tom/bin',
+  'binaryPath': '\$TOM_BINARY_PATH',
   'outputDir': '@[binaryPath]/output',
 };
 
 // Without env var resolution
 resolvePlaceholders('@[outputDir]/${file}', values);
-// → '$HOME/.tom/bin/output/${file}'
+// → '$TOM_BINARY_PATH/output/${file}'
 
 // With env var resolution  
 resolvePlaceholders('@[outputDir]/${file}', values, resolveEnvVars: true);
-// → '/Users/alex/.tom/bin/output/${file}'
+// → '/Users/alex/tom_binaries/tom/output/${file}'
 ```
 
 ### Placeholder Registration
