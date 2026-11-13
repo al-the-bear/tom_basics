@@ -14,7 +14,7 @@ import 'package_metrics.dart';
 /// package's publication status, license, version and links.
 ///
 /// Built on `tom_build_base`'s [NatureDetector] for Dart-package /
-/// `tom_project.yaml` detection. The scanner performs **no** process calls and
+/// `buildkit.yaml` detection. The scanner performs **no** process calls and
 /// makes no network / `gh` requests: whether a repo is public is supplied by
 /// the caller ([scanRepo]'s `repoIsPublic`), because the website's
 /// `includedRepos` seed already resolved that (spec §12, todo 6) — re-deriving
@@ -24,13 +24,13 @@ import 'package_metrics.dart';
 /// Package discovery is **one level deep**: the direct child folders of a repo
 /// that are either a Dart package (`pubspec.yaml`) or a TypeScript package
 /// (`package.json` **and** `tsconfig.json`), matching the convention
-/// established by the license audit. Packages without a `tom_project.yaml` are
+/// established by the license audit. Packages without a `buildkit.yaml` are
 /// tolerated — their record is synthesised from `pubspec.yaml` / `package.json`
 /// and the `LICENSE` body alone.
 ///
 /// TypeScript packages never carry a pub version and are not pub-publishable,
 /// so they never reach the `published` rung of the status ladder; they top out
-/// at `released` (a `release.md` / `tom_project.yaml` marker) and otherwise
+/// at `released` (a `release.md` / `buildkit.yaml` marker) and otherwise
 /// rank by `src/` LOC. They also have no API surface — the website's
 /// doc-indexer gates that on a Dart `lib/<name>.dart`, so no extra signalling
 /// is needed here.
@@ -117,7 +117,7 @@ class PackageScanner {
   }) {
     final natures = _natures.detectNatures(FsFolder(path: dir));
     final dart = natures.whereType<DartProjectFolder>().firstOrNull;
-    final tom = natures.whereType<TomBuildFolder>().firstOrNull;
+    final tom = natures.whereType<BuildkitFolder>().firstOrNull;
 
     final dirName = p.basename(dir);
     final pubspec = dart?.pubspec ?? const <String, dynamic>{};
@@ -168,7 +168,7 @@ class PackageScanner {
     required bool repoIsPublic,
   }) {
     final natures = _natures.detectNatures(FsFolder(path: dir));
-    final tom = natures.whereType<TomBuildFolder>().firstOrNull;
+    final tom = natures.whereType<BuildkitFolder>().firstOrNull;
 
     final dirName = p.basename(dir);
     final pkg = _readPackageJson(dir);
@@ -217,7 +217,7 @@ class PackageScanner {
     required String? publishVersion,
     required bool repoIsPublic,
     required int sourceLoc,
-    required TomBuildFolder? tom,
+    required BuildkitFolder? tom,
     String sourceDirName = 'lib',
   }) {
     if (_hasReleaseMarker(dir, tom)) {
@@ -244,20 +244,20 @@ class PackageScanner {
     );
   }
 
-  /// A package is released when its `tom_project.yaml` declares
+  /// A package is released when its `buildkit.yaml` declares
   /// `release.state: released`, or when a `release.md` sits in its dir.
-  bool _hasReleaseMarker(String dir, TomBuildFolder? tom) {
+  bool _hasReleaseMarker(String dir, BuildkitFolder? tom) {
     if (File(p.join(dir, _releaseMarker)).existsSync()) return true;
     final release = tom?.config['release'];
     if (release is Map) return release['state'] == 'released';
     return false;
   }
 
-  /// Prefer a human-curated `tom_project.yaml license:`; otherwise classify the
+  /// Prefer a human-curated `buildkit.yaml license:`; otherwise classify the
   /// `LICENSE` / `license.md` body. Returns `null` when neither yields a token.
-  String? _resolveLicense(String dir, TomBuildFolder? tom) {
-    final declared = tom?.config['license'];
-    if (declared is String && declared.trim().isNotEmpty) return declared.trim();
+  String? _resolveLicense(String dir, BuildkitFolder? tom) {
+    final declared = tom?.license;
+    if (declared != null) return declared;
     final file = _findLicense(dir);
     return file == null ? null : classifyLicense(file.readAsStringSync());
   }

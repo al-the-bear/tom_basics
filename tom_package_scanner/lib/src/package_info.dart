@@ -43,7 +43,7 @@ class PackageInfo {
   /// Human-readable justification for [status] (drives the status report).
   final String statusReason;
 
-  /// Whether the package carries a `tom_project.yaml`.
+  /// Whether the package carries a `buildkit.yaml`, its project file.
   final bool hasProjectYaml;
 
   /// Display metrics measured from the package's `lib/` and `test/` (§4.2.2).
@@ -59,7 +59,7 @@ class PackageInfo {
   /// for the pub.dev default).
   final String? publishTo;
 
-  /// Classified license token — from `tom_project.yaml license:` when present,
+  /// Classified license token — from `buildkit.yaml license:` when present,
   /// otherwise from the `LICENSE` body — or `null` when unknown.
   final String? license;
 

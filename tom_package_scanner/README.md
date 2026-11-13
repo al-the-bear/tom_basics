@@ -79,7 +79,7 @@ touches the network.
 | Validate a license token | `isValidLicenseToken(token)` / `validLicenseTokens` | The website's accepted vocabulary |
 | Static code metrics | `PackageInfo.metrics` | `loc`, `tests`, `testLoc` — no `dart test` |
 | Capture metadata | `PackageInfo.name/.version/.description/.links` | From `pubspec.yaml` / `package.json` |
-| Flag missing project config | `PackageInfo.hasProjectYaml` | `false` when no `tom_project.yaml` |
+| Flag missing project config | `PackageInfo.hasProjectYaml` | `false` when no `buildkit.yaml` |
 
 ---
 
@@ -161,7 +161,7 @@ top-to-bottom — **the first match wins**:
 
 | Status | Condition | Reason string |
 | ------ | --------- | ------------- |
-| `released` | `tom_project.yaml` `release.state: released`, **or** a `release.md` in the package dir | `release marker` |
+| `released` | `buildkit.yaml` `release.state: released`, **or** a `release.md` in the package dir | `release marker` |
 | `published` | `repoIsPublic` **and** the package is publishable (`publish_to` ≠ `none` and a version is set) | `public repo; pub version X` |
 | `works` | real source — non-blank, non-comment LOC **above** `locThreshold` | `lib/ NNN LOC` (`src/` for TypeScript) |
 | `not_started` | path missing, no source dir, or a source stub at/below the threshold | `no lib/` / `stub (NN LOC ≤ 200)` |
@@ -195,7 +195,7 @@ scanner.scanRepo('d4rt', repoIsPublic: false);
 
 ### License token
 
-`PackageInfo.license` prefers a human-curated `tom_project.yaml license:`; when
+`PackageInfo.license` prefers a human-curated `buildkit.yaml license:`; when
 absent it classifies the package's `LICENSE` / `license.md` body via
 `classifyLicense`. Classification is **body-driven, not header-driven** — a
 BSD/MIT body that opens with "All rights reserved." (the Dart-SDK style) is still
@@ -266,12 +266,12 @@ ext.status;        // ComponentStatus.works
 ext.statusReason;  // 'src/ 250 LOC'
 ```
 
-Curated `tom_project.yaml license:` still wins over the `package.json` `license`
+Curated `buildkit.yaml license:` still wins over the `package.json` `license`
 field, exactly as for Dart.
 
-### Tolerating a missing `tom_project.yaml`
+### Tolerating a missing `buildkit.yaml`
 
-Not every package carries a `tom_project.yaml`. The scanner synthesises the
+Not every package carries a `buildkit.yaml`. The scanner synthesises the
 record from `pubspec.yaml` / `package.json` and the `LICENSE` body alone, and
 sets `PackageInfo.hasProjectYaml = false` so callers can flag those packages for
 a human to triage.

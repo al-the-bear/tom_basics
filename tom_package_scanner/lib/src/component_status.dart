@@ -13,7 +13,7 @@ enum ComponentStatus {
   /// (`publish_to` is not `none` and it has a version).
   published('published'),
 
-  /// Carries an explicit release marker — a `tom_project.yaml`
+  /// Carries an explicit release marker — a `buildkit.yaml`
   /// `release.state: released`, or a `release.md` in the package dir.
   released('released');
 

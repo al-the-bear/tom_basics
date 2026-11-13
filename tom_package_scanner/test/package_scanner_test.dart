@@ -138,10 +138,10 @@ void main() {
       expect(info.status, ComponentStatus.works);
     });
 
-    test('release.state in tom_project.yaml wins over everything', () {
+    test('release.state in buildkit.yaml wins over everything', () {
       package('core', 'tom_released', files: {
         'lib/tom_released.dart': dartLines(5),
-        'tom_project.yaml':
+        'buildkit.yaml':
             'name: tom_released\nrelease:\n  state: released\n  version: 1.0.0\n',
       }, pubspec: 'name: tom_released\nversion: 1.0.0\n');
 
@@ -161,7 +161,7 @@ void main() {
     });
   });
 
-  group('tolerating a missing tom_project.yaml', () {
+  group('tolerating a missing buildkit.yaml', () {
     test('synthesises the record and flags hasProjectYaml=false', () {
       package('basics', 'tom_no_project', files: {
         'lib/tom_no_project.dart': dartLines(250),
@@ -175,11 +175,26 @@ void main() {
     });
   });
 
+  group('tom_project.yaml is retired', () {
+    test('its license and release marker are not read [2026-11-13]', () {
+      package('core', 'tom_old', files: {
+        'lib/tom_old.dart': dartLines(5),
+        'tom_project.yaml':
+            'name: tom_old\nlicense: Apache-2.0\nrelease:\n  state: released\n',
+      }, pubspec: 'name: tom_old\nversion: 0.1.0\npublish_to: none\n');
+
+      final info = scanner().scanRepo('core', repoIsPublic: true).single;
+      expect(info.license, isNull);
+      expect(info.status, isNot(ComponentStatus.released));
+      expect(info.hasProjectYaml, isFalse);
+    });
+  });
+
   group('license sourcing', () {
-    test('a curated tom_project.yaml license: is preferred over the body', () {
+    test('a curated buildkit.yaml license: is preferred over the body', () {
       package('basics', 'tom_curated', files: {
         'lib/tom_curated.dart': dartLines(5),
-        'tom_project.yaml': 'name: tom_curated\nlicense: Apache-2.0\n',
+        'buildkit.yaml': 'name: tom_curated\nlicense: Apache-2.0\n',
         'LICENSE': 'Redistribution and use in source and binary forms\n'
             'Neither the name',
       }, pubspec: 'name: tom_curated\nversion: 0.1.0\npublish_to: none\n');
@@ -191,7 +206,7 @@ void main() {
     test('falls back to classifying the LICENSE body', () {
       package('basics', 'tom_bsd', files: {
         'lib/tom_bsd.dart': dartLines(5),
-        'tom_project.yaml': 'name: tom_bsd\n',
+        'buildkit.yaml': 'name: tom_bsd\n',
         'LICENSE': 'Copyright (c) 2015\nAll rights reserved.\n'
             'Redistribution and use in source and binary forms\n'
             'Neither the name',
@@ -382,10 +397,10 @@ void main() {
       expect(info.name, 'tom_ext');
     });
 
-    test('a curated tom_project.yaml license wins over package.json', () {
+    test('a curated buildkit.yaml license wins over package.json', () {
       tsPackage('vscode', 'tom_ext', files: {
         'src/extension.ts': tsLines(5),
-        'tom_project.yaml': 'name: tom_ext\nlicense: Apache-2.0\n',
+        'buildkit.yaml': 'name: tom_ext\nlicense: Apache-2.0\n',
       }, packageJson: '{ "name": "tom_ext", "license": "MIT" }\n');
 
       final info = scanner().scanRepo('vscode', repoIsPublic: true).single;

@@ -4,7 +4,7 @@ description: >-
   publication status (released / published / works / not_started) plus its
   license token, version and links. Built on tom_build_base's folder scanning
   and nature detection. Powers the website's module-index generators.
-version: 1.0.0
+version: 1.1.0
 repository: https://github.com/al-the-bear/tom_basics
 homepage: https://github.com/al-the-bear/tom_basics/tree/main/tom_package_scanner
 topics:
@@ -18,7 +18,7 @@ environment:
 dependencies:
   # FolderScanner / NatureDetector / yamlToMap. From pub.dev, as every package
   # on tom_build_base takes it (_copilot_guidelines/dart/project_republishing.md).
-  tom_build_base: ^2.19.1
+  tom_build_base: ^2.25.0
   path: ^1.9.0
   yaml: ^3.1.3
 
