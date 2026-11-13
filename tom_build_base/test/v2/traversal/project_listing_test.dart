@@ -184,6 +184,7 @@ void main() {
         ),
         GitFolder(f, currentBranch: 'main'),
         BuildkitFolder(f),
+        BuildkitMasterFolder(f),
       ].map(natureName),
       [
         'flutter',
@@ -194,6 +195,7 @@ void main() {
         'cpp',
         'git',
         'buildkit',
+        'workspace_root',
       ],
     );
   });

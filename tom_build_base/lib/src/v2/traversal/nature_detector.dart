@@ -34,8 +34,8 @@ class NatureDetector {
       natures.add(_createBuildkitNature(folder));
     }
     if (_hasBuildYaml(folder.path)) natures.add(BuildRunnerFolder(folder));
-    if (_hasTomMasterYaml(folder.path)) {
-      natures.add(TomBuildMasterFolder(folder));
+    if (_hasBuildkitMasterYaml(folder.path)) {
+      natures.add(BuildkitMasterFolder(folder));
     }
 
     return natures;
@@ -69,7 +69,7 @@ class NatureDetector {
   bool _hasBuildYaml(String path) =>
       File(p.join(path, 'build.yaml')).existsSync();
 
-  bool _hasTomMasterYaml(String path) =>
+  bool _hasBuildkitMasterYaml(String path) =>
       File(p.join(path, 'buildkit_master.yaml')).existsSync();
 
   // Nature creation methods

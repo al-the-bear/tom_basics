@@ -21,6 +21,12 @@ under `package:tom_dcli/...`.
 - `TraversalDefaults.load(basePath)`: the `navigation:` section of the
   workspace's `buildkit_master.yaml`, formerly private to `ToolRunner`.
 
+### Changed — the workspace-root nature is `BuildkitMasterFolder`
+
+- `TomBuildMasterFolder` is renamed `BuildkitMasterFolder` (and
+  `hasTomMasterYaml` `hasBuildkitMasterYaml`): it marks `buildkit_master.yaml`,
+  not the archived Tom build stack. The old names stay as deprecated aliases.
+
 ## 2.26.1
 
 ### Fixed — `ToolRunner` matched natures by its own copy of the rule

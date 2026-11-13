@@ -832,7 +832,7 @@ class NatureDetector {
     if (_isTypeScriptProject(folder)) natures.add(TypeScriptFolder(folder));
     if (_hasBuildkitYaml(folder)) natures.add(_createBuildkitNature(folder));
     if (_hasBuildYaml(folder)) natures.add(BuildRunnerFolder(folder));
-    if (_hasTomMasterYaml(folder)) natures.add(TomBuildMasterFolder(folder));
+    if (_hasBuildkitMasterYaml(folder)) natures.add(BuildkitMasterFolder(folder));
     return natures;
   }
 
@@ -1329,7 +1329,7 @@ classDiagram
         +Map~String, dynamic~ buildConfig
     }
     
-    class TomBuildMasterFolder {
+    class BuildkitMasterFolder {
         +List~String~ projects
     }
     
@@ -1342,7 +1342,7 @@ classDiagram
     RunFolder <|-- TypeScriptFolder
     RunFolder <|-- BuildkitFolder
     RunFolder <|-- BuildRunnerFolder
-    RunFolder <|-- TomBuildMasterFolder
+    RunFolder <|-- BuildkitMasterFolder
 ```
 
 ### Detection Rules
@@ -1367,7 +1367,7 @@ classDiagram
 | **Tom Framework Natures** | |
 | `BuildkitFolder` | `buildkit.yaml` exists (also extracts the identity: `project_id`, `name`, `description`, `license`) |
 | `BuildRunnerFolder` | `build.yaml` exists (Dart build_runner config) |
-| `TomBuildMasterFolder` | `tom_master.yaml` exists |
+| `BuildkitMasterFolder` | `buildkit_master.yaml` exists |
 
 **Note:** `buildkit_master.yaml` is treated as a skip marker during scan phase (see Phase 3), not as a nature. This prevents accidentally entering nested buildkit workspaces.
 

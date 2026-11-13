@@ -149,7 +149,7 @@ String natureName(RunFolder nature) => switch (nature) {
   BuildkitFolder() => 'buildkit',
   BuildRunnerFolder() => 'build_runner',
   VsCodeExtensionFolder() => 'vscode_extension',
-  TomBuildMasterFolder() => 'workspace_root',
+  BuildkitMasterFolder() => 'workspace_root',
   _ => nature.runtimeType.toString(),
 };
 

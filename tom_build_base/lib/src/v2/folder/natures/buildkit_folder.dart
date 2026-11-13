@@ -97,20 +97,27 @@ class TomBuildFolder extends RunFolder {
       'TomBuildFolder($path, name: $projectName, id: $shortId)';
 }
 
-/// Tom build master configuration nature.
-///
-/// Detected when folder contains `buildkit_master.yaml`.
-class TomBuildMasterFolder extends RunFolder {
+/// Workspace root nature: the folder holds `buildkit_master.yaml`.
+class BuildkitMasterFolder extends RunFolder {
   /// Raw config map from buildkit_master.yaml.
   final Map<String, dynamic> config;
 
-  TomBuildMasterFolder(super.fsFolder, {this.config = const {}});
+  BuildkitMasterFolder(super.fsFolder, {this.config = const {}});
 
   /// Check if a folder has buildkit_master.yaml.
-  static bool hasTomMasterYaml(String dirPath) {
+  static bool hasBuildkitMasterYaml(String dirPath) {
     return File('$dirPath/buildkit_master.yaml').existsSync();
   }
 
+  /// The former name of [hasBuildkitMasterYaml].
+  @Deprecated('Use hasBuildkitMasterYaml.')
+  static bool hasTomMasterYaml(String dirPath) =>
+      hasBuildkitMasterYaml(dirPath);
+
   @override
-  String toString() => 'TomBuildMasterFolder($path)';
+  String toString() => 'BuildkitMasterFolder($path)';
 }
+
+/// The former name of [BuildkitMasterFolder].
+@Deprecated('Use BuildkitMasterFolder.')
+typedef TomBuildMasterFolder = BuildkitMasterFolder;
