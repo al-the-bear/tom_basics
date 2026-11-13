@@ -1,3 +1,12 @@
+## 1.15.1
+
+### Changed — the project identity comes from `buildkit.yaml`
+
+buildkit takes tom_build_base ^2.25.0. `--project <id or name>` and
+`findproject` match the `project_id` and `name` at the top of the project's
+`buildkit.yaml` (the resolver read a `project-id` key no file used);
+`tom_project.yaml` is not read any more. BK-RES-1..4.
+
 ## 1.15.0
 
 ### Added — `--group`

@@ -1,6 +1,7 @@
 // ProjectResolver: a bare `--project` name resolves by folder name, then by
-// the project id, then by the project name of tom_project.yaml. The id is
-// `project_id`; the hyphenated `short-id` is not read.
+// the project id, then by the project name of buildkit.yaml. The id is
+// `project_id`; `project-id` and `short-id` are not read, and tom_project.yaml
+// (retired) is not read at all.
 //
 // Works in a scratch workspace under testlog/ (gitignored); nothing else is
 // read or written.
@@ -21,17 +22,18 @@ void main() {
     File(
       p.join(workspace.path, 'buildkit_master.yaml'),
     ).writeAsStringSync('navigation: {}\n');
-    void project(String folder, String tomProject) {
+    void project(String folder, String file, String content) {
       final dir = Directory(p.join(workspace.path, 'libs', folder))
         ..createSync(recursive: true);
       File(
         p.join(dir.path, 'pubspec.yaml'),
       ).writeAsStringSync('name: $folder\nenvironment:\n  sdk: ^3.0.0\n');
-      File(p.join(dir.path, 'tom_project.yaml')).writeAsStringSync(tomProject);
+      File(p.join(dir.path, file)).writeAsStringSync(content);
     }
 
-    project('alpha_pkg', 'project_id: AID\nname: alpha\n');
-    project('beta_pkg', 'short-id: BID\nname: beta\n');
+    project('alpha_pkg', 'buildkit.yaml', 'project_id: AID\nname: alpha\n');
+    project('beta_pkg', 'buildkit.yaml', 'short-id: BID\nproject-id: HID\n');
+    project('gamma_pkg', 'tom_project.yaml', 'project_id: GID\nname: gamma\n');
   });
 
   tearDown(() => workspace.deleteSync(recursive: true));
@@ -55,7 +57,13 @@ void main() {
     },
   );
 
-  test('BK-RES-3: a short-id key is not an id', () async {
+  test('BK-RES-3: a short-id or project-id key is not an id', () async {
     expect(await resolve('BID'), isEmpty);
+    expect(await resolve('HID'), isEmpty);
+  });
+
+  test('BK-RES-4: tom_project.yaml is not read [2026-11-13]', () async {
+    expect(await resolve('GID'), isEmpty);
+    expect(await resolve('gamma'), isEmpty);
   });
 }

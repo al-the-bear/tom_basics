@@ -29,8 +29,8 @@ import 'project_resolver.dart';
 ///
 /// Resolution order per anchor (first match wins):
 /// 1. Folder basename exact match
-/// 2. Project ID match (from tom_project.yaml or buildkit.yaml)
-/// 3. Project name match (from tom_project.yaml or buildkit.yaml)
+/// 2. Project ID match (`project_id` in buildkit.yaml)
+/// 3. Project name match (`name` in buildkit.yaml)
 ///
 /// Anchor order: walks up from cwd, trying each anchor directory in turn
 /// until the project is found or the filesystem root is reached.

@@ -159,8 +159,8 @@ class ProjectResolver {
   ///
   /// Resolution order (first match wins):
   /// 1. Folder basename exact match
-  /// 2. Project ID match (from tom_project.yaml or buildkit.yaml)
-  /// 3. Project name match (from tom_project.yaml or buildkit.yaml)
+  /// 2. Project ID match (`project_id` in buildkit.yaml)
+  /// 3. Project name match (`name` in buildkit.yaml)
   Future<String?> _findProjectByName(
     String rootDir,
     String projectName,
@@ -204,50 +204,23 @@ class ProjectResolver {
     return idMatch ?? nameMatch;
   }
 
-  /// Check if a directory's project config files match the search term.
+  /// Check if a directory's `buildkit.yaml` identity matches the search term:
+  /// its `project_id` (an id match) or its `name` (a name match).
   _ConfigMatch? _matchProjectConfig(String dirPath, String lowerSearch) {
-    // Check tom_project.yaml
-    final tomProjectFile = File(p.join(dirPath, 'tom_project.yaml'));
-    if (tomProjectFile.existsSync()) {
-      try {
-        final content = tomProjectFile.readAsStringSync();
-        final yaml = loadYaml(content);
-        if (yaml is Map) {
-          // Check project_id
-          final projectId = yaml['project_id'] as String?;
-          if (projectId != null && projectId.toLowerCase() == lowerSearch) {
-            return _ConfigMatch.id;
-          }
-          // Check name
-          final name = yaml['name'] as String?;
-          if (name != null && name.toLowerCase() == lowerSearch) {
-            return _ConfigMatch.name;
-          }
-        }
-      } catch (_) {}
-    }
-
-    // Check buildkit.yaml
     final buildkitFile = File(p.join(dirPath, TomBuildConfig.projectFilename));
-    if (buildkitFile.existsSync()) {
-      try {
-        final content = buildkitFile.readAsStringSync();
-        final yaml = loadYaml(content);
-        if (yaml is Map) {
-          // Check project-id
-          final projectId = yaml['project-id'] as String?;
-          if (projectId != null && projectId.toLowerCase() == lowerSearch) {
-            return _ConfigMatch.id;
-          }
-          // Check name
-          final name = yaml['name'] as String?;
-          if (name != null && name.toLowerCase() == lowerSearch) {
-            return _ConfigMatch.name;
-          }
-        }
-      } catch (_) {}
-    }
-
+    if (!buildkitFile.existsSync()) return null;
+    try {
+      final yaml = loadYaml(buildkitFile.readAsStringSync());
+      if (yaml is! Map) return null;
+      final projectId = yaml['project_id']?.toString();
+      if (projectId != null && projectId.toLowerCase() == lowerSearch) {
+        return _ConfigMatch.id;
+      }
+      final name = yaml['name']?.toString();
+      if (name != null && name.toLowerCase() == lowerSearch) {
+        return _ConfigMatch.name;
+      }
+    } catch (_) {}
     return null;
   }
 

@@ -16,7 +16,7 @@ This document lists all projects in the workspace that depend on `tom_build_base
 All dependent projects inherit from tom_build_base:
 
 - **Workspace navigation options** — `-s`, `-r`, `-R`, `-p`, `-x`, etc.
-- **Project discovery** — Scanning for pubspec.yaml, tom_project.yaml
+- **Project discovery** — Scanning for pubspec.yaml, buildkit.yaml
 - **Configuration loading** — TomBuildConfig, TomProjectConfig
 - **CLI standardization** — `--help`, `--version`, usage patterns
 

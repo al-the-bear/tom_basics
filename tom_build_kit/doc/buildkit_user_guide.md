@@ -175,6 +175,24 @@ The `--project` option supports multiple specification methods:
 | Current dir children | `--project='./*'` |
 | Recursive from current | `--project='./**/*'` |
 
+A bare name is matched against the folder name, then the project's id, then
+its name. Id and name come from the top level of the project's `buildkit.yaml`,
+the one project file:
+
+```yaml
+# buildkit.yaml
+project_id: BK
+name: buildkit
+description: >-
+  Build orchestration tool.
+license: BSD-3-Clause
+versioner:
+  # ... the tools' sections
+```
+
+`buildkit --project BK` and `buildkit --project buildkit` select that project;
+the pubspec `name` matches too.
+
 Without `--project` or `--scan`, BuildKit operates on the current directory.
 
 ### Group Selection
