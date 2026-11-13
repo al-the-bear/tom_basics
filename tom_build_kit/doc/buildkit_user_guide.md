@@ -177,6 +177,24 @@ The `--project` option supports multiple specification methods:
 
 Without `--project` or `--scan`, BuildKit operates on the current directory.
 
+### Group Selection
+
+`--group <name>` selects the projects of a group (comma-separated or repeated
+for several; with `--project`, both must hold). Groups come from the directory
+walk; nothing lists them:
+
+| Group | Named by | Example |
+|-------|----------|---------|
+| A git repository (or submodule checkout) | its folder name, or its path from the workspace root | `--group basics`, `--group tom_ai/basics` |
+| A directory holding `buildkit_group.yaml` | the file's `name:`, else the folder name | `--group reusable_ui` |
+
+```bash
+buildkit -s . -r --group basics,devops :versioner
+```
+
+A group no scanned project belongs to fails the run, like a `--project` that
+matches nothing (`--allow-empty` accepts it).
+
 ---
 
 ## Execution Modes

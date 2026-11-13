@@ -1,3 +1,12 @@
+## 1.15.0
+
+### Added — `--group`
+
+buildkit takes tom_build_base ^2.24.0: `--group <name>` selects the projects of
+a group, where every git repository and every `buildkit_group.yaml` directory is
+a group (user guide, "Group Selection"). The hand-kept group lists of
+`tom_workspace.yaml` are not read.
+
 ## 1.14.1
 
 ### Changed — the workspace root is the nearest `buildkit_master.yaml`
