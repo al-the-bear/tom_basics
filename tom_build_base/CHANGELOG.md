@@ -1,3 +1,15 @@
+## 2.32.0
+
+### Added — top-level variables in the declaration scans, on request
+
+`topLevelDeclarations(source, includeVariables: true)` and
+`exportedDeclarationsOf(entryPoint, includeVariables: true)` also report
+top-level variables (kind `variable`): every declarator of a statement
+(`var a = 1, b = f(2, 3), c;`), with or without an initializer, generic types
+read correctly. Without the flag nothing changes, so the import and seam
+scans see what they saw. For buildkit's `:apisummary`, whose API listing
+needs exported constants. SEAMS-SRC-6, SEAMS-GRAPH-9.
+
 ## 2.31.0
 
 ### Added — `CommandExecutor.afterTraversal`

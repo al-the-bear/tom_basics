@@ -50,7 +50,7 @@ This document lists all testable features across `tom_build_base` and tracks tes
 | 35 | [Tool Origin](#35-tool-origin) | 11 | 11✅ | `v2/core/tool_origin_test.dart` | [→](#35-tool-origin) |
 | 36 | [Pub Cache Pre-flight](#36-pub-cache-pre-flight) | 6 | 6✅ | `v2/core/pub_cache_preflight_test.dart` | [→](#36-pub-cache-pre-flight) |
 | 37 | [Coverage Doc Guard](#37-coverage-doc-guard) | 2 | 2✅ | `test_coverage_doc_test.dart` | [→](#37-coverage-doc-guard) |
-| 38 | [Seam Engine](#38-seam-engine) | 24 | 24✅ | `seams/seams_test.dart` | [→](#38-seam-engine) |
+| 38 | [Seam Engine](#38-seam-engine) | 26 | 26✅ | `seams/seams_test.dart` | [→](#38-seam-engine) |
 | 39 | [CI Lock](#39-ci-lock) | 4 | 4✅ | `ci/ci_lock_test.dart` | [→](#39-ci-lock) |
 | 40 | [CI Process Runner](#40-ci-process-runner) | 4 | 4✅ | `ci/ci_process_test.dart` | [→](#40-ci-process-runner) |
 | 41 | [CI Run, Summary and Tool](#41-ci-run-summary-and-tool) | 14 | 14✅ | `ci/ci_run_test.dart` | [→](#41-ci-run-summary-and-tool) |
@@ -66,7 +66,7 @@ This document lists all testable features across `tom_build_base` and tracks tes
 | 51 | [--list Runs Nothing](#51---list-runs-nothing) | 7 | 7✅ | `v2/core/list_flag_test.dart` | [→](#51---list-runs-nothing) |
 | 52 | [Standalone Tools](#52-standalone-tools) | 5 | 5✅ | `v2/core/standalone_tool_test.dart` | [→](#52-standalone-tools) |
 | 53 | [After the Traversal](#53-after-the-traversal) | 5 | 5✅ | `v2/core/after_traversal_test.dart` | [→](#53-after-the-traversal) |
-| — | **Total** | **1054** | **1054✅** | | |
+| — | **Total** | **1056** | **1056✅** | | |
 
 > Every row links to a section, and the counts are measured from
 > `dart test --reporter json -j 1` rather than maintained by hand. Run it
@@ -845,10 +845,12 @@ one that must pass.
 | SEAMS-SRC-3 | Interpolation | ✅ | A quote inside `${…}` does not end the string. |
 | SEAMS-SRC-4 | Top-level declarations | ✅ | Classified by keyword, including a return type on its own line and a record return type. |
 | SEAMS-SRC-5 | Call arguments | ✅ | End at the matching parenthesis, past one inside a string. |
+| SEAMS-SRC-6 | Top-level variables | ✅ | Only with `includeVariables`; every declarator, generic types and initializers read correctly. |
 | SEAMS-GRAPH-1–3 | Import closures | ✅ | Package, sibling and per-directory walks, and what an entry point reaches. |
 | SEAMS-GRAPH-4–5 | Pubspecs and packages | ✅ | Three blocks with path, runtime and SDK dependencies apart; packages by directory and by prefix, never in hidden folders. |
 | SEAMS-GRAPH-6–7 | Dependency reach | ✅ | Path dependencies followed with the chain named; an unresolved hosted dependency reported; a resolved one followed through `package_config.json`. |
 | SEAMS-GRAPH-8 | Exported declarations | ✅ | `show`, `hide` and parts applied; declared type names. |
+| SEAMS-GRAPH-9 | Exported variables | ✅ | Only with `includeVariables`; `show` and `hide` applied. |
 | SEAMS-RULE-1–3 | Entry-point rules | ✅ | A banned package, a banned URI, a missing required package and a missing entry point each fail; a conforming entry point passes. |
 | SEAMS-UP-1–5 | Climbing to a root | ✅ | Upward literals in path calls and `.parent` climbs are reported with their line; directives, data and comments are not. |
 | SEAMS-RUN-1–3 | Running audits | ✅ | Exit 0 with the given sentence, quiet output, exit 1 naming every violation; roots found by their landmarks. |

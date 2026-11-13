@@ -243,7 +243,14 @@ String dartCodeWithoutComments(String source) {
 /// not a body, a brace inside a string. Comments go first; strings, including
 /// interpolations, are skipped as units; a body is skipped by balance; what is
 /// left at the top level is a header, classified by its keyword.
-List<({String name, String kind})> topLevelDeclarations(String source) {
+///
+/// Top-level variables (kind `variable`, every declarator of a statement)
+/// are reported only with [includeVariables]: the import and seam scans
+/// this serves have no use for them, an API listing does.
+List<({String name, String kind})> topLevelDeclarations(
+  String source, {
+  bool includeVariables = false,
+}) {
   final s = dartCodeWithoutComments(source);
   final found = <({String name, String kind})>[];
 
@@ -347,6 +354,23 @@ List<({String name, String kind})> topLevelDeclarations(String source) {
     return h.replaceAll(RegExp(r'\s+'), ' ').trim();
   }
 
+  // The declared names of a variable header (`final Map<String, int> a`,
+  // `int a, b`): type arguments dropped, each declarator's last identifier.
+  List<String> variableNames(String header) {
+    var h = header;
+    while (true) {
+      final inner = RegExp(r'<[^<>]*>').firstMatch(h);
+      if (inner == null) break;
+      h = h.replaceRange(inner.start, inner.end, '');
+    }
+    return [
+      for (final segment in h.split(','))
+        if (RegExp(r'([A-Za-z_$][\w$]*)\s*\??\s*$').firstMatch(segment)
+            case final m?)
+          m.group(1)!,
+    ];
+  }
+
   void classify(String rawHeader, {required bool initializer}) {
     final header = withoutAnnotations(rawHeader);
     if (header.isEmpty || directive.hasMatch(header)) return;
@@ -360,7 +384,14 @@ List<({String name, String kind})> topLevelDeclarations(String source) {
         }
       }
     }
-    if (initializer) return; // a variable
+    if (initializer) {
+      if (includeVariables) {
+        for (final name in variableNames(header)) {
+          found.add((name: name, kind: 'variable'));
+        }
+      }
+      return;
+    }
     // The parameter list is the first `name(` at bracket depth 0 that is not
     // a function type — a record return type opens with a parenthesis too.
     RegExpMatch? call;
@@ -384,7 +415,42 @@ List<({String name, String kind})> topLevelDeclarations(String source) {
       ));
       return;
     }
-    if (call != null) found.add((name: call.group(1)!, kind: 'function'));
+    if (call != null) {
+      found.add((name: call.group(1)!, kind: 'function'));
+    } else if (includeVariables &&
+        !RegExp(
+          r'^(?:class|mixin|enum|extension|typedef)\b',
+        ).hasMatch(header)) {
+      // No parameter list and no body: a variable without an initializer.
+      for (final name in variableNames(header)) {
+        found.add((name: name, kind: 'variable'));
+      }
+    }
+  }
+
+  // The declarators after the first in `= <expr>, b = <expr>, c;`: a comma
+  // at bracket depth 0 followed by a name and `=`, `,` or `;`. Generic
+  // arguments (`<String, int>{}`) never put a name before those.
+  void laterDeclarators(int from, int to) {
+    var i = from;
+    while (i < to) {
+      final c = s[i];
+      if (c == "'" || c == '"') {
+        i = skipString(i);
+      } else if (c == '{' || c == '(' || c == '[') {
+        i = skipBalanced(i);
+      } else if (c == ',') {
+        final m = RegExp(
+          r'\s*([A-Za-z_$][\w$]*)\s*(=(?!=)|,|;)',
+        ).matchAsPrefix(s, i + 1);
+        if (m != null && m.end <= to) {
+          found.add((name: m.group(1)!, kind: 'variable'));
+        }
+        i++;
+      } else {
+        i++;
+      }
+    }
   }
 
   final header = StringBuffer();
@@ -414,7 +480,9 @@ List<({String name, String kind})> topLevelDeclarations(String source) {
     } else if (c == '=') {
       classify(header.toString(), initializer: true);
       header.clear();
-      i = skipToSemicolon(i + 1);
+      final end = skipToSemicolon(i + 1);
+      if (includeVariables) laterDeclarators(i + 1, end);
+      i = end;
     } else {
       header.write(c);
       i++;

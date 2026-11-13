@@ -172,7 +172,7 @@ class PublicDeclaration {
   final String name;
 
   /// `class`, `mixin`, `enum`, `extension`, `typedef`, `function`, `getter`
-  /// or `setter`.
+  /// or `setter`; `variable` when asked for (`includeVariables`).
   final String kind;
 
   /// The declaring file.
@@ -197,8 +197,12 @@ final _partDirective = RegExp(
 ///
 /// A `package:` export of another package is not followed: those names are
 /// that package's, re-exported for convenience, and are not this package's
-/// to name.
-Map<String, PublicDeclaration> exportedDeclarationsOf(String entryPoint) {
+/// to name. Top-level variables (kind `variable`) are included only with
+/// [includeVariables] ([topLevelDeclarations]).
+Map<String, PublicDeclaration> exportedDeclarationsOf(
+  String entryPoint, {
+  bool includeVariables = false,
+}) {
   final context = _PackageContext.of(entryPoint);
   final visiting = <String>{};
 
@@ -210,7 +214,10 @@ Map<String, PublicDeclaration> exportedDeclarationsOf(String entryPoint) {
     final stripped = dartCodeWithoutComments(source);
     final names = <String, PublicDeclaration>{};
     void declareFrom(String declaringFile, String text) {
-      for (final d in topLevelDeclarations(text)) {
+      for (final d in topLevelDeclarations(
+        text,
+        includeVariables: includeVariables,
+      )) {
         if (d.name.startsWith('_')) continue;
         names.putIfAbsent(
           d.name,

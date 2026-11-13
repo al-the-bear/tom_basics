@@ -113,6 +113,47 @@ String _private() => '';
       expect(found, contains('_private'));
     });
 
+    test('SEAMS-SRC-6: top-level variables are reported only when asked '
+        'for, every declarator of a statement, generics and initializers '
+        'read correctly [2026-11-13]', () {
+      const source = '''
+const String tomComponent = 'component';
+final Map<String, int> table = {'a': 1, 'b': 2}, other = <String, int>{};
+var a = 1, b = f(2, 3), c;
+late final List<int> lazy;
+String? optional;
+int get h => 1;
+void f(int x, int y) {}
+const _hidden = 0;
+''';
+      expect(
+        topLevelDeclarations(source).where((d) => d.kind == 'variable'),
+        isEmpty,
+        reason: 'variables stay out unless asked for',
+      );
+      final found = {
+        for (final d in topLevelDeclarations(source, includeVariables: true))
+          d.name: d.kind,
+      };
+      for (final v in [
+        'tomComponent',
+        'table',
+        'other',
+        'a',
+        'b',
+        'c',
+        'lazy',
+        'optional',
+        '_hidden',
+      ]) {
+        expect(found[v], 'variable', reason: v);
+      }
+      expect(found['h'], 'getter');
+      expect(found['f'], 'function');
+      expect(found.keys, isNot(contains('int')));
+      expect(found.keys, isNot(contains('String')));
+    });
+
     test('SEAMS-SRC-5: a call\'s arguments end at its matching parenthesis, '
         'past a parenthesis inside a string', () {
       const source = "f(a, ')', g(b)) + rest";
@@ -274,6 +315,28 @@ String _private() => '';
         declaredTypeNamesUnder(p.join(root, 'one', 'lib')),
         containsAll(['A', 'B', 'Hidden', 'Own']),
       );
+    });
+    test('SEAMS-GRAPH-9: exported variables, with show and hide, only when '
+        'asked for [2026-11-13]', () {
+      final root = tree({
+        'one/pubspec.yaml': 'name: one\n',
+        'one/lib/one.dart':
+            "export 'src/a.dart' show A, shown;\n"
+            "export 'src/b.dart' hide hidden;\n"
+            "const own = 1;\n",
+        'one/lib/src/a.dart':
+            'class A {}\nconst shown = 1;\nconst notShown = 2;\n',
+        'one/lib/src/b.dart': 'final kept = 1;\nfinal hidden = 2;\n',
+      });
+      final entry = p.join(root, 'one', 'lib', 'one.dart');
+      expect(exportedDeclarationsOf(entry).keys.toSet(), {'A'});
+      final withVariables = exportedDeclarationsOf(
+        entry,
+        includeVariables: true,
+      );
+      expect(withVariables.keys.toSet(), {'own', 'A', 'shown', 'kept'});
+      expect(withVariables['own']!.kind, 'variable');
+      expect(withVariables['own']!.isType, isFalse);
     });
   });
 
