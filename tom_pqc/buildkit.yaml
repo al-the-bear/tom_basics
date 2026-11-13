@@ -1,0 +1,7 @@
+# buildkit configuration of tom_pqc
+
+project_id: PQC
+name: pqc
+description: >-
+  Post-quantum cryptography: ML-KEM-768 through FFI to vendored mlkem-native.
+license: BSD-3-Clause
