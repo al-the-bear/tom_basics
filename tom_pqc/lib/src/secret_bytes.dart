@@ -67,6 +67,35 @@ final class SecretBytes implements Finalizable {
   /// overwrite; prefer handing [SecretBytes] on to keeping a copy.
   Uint8List extractBytes() => Uint8List.fromList(pointer.asTypedList(length));
 
+  /// A new secret holding bytes [start] to [end] (exclusive) of this one,
+  /// copied native to native: the bytes never pass the Dart heap.
+  SecretBytes sublist(int start, [int? end]) {
+    final stop = RangeError.checkValidRange(start, end, length);
+    final part = SecretBytes.allocate(stop - start);
+    part._pointer
+        .asTypedList(part.length)
+        .setRange(0, part.length, pointer.asTypedList(length), start);
+    return part;
+  }
+
+  /// A new secret holding the bytes of [parts] one after the other, copied
+  /// native to native.
+  static SecretBytes concat(List<SecretBytes> parts) {
+    final total = parts.fold<int>(0, (n, p) => n + p.length);
+    final out = SecretBytes.allocate(total);
+    final view = out._pointer.asTypedList(total);
+    var offset = 0;
+    for (final part in parts) {
+      view.setRange(
+        offset,
+        offset + part.length,
+        part.pointer.asTypedList(part.length),
+      );
+      offset += part.length;
+    }
+    return out;
+  }
+
   /// Overwrites and releases the native buffer. Safe to call more than once.
   void dispose() {
     if (_disposed) return;

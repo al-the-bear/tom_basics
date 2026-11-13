@@ -129,7 +129,7 @@ the consuming CLI tools, not from here), so their **Binary** column is `—`.
 | Package | What it is | Binary |
 | ------- | ---------- | ------ |
 | [`tom_crypto`](tom_crypto/) | Cryptographic utilities — JWT tokens, password hashing, RSA encryption. | — |
-| [`tom_pqc`](tom_pqc/) | Post-quantum cryptography — ML-KEM-768 (FIPS 203) through FFI to the vendored mlkem-native C code, compiled per platform by a build hook; secrets kept in native memory. BSD-3. | — |
+| [`tom_pqc`](tom_pqc/) | Post-quantum cryptography — ML-KEM-768 (FIPS 203), ML-DSA-65 (FIPS 204), the X-Wing hybrid KEM (age's MLKEM768-X25519) and composite ML-DSA-65 + Ed25519 signatures (RFC 10073), through FFI to vendored mlkem-native and mldsa-native, compiled per platform by a build hook; secrets kept in native memory. BSD-3, on pub.dev. | — |
 
 ### Messaging
 
@@ -267,7 +267,7 @@ tom_ai/basics/
 │
 ├── tom_crypto/               # JWT, password hashing, RSA
 │   └── doc/                  # crypto reference
-├── tom_pqc/                  # post-quantum crypto: ML-KEM-768 over vendored C (FFI, build hook)
+├── tom_pqc/                  # post-quantum crypto: ML-KEM, ML-DSA and hybrids over vendored C (FFI, build hook)
 │
 ├── tom_chattools/            # unified chat API (Telegram/WhatsApp/Signal/…)
 │

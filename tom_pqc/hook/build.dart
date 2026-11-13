@@ -2,8 +2,9 @@
 // SPDX-License-Identifier: BSD-3-Clause
 
 /// Builds tom_pqc's native library from the vendored C, for the target the
-/// Dart or Flutter build asks for: the backend interface (`native/tom_pqc.c`,
-/// with mlkem-native as one compilation unit) and the OS random generator
+/// Dart or Flutter build asks for: the backend interface (`native/tom_pqc.c`
+/// with mlkem-native and `native/tom_pqc_mldsa.c` with mldsa-native, each one
+/// compilation unit) and the OS random generator
 /// (`native/tom_pqc_random.c`). Portable C only, no assembly; nothing is
 /// fetched, and the package ships no binaries.
 library;
@@ -21,7 +22,11 @@ void main(List<String> args) async {
     await CBuilder.library(
       name: 'tom_pqc',
       assetName: 'src/native_backend.dart',
-      sources: ['native/tom_pqc.c', 'native/tom_pqc_random.c'],
+      sources: [
+        'native/tom_pqc.c',
+        'native/tom_pqc_mldsa.c',
+        'native/tom_pqc_random.c',
+      ],
       includes: ['native'],
       std: 'c99',
       // The randomness: BCryptGenRandom on Windows (bcrypt.lib),

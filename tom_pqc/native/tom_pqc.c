@@ -58,6 +58,20 @@ TOM_PQC_EXPORT const char *tom_pqc_backend_name(void)
   return TOM_PQC_BACKEND_NAME;
 }
 
+TOM_PQC_EXPORT int tom_pqc_sha3_256(uint8_t out[32], const uint8_t *in,
+                                    size_t inlen)
+{
+  tom_pqc_mlkn_sha3_256(out, in, inlen);
+  return 0;
+}
+
+TOM_PQC_EXPORT int tom_pqc_shake256(uint8_t *out, size_t outlen,
+                                    const uint8_t *in, size_t inlen)
+{
+  tom_pqc_mlkn_shake256(out, outlen, in, inlen);
+  return 0;
+}
+
 TOM_PQC_EXPORT int tom_pqc_random_bytes(uint8_t *out, size_t len)
 {
   return tom_pqc_randombytes(out, len) == 0 ? 0 : TOM_PQC_ERR_RANDOM;

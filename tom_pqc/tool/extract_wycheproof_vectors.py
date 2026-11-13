@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 # Copyright (c) 2026 Peter Nicolai Alexis Kyaw
 # SPDX-License-Identifier: BSD-3-Clause
-"""Copies the Wycheproof ML-KEM-768 vectors into test/vectors/wycheproof/.
+"""Copies the Wycheproof ML-KEM-768 and ML-DSA-65 vectors into
+test/vectors/wycheproof/.
 
     git clone https://github.com/C2SP/wycheproof <dir>
     git -C <dir> checkout <commit>
@@ -9,7 +10,8 @@
 
 The files are copied unchanged, with Wycheproof's LICENSE (Apache-2.0), and
 SOURCE.json records the commit and each file's SHA-256, which
-test/wycheproof_ml_kem_768_test.dart checks. Run by hand when the vectors are
+test/wycheproof_ml_kem_768_test.dart and test/wycheproof_ml_dsa_65_test.dart
+check. Run by hand when the vectors are
 to be refreshed.
 """
 import hashlib
@@ -24,6 +26,9 @@ FILES = [
     'mlkem_768_encaps_test.json',
     'mlkem_768_test.json',
     'mlkem_768_semi_expanded_decaps_test.json',
+    'mldsa_65_sign_seed_test.json',
+    'mldsa_65_sign_noseed_test.json',
+    'mldsa_65_verify_test.json',
 ]
 
 

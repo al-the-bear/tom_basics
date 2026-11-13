@@ -3,5 +3,6 @@
 project_id: PQC
 name: pqc
 description: >-
-  Post-quantum cryptography: ML-KEM-768 through FFI to vendored mlkem-native.
+  Post-quantum cryptography: ML-KEM-768, ML-DSA-65 and their hybrids through
+  FFI to vendored mlkem-native and mldsa-native.
 license: BSD-3-Clause

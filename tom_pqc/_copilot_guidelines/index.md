@@ -7,21 +7,31 @@ package README.
 
 | Path | What it is |
 | --- | --- |
-| `native/mlkem-native/` | the vendored C, unchanged upstream files (see `THIRD_PARTY.md`) |
+| `native/mlkem-native/`, `native/mldsa-native/` | the vendored C, unchanged upstream files (see `THIRD_PARTY.md`) |
 | `native/tom_pqc.h` | the backend interface: the only exported C symbols |
-| `native/tom_pqc.c` | the mlkem-native backend: includes `mlkem_native.c` as one compilation unit and maps its errors |
-| `native/tom_pqc_mlkem_config.h` | the mlkem-native configuration: ML-KEM-768, every symbol `static`, randomness from `tom_pqc_randombytes` |
+| `native/tom_pqc.c` | the mlkem-native backend (ML-KEM-768, SHA3-256, SHAKE256): includes `mlkem_native.c` as one compilation unit and maps its errors |
+| `native/tom_pqc_mldsa.c` | the mldsa-native backend (ML-DSA-65): `mldsa_native.c` as a compilation unit of its own, so the two libraries' internal names never meet |
+| `native/tom_pqc_mlkem_config.h`, `native/tom_pqc_mldsa_config.h` | the libraries' configurations: one parameter set each, every symbol `static`, randomness from `tom_pqc_randombytes` |
 | `native/tom_pqc_random.c` | the OS random generator |
-| `hook/build.dart` | compiles the two `.c` files per target with `native_toolchain_c` |
+| `hook/build.dart` | compiles the three `.c` files per target with `native_toolchain_c` |
 | `lib/src/native_backend.dart` | the `@Native` bindings |
 | `lib/src/pqc_backend.dart` | `PqcBackend` (the Dart side of the interface) and `NativePqcBackend`; not exported |
-| `test/vectors/` | NIST ACVP vectors (`tool/extract_acvp_vectors.py`) and Wycheproof's files with their `SOURCE.json` (`tool/extract_wycheproof_vectors.py`) |
+| `lib/src/ml_kem_768_x25519.dart`, `lib/src/ml_dsa_65_ed25519.dart` | the hybrids, built on the Dart API (`MlKem768`, `MlDsa65`, `Sha3`) and `package:cryptography` (X25519, Ed25519), never on the C code directly |
+| `test/vectors/` | ACVP (`tool/extract_acvp_vectors.py`), Wycheproof (`tool/extract_wycheproof_vectors.py`), the X-Wing draft, RFC 10073 and the age testkit (`tool/extract_hybrid_vectors.py`), each with its source and commit; the Go cross-check (`tool/go_crosscheck`) |
+| `test/support/age_reader.dart` | a minimal age reader (header, stanzas, HPKE open, MAC, STREAM, armor) for the age testkit; test-only |
 
 ## Rules
 
 - **The vendored files are never edited.** Configuration goes into
-  `tom_pqc_mlkem_config.h`, glue into `tom_pqc.c`. A fix upstream reaches the
-  package as a new pinned commit.
+  `tom_pqc_mlkem_config.h` / `tom_pqc_mldsa_config.h`, glue into
+  `tom_pqc.c` / `tom_pqc_mldsa.c`. A fix upstream reaches the package as a
+  new pinned commit.
+- **The hybrids follow their specifications byte for byte.** X-Wing is
+  `MLKEM768-X25519` of draft-ietf-hpke-pq (what age uses), with the all-zero
+  X25519 secret refused as filippo.io/hpke-pq does; the composite signature
+  is RFC 10073 `id-MLDSA65-Ed25519-SHA512`. Their formats are fixed in phase
+  A of the Tom Secrets Manager (keys, grants), so a change to either is a
+  migration.
 - **Only the backend interface is exported.** A new C entry point is declared
   in `tom_pqc.h` with `TOM_PQC_EXPORT`, bound in `native_backend.dart`, and
   reached from the public API through `PqcBackend` only.
@@ -32,16 +42,18 @@ package README.
   commit or another backend is accepted only when every ACVP vector passes on
   macOS, Linux and Windows.
 
-## Updating mlkem-native
+## Updating mlkem-native or mldsa-native
 
-1. Clone `https://github.com/pq-code-package/mlkem-native` into the
-   workspace `ztmp/` and check out the new release.
-2. Replace `native/mlkem-native/` with its `mlkem/` directory, leaving out
-   `src/native/`, `src/fips202/native/`, `mlkem_native_asm.S` and
-   `README.md`; copy the repository's `LICENSE` into it.
-3. Change the commit in `THIRD_PARTY.md`, `TOM_PQC_BACKEND_NAME` in
-   `native/tom_pqc.c` and the CHANGELOG (`test/licence_test.dart` holds them
-   together).
+1. Clone `https://github.com/pq-code-package/mlkem-native` (or
+   `mldsa-native`) into the workspace `ztmp/` and check out the new release.
+2. Replace `native/mlkem-native/` with its `mlkem/` directory (or
+   `native/mldsa-native/` with its `mldsa/` directory), leaving out
+   `src/native/`, `src/fips202/native/`, the `*_asm.S` file and `README.md`;
+   copy the repository's `LICENSE` into it.
+3. Change the commit in `THIRD_PARTY.md`, in the backend's name
+   (`TOM_PQC_BACKEND_NAME` in `native/tom_pqc.c`, the name in
+   `native/tom_pqc_mldsa.c`) and in the CHANGELOG (`test/licence_test.dart`
+   holds them together).
 4. `dart analyze`, `testkit :test`, and the same tests on a Linux and a
    Windows host.
 
@@ -54,7 +66,16 @@ package README.
   check out the commit wanted, run `tool/extract_wycheproof_vectors.py
   <clone>` (it rewrites `SOURCE.json` with the commit and the SHA-256s), and
   update the commit in `THIRD_PARTY.md` and the CHANGELOG. The case counts in
-  `test/wycheproof_ml_kem_768_test.dart` change with the files.
+  `test/wycheproof_ml_kem_768_test.dart` and
+  `test/wycheproof_ml_dsa_65_test.dart` change with the files.
+- **X-Wing, RFC 10073, age:** clone the three repositories named in
+  `THIRD_PARTY.md` into `ztmp/` and run `tool/extract_hybrid_vectors.py
+  --xwing <clone> --composite <clone> --cctv <clone>`; update the commits in
+  `THIRD_PARTY.md`.
+- **Go cross-check:** with Go 1.27 or later (an official release unpacked
+  into `ztmp/` will do; nothing is installed), `cd tool/go_crosscheck && go
+  run . ../../test/vectors/go_crosscheck.json`. The inputs are derived from a
+  counter, so a rerun with the same Go writes the same file.
 
 ## Testing on the other desktop platforms
 
@@ -74,11 +95,11 @@ throwaway consumers, each a separate package with a path dependency on
 CLI built with `dart build cli` (as `tsm` and the service will be) and a
 Flutter desktop app (`flutter create`, `flutter build <os> --release`).
 
-| Platform (host) | `dart test` (ACVP, Wycheproof, API, licence) | `dart build cli` | Flutter desktop release |
+| Platform (host) | `dart test` (all suites) | `dart build cli` | Flutter desktop release |
 | --- | --- | --- | --- |
-| macOS arm64 (mbp) | 676/676 | `bundle/lib/libtom_pqc.dylib`; runs, also after the bundle is moved | `Contents/Frameworks/tom_pqc.framework`; the app runs |
-| Linux x64 (bigbeast) | 676/676 | `bundle/lib/libtom_pqc.so`; runs | `bundle/lib/libtom_pqc.so`, mapped in `data/flutter_assets/NativeAssetsManifest.json`; not launched: bigbeast has no display |
-| Windows x64 (legiondary01, MSVC) | 676/676 | `bundle\lib\tom_pqc.dll`; runs | `tom_pqc.dll` beside the exe, mapped in the manifest; the app runs (started over SSH) |
+| macOS arm64 (mbp) | 1,330 passed, 45 skipped (HashML-DSA) | `bundle/lib/libtom_pqc.dylib`; runs, also after the bundle is moved | `Contents/Frameworks/tom_pqc.framework`; the app runs |
+| Linux x64 (bigbeast) | 1,330 passed, 45 skipped (HashML-DSA) | `bundle/lib/libtom_pqc.so`; runs | `bundle/lib/libtom_pqc.so`, mapped in `data/flutter_assets/NativeAssetsManifest.json`; not launched: bigbeast has no display |
+| Windows x64 (legiondary01, MSVC) | 1,330 passed, 45 skipped (HashML-DSA) | `bundle\lib\tom_pqc.dll`; runs | `tom_pqc.dll` beside the exe, mapped in the manifest; the app runs (started over SSH) |
 | macOS x64 | — | not buildable: `dart build cli` on macOS arm64 targets only Linux | — |
 | Linux arm64 | — | no cross C compiler on mbp or bigbeast | — |
 

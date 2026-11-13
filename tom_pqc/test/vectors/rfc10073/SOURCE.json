@@ -1,0 +1,8 @@
+{
+ "source": "https://github.com/lamps-wg/draft-composite-sigs",
+ "commit": "b9e2674c0072df66ea09abeabc1c1be5ef9baf29",
+ "licence": "IETF Trust; code components of RFCs under the Revised BSD License (BCP 78, the TLP)",
+ "sha256": {
+  "mldsa65_ed25519.json": "92bd5bf32b887a4b6a8523fc25fbcc7bcd8433c706be5aadc1d0e01ec80c2a0f"
+ }
+}

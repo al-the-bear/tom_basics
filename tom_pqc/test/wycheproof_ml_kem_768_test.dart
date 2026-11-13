@@ -58,11 +58,15 @@ void main() {
   test('the files are the ones SOURCE.json pins, unchanged', () {
     expect(_source['commit'], matches(RegExp(r'^[0-9a-f]{40}$')));
     final digests = (_source['sha256'] as Map).cast<String, String>();
-    expect(digests, hasLength(4));
-    for (final MapEntry(key: file, value: digest) in digests.entries) {
+    for (final file in const [
+      'mlkem_768_keygen_seed_test.json',
+      'mlkem_768_encaps_test.json',
+      'mlkem_768_test.json',
+      'mlkem_768_semi_expanded_decaps_test.json',
+    ]) {
       expect(
         sha256.convert(File('$_dir/$file').readAsBytesSync()).toString(),
-        digest,
+        digests[file],
         reason: file,
       );
     }

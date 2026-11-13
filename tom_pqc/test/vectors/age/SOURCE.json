@@ -1,0 +1,26 @@
+{
+ "source": "https://github.com/C2SP/CCTV (age/testdata)",
+ "commit": "b88c4b206254ac543df240097e0f1fcc6a664821",
+ "licence": "0BSD OR CC0-1.0 OR Unlicense",
+ "sha256": {
+  "armor_hybrid": "77aad8a0de89d89c951c1ff92312c7e719016cace5f1bd05e65229f0a8a5859d",
+  "hybrid": "59127c69fd24f64b3173ec9ffaf9c33614e7f0a6ae84fb1eff551cde8e0022fa",
+  "hybrid_and_x25519": "3c9a48a9a90887dd54ca0f886f7fe3e471deee4c9d12e84ff00132c0336974d6",
+  "hybrid_bad_tag": "5d532da21423c43f2f15ad4924ea534332dc98577defa235547e025c84aeff6a",
+  "hybrid_currupted_enc_mlkem": "ad9018a8114af0dda8360f779a2b857717a64478a91dcce24642ae0f2a767290",
+  "hybrid_currupted_enc_x25519": "a92213ff7c49fd86f631ce8e4e119ae4108eb3abfe0ca1a96ce39ab1dba90a73",
+  "hybrid_extra_argument": "c7a935e3689bcfac6158ce9f4d7faafc61d3b7987cbc5c1fb23932f92237e14b",
+  "hybrid_grease": "8447f4f6aa86983cf1c91578bf3f901c00e03f61174eb99dd2d5e4ea5de89ceb",
+  "hybrid_identity": "fc594a4b17a147e4ac0d71d316056f38e5ebe4467e900d8bce74b13d101a4262",
+  "hybrid_long_file_key": "d78cedae7ec3a3e45dd14107c08c7cdacc2a5283e585c7f3a17a669dd9c027c2",
+  "hybrid_long_share": "75d670a78c5257b9a8012f191428a28a794fae0cde191391a57be5795dba0adb",
+  "hybrid_low_order": "cc7daf7d5c4608e330e6be6162d5b2b7f761f61c182417ff0678700454d947be",
+  "hybrid_multiple_recipients": "d89530125b0ac8f8a07490e829e286db29ed4310bfcfed0edecaf5731e1415f5",
+  "hybrid_no_match": "7138318a95b539db666e8c769031d77db5cad0fd22bdccea2c4056f22e4b1792",
+  "hybrid_not_canonical_body": "b1067cc83df9b60b4c57d6a25933baf3389e9e4857486465abddf4baecf4749e",
+  "hybrid_not_canonical_enc": "0e183df25cb09eafa981593b8b53c547284d8aa28344b69a25801d6de88ed54c",
+  "hybrid_short_share": "f3ba1479e507e2f3e972cb1e1293185cc18ebf5680c80ab0fd4e8132fcfb9390",
+  "hybrid_uppercase": "3b4ab54c0573feef25a613a764cb78c615c3b32767e4f729f782d7cf794821ac",
+  "hybrid_x25519_arg": "34efc19c0e109c71d5da98bb15ba0921329f413d89648f3c0e94003a745b25f4"
+ }
+}

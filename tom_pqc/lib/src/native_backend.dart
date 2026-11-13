@@ -80,3 +80,120 @@ final Pointer<NativeFinalizerFunction> tomPqcSecretFreePointer =
     Native.addressOf<NativeFunction<Void Function(Pointer<Uint8>)>>(
       tomPqcSecretFree,
     ).cast();
+
+@Native<Pointer<Utf8> Function()>(symbol: 'tom_pqc_mldsa_backend_name')
+external Pointer<Utf8> tomPqcMlDsaBackendName();
+
+@Native<Int32 Function(Pointer<Uint8>, Pointer<Uint8>, Size)>(
+  symbol: 'tom_pqc_sha3_256',
+)
+external int tomPqcSha3256(Pointer<Uint8> out, Pointer<Uint8> input, int len);
+
+@Native<Int32 Function(Pointer<Uint8>, Size, Pointer<Uint8>, Size)>(
+  symbol: 'tom_pqc_shake256',
+)
+external int tomPqcShake256(
+  Pointer<Uint8> out,
+  int outLength,
+  Pointer<Uint8> input,
+  int inputLength,
+);
+
+@Native<Int32 Function(Pointer<Uint8>, Pointer<Uint8>, Pointer<Uint8>)>(
+  symbol: 'tom_pqc_mldsa65_keypair_derand',
+)
+external int tomPqcMlDsa65KeypairDerand(
+  Pointer<Uint8> publicKey,
+  Pointer<Uint8> secretKey,
+  Pointer<Uint8> seed,
+);
+
+@Native<Int32 Function(Pointer<Uint8>, Pointer<Uint8>)>(
+  symbol: 'tom_pqc_mldsa65_pk_from_sk',
+)
+external int tomPqcMlDsa65PkFromSk(
+  Pointer<Uint8> publicKey,
+  Pointer<Uint8> secretKey,
+);
+
+@Native<
+  Int32 Function(
+    Pointer<Uint8>,
+    Pointer<Uint8>,
+    Size,
+    Pointer<Uint8>,
+    Size,
+    Pointer<Uint8>,
+  )
+>(symbol: 'tom_pqc_mldsa65_sign')
+external int tomPqcMlDsa65Sign(
+  Pointer<Uint8> signature,
+  Pointer<Uint8> message,
+  int messageLength,
+  Pointer<Uint8> context,
+  int contextLength,
+  Pointer<Uint8> secretKey,
+);
+
+@Native<
+  Int32 Function(
+    Pointer<Uint8>,
+    Pointer<Uint8>,
+    Size,
+    Pointer<Uint8>,
+    Size,
+    Pointer<Uint8>,
+    Pointer<Uint8>,
+    Int32,
+  )
+>(symbol: 'tom_pqc_mldsa65_sign_internal')
+external int tomPqcMlDsa65SignInternal(
+  Pointer<Uint8> signature,
+  Pointer<Uint8> message,
+  int messageLength,
+  Pointer<Uint8> prefix,
+  int prefixLength,
+  Pointer<Uint8> rnd,
+  Pointer<Uint8> secretKey,
+  int externalMu,
+);
+
+@Native<
+  Int32 Function(
+    Pointer<Uint8>,
+    Pointer<Uint8>,
+    Size,
+    Pointer<Uint8>,
+    Size,
+    Pointer<Uint8>,
+  )
+>(symbol: 'tom_pqc_mldsa65_verify')
+external int tomPqcMlDsa65Verify(
+  Pointer<Uint8> signature,
+  Pointer<Uint8> message,
+  int messageLength,
+  Pointer<Uint8> context,
+  int contextLength,
+  Pointer<Uint8> publicKey,
+);
+
+@Native<
+  Int32 Function(
+    Pointer<Uint8>,
+    Pointer<Uint8>,
+    Size,
+    Pointer<Uint8>,
+    Size,
+    Pointer<Uint8>,
+    Int32,
+  )
+>(symbol: 'tom_pqc_mldsa65_verify_internal')
+external int tomPqcMlDsa65VerifyInternal(
+  Pointer<Uint8> signature,
+  Pointer<Uint8> message,
+  int messageLength,
+  Pointer<Uint8> prefix,
+  int prefixLength,
+  Pointer<Uint8> publicKey,
+  int externalMu,
+);
