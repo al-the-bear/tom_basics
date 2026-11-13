@@ -165,5 +165,25 @@ dependencies:
         ),
       );
     });
+
+    test('TSUP-LIC-GNU: the GNU family is told from the MPL that names it',
+        () {
+      expect(tomIsGplFamily('GNU GENERAL PUBLIC LICENSE Version 3'), isTrue);
+      expect(tomIsGplFamily('GNU LESSER GENERAL PUBLIC LICENSE'), isTrue);
+      expect(
+        tomIsGplFamily('GNU Affero General Public License, version 3'),
+        isTrue,
+      );
+      expect(
+        tomIsGplFamily(
+          'Mozilla Public License Version 2.0 ... "Secondary License" means '
+          'either the GNU General Public License, Version 2.0, the GNU '
+          'Lesser General Public License ...',
+        ),
+        isFalse,
+      );
+      expect(tomIsGplFamily('Permission is hereby granted, free of charge'),
+          isFalse);
+    });
   });
 }

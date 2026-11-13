@@ -1,3 +1,9 @@
+## 0.8.0
+
+- `tomIsGplFamily(text)` (`licence_audit.dart`): whether a licence text is of
+  the GNU family — GPL, AGPL, LGPL — and not the MPL-2.0 that names them;
+  `tomClassifyLicence` uses it, now case-insensitively.
+
 ## 0.7.0
 
 - **The workspace root is the nearest `buildkit_master.yaml`**, the one

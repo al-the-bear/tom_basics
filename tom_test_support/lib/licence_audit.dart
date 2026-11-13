@@ -63,11 +63,7 @@ TomLicence? tomClassifyLicence(String text) {
       t.contains('Mozilla Public License, v. 2.0')) {
     return TomLicence.mpl2;
   }
-  if (RegExp(
-    r'GNU (Affero |Lesser |Library )?General Public License',
-  ).hasMatch(t)) {
-    return null;
-  }
+  if (tomIsGplFamily(t)) return null;
   if (t.contains('Apache License') && t.contains('Version 2.0')) {
     return TomLicence.apache2;
   }
@@ -88,6 +84,21 @@ TomLicence? tomClassifyLicence(String text) {
     return TomLicence.zlib;
   }
   return null;
+}
+
+/// Whether [text] is a licence of the GNU family — GPL, AGPL, LGPL — and not
+/// the MPL-2.0, which names the GNU licences in its own text (its "Secondary
+/// Licenses").
+bool tomIsGplFamily(String text) {
+  final t = text.replaceAll(RegExp(r'\s+'), ' ');
+  if (t.contains('Mozilla Public License Version 2.0') ||
+      t.contains('Mozilla Public License, v. 2.0')) {
+    return false;
+  }
+  return RegExp(
+    r'GNU (Affero |Lesser |Library )?General Public License',
+    caseSensitive: false,
+  ).hasMatch(t);
 }
 
 /// The licence file of the package at [root], or null when it has none.
