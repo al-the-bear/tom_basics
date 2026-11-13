@@ -309,6 +309,28 @@ A project folder of any of these languages, like a Dart project, is only
 descended into with `--recursive`, so its own test fixtures are not projects of
 their own.
 
+### Listing the projects
+
+`listProjects(ProjectTraversalInfo)` returns the projects a traversal
+selects, in its order, as `ListedProject`s: exactly the folders
+`BuildBase.traverse` visits for a command working on `DartProjectFolder` and
+`LanguageProjectFolder`. `listProjectsFor(cliArgs, executionRoot: root)` builds
+the traversal from parsed arguments and the `navigation:` defaults of the
+workspace's `buildkit_master.yaml` (`TraversalDefaults.load`), so it selects
+what a project command given the same arguments would. A relative `--scan` is
+resolved against the current directory, as in `ToolRunner`.
+
+A `ListedProject` carries `id` (`project_id` from `buildkit.yaml`, else the
+name), `name` (`name` from `buildkit.yaml`, else the project file's name, else
+the folder name), `path` (relative to the root, `/` separators),
+`absolutePath`, `language`, `type` (the primary nature, `primaryProjectNature`:
+Flutter, Dart, then TypeScript, JavaScript, Python, Java, Go, Rust, C++, C),
+`natures` (every nature's `natureName`: `flutter`, `dart_console`,
+`dart_package`, `dart`, the language of a language project, `git`, `buildkit`,
+`build_runner`, `vscode_extension`, `workspace_root`), `version` and
+`description`; `toJson()` leaves absent fields out. `buildkit :projects --json`
+prints it for callers outside Dart.
+
 ### Common Options
 
 All tools automatically include these options (from `commonOptions`):

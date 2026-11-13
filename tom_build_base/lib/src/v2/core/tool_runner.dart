@@ -710,7 +710,7 @@ class ToolRunner {
       return ToolResult.failure(projectPathsError);
     }
 
-    final configDefaults = _loadTraversalDefaults(executionRoot);
+    final configDefaults = TraversalDefaults.load(executionRoot);
     final traversalInfo = cliArgs.toProjectTraversalInfo(
       executionRoot: executionRoot,
       configDefaults: configDefaults,
@@ -1080,7 +1080,7 @@ class ToolRunner {
     }
 
     // Load config defaults from buildkit_master.yaml navigation section
-    final configDefaults = _loadTraversalDefaults(executionRoot);
+    final configDefaults = TraversalDefaults.load(executionRoot);
 
     // Build traversal info
     final supportsGit = cmd?.supportsGitTraversal ?? false;
@@ -2193,27 +2193,6 @@ Options:
         'binary ${executor.binary} not found.',
       );
       return const ToolResult.failure('Nested help unavailable');
-    }
-  }
-
-  /// Load traversal defaults from buildkit_master.yaml navigation section.
-  TraversalDefaults? _loadTraversalDefaults(String basePath) {
-    final wsRoot = findWorkspaceRootOrNull(basePath);
-    if (wsRoot == null) return null;
-    final masterFile = File('$wsRoot/$kBuildkitMasterYaml');
-    if (!masterFile.existsSync()) return null;
-
-    try {
-      final content = masterFile.readAsStringSync();
-      final yaml = loadYaml(content);
-      if (yaml is! YamlMap) return null;
-
-      final nav = yaml['navigation'] as YamlMap?;
-      if (nav == null) return null;
-
-      return TraversalDefaults.fromMap(Map<String, dynamic>.from(nav));
-    } catch (e) {
-      return null;
     }
   }
 

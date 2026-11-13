@@ -47,6 +47,7 @@ export 'src/v2/traversal/flutter_package.dart';
 export 'src/v2/traversal/nature_detector.dart';
 export 'src/v2/traversal/language_detector.dart';
 export 'src/v2/traversal/project_files.dart';
+export 'src/v2/traversal/project_listing.dart';
 export 'src/v2/traversal/build_base.dart';
 export 'src/v2/traversal/build_order.dart';
 export 'src/v2/traversal/repository_id_lookup.dart';

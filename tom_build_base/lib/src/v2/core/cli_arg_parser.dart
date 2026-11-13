@@ -1,7 +1,12 @@
+import 'dart:io';
+
+import 'package:yaml/yaml.dart';
+
 import 'command_definition.dart';
 import 'option_definition.dart';
 import 'tool_definition.dart';
 import '../traversal/traversal_info.dart';
+import '../workspace_utils.dart';
 
 /// Traversal defaults loaded from buildkit_master.yaml navigation section.
 ///
@@ -49,6 +54,25 @@ class TraversalDefaults {
         navMap['recursion-exclude'] ?? navMap['recursionExclude'],
       ),
     );
+  }
+
+  /// The `navigation:` section of the `buildkit_master.yaml` of the
+  /// workspace [basePath] lies in, or null when there is none (no workspace,
+  /// no section, or a file that does not parse).
+  static TraversalDefaults? load(String basePath) {
+    final wsRoot = findWorkspaceRootOrNull(basePath);
+    if (wsRoot == null) return null;
+    final masterFile = File('$wsRoot/$kBuildkitMasterYaml');
+    if (!masterFile.existsSync()) return null;
+    try {
+      final yaml = loadYaml(masterFile.readAsStringSync());
+      if (yaml is! YamlMap) return null;
+      final nav = yaml['navigation'];
+      if (nav is! YamlMap) return null;
+      return TraversalDefaults.fromMap(Map<String, dynamic>.from(nav));
+    } catch (_) {
+      return null;
+    }
   }
 
   static List<String>? _toStringList(dynamic value) {
@@ -671,8 +695,7 @@ class CliArgParser {
       // a command name, so `buildkit :cmd --dry-run` works the same as
       // `buildkit --dry-run :cmd`.
       if (!_isGlobalNavigationFlag(name)) {
-        if (value != null &&
-            _declaresMultiOption(name, state.currentCommand)) {
+        if (value != null && _declaresMultiOption(name, state.currentCommand)) {
           _store(cmdState.options, name, value, multi: true);
         } else {
           cmdState.options[name] = value ?? true;

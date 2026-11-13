@@ -1,3 +1,17 @@
+## 2.27.0
+
+### Added — the projects as the tools see them
+
+- `listProjects(ProjectTraversalInfo)` / `listProjectsFor(cliArgs,
+  executionRoot:)`: the projects a project command would visit, as
+  `ListedProject`s (id and name from `buildkit.yaml`, path, language, primary
+  nature, natures, version, description; `toJson()`), for
+  `buildkit :projects --json` and the VS Code extension, which no longer reads
+  a generated workspace manifest. BB-PLS-1..7.
+- `primaryProjectNature` (moved here from buildkit) and `natureName`.
+- `TraversalDefaults.load(basePath)`: the `navigation:` section of the
+  workspace's `buildkit_master.yaml`, formerly private to `ToolRunner`.
+
 ## 2.26.1
 
 ### Fixed — `ToolRunner` matched natures by its own copy of the rule

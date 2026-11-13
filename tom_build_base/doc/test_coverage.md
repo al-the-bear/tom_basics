@@ -60,7 +60,8 @@ This document lists all testable features across `tom_build_base` and tracks tes
 | 45 | [Repeated Multi Options](#45-repeated-multi-options) | 5 | 5✅ | `v2/core/multi_option_repeat_test.dart` | [→](#45-repeated-multi-options) |
 | 46 | [Project Groups](#46-project-groups) | 7 | 7✅ | `v2/traversal/project_groups_test.dart` | [→](#46-project-groups) |
 | 47 | [Language Natures](#47-language-natures) | 16 | 16✅ | `v2/traversal/language_natures_test.dart` | [→](#47-language-natures) |
-| — | **Total** | **1018** | **1018✅** | | |
+| 48 | [Project Listing](#48-project-listing) | 7 | 7✅ | `v2/traversal/project_listing_test.dart` | [→](#48-project-listing) |
+| — | **Total** | **1025** | **1025✅** | | |
 
 > Every row links to a section, and the counts are measured from
 > `dart test --reporter json -j 1` rather than maintained by hand. Run it
@@ -1004,6 +1005,22 @@ The natures of the SOM runtime languages other than Dart; the fixtures copy the
 | BB-LNG-14 | Version files | ✅ | Read and write in pubspec, package.json, pyproject, Cargo, pom; nothing else changes. |
 | BB-LNG-15 | No version | ✅ | Go and C state none. |
 | BB-LNG-16 | ToolRunner | ✅ | A command's abstract natures select the same folders through ToolRunner as through traversal. |
+
+## 48. Project Listing
+
+**Test file:** `test/v2/traversal/project_listing_test.dart`
+
+The projects a traversal selects, as `buildkit :projects --json` prints them.
+
+| ID | Feature | Status | Description |
+|----|---------|--------|-------------|
+| BB-PLS-1 | Listing | ✅ | Dart and language projects with identity from `buildkit.yaml` (else the project file), version, language, type and natures; skipped, nested and `zom_` projects are left out. |
+| BB-PLS-2 | `-r` | ✅ | Fixture projects inside a project are listed with recursion. |
+| BB-PLS-3 | Navigation defaults | ✅ | `listProjectsFor` applies `buildkit_master.yaml` `navigation:` (`exclude-projects`). |
+| BB-PLS-4 | `TraversalDefaults.load` | ✅ | Reads the navigation section; null without one. |
+| BB-PLS-5 | JSON | ✅ | Absent fields are left out. |
+| BB-PLS-6 | Primary nature | ✅ | Flutter before Dart before the other languages. |
+| BB-PLS-7 | Nature names | ✅ | The short names of the natures. |
 
 ---
 
