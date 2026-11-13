@@ -61,7 +61,8 @@ This document lists all testable features across `tom_build_base` and tracks tes
 | 46 | [Project Groups](#46-project-groups) | 7 | 7✅ | `v2/traversal/project_groups_test.dart` | [→](#46-project-groups) |
 | 47 | [Language Natures](#47-language-natures) | 16 | 16✅ | `v2/traversal/language_natures_test.dart` | [→](#47-language-natures) |
 | 48 | [Project Listing](#48-project-listing) | 7 | 7✅ | `v2/traversal/project_listing_test.dart` | [→](#48-project-listing) |
-| — | **Total** | **1025** | **1025✅** | | |
+| 49 | [Broken Pipe](#49-broken-pipe) | 3 | 3✅ | `v2/core/broken_pipe_test.dart` | [→](#49-broken-pipe) |
+| — | **Total** | **1028** | **1028✅** | | |
 
 > Every row links to a section, and the counts are measured from
 > `dart test --reporter json -j 1` rather than maintained by hand. Run it
@@ -1021,6 +1022,21 @@ The projects a traversal selects, as `buildkit :projects --json` prints them.
 | BB-PLS-5 | JSON | ✅ | Absent fields are left out. |
 | BB-PLS-6 | Primary nature | ✅ | Flutter before Dart before the other languages. |
 | BB-PLS-7 | Nature names | ✅ | The short names of the natures. |
+
+## 49. Broken Pipe
+
+**Test file:** `test/v2/core/broken_pipe_test.dart`
+
+A tool whose output is piped into something that stops reading (`head -1`,
+`grep -m1`, a pager) must end quietly with the exit code it has so far, not
+die with an uncaught EPIPE and a stack trace. The fixtures in
+`test/fixtures/broken_pipe/` run as real processes.
+
+| ID | Feature | Status | Description |
+|----|---------|--------|-------------|
+| BB-PIPE-1 | `stdout.writeln` into `head -1` | ✅ | One line, nothing on stderr, exit 0. |
+| BB-PIPE-2 | `isBrokenPipe` | ✅ | EPIPE (and the Windows codes) yes, other errors no. |
+| BB-PIPE-3 | A ToolRunner tool's `--help` into `head -1` | ✅ | Through ConsoleMarkdownSink: one line, nothing on stderr, exit 0. |
 
 ---
 

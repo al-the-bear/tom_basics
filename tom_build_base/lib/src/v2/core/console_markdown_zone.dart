@@ -77,6 +77,45 @@ class ConsoleMarkdownSink implements StringSink {
 }
 
 // ---------------------------------------------------------------------------
+// Broken pipe
+// ---------------------------------------------------------------------------
+
+/// Whether [error] says the reader of a pipe went away: `tool | head -1`,
+/// `grep -m1`, a pager quit early. EPIPE (32) on macOS and Linux;
+/// ERROR_BROKEN_PIPE (109) and ERROR_NO_DATA (232) on Windows.
+bool isBrokenPipe(Object error) {
+  final OSError? os = switch (error) {
+    FileSystemException(:final osError) => osError,
+    SocketException(:final osError) => osError,
+    _ => null,
+  };
+  if (os == null) return false;
+  if (Platform.isWindows) {
+    return os.errorCode == 109 || os.errorCode == 232;
+  }
+  return os.errorCode == 32;
+}
+
+/// Makes a broken pipe on stdout or stderr end the program quietly with the
+/// exit code it has so far (0 for a run that went well), as `head` users
+/// expect, instead of an unhandled error with a stack trace. A write can
+/// throw at once (caught in [runWithConsoleMarkdown]), go to the zone's
+/// handler, or fail the sink's `done` future, outside every zone a tool runs
+/// in; this handles the last. Any other error on the sink still surfaces.
+void _exitQuietlyOnBrokenPipe() {
+  if (_brokenPipeHandled) return;
+  _brokenPipeHandled = true;
+  for (final sink in [stdout, stderr]) {
+    sink.done.then<void>((_) {}, onError: (Object error, StackTrace stack) {
+      if (isBrokenPipe(error)) exit(exitCode);
+      Zone.root.handleUncaughtError(error, stack);
+    });
+  }
+}
+
+bool _brokenPipeHandled = false;
+
+// ---------------------------------------------------------------------------
 // Zone runner
 // ---------------------------------------------------------------------------
 
@@ -90,13 +129,17 @@ class ConsoleMarkdownSink implements StringSink {
 ///
 /// The optional [onError] callback handles uncaught errors.  By default,
 /// errors are printed to stderr with console_markdown formatting and the
-/// process exits with code 1.
+/// process exits with code 1. A broken pipe on stdout or stderr (the reader
+/// of `tool | head -1` went away, [isBrokenPipe]) is no error: the process
+/// exits quietly with the exit code it has so far.
 ///
 /// Returns the value returned by [body].
 Future<T> runWithConsoleMarkdown<T>(
   Future<T> Function() body, {
   void Function(Object error, StackTrace stack)? onError,
 }) async {
+  _exitQuietlyOnBrokenPipe();
+
   // Already inside a console_markdown zone → pass through.
   if (isConsoleMarkdownActive) {
     return body();
@@ -110,10 +153,14 @@ Future<T> runWithConsoleMarkdown<T>(
         final result = await body();
         if (!completer.isCompleted) completer.complete(result);
       } catch (error, stack) {
+        // A write to a closed pipe throws synchronously out of the tool's
+        // own code: the reader went away, the run ends quietly.
+        if (isBrokenPipe(error)) exit(exitCode);
         if (!completer.isCompleted) completer.completeError(error, stack);
       }
     },
     (error, stack) {
+      if (isBrokenPipe(error)) exit(exitCode);
       if (onError != null) {
         onError(error, stack);
       } else {

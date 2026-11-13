@@ -45,6 +45,13 @@ construction.
 Automation should treat **`0` as success and any non-zero as failure**, and may
 distinguish an expected failure (`1`) from a crash (`255`).
 
+**A cut-off output is no failure.** When the reader of a tool's output goes
+away (`buildkit --version | head -1`, `grep -m1`, a pager quit early), the next
+write to stdout or stderr fails with a broken pipe (EPIPE). Inside
+`runWithConsoleMarkdown()` that ends the process quietly with the exit code it
+has so far: `0` for a run that went well, no stack trace. `isBrokenPipe(error)`
+tells this case from other write errors, which still surface.
+
 ## Entrypoint contract
 
 Every tool's `main` / CLI flow MUST:

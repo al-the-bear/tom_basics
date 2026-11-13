@@ -1,5 +1,17 @@
 ## 2.27.0
 
+### Fixed — a tool whose output is cut off exits quietly
+
+`buildkit --version | head -1` (any tool on this package, piped into
+something that stops reading) printed its line and then died with
+`Uncaught error: FileSystemException: writeFrom failed ... (OS Error: Broken
+pipe, errno = 32)`. `runWithConsoleMarkdown` now treats a broken pipe on
+stdout or stderr as the reader having gone away, wherever it surfaces (a
+write that throws at once, the zone's error handler, the sink's `done`
+future): the process exits quietly with the exit code it has so far (0 for a
+run that went well). Other write errors still surface. `isBrokenPipe(error)`
+tells EPIPE (32; Windows 109 / 232) from the rest. BB-PIPE-1..3.
+
 ### Changed — dcli is `tom_dcli`
 
 `tom_dcli` ^10.4.7+tom.1 in place of `dcli`: the Tom Framework's fork of dcli
