@@ -161,62 +161,58 @@ void main() {
       log.expectation('step 2 executed', stdout.contains('step-2-world'));
     });
 
-    test(
-      '--dry-run after pipeline name prevents execution (bug #15)',
-      () async {
-        log.start('BKT_DRY01', '--dry-run after pipeline prevents execution');
-        // Command: buildkit test-simple --project _build --dry-run
-        // Bug #15: ArgParser(allowTrailingOptions: false) silently drops
-        // --dry-run when placed after the pipeline name.
-        final result = await ws.runPipeline('test-simple', [
-          '--project',
-          '_build',
-          '--dry-run',
-        ]);
-        log.capture('buildkit test-simple --project _build --dry-run', result);
+    test('--dry-run after pipeline name prevents execution (bug #15)', () async {
+      log.start('BKT_DRY01', '--dry-run after pipeline prevents execution');
+      // The rule: an option after a pipeline name counts like one before
+      // it (bug #15, where the old ArgParser dropped a trailing --dry-run,
+      // is fixed by tom_build_base's parser). BKT_DRY02 is the same run
+      // with the flags in front.
+      final result = await ws.runPipeline('test-simple', [
+        '--project',
+        'tom_ai/basics/tom_build_kit',
+        '--dry-run',
+      ]);
+      log.capture(
+        'buildkit test-simple --project tom_ai/basics/tom_build_kit --dry-run',
+        result,
+      );
 
-        final stdout = (result.stdout as String);
-        expect(result.exitCode, equals(0));
+      final stdout = (result.stdout as String);
+      expect(result.exitCode, equals(0));
 
-        // INTENDED behavior: dry-run should show [DRY RUN] markers
+      // INTENDED behavior: dry-run should show [DRY RUN] markers
+      expect(
+        stdout,
+        contains('[DRY RUN]'),
+        reason: 'Dry-run should print [DRY RUN] markers for shell cmds',
+      );
+
+      // INTENDED behavior: step commands should appear in [DRY RUN] context
+      // only — not as actual echo output on their own lines
+      final lines = stdout.split('\n');
+      final stepLines = lines.where(
+        (l) => l.contains('step-1-hello') || l.contains('step-2-world'),
+      );
+      for (final line in stepLines) {
         expect(
-          stdout,
+          line,
           contains('[DRY RUN]'),
-          reason: 'Dry-run should print [DRY RUN] markers for shell cmds',
+          reason:
+              'Step commands should only appear in [DRY RUN] context, '
+              'not as actual echo output. Line: $line',
         );
+      }
 
-        // INTENDED behavior: step commands should appear in [DRY RUN] context
-        // only — not as actual echo output on their own lines
-        final lines = stdout.split('\n');
-        final stepLines = lines.where(
-          (l) => l.contains('step-1-hello') || l.contains('step-2-world'),
-        );
-        for (final line in stepLines) {
-          expect(
-            line,
-            contains('[DRY RUN]'),
-            reason:
-                'Step commands should only appear in [DRY RUN] context, '
-                'not as actual echo output. Line: $line',
-          );
-        }
-
-        log.expectation('has [DRY RUN] markers', stdout.contains('[DRY RUN]'));
-        log.expectation(
-          'no bare echo output',
-          !lines.any((l) => l.trim() == 'step-1-hello'),
-        );
-      },
-      skip:
-          'Bug #15: --dry-run after pipeline name is passed to '
-          'pipeline_executor as rest arg. Fix adds a CLI warning but '
-          'does not change parsing behavior (by design).',
-    );
+      log.expectation('has [DRY RUN] markers', stdout.contains('[DRY RUN]'));
+      log.expectation(
+        'no bare echo output',
+        !lines.any((l) => l.trim() == 'step-1-hello'),
+      );
+    });
 
     test('--dry-run before pipeline name works correctly', () async {
-      log.start('BKT_DRY02', '--dry-run before pipeline (workaround)');
-      // Workaround for bug #15: place global flags BEFORE the pipeline name.
-      // Command: buildkit --dry-run --project _build test-simple
+      log.start('BKT_DRY02', '--dry-run before pipeline name');
+      // The same run as BKT_DRY01 with the flags before the pipeline name.
       // Use runPipeline with --dry-run as "pipeline" arg for correct ordering.
       final result = await ws.runPipeline('--dry-run', [
         '--project',
@@ -266,10 +262,11 @@ void main() {
       );
     });
 
-    test('per-step option suppression (-s-)', () async {
-      log.start('BKT_OPT01', 'per-step option suppression');
-      // Run with scan and suppress scan for the direct command
-      // The -s- flag should suppress the global --scan for just that step
+    test('per-step option suppression (-s-) is refused', () async {
+      log.start('BKT_OPT01', 'per-step option suppression is refused');
+      // The commands of a run share one traversal, so an option cannot be
+      // taken away from one of them: `-s-` is refused before anything runs
+      // instead of being read as `--scan -`.
       final result = await ws.runPipeline(
         ':versioner',
         ['-s-'],
@@ -280,17 +277,27 @@ void main() {
         result,
       );
 
-      // Should complete without error (syntax accepted)
+      final stdout = result.stdout as String;
+      expect(result.exitCode, isNot(equals(0)), reason: '-s- must fail');
+      // The console renders the message's `-s-` as a dim span, so the
+      // words are checked rather than the backticks.
+      expect(stdout, contains('Error: '));
+      expect(stdout, contains('-s-'));
       expect(
-        result.exitCode,
-        equals(0),
-        reason: 'Option suppression syntax should be accepted',
+        stdout,
+        contains('per-command option suppression is not supported'),
       );
-      log.expectation('exit code 0', result.exitCode == 0);
-    },
-        skip: 'per-step suppression (-s-) is documented but not implemented: '
-            'the parser reads `-s-` as `--scan -`. build_tom '
-            'aft_kit-52_akfd-per-step-option-suppression');
+      expect(
+        stdout,
+        isNot(contains('scanned')),
+        reason: '-s- must not become --scan - (no traversal of <root>/-)',
+      );
+      log.expectation('exit code non-zero', result.exitCode != 0);
+      log.expectation(
+        'refusal printed',
+        stdout.contains('per-command option suppression is not supported'),
+      );
+    });
 
     test('shell command execution in pipeline', () async {
       log.start('BKT_SHL01', 'shell command in pipeline');

@@ -1,3 +1,17 @@
+## 1.20.0
+
+### Changed — `-X-` is refused (tom_build_base 2.28.0)
+
+The user guide described `-X-` (`-s-`, `-v-`, `-n-`) as taking an option away
+from one command of a multi-command run. That never existed: the commands of a
+run share one traversal, and `buildkit :versioner -s-` read `-s-` as
+`--scan -`. On tom_build_base 2.28.0, `-X-` and `--name-` are refused with an
+error before anything runs. The guide's "Options in Multi-Command Runs" section
+says what holds: the options of a run apply to all of its commands, wherever
+they stand, also after a pipeline name. BKT_OPT01 tests the refusal; BKT_DRY01
+(an option after a pipeline name, bug #15) runs again instead of being
+skipped.
+
 ## 1.19.0
 
 ### Added — `:projects`: the projects buildkit works on

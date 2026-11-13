@@ -62,7 +62,7 @@ This package extends the shared infrastructure from **tom_build_base**:
   - [Stdin Piping](#stdin-piping)
 - [Platform Filtering](#platform-filtering)
   - [Platform Aliases](#platform-aliases)
-- [Per-Tool Option Override](#per-tool-option-override)
+- [Options in Multi-Command Runs](#options-in-multi-command-runs)
 - [Project Scanning](#project-scanning)
   - [Scan Behavior](#scan-behavior)
   - [Exclusion Filters](#exclusion-filters)
@@ -1404,28 +1404,28 @@ core:
 
 ---
 
-## Per-Tool Option Override
+## Options in Multi-Command Runs
 
-When chaining commands, global options (like `--scan`, `--verbose`, `--dry-run`) are inherited by all steps. Use the `-X-` syntax to suppress a specific option for one command:
+When you chain commands, the global options (`--scan`, `--verbose`, `--dry-run`, ...) apply to every command of the run, wherever you write them, and the commands share one traversal. `buildkit -n :versioner :compiler` and `buildkit :versioner :compiler -n` are the same run. The same holds after a pipeline name: `buildkit test-simple --dry-run` is a dry run of the pipeline.
+
+What a command can have for itself:
 
 ```bash
-# Scan with cleanup but NOT with compiler
-buildkit -s . :cleanup -s- --project tom_* :compiler
+# --project / --exclude after a command narrow that command's projects
+buildkit -s . :cleanup --project tom_* :compiler
 
-# Verbose for versioner but not for runner
-buildkit -v :versioner :runner -v-
-
-# Dry-run for all except versioner
-buildkit -n :versioner -n- :compiler :runner
+# options the command declares itself go to that command
+buildkit :versioner --version 9.9.9
 ```
 
-| Suppression | Effect |
-|-------------|--------|
-| `-s-` | Suppress `--scan` for this command |
-| `-v-` | Suppress `--verbose` for this command |
-| `-n-` | Suppress `--dry-run` for this command |
+An option cannot be taken away from one command. `-X-` (e.g. `-s-`, `-v-`, `-n-`) and `--name-` (e.g. `--scan-`) are refused before anything runs:
 
-The `-X-` syntax works for any single-letter option flag.
+```text
+$ buildkit -v :versioner :runner -v-
+Error: -v-: per-command option suppression is not supported. The options of a run apply to all of its commands; run the command on its own without the option instead.
+```
+
+Run such a command on its own instead: `buildkit -v :versioner` and then `buildkit :runner`.
 
 ---
 
