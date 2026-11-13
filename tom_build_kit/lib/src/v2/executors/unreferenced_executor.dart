@@ -12,6 +12,10 @@ import 'package:tom_build_base/tom_build_base_v2.dart';
 import '../../unreferenced/unreferenced_config.dart';
 
 class UnreferencedExecutor extends CommandExecutor {
+  /// Its `--list` mode lists the projects and changes nothing.
+  @override
+  bool get handlesListMode => true;
+
   /// Where the report goes; standard output by default.
   final void Function(String line) write;
 

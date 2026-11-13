@@ -24,6 +24,10 @@ import '../../project_scanner.dart';
 /// - `replace-path`: Replace path: dependencies with current version.
 /// - `replace-git`: Replace git: dependencies with current version.
 class BumpPubspecExecutor extends CommandExecutor {
+  /// Its `--list` mode lists the projects and changes nothing.
+  @override
+  bool get handlesListMode => true;
+
   @override
   Future<ItemResult> execute(CommandContext context, CliArgs args) async {
     return ItemResult.failure(

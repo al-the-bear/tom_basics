@@ -1,3 +1,16 @@
+## 1.21.0
+
+### Fixed — `--list` runs nothing (tom_build_base 2.29.0)
+
+`buildkit --list :pubgetall` ran `pub get` in every project. On tom_build_base
+2.29.0, `--list` runs nothing: alone it lists the commands and pipelines, with
+a command the projects it would run on, with a pipeline its steps. The nine
+executors that already had a read-only list mode keep it and declare it
+(`handlesListMode`): versioner, compiler, cleanup, runner, dependencies,
+unreferenced, bumpversion, bumppubspec and the build / test / clean actions;
+every other command is named per project and not run. The `--list` help text
+and the user guide say so.
+
 ## 1.20.0
 
 ### Changed — `-X-` is refused (tom_build_base 2.28.0)

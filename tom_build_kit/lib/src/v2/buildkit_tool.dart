@@ -1159,7 +1159,9 @@ final buildkitTool = ToolDefinition(
     OptionDefinition.flag(
       name: 'list',
       abbr: 'l',
-      description: 'List available pipelines and commands',
+      description:
+          'Run nothing; list the commands and pipelines, or with a '
+          'command the projects it would run on',
     ),
     OptionDefinition.flag(
       name: 'workspace-recursion',

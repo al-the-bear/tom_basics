@@ -120,6 +120,10 @@ class VersionerFileException implements Exception {
 /// [execute] per folder. Each folder is checked for versioner config before
 /// generating the version file.
 class VersionerExecutor extends CommandExecutor {
+  /// Its `--list` mode lists the projects and changes nothing.
+  @override
+  bool get handlesListMode => true;
+
   /// Cached workspace config (loaded once on first execute call).
   VersionerConfig? _wsConfig;
   String? _wsRoot;

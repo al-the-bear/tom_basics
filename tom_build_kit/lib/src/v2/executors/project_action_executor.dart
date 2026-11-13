@@ -241,6 +241,10 @@ String _natureLabel(RunFolder nature) => switch (nature) {
 
 /// Executor of one [ProjectAction] in every selected project.
 class ProjectActionExecutor extends CommandExecutor {
+  /// Its `--list` mode lists the projects and changes nothing.
+  @override
+  bool get handlesListMode => true;
+
   /// The action this executor runs.
   final ProjectAction action;
 

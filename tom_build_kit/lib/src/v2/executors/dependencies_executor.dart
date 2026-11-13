@@ -55,6 +55,10 @@ class _DepEntry {
 
 /// Native v2 executor for the `:dependencies` command.
 class DependenciesExecutor extends CommandExecutor {
+  /// Its `--list` mode lists the projects and changes nothing.
+  @override
+  bool get handlesListMode => true;
+
   @override
   Future<ItemResult> execute(CommandContext context, CliArgs args) async {
     final projectPath = context.path;

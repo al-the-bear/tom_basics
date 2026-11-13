@@ -90,8 +90,11 @@ buildkit build :cleanup --force
 # Dry-run to preview what would be executed
 buildkit -n build
 
-# List available pipelines
+# List the commands and pipelines
 buildkit --list
+
+# List the projects a command would run on; nothing runs
+buildkit -s . -r --list :versioner
 
 # Show help for a built-in command
 buildkit help :compiler
@@ -145,7 +148,7 @@ Usage: buildkit [options] <pipeline|:command> [args...] [<pipeline|:command> [ar
 | `--version` | `-V` | Show version |
 | `--verbose` | `-v` | Verbose output |
 | `--dry-run` | `-n` | Show what would be executed without running |
-| `--list` | `-l` | List available pipelines |
+| `--list` | `-l` | Run nothing and list: alone the commands and pipelines, with a command the projects it would run on, with a pipeline its steps |
 | `--scan <dir>` | `-s` | Scan directory for projects |
 | `--recursive` | `-r` | Also scan inside projects for nested projects (e.g. `test/` fixtures); folders without a `pubspec.yaml` are always scanned |
 | `--build-order` | `-b` | Sort projects in dependency build order |
@@ -1612,8 +1615,11 @@ buildkit :versioner --no-git :compiler --targets linux-x64
 # Build all projects in workspace
 buildkit build --scan . --recursive
 
-# List projects that would be processed
-buildkit build -s . -r --list
+# List the build pipeline's steps (nothing runs)
+buildkit build --list
+
+# List the projects :compiler would run on (nothing runs)
+buildkit -s . -r --list :compiler
 
 # Exclude test projects
 buildkit build -s . -r --exclude-projects "zom_*"

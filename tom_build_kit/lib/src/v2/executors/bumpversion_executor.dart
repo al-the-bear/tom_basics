@@ -43,6 +43,10 @@ const _versionNatures = {DartProjectFolder, LanguageProjectFolder};
 /// (optionally running versioner after all bumps). Performs its own traversal
 /// via [BuildBase.traverse].
 class BumpVersionExecutor extends CommandExecutor {
+  /// Its `--list` mode lists the projects and changes nothing.
+  @override
+  bool get handlesListMode => true;
+
   @override
   Future<ItemResult> execute(CommandContext context, CliArgs args) async {
     return ItemResult.failure(
