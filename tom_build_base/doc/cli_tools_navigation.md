@@ -116,7 +116,8 @@ astgen -i                    # Inner-first git mode
 | `--include-dev` | | Also order by `dev_dependencies` |
 | `--exclude-dev` | | Leave `dev_dependencies` out of build-order sorting (the default; wins over `--include-dev`) |
 | `--project=<pattern>` | `-p` | Project(s) to run (comma-separated, globs supported) |
-| `--allow-empty` | | Succeed even if a `--project` selector matches nothing |
+| `--group=<name>` | | Only the projects of these groups (comma-separated or repeated; see below) |
+| `--allow-empty` | | Succeed even if a `--project` or `--group` selector matches nothing |
 
 #### A `--project` selector that matches nothing is an error
 
@@ -143,6 +144,29 @@ correctly, and the run succeeds having done nothing.
 Pass `--allow-empty` when matching nothing is intended — typically a shared
 script that uses a selector as an "if present" filter across workspaces that do
 not all contain the project.
+
+#### Groups (`--group`)
+
+Groups are derived from the directory walk; no file lists them. A project
+belongs to every group among the directories from the project itself up to the
+execution root:
+
+- **a git repository** (a `.git` directory, or the `.git` file of a submodule
+  checkout) is a group named by its folder name and by its path relative to the
+  execution root: `--group basics` and `--group tom_ai/basics` both select the
+  projects of the `tom_ai/basics` repository;
+- **a directory holding `buildkit_group.yaml`** is a group named by the file's
+  `name:`, or by its folder name when the file names none:
+
+```yaml
+# app_webwork/reusable/buildkit_group.yaml
+name: reusable_ui
+```
+
+`--group a,b` selects the union of the groups; together with `--project` both
+must hold. A `--group` name that no scanned project belongs to fails the run
+like an unmatched `--project` selector (`--allow-empty` accepts it). `--group`
+is a global option and may stand before or after the command name.
 
 ### Workspace Root
 

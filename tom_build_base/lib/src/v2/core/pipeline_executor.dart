@@ -30,6 +30,7 @@ class PipelineOptionResolver {
     if (cliArgs.projectPatterns.isNotEmpty) return true;
     if (cliArgs.excludePatterns.isNotEmpty) return true;
     if (cliArgs.excludeProjects.isNotEmpty) return true;
+    if (cliArgs.groups.isNotEmpty) return true;
     return false;
   }
 
@@ -398,10 +399,17 @@ class ToolPipelineExecutor {
     // A shell-scan over a selection that was never found ran the command
     // nowhere. Report the selector rather than let the step pass for having
     // done nothing.
-    if (result.unmatchedProjectPatterns.isNotEmpty && !cliArgs.allowEmpty) {
-      output.writeln(
-        'Error: ${describeUnmatchedProjectPatterns(result.unmatchedProjectPatterns, scanRoot: traversal.absoluteScanRoot)}',
-      );
+    if (result.hasUnmatchedSelectors && !cliArgs.allowEmpty) {
+      if (result.unmatchedProjectPatterns.isNotEmpty) {
+        output.writeln(
+          'Error: ${describeUnmatchedProjectPatterns(result.unmatchedProjectPatterns, scanRoot: traversal.absoluteScanRoot)}',
+        );
+      }
+      if (result.unmatchedGroups.isNotEmpty) {
+        output.writeln(
+          'Error: ${describeUnmatchedGroups(result.unmatchedGroups, scanRoot: traversal.absoluteScanRoot)}',
+        );
+      }
       output.writeln('Use --allow-empty if matching nothing is intended.');
       return false;
     }
@@ -469,6 +477,7 @@ class ToolPipelineExecutor {
         'exclude': cliArgs.excludePatterns.join(','),
       if (cliArgs.excludeProjects.isNotEmpty)
         'exclude-projects': cliArgs.excludeProjects.join(','),
+      if (cliArgs.groups.isNotEmpty) 'group': cliArgs.groups.join(','),
       if (cliArgs.modes.isNotEmpty) 'modes': cliArgs.modes.join(','),
     };
     return map;

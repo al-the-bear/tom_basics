@@ -64,6 +64,11 @@ class ProjectTraversalInfo extends BaseTraversalInfo {
   /// Project names to exclude.
   final List<String> excludeProjects;
 
+  /// Groups to select (`--group`, empty = all). A project is selected when it
+  /// belongs to one of them; groups are derived from the directory walk
+  /// (`projectGroupsOf`).
+  final List<String> groups;
+
   /// Sort by dependency order (based on pubspec.yaml dependencies).
   final bool buildOrder;
 
@@ -88,6 +93,7 @@ class ProjectTraversalInfo extends BaseTraversalInfo {
     this.recursionExclude = const [],
     this.projectPatterns = const [],
     this.excludeProjects = const [],
+    this.groups = const [],
     this.buildOrder = true,
     this.includeDevDependencies = false,
     this.ignoreSkipMarkers = false,
@@ -104,6 +110,7 @@ class ProjectTraversalInfo extends BaseTraversalInfo {
     List<String>? recursionExclude,
     List<String>? projectPatterns,
     List<String>? excludeProjects,
+    List<String>? groups,
     bool? buildOrder,
     bool? includeDevDependencies,
     bool? ignoreSkipMarkers,
@@ -118,6 +125,7 @@ class ProjectTraversalInfo extends BaseTraversalInfo {
       recursionExclude: recursionExclude ?? this.recursionExclude,
       projectPatterns: projectPatterns ?? this.projectPatterns,
       excludeProjects: excludeProjects ?? this.excludeProjects,
+      groups: groups ?? this.groups,
       buildOrder: buildOrder ?? this.buildOrder,
       includeDevDependencies:
           includeDevDependencies ?? this.includeDevDependencies,

@@ -7,8 +7,9 @@ import '../folder/fs_folder.dart';
 import '../folder/natures/buildkit_folder.dart';
 import '../folder/natures/dart_project_folder.dart';
 import '../folder/natures/git_folder.dart';
-import 'traversal_info.dart';
+import 'project_groups.dart';
 import 'repository_id_lookup.dart';
+import 'traversal_info.dart';
 
 /// Applies filters to folder lists based on TraversalInfo configuration.
 class FilterPipeline {
@@ -37,6 +38,19 @@ class FilterPipeline {
               info.projectPatterns,
               executionRoot: info.executionRoot,
             ),
+          )
+          .toList();
+    }
+
+    // 2b. Group include (--group): projects in one of the named groups.
+    if (info.groups.isNotEmpty) {
+      final wanted = info.groups.toSet();
+      result = result
+          .where(
+            (f) => projectGroupsOf(
+              f.path,
+              info.executionRoot,
+            ).any(wanted.contains),
           )
           .toList();
     }

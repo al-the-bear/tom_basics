@@ -155,6 +155,13 @@ const List<OptionDefinition> projectTraversalOptions = [
     description: 'Project names to exclude',
     valueName: 'name',
   ),
+  OptionDefinition.multi(
+    name: 'group',
+    description:
+        'Only projects of these groups (git repositories, buildkit_group.yaml '
+        'directories)',
+    valueName: 'name',
+  ),
   OptionDefinition.flag(
     name: 'allow-empty',
     description: 'Succeed even if a --project selector matches nothing',

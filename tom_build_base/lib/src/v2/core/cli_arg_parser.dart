@@ -81,6 +81,10 @@ class CliArgs {
   final List<String> recursionExclude;
   final List<String> projectPatterns;
 
+  /// `--group` names: select the projects of these groups (derived from the
+  /// directory walk: git repositories and `buildkit_group.yaml` directories).
+  final List<String> groups;
+
   /// Accept `--project` selectors that match no project (`--allow-empty`).
   ///
   /// Off by default: an unmatched selector is normally a typo and fails the
@@ -150,6 +154,7 @@ class CliArgs {
     this.excludeProjects = const [],
     this.recursionExclude = const [],
     this.projectPatterns = const [],
+    this.groups = const [],
     this.allowEmpty = false,
     this.modes = const [],
     this.modules = const [],
@@ -239,6 +244,7 @@ class CliArgs {
       excludeProjects: mergedExcludeProjects,
       recursionExclude: mergedRecursionExclude,
       projectPatterns: projectPatterns,
+      groups: groups,
       buildOrder: buildOrder,
       // Dev dependencies stay out of the build order unless --include-dev;
       // --exclude-dev (the default) wins when both are given.
@@ -354,6 +360,7 @@ class CliArgs {
     List<String>? excludeProjects,
     List<String>? recursionExclude,
     List<String>? projectPatterns,
+    List<String>? groups,
     bool? allowEmpty,
     List<String>? modes,
     List<String>? modules,
@@ -398,6 +405,7 @@ class CliArgs {
       excludeProjects: excludeProjects ?? this.excludeProjects,
       recursionExclude: recursionExclude ?? this.recursionExclude,
       projectPatterns: projectPatterns ?? this.projectPatterns,
+      groups: groups ?? this.groups,
       allowEmpty: allowEmpty ?? this.allowEmpty,
       modes: modes ?? this.modes,
       modules: modules ?? this.modules,
@@ -709,6 +717,9 @@ class CliArgParser {
       case 'p':
         if (value != null) state.projectPatterns.addAll(_splitValue(value));
         break;
+      case 'group':
+        if (value != null) state.groups.addAll(_splitValue(value));
+        break;
       case 'allow-empty':
         state.allowEmpty = true;
         break;
@@ -916,6 +927,7 @@ class CliArgParser {
       'outer-first-git', 'o',
       'top-repo', 'T',
       'recursion-exclude',
+      'group',
       'allow-empty',
       'modes',
       'modules', 'm',
@@ -968,6 +980,7 @@ class CliArgParser {
       'recursion-exclude',
       'project',
       'p',
+      'group',
       'modes',
       'modules',
       'm',
@@ -1150,6 +1163,7 @@ class _ParseState {
   final List<String> excludeProjects = [];
   final List<String> recursionExclude = [];
   final List<String> projectPatterns = [];
+  final List<String> groups = [];
   bool allowEmpty = false;
   final List<String> modes = [];
   final List<String> modules = [];
@@ -1195,6 +1209,7 @@ class _ParseState {
       excludeProjects: excludeProjects,
       recursionExclude: recursionExclude,
       projectPatterns: projectPatterns,
+      groups: groups,
       allowEmpty: allowEmpty,
       modes: modes,
       modules: modules,

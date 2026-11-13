@@ -1,3 +1,18 @@
+## 2.24.0
+
+### Added — `--group`, groups derived from the directory walk
+
+`--group <name>` (comma-separated or repeated, before or after the command)
+selects the projects of the named groups. Groups are not listed anywhere: every
+git repository (a `.git` directory or a submodule's `.git` file) is a group
+named by its folder name and by its path relative to the execution root, and a
+directory holding `buildkit_group.yaml` is a group named by its `name:` or its
+folder name (`projectGroupsOf`, `kBuildkitGroupYaml`). A name no scanned project
+belongs to fails the run like an unmatched `--project` selector
+(`ProcessingResult.unmatchedGroups`, `describeUnmatchedGroups`;
+`--allow-empty` accepts it). Pipelines pass `--group` on to nested tools.
+Tests BB-GRP-1..7.
+
 ## 2.23.0
 
 ### Changed — `buildkit_master.yaml` is the one workspace marker

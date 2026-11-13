@@ -44,7 +44,7 @@ This document lists all testable features across `tom_build_base` and tracks tes
 | 29 | [Run Summary](#29-run-summary) | 13 | 13✅ | `v2/core/run_summary_test.dart` | [→](#29-run-summary) |
 | 30 | [Mklink Executor](#30-mklink-executor) | 3 | 3✅ | `v2/core/mklink_executor_test.dart` | [→](#30-mklink-executor) |
 | 31 | [Repository Id Lookup](#31-repository-id-lookup) | 4 | 4✅ | `v2/traversal/repository_id_lookup_test.dart` | [→](#31-repository-id-lookup) |
-| 32 | [Workspace Utils](#32-workspace-utils) | 21 | 21✅ | `v2/workspace_utils_test.dart` | [→](#32-workspace-utils) |
+| 32 | [Workspace Utils](#32-workspace-utils) | 26 | 26✅ | `v2/workspace_utils_test.dart` | [→](#32-workspace-utils) |
 | 33 | [Command Option Position](#33-command-option-position) | 6 | 6✅ | `v2/core/command_option_position_test.dart` | [→](#33-command-option-position) |
 | 34 | [Dry-run Contract](#34-dry-run-contract) | 14 | 14✅ | `v2/core/dry_run_contract_test.dart` | [→](#34-dry-run-contract) |
 | 35 | [Tool Origin](#35-tool-origin) | 11 | 11✅ | `v2/core/tool_origin_test.dart` | [→](#35-tool-origin) |
@@ -58,7 +58,8 @@ This document lists all testable features across `tom_build_base` and tracks tes
 | 43 | [Context Boundaries](#43-context-boundaries) | 14 | 14✅ | `v2/boundaries/context_boundaries_test.dart` | [→](#43-context-boundaries) |
 | 44 | [Item Exit Codes and Process Trees](#44-item-exit-codes-and-process-trees) | 5 | 5✅ | `v2/core/item_exit_code_test.dart` | [→](#44-item-exit-codes-and-process-trees) |
 | 45 | [Repeated Multi Options](#45-repeated-multi-options) | 5 | 5✅ | `v2/core/multi_option_repeat_test.dart` | [→](#45-repeated-multi-options) |
-| — | **Total** | **989** | **989✅** | | |
+| 46 | [Project Groups](#46-project-groups) | 7 | 7✅ | `v2/traversal/project_groups_test.dart` | [→](#46-project-groups) |
+| — | **Total** | **1001** | **1001✅** | | |
 
 > Every row links to a section, and the counts are measured from
 > `dart test --reporter json -j 1` rather than maintained by hand. Run it
@@ -670,13 +671,18 @@ stable.
 
 **Test file:** `test/v2/workspace_utils_test.dart`
 
-Two concerns: which directories a scan descends into, and whether the paths a
-caller passed stay inside the execution root. The second is a containment
+Three concerns: where the workspace root is, which directories a scan descends
+into, and whether the paths a caller passed stay inside the execution root. The second is a containment
 check — an absolute path or a `..` that escapes the root is refused, so a tool
 cannot be pointed at the rest of the filesystem by argument.
 
 | ID | Feature | Status | Description |
 |----|---------|--------|-------------|
+| — | Root: nearest marker | ✅ | `findWorkspaceRootOrNull` returns the nearest directory with `buildkit_master.yaml`, from below or from the root itself. |
+| — | Root: nested workspace | ✅ | The inner workspace wins over the one around it. |
+| — | Root: retired markers | ✅ | `tom_workspace.yaml`, `tom.code-workspace`, `.tom_metadata/` below the root mark nothing. |
+| — | Root: none | ✅ | Without `buildkit_master.yaml` the answer is null, not the start path. |
+| — | Root: deprecated finder | ✅ | `findWorkspaceRoot` keeps its start-path fallback. |
 | — | Always-skip directories | ✅ | A recursive scan skips `ztmp` and the other always-skip directories. |
 | — | `ztmp` registration | ✅ | Registered as an always-skip directory. |
 | — | No project patterns | ✅ | Validation returns null. |
@@ -952,6 +958,25 @@ directive scanner it reads imports with.
 
 ---
 
+## 46. Project Groups
+
+**Test file:** `test/v2/traversal/project_groups_test.dart`
+
+Groups are derived from the directory walk: git repositories and
+`buildkit_group.yaml` directories (`--group`).
+
+| ID | Feature | Status | Description |
+|----|---------|--------|-------------|
+| BB-GRP-1 | Repository group | ✅ | A git repository selects its projects by its folder name. |
+| BB-GRP-2 | Submodule checkout | ✅ | A `.git` file counts; the root-relative path names the group too. |
+| BB-GRP-3 | `buildkit_group.yaml` | ✅ | Named by its `name:`, else its folder; a named group is not known by its folder. |
+| BB-GRP-4 | Several groups | ✅ | Their union is selected. |
+| BB-GRP-5 | No `--group` | ✅ | Every project is selected. |
+| BB-GRP-6 | Unknown group | ✅ | Reported as an unmatched selector; nothing runs. |
+| BB-GRP-7 | Parsing | ✅ | Global, before or after the command, comma-separated or repeated; reaches `ProjectTraversalInfo.groups`. |
+
+---
+
 ## Test Gaps & Potential Additions
 
 The current test suite is comprehensive. Areas where additional tests could be valuable:
@@ -964,4 +989,4 @@ The current test suite is comprehensive. Areas where additional tests could be v
 | `--dump-definitions` output format | Tested in ToolRunner | Validate complete YAML structure | Low |
 | ConfigLoader with nested `@{...}` in `@[...]` | ✅ Recursive test exists | Additional nesting depth scenarios | Low |
 
-Overall coverage assessment: **Excellent — 989 tests covering all features.**
+Overall coverage assessment: **Excellent — 1001 tests covering all features.**

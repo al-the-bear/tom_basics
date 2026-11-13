@@ -9,6 +9,7 @@ import 'command_context.dart';
 import 'filter_pipeline.dart';
 import 'folder_scanner.dart';
 import 'nature_detector.dart';
+import 'project_groups.dart';
 import 'traversal_info.dart';
 
 /// Result of a traversal operation.
@@ -28,6 +29,16 @@ class ProcessingResult {
   /// and name the patterns; see `ToolRunner`.
   List<String> get unmatchedProjectPatterns =>
       List.unmodifiable(_unmatchedProjectPatterns);
+
+  List<String> _unmatchedGroups = const [];
+
+  /// `--group` names no scanned project belongs to. Like an unmatched
+  /// `--project` selector, nothing is executed while one is present.
+  List<String> get unmatchedGroups => List.unmodifiable(_unmatchedGroups);
+
+  /// Whether a `--project` or `--group` selector matched nothing.
+  bool get hasUnmatchedSelectors =>
+      _unmatchedProjectPatterns.isNotEmpty || _unmatchedGroups.isNotEmpty;
 
   /// Paths that were processed successfully.
   List<String> get successes => List.unmodifiable(_successes);
@@ -55,6 +66,8 @@ class ProcessingResult {
   void recordError(String path, Object error) => _errors[path] = error;
   void recordUnmatchedProjectPatterns(List<String> patterns) =>
       _unmatchedProjectPatterns = List<String>.of(patterns);
+  void recordUnmatchedGroups(List<String> groups) =>
+      _unmatchedGroups = List<String>.of(groups);
 
   @override
   String toString() =>
@@ -74,6 +87,18 @@ String describeUnmatchedProjectPatterns(
   final quoted = patterns.map((pattern) => "'$pattern'").join(', ');
   final label = patterns.length == 1 ? 'selector' : 'selectors';
   return '--project $label matched no project: $quoted (scanned $scanRoot)';
+}
+
+/// The error message for [ProcessingResult.unmatchedGroups], worded like
+/// [describeUnmatchedProjectPatterns].
+String describeUnmatchedGroups(
+  List<String> groups, {
+  required String scanRoot,
+}) {
+  final quoted = groups.map((group) => "'$group'").join(', ');
+  final label = groups.length == 1 ? 'selector' : 'selectors';
+  return '--group $label matched no project: $quoted (scanned $scanRoot; '
+      'groups are git repositories and $kBuildkitGroupYaml directories)';
 }
 
 /// Main entry point for workspace traversal.
@@ -164,6 +189,13 @@ abstract class BuildBase {
           ...additionalProjectPatterns,
         ], executionRoot: pi.executionRoot),
       );
+      result.recordUnmatchedGroups(
+        unmatchedGroups(
+          allScannedFolders.map((f) => f.path),
+          pi.groups,
+          pi.executionRoot,
+        ),
+      );
     }
 
     // Apply filters AFTER nature detection (so ID/name matching works)
@@ -244,8 +276,7 @@ abstract class BuildBase {
     // A selection built on a selector that matched nothing is not the
     // selection the caller asked for. Execute none of it, so the caller sees a
     // reported mistake instead of a partial run.
-    if (result.unmatchedProjectPatterns.isNotEmpty &&
-        !allowUnmatchedProjectPatterns) {
+    if (result.hasUnmatchedSelectors && !allowUnmatchedProjectPatterns) {
       return result;
     }
 

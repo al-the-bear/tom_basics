@@ -1038,15 +1038,20 @@ class ToolRunner {
     BaseTraversalInfo traversalInfo, {
     required bool allowEmpty,
   }) {
-    final unmatched = result.unmatchedProjectPatterns;
-    if (unmatched.isEmpty || allowEmpty) return null;
+    if (!result.hasUnmatchedSelectors || allowEmpty) return null;
 
-    final message = describeUnmatchedProjectPatterns(
-      unmatched,
-      scanRoot: traversalInfo is ProjectTraversalInfo
-          ? traversalInfo.absoluteScanRoot
-          : traversalInfo.executionRoot,
-    );
+    final scanRoot = traversalInfo is ProjectTraversalInfo
+        ? traversalInfo.absoluteScanRoot
+        : traversalInfo.executionRoot;
+    final message = [
+      if (result.unmatchedProjectPatterns.isNotEmpty)
+        describeUnmatchedProjectPatterns(
+          result.unmatchedProjectPatterns,
+          scanRoot: scanRoot,
+        ),
+      if (result.unmatchedGroups.isNotEmpty)
+        describeUnmatchedGroups(result.unmatchedGroups, scanRoot: scanRoot),
+    ].join('\n');
     output.writeln('Error: $message');
     output.writeln('Use --allow-empty if matching nothing is intended.');
     return message;
