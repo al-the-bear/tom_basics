@@ -9,7 +9,7 @@ library;
 
 import 'dart:io';
 
-import 'package:dcli/dcli.dart' as dcli;
+import 'package:tom_dcli/dcli.dart' as dcli;
 import 'package:path/path.dart' as p;
 import 'package:tom_build_base/tom_build_base.dart'
     show findWorkspaceRootOrNull, ProcessRunner;

@@ -11,7 +11,7 @@
 /// - [ScriptedPromptDriver] — a test double that replays pre-seeded answers.
 library;
 
-import 'package:dcli/dcli.dart' as dcli;
+import 'package:tom_dcli/dcli.dart' as dcli;
 
 /// Raw interactive-prompt primitives used by [GuidedMode].
 ///

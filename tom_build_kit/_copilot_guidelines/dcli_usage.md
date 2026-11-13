@@ -9,7 +9,7 @@ tom_build_kit uses DCli extensively for build operations: compiling Dart executa
 ## Import
 
 ```dart
-import 'package:dcli/dcli.dart';
+import 'package:tom_dcli/dcli.dart';
 ```
 
 ## Common Patterns in tom_build_kit

@@ -17,7 +17,7 @@ DCli provides Dart equivalents for Unix commands: `cp`, `mv`, `rm`, `mkdir`, `ca
 
 **Quick Start:**
 ```dart
-import 'package:dcli/dcli.dart';
+import 'package:tom_dcli/dcli.dart';
 
 // File operations: copy, move, delete, cat, read, head, tail, touch, replace
 copy('src.txt', 'dst.txt');

@@ -1,3 +1,11 @@
+## 1.18.0
+
+### Changed — dcli is `tom_dcli`
+
+`tom_dcli` ^10.4.7+tom.1 in place of `dcli`: the Tom Framework's fork of dcli
+10.4.7, which reads INI files with its own `IniConfig` instead of the LGPL-3.0
+`ini` package that the `buildkit` binary compiled in.
+
 ## 1.17.0
 
 ### Changed — the build number lives in `version.versioner.dart`
