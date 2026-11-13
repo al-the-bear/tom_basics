@@ -76,7 +76,6 @@ final output = 'ls -la'.toList();
 - [Standalone Guided Mode](../doc/standalone_guided_mode.md) — Guided mode for Docker, Dart, Flutter tools
 - [BuildKit Guided](../doc/proposals/buildkit_guided.md) — `bk -g` workspace build flow proposal
 - [Flutter Commands](../doc/proposals/flutter_buildkit_commands.md) — Proposed Flutter-specific BuildKit commands
-- [REPL Integration](../doc/proposals/tom_buildkit_repls.md) — Tom CLI / BuildKit REPL assessment
 - [Console UI Libraries](../doc/proposals/console_ui_libraries.md) — Library recommendations for interactive CLI
 - [README](../README.md) — Quick start guide
 

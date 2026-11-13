@@ -184,16 +184,10 @@ Multiple modes can be active simultaneously, allowing orthogonal configuration:
 - `DEV + DOCKER` = Development in Docker
 - `PROD + CLOUD` = Production deployment
 
-### Mode Sources (Priority)
+### Mode Source
 
-1. **CLI option** — `--modes DEV,DOCKER` (highest priority)
-2. **tom_workspace.yaml** — Default modes for the workspace
-
-```yaml
-# tom_workspace.yaml
-build:
-  modes: DEV, LOCAL  # default modes for all tools
-```
+Modes come from the `--modes` option of the run (`--modes DEV,DOCKER`). No
+configuration file sets default modes: a run without `--modes` has none active.
 
 ### No Mode / Implicit "None" State
 
@@ -313,8 +307,7 @@ Modes are **global** for all tools — YAML files are processed once per project
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │ 1. Determine active modes                                       │
-│    - CLI --modes option OR                                      │
-│    - tom_workspace.yaml build.modes default                     │
+│    - the CLI --modes option (none without it)                   │
 └─────────────────────────────────────────────────────────────────┘
                               ▼
 ┌─────────────────────────────────────────────────────────────────┐
@@ -357,11 +350,9 @@ Modes are **global** for all tools — YAML files are processed once per project
 
 ## Configuration Example
 
-```yaml
-# tom_workspace.yaml
-build:
-  modes: DEV, LOCAL
+Run with `--modes DEV,LOCAL`:
 
+```yaml
 # buildkit_master.yaml
 buildkit:
   defines:
@@ -484,13 +475,10 @@ Used for:
 Modes are **global** for all tools and apply to all commands within a tool invocation. The `--modes` option is a global tool option (not command-specific).
 
 ```bash
-# Use default mode from tom_workspace.yaml
+# No mode active (only base/unprefixed keys)
 buildkit :compiler :versioner
 
-# Override to no mode (uses only base/unprefixed keys)
-buildkit --modes= :compiler :versioner
-
-# Override to specific mode (applies to ALL commands)
+# A specific mode (applies to ALL commands)
 buildkit --modes=CI :compiler :versioner :gitcommit
 
 # Use multiple modes (in priority order)
@@ -740,7 +728,7 @@ class CommandContext {
 
 Existing configurations continue to work unchanged. To adopt mode support:
 
-1. Add `build.modes:` to `tom_workspace.yaml` with default modes (e.g., `DEV`)
+1. Pass the modes with `--modes` (e.g. `--modes DEV`)
 2. Add `defines:` under `{tool}:` in `{tool}_master.yaml` with common paths
 3. Add `DEV-defines:` for development-specific overrides
 4. Update project config files to use `@[placeholder]` for define references

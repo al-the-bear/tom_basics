@@ -297,7 +297,7 @@ package:tom_package_scanner/tom_package_scanner.dart
             │
             └── delegates folder scanning + nature detection to
                 package:tom_build_base
-                ├── NatureDetector       DartProjectFolder / TomBuildFolder
+                ├── NatureDetector       DartProjectFolder / BuildkitFolder
                 └── FsFolder             filesystem folder model
 ```
 

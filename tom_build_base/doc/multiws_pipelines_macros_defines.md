@@ -353,7 +353,7 @@ buildkit:
 
 ### Resolution Order
 
-When modes are active (via `--modes` CLI option or `tom_workspace.yaml` defaults), defines are merged in order:
+When modes are active (via the `--modes` CLI option), defines are merged in order:
 
 1. **Default defines** (`defines:` section)
 2. **First mode defines** (e.g., `DEV-defines:` if `--modes DEV,CI`)

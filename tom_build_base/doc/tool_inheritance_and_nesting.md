@@ -37,7 +37,7 @@ provides two mechanisms for tool composition:
 A new tool wants to be "buildkit plus extras" — keep most commands, remove some,
 replace others, and add new ones.
 
-**Example:** A `tom` super-tool that has all buildkit commands plus d4rtgen and
+**Example:** A super-tool that has all buildkit commands plus d4rtgen and
 astgen, but removes `:dcli` and replaces `:runner` with a custom version.
 
 ### Implementation: `copyWith` + Command List Helpers

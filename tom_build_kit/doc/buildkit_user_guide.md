@@ -52,7 +52,7 @@ This package extends the shared infrastructure from **tom_build_base**:
   - [Adding Persistent Defines](#adding-persistent-defines)
   - [Using Persistent Defines in Configuration](#using-persistent-defines-in-configuration)
   - [Managing Persistent Defines](#managing-persistent-defines)
-- [Allowed Binaries](#allowed-binaries)
+- [Running Other Tools](#running-other-tools)
 - [Git Operations](#git-operations)
 - [Shell Commands](#shell-commands)
   - [Variable Expansion](#variable-expansion)
@@ -343,10 +343,6 @@ Pipelines are defined in `buildkit_master.yaml` (workspace level) under the `bui
 
 ```yaml
 buildkit:
-  allowed-binaries:
-    - astgen
-    - d4rtgen
-
   pipelines:
     clean:
       executable: true
@@ -979,7 +975,7 @@ buildkit help defines        # Persistent key=value defines
 buildkit help macros         # Runtime macros with argument substitution
 buildkit help pipelines      # Pipeline system (phases, prefixes, execution)
 buildkit help placeholders   # Placeholder types and resolution order
-buildkit help wiring         # Nested tool wiring via tom_master.yaml
+buildkit help wiring         # Nested tool wiring via buildkit_master.yaml
 ```
 
 | Topic | Description |
@@ -988,9 +984,9 @@ buildkit help wiring         # Nested tool wiring via tom_master.yaml
 | `macros` | Runtime macros set via `:macro` — reusable command sequences with `$1`–`$9` argument substitution |
 | `pipelines` | Pipeline system — precore/core/postcore phases, command type prefixes (`shell:`, `shell-scan:`, `stdin:`, `tool:`), and option precedence |
 | `placeholders` | All placeholder types (`@{...}`, `@[...]`, `${...}`, `$VAR`, `%{...}`) and their resolution order |
-| `wiring` | Nested tool wiring — `nested_tools:` section in `tom_master.yaml` for embedding tools within build steps |
+| `wiring` | Nested tool wiring — `nested_tools:` section in `buildkit_master.yaml` for embedding tools within build steps |
 
-Help topics are automatically injected from `tom_master.yaml` configuration. The `placeholders` topic is always available as a default built-in topic.
+Help topics are automatically injected from `buildkit_master.yaml` configuration. The `placeholders` topic is always available as a default built-in topic.
 
 > For detailed documentation on these features, see:
 > - [Modes and Placeholders](../../tom_build_base/doc/modes_and_placeholders.md) for placeholder types and resolution
@@ -1000,12 +996,12 @@ Help topics are automatically injected from `tom_master.yaml` configuration. The
 
 ## Nested Tool Wiring
 
-BuildKit supports embedding other Tom tools as nested steps within pipelines. This is configured in the `nested_tools:` section of `tom_master.yaml`.
+BuildKit supports embedding other Tom tools as nested steps within pipelines. This is configured in the `nested_tools:` section of `buildkit_master.yaml`.
 
 ### Configuration
 
 ```yaml
-# tom_master.yaml
+# buildkit_master.yaml
 nested_tools:
   testkit:
     tool: tom_test_kit:testkit
@@ -1056,7 +1052,7 @@ buildkit --modes=DEV build
 buildkit --modes=CI,RELEASE build
 ```
 
-Modes affect which persistent defines are applied. In `tom_master.yaml`, defines can be scoped to specific modes:
+Modes affect which persistent defines are applied. In `buildkit_master.yaml`, defines can be scoped to specific modes:
 
 ```yaml
 defines:
@@ -1080,34 +1076,22 @@ When `--modes=DEV` is specified, both the global defines and the `DEV`-specific 
 
 ---
 
-## Allowed Binaries
+## Running Other Tools
 
-Beyond built-in commands, additional binaries can be explicitly allowed for execution:
+A pipeline step runs another tool in one of two ways:
 
-```yaml
-buildkit:
-  allowed-binaries:
-    - astgen
-    - d4rtgen
-    - ws_prepper
-    - ws_analyzer
-```
-
-**Internal allowed binaries** (always available without configuration): `astgen`, `d4rtgen`, `reflector`, `reflectiongenerator`, `ws_prepper`, `ws_analyzer`.
-
-Allowed binaries are invoked via `:name` syntax or as pipeline step commands:
-
-```bash
-buildkit :astgen --project _build
-```
+- as a **nested tool**: listed under `nested_tools:` in `buildkit_master.yaml`
+  (see [Nested Tool Wiring](#nested-tool-wiring)), so its commands run inside
+  buildkit's traversal, e.g. `:d4rtgen`, `:astgen`, `:testkit:test`;
+- as a **shell step**: `shell <command>`, run once per project with
+  placeholders resolved (e.g. `shell dart compile exe %{file} -o ...`).
 
 ```yaml
 core:
   - commands:
-      - astgen --project _build
+      - d4rtgen
+      - shell echo "bridges generated for %{folder.name}"
 ```
-
-The `allowed-binaries` lists from workspace and project configs are merged additively.
 
 ---
 
@@ -1505,7 +1489,7 @@ BuildKit enforces strict command security:
 
 1. **Built-in commands** — Always allowed (`versioner`, `compiler`, etc.)
 2. **Configured pipelines** — Pipeline names from `buildkit_master.yaml`
-3. **Allowed binaries** — Explicitly listed in `buildkit.allowed-binaries`
+3. **Nested tools** — Listed under `nested_tools:` in `buildkit_master.yaml`
 4. **Shell commands** — Only via `shell` prefix in pipeline configuration
 5. **Everything else** — **Rejected** with an "Unknown command" error
 

@@ -405,7 +405,7 @@ Choose [1-2]: 1
 ### Predefined Groups
 
 ```yaml
-# In tom_workspace.yaml
+# In buildkit_master.yaml
 build_groups:
   core:
     pattern: "tom_core_*"
@@ -507,7 +507,7 @@ Logs:
 Save commonly used configurations:
 
 ```yaml
-# tom_workspace.yaml
+# buildkit_master.yaml
 guided_presets:
   daily_dev:
     name: "Daily Development"
