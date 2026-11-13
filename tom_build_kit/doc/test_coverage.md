@@ -73,6 +73,11 @@ Target project: `_build` (main repo, has `variable-prefix: tomTools` in its `bui
 | VER_OVR01 | `--version` overrides pubspec version | ✅ | Run with `--version 9.9.9`. Verify `version = '9.9.9'` in output. |
 | VER_PFX01 | `--variable-prefix` overrides project config | ✅ | Run with `--variable-prefix myCustom`. Verify `class MyCustomVersionInfo`. Bug #12 FIXED. |
 | VER_BLD01 | Build number increments on each run | ✅ | Run versioner twice. Extract `buildNumber` from each. Verify second = first + 1. |
+| VBN-1 | No versioner file: build 1 | ✅ | Run on a project without a stamp. Verify `buildNumber = 1`. |
+| VBN-2 | Counts on from the versioner file | ✅ | Stamp with build 41 (older version). Run twice. Verify 42, then 43; the version is the pubspec's. |
+| VBN-3 | A stamp without a build number is a named error | ✅ | Stamp without `buildNumber`. Verify the run fails, `VersionerFileException` names the file, the file is untouched. |
+| VBN-4 | `tom_build_state.json` is neither read nor written | ✅ | A state file with 500 beside no stamp. Verify build 1 and the state file unchanged; without it, none is created. |
+| VBN-5 | `nextBuildNumber` reads the configured output file | ✅ | Another path with build 9 gives 10; a missing path gives 1. |
 
 ---
 
@@ -174,7 +179,7 @@ Target project: `_build` (has `version:` in pubspec.yaml).
 | VBM_PAT01 | Default patch bump | ✅ | Run versionbump on `_build`. Verify `version:` in pubspec.yaml incremented patch (e.g., 1.0.0 → 1.0.1). |
 | VBM_MIN01 | `--minor` bump for specific project | ✅ | Run with `--minor _build`. Verify minor version bumped (e.g., 1.0.0 → 1.1.0). |
 | VBM_MAJ01 | `--major` bump for specific project | ✅ | Run with `--major _build`. Verify major version bumped (e.g., 1.0.0 → 2.0.0). |
-| VBM_RST01 | Build counter reset after bump | ✅ | Run versionbump. Verify `tom_build_state.json` has `buildNumber: 0`. |
+| VBM_RST01 | A bump leaves the build number alone | ✅ | Run versionbump. Verify `version.versioner.dart` is unchanged and no `tom_build_state.json` is written. |
 | VBM_DRY01 | `--dry-run` shows planned bumps without changing files | ✅ | Run with `--dry-run`. Verify pubspec.yaml unchanged and stdout shows planned bump. |
 
 ---

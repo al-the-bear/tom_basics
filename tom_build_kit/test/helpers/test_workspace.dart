@@ -333,7 +333,6 @@ class TestWorkspace {
     'buildkit_master.yaml',
     'buildkit.yaml', // In any project directory
     'version.versioner.dart', // Generated version files
-    'tom_build_state.json', // Build state files
   ];
 
   /// Check if a dirty file is a known fixture file safe to auto-revert.

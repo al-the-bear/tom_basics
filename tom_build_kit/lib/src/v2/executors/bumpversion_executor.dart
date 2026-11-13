@@ -8,7 +8,6 @@
 /// bump types. Optionally runs the versioner (Dart) after bumping.
 library;
 
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
@@ -326,10 +325,9 @@ class BumpVersionExecutor extends CommandExecutor {
 
       file.writeAsStringSync(versionFile.write(content, newVersion));
 
-      // Reset the Dart build counter (versioner)
-      if (versionFile.fileName == 'pubspec.yaml') {
-        _resetBuildCounter(projectPath, verbose: verbose);
-      }
+      // The build number is not reset: it lives in the committed versioner
+      // file and only ever grows, so the merge driver can tell the newer
+      // build by it (build_tom build_cleanup7).
 
       print('  ${p.basename(projectPath)}: $currentVersion -> $newVersion ($bumpType)');
       return true;
@@ -355,23 +353,6 @@ class BumpVersionExecutor extends CommandExecutor {
         return '$major.${minor + 1}.0';
       case BumpType.patch:
         return '$major.$minor.${patch + 1}';
-    }
-  }
-
-  /// Reset the build counter in tom_build_state.json.
-  void _resetBuildCounter(String projectPath, {required bool verbose}) {
-    final stateFile = File('$projectPath/tom_build_state.json');
-    try {
-      stateFile.writeAsStringSync(
-        const JsonEncoder.withIndent('  ').convert({
-          'buildNumber': 0,
-          'lastBuild': DateTime.now().toUtc().toIso8601String(),
-          'lastVersionBump': DateTime.now().toUtc().toIso8601String(),
-        }),
-      );
-      if (verbose) print('    Build counter reset to 0');
-    } catch (e) {
-      if (verbose) print('    Warning: Could not reset build counter: $e');
     }
   }
 }

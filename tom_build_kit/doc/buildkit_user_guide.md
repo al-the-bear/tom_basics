@@ -517,7 +517,8 @@ toolchain is not on `PATH`.
 `pubspec.yaml`, `package.json`, `pyproject.toml` (`[project]` /
 `[tool.poetry]`), `Cargo.toml` (`[package]`) or `pom.xml` (the project's own
 `<version>`). Go modules and C / C++ projects state no version and are
-skipped. `--versioner` and the build counter apply to Dart projects.
+skipped. A bump does not reset the build number: it lives in the
+project's `version.versioner.dart` and only grows.
 
 Other per-language steps (run, watch, publish) are pipelines in
 `buildkit_master.yaml`, selected with `--project` or `--group`.

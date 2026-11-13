@@ -121,16 +121,23 @@ void main() {
     );
 
     test('SCE48-3: a dry run does not advance the build number', () async {
-      // The installed binary advanced `tom_build_state.json` on every run
-      // while writing no stamp, which is how three consecutive runs looked
-      // like progress. The build number is the one thing it DID move.
+      // The installed binary advanced its build counter on every run while
+      // writing no stamp, which is how three consecutive runs looked like
+      // progress. The counter is the stamp's own `buildNumber` now
+      // (build_cleanup7); a dry run leaves it, and writes no other file.
+      await runVersioner(project);
+      final before = File(stampPath(project)).readAsStringSync();
       await runVersioner(project, dryRun: true);
       expect(
-        File(p.join(project.path, 'tom_build_state.json')).existsSync(),
-        isFalse,
+        File(stampPath(project)).readAsStringSync(),
+        before,
         reason:
             'nothing may be written by a dry run — least of all the counter '
             'that made the no-op look like work',
+      );
+      expect(
+        File(p.join(project.path, 'tom_build_state.json')).existsSync(),
+        isFalse,
       );
     });
 
@@ -141,7 +148,8 @@ void main() {
       Directory(p.dirname(stampPath(project))).createSync(recursive: true);
       File(stampPath(project)).writeAsStringSync(
         '// stale\nclass ZomSce48Version {\n'
-        "  static const String version = '0.0.1-STALE';\n}\n",
+        "  static const String version = '0.0.1-STALE';\n"
+        '  static const int buildNumber = 3;\n}\n',
       );
 
       final result = await runVersioner(project);
@@ -149,6 +157,8 @@ void main() {
       expect(result.success, isTrue, reason: result.error ?? '');
       final written = File(stampPath(project)).readAsStringSync();
       expect(written, contains("version = '2.5.0'"));
+      // The build number counts on from the stale stamp (build_cleanup7).
+      expect(written, contains('buildNumber = 4;'));
       expect(
         written,
         isNot(contains('0.0.1-STALE')),

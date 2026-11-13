@@ -395,7 +395,7 @@ class TomToolsVersionInfo {
 }
 ```
 
-**Build state:** The build number is tracked in `tom_build_state.json` in each project directory and auto-increments on each run.
+**Build number:** The build number lives in the generated file itself: each run reads `buildNumber` from the existing versioner file and writes it plus one (1 when there is no file yet). The file is committed, so the count travels with the repository; when two machines built, the fleet's merge driver keeps the side with the higher number. A versioner file that holds no `buildNumber` is an error naming the file: restore it from git, or delete it to start again at build 1. No other file keeps build state.
 
 **Config merge example:**
 
@@ -459,7 +459,8 @@ toolchain is not on `PATH`.
 `pubspec.yaml`, `package.json`, `pyproject.toml` (`[project]` /
 `[tool.poetry]`), `Cargo.toml` (`[package]`) or `pom.xml` (the project's own
 `<version>`). Go modules and C / C++ projects state no version and are
-skipped. `--versioner` and the build counter apply to Dart projects.
+skipped. A bump does not reset the build number: it lives in the
+project's `version.versioner.dart` and only grows.
 
 Other per-language steps (run, watch, publish) are pipelines in
 `buildkit_master.yaml`, selected with `--project` or `--group`.
@@ -498,7 +499,7 @@ buildkit :bumpversion [tool-options]
 
 **Project matching:** The `--minor` and `--major` values match against the project's folder name or relative path suffix. Comma-separated lists are expanded.
 
-**Build state reset:** After bumping a Dart project, `tom_build_state.json` is reset to `buildNumber: 0` so the next versioner run starts fresh.
+**Build number:** A bump leaves the build number alone; it only grows, so the newer build always carries the higher number.
 
 **Versioner integration:** With `--versioner`, automatically runs the versioner tool after bumping. The flags `--scan`, `--project`, `--recursive`, `--verbose`, `--dry-run`, and `--exclude` are forwarded.
 

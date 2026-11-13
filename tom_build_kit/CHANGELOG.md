@@ -1,3 +1,14 @@
+## 1.17.0
+
+### Changed — the build number lives in `version.versioner.dart`
+
+- `:versioner` reads the build number from the project's existing versioner
+  file and writes it plus one (1 when there is none). It no longer reads or
+  writes `tom_build_state.json`, which is retired. A versioner file without a
+  `buildNumber` is an error that names the file. VBN-1..5.
+- `:bumpversion` no longer resets the build number: it only grows, so the
+  fleet's merge driver can tell the newer build by it alone.
+
 ## 1.16.0
 
 ### Added — `:build`, `:test`, `:clean` for every SOM runtime language

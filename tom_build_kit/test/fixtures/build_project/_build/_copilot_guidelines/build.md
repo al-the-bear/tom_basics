@@ -284,7 +284,7 @@ After each build, every tool should be started once with the `--version` option 
 For versioned tools, the verification checks:
 
 1. **Version string** - Matches the version in `pubspec.yaml`
-2. **Build number** - Matches the build number in `tom_build_state.json`
+2. **Build number** - Matches the build number in `lib/src/version.versioner.dart`
 3. **Timestamp** - Within 10 minutes of current UTC time (freshness check)
 
 ### Version Output Format

@@ -5,7 +5,6 @@
 /// CLI args > project buildkit.yaml > workspace buildkit_master.yaml.
 library;
 
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
@@ -98,6 +97,17 @@ class VersionerConfig {
     final capitalized = prefix[0].toUpperCase() + prefix.substring(1);
     return '${capitalized}VersionInfo';
   }
+}
+
+/// A versioner file that exists but cannot be read for its build number.
+class VersionerFileException implements Exception {
+  /// What is wrong, naming the file.
+  final String message;
+
+  const VersionerFileException(this.message);
+
+  @override
+  String toString() => message;
 }
 
 // =============================================================================
@@ -273,8 +283,9 @@ class VersionerExecutor extends CommandExecutor {
         gitCommit = await _getGitCommit(projectPath);
       }
 
-      // Get/increment build number
-      final buildNumber = _getAndIncrementBuildNumber(projectPath, dryRun);
+      // The build number counts on from the versioner file itself.
+      final outputPath = '$projectPath/${config.output}';
+      final buildNumber = nextBuildNumber(File(outputPath));
 
       // Get Dart SDK version
       final dartSdkVersion = await _getDartSdkVersion();
@@ -294,7 +305,6 @@ class VersionerExecutor extends CommandExecutor {
       );
 
       // Write file
-      final outputPath = '$projectPath/${config.output}';
       if (dryRun) {
         print('  [DRY RUN] Would generate: ${config.output}');
         print('    Version: $version');
@@ -338,6 +348,9 @@ class VersionerExecutor extends CommandExecutor {
       }
 
       return true;
+    } on VersionerFileException catch (e) {
+      print('  Error: $e');
+      return false;
     } catch (e) {
       print('  Error generating version file: $e');
       return false;
@@ -379,34 +392,31 @@ class VersionerExecutor extends CommandExecutor {
     return null;
   }
 
-  /// Get and increment the build number from tom_build_state.json.
-  int _getAndIncrementBuildNumber(String projectPath, bool dryRun) {
-    final stateFile = File('$projectPath/tom_build_state.json');
-    int buildNumber = 1;
-
-    if (stateFile.existsSync()) {
-      try {
-        final content = stateFile.readAsStringSync();
-        final json = jsonDecode(content) as Map<String, dynamic>;
-        buildNumber = (json['buildNumber'] as int? ?? 0) + 1;
-      } catch (_) {}
+  /// The build number of the next build: the one in the existing versioner
+  /// [file] plus one, or 1 when there is no file yet.
+  ///
+  /// The versioner file is the only place the number is kept (build_tom
+  /// build_cleanup7): it is committed, so the count travels with the
+  /// repository, and the fleet's `generated-newer-wins` merge driver keeps
+  /// the side with the higher number. The number therefore only ever grows;
+  /// a version bump does not reset it.
+  ///
+  /// Throws [VersionerFileException] when the file exists but holds no
+  /// `buildNumber`: counting from 1 again would make this build look older
+  /// than the ones before it.
+  static int nextBuildNumber(File file) {
+    if (!file.existsSync()) return 1;
+    final match = RegExp(
+      r'static const int buildNumber = (\d+);',
+    ).firstMatch(file.readAsStringSync());
+    if (match == null) {
+      throw VersionerFileException(
+        '${file.path} holds no `static const int buildNumber = <n>;` - the '
+        'build number cannot be counted on. Restore the file from git, or '
+        'delete it to start again at build 1.',
+      );
     }
-
-    // Write incremented build number (skip in dry-run)
-    if (!dryRun) {
-      try {
-        stateFile.writeAsStringSync(
-          const JsonEncoder.withIndent('  ').convert({
-            'buildNumber': buildNumber,
-            'lastBuild': DateTime.now().toUtc().toIso8601String(),
-          }),
-        );
-      } catch (e) {
-        print('  Warning: Could not write build state: $e');
-      }
-    }
-
-    return buildNumber;
+    return int.parse(match.group(1)!) + 1;
   }
 
   /// Get Dart SDK version.

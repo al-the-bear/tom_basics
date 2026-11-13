@@ -50,7 +50,7 @@ void main() {
   tearDown(() async {
     log.finish();
     // Revert all changes in the main repo (buildkit_master.yaml,
-    // _build/lib/src/version.versioner.dart, _build/tom_build_state.json)
+    // _build/lib/src/version.versioner.dart)
     await ws.revertAll();
   });
 

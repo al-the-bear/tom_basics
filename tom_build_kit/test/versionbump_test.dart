@@ -8,7 +8,6 @@
 @Timeout(Duration(seconds: 120))
 library;
 
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
@@ -176,10 +175,15 @@ void main() {
     log.expectation('major bumped', afterMajor == beforeMajor + 1);
   });
 
-  // ── Build counter reset (VBM_RST01) ──────────────────────────────────
+  // ── The build number survives a bump (VBM_RST01) ───────────────────
 
-  test('build counter reset after bump', () async {
-    log.start('VBM_RST01', 'build counter reset');
+  test('a bump leaves the build number alone and writes no build state',
+      () async {
+    log.start('VBM_RST01', 'build number not reset by a bump');
+
+    final stamp = File(p.join(
+        ws.workspaceRoot, '_build', 'lib', 'src', 'version.versioner.dart'));
+    final before = stamp.readAsStringSync();
 
     final result =
         await ws.runTool('bumpversion', ['--project', '_build']);
@@ -187,21 +191,16 @@ void main() {
 
     expect(result.exitCode, equals(0),
         reason: 'versionbump should succeed');
-
-    // Check tom_build_state.json has buildNumber: 0
+    // The build number lives in the committed versioner file and only grows
+    // (build_cleanup7); a bump touches neither it nor a build-state file.
+    expect(stamp.readAsStringSync(), before,
+        reason: 'the versioner file is the versioner\'s to write');
     final stateFile = File(
         p.join(ws.workspaceRoot, '_build', 'tom_build_state.json'));
-    if (stateFile.existsSync()) {
-      final state =
-          jsonDecode(stateFile.readAsStringSync()) as Map<String, dynamic>;
-      final buildNumber = state['buildNumber'] as int? ?? -1;
-      expect(buildNumber, equals(0),
-          reason: 'Build number should be reset to 0 after bump');
-      log.expectation('buildNumber is 0', buildNumber == 0);
-    } else {
-      // State file may not exist if tool doesn't create it for this project
-      log.expectation('state file exists', false);
-    }
+    expect(stateFile.existsSync(), isFalse,
+        reason: 'tom_build_state.json is retired');
+    log.expectation('stamp untouched, no state file',
+        !stateFile.existsSync());
   });
 
   // ── Dry-run (VBM_DRY01) ─────────────────────────────────────────────
