@@ -1,3 +1,26 @@
+## 2.26.0
+
+### Added — natures for every SOM runtime language
+
+- `JavaScriptFolder` (`package.json` without `tsconfig.json`), `PythonFolder`
+  (`pyproject.toml` / `setup.py` / `setup.cfg`), `JavaFolder` (`pom.xml` /
+  Gradle), `GoFolder` (`go.mod`), `RustFolder` (`Cargo.toml`), `CFolder` and
+  `CppFolder` (`Makefile` / `CMakeLists.txt`, the language decided by the
+  sources beside it). With `TypeScriptFolder` (now also `version`, `scripts`)
+  they are `LanguageProjectFolder`s; C and C++ are `NativeProjectFolder`s.
+  Both abstract types select their subtypes in `worksWithNatures` /
+  `requiredNatures`, and every nature can be named in a YAML tool definition.
+- `%{javascript.exists}`, `%{python.exists}`, `%{java.exists}`,
+  `%{go.exists}`, `%{rust.exists}`, `%{c.exists}`, `%{cpp.exists}`,
+  `%{language}`.
+- `ProjectVersionFile` reads and writes a project's version in `pubspec.yaml`,
+  `package.json`, `pyproject.toml`, `Cargo.toml` or `pom.xml`, keeping the
+  rest of the file.
+- The folder scanner treats every language project like a Dart project: it is
+  descended into only with `--recursive` (`isProjectFolder`). On the workspace
+  the Dart projects found are unchanged (206).
+- Tests BB-LNG-1..15.
+
 ## 2.25.0
 
 ### Changed — `buildkit.yaml` is the one project file

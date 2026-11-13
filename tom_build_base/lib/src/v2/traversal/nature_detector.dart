@@ -11,9 +11,12 @@ import '../folder/natures/git_folder.dart';
 import '../folder/natures/dart_project_folder.dart';
 import '../folder/natures/extension_folder.dart';
 import '../folder/natures/buildkit_folder.dart';
+import 'language_detector.dart';
 
 /// Detects and creates folder natures based on filesystem markers.
 class NatureDetector {
+  final _languages = LanguageDetector();
+
   /// Detect all natures for a folder.
   List<RunFolder> detectNatures(FsFolder folder) {
     final natures = <RunFolder>[];
@@ -26,6 +29,7 @@ class NatureDetector {
     if (_isTypeScriptProject(folder.path)) {
       natures.add(_createTypeScriptNature(folder));
     }
+    natures.addAll(_languages.detect(folder));
     if (_hasBuildkitYaml(folder.path)) {
       natures.add(_createBuildkitNature(folder));
     }
@@ -309,23 +313,16 @@ class NatureDetector {
   }
 
   TypeScriptFolder _createTypeScriptNature(FsFolder folder) {
-    String? projectName;
-    bool isNodeProject = false;
-
-    try {
-      final packageJson = File(p.join(folder.path, 'package.json'));
-      if (packageJson.existsSync()) {
-        final content = packageJson.readAsStringSync();
-        final json = jsonDecode(content) as Map<String, dynamic>;
-        projectName = json['name'] as String?;
-        isNodeProject = json.containsKey('main') || json.containsKey('scripts');
-      }
-    } catch (_) {}
-
+    final packageJson = File(p.join(folder.path, 'package.json'));
+    final json = packageJson.existsSync()
+        ? readPackageJson(packageJson)
+        : const <String, dynamic>{};
     return TypeScriptFolder(
       folder,
-      projectName: projectName,
-      isNodeProject: isNodeProject,
+      projectName: json['name'] as String?,
+      version: json['version'] as String?,
+      isNodeProject: json.containsKey('main') || json.containsKey('scripts'),
+      scripts: packageScripts(json),
     );
   }
 

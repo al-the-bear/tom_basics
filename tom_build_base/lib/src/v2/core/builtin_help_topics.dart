@@ -96,6 +96,14 @@ Each system is independent and uses its own syntax.
     %{typescript.exists}       true if TypeScript project
     %{vscode-extension.exists} true if VS Code extension
     %{buildkit.exists}         true if has buildkit.yaml
+    %{javascript.exists}       true if JavaScript project (package.json, no tsconfig.json)
+    %{python.exists}           true if Python project (pyproject.toml, setup.py, setup.cfg)
+    %{java.exists}             true if Java project (pom.xml, build.gradle)
+    %{go.exists}               true if Go module (go.mod)
+    %{rust.exists}             true if Rust crate (Cargo.toml)
+    %{c.exists}                true if C project (Makefile / CMakeLists.txt + C sources)
+    %{cpp.exists}              true if C++ project (Makefile / CMakeLists.txt + C++ sources)
+    %{language}                language of a non-Dart project (typescript, javascript, ...)
 
   <cyan>Nature Attributes</cyan>
 

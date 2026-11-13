@@ -1,6 +1,9 @@
 import '../folder/fs_folder.dart';
 import '../folder/natures/dart_project_folder.dart';
+import '../folder/natures/buildkit_folder.dart';
+import '../folder/natures/extension_folder.dart';
 import '../folder/natures/git_folder.dart';
+import '../folder/natures/language_folders.dart';
 import 'command_definition.dart';
 import 'option_definition.dart';
 import 'tool_definition.dart';
@@ -353,6 +356,28 @@ class ToolDefinitionSerializer {
         return FlutterProjectFolder;
       case 'GitFolder':
         return GitFolder;
+      case 'BuildkitFolder':
+        return BuildkitFolder;
+      case 'TypeScriptFolder':
+        return TypeScriptFolder;
+      case 'LanguageProjectFolder':
+        return LanguageProjectFolder;
+      case 'JavaScriptFolder':
+        return JavaScriptFolder;
+      case 'PythonFolder':
+        return PythonFolder;
+      case 'JavaFolder':
+        return JavaFolder;
+      case 'GoFolder':
+        return GoFolder;
+      case 'RustFolder':
+        return RustFolder;
+      case 'NativeProjectFolder':
+        return NativeProjectFolder;
+      case 'CFolder':
+        return CFolder;
+      case 'CppFolder':
+        return CppFolder;
       default:
         return null;
     }

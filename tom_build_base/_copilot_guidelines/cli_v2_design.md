@@ -1357,8 +1357,13 @@ classDiagram
 | `DartPackageFolder` | `pubspec.yaml` exists AND `lib/src/` exists |
 | `VsCodeExtensionFolder` | `package.json` contains `engines.vscode` |
 | `TypeScriptFolder` | `tsconfig.json` exists |
-| `JavaFolder` | `pom.xml` or `build.gradle` exists |
+| `JavaScriptFolder` | `package.json` exists, no `tsconfig.json` |
 | `PythonFolder` | `pyproject.toml`, `setup.py`, or `setup.cfg` exists |
+| `JavaFolder` | `pom.xml`, `build.gradle` or `build.gradle.kts` exists |
+| `GoFolder` | `go.mod` exists |
+| `RustFolder` | `Cargo.toml` exists |
+| `CFolder` / `CppFolder` | `Makefile` / `CMakeLists.txt` beside C (`.c`) or C++ (`.cpp`, `.cc`, `.hpp`, ...) sources; any C++ source makes it C++ |
+| `LanguageProjectFolder` | abstract: every nature above from `TypeScriptFolder` on |
 | **Tom Framework Natures** | |
 | `BuildkitFolder` | `buildkit.yaml` exists (also extracts the identity: `project_id`, `name`, `description`, `license`) |
 | `BuildRunnerFolder` | `build.yaml` exists (Dart build_runner config) |

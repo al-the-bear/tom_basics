@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import '../run_folder.dart';
+import 'language_folders.dart';
 
 /// VS Code extension nature.
 ///
@@ -38,17 +39,19 @@ class VsCodeExtensionFolder extends RunFolder {
 /// TypeScript project nature.
 ///
 /// Detected when folder contains `tsconfig.json`.
-class TypeScriptFolder extends RunFolder {
-  /// Project name from package.json.
-  final String? projectName;
-
-  /// Whether this is a Node.js project.
+class TypeScriptFolder extends LanguageProjectFolder {
+  /// Whether this is a Node.js project (`main` or `scripts` in package.json).
   final bool isNodeProject;
+
+  /// The `scripts` of `package.json` by name.
+  final Map<String, String> scripts;
 
   TypeScriptFolder(
     super.fsFolder, {
-    this.projectName,
+    super.projectName,
+    super.version,
     this.isNodeProject = false,
+    this.scripts = const {},
   });
 
   /// Check if a folder is a TypeScript project.
@@ -57,5 +60,8 @@ class TypeScriptFolder extends RunFolder {
   }
 
   @override
-  String toString() => 'TypeScriptFolder($path, name: $projectName)';
+  String get language => 'typescript';
+
+  @override
+  String get projectFile => 'tsconfig.json';
 }

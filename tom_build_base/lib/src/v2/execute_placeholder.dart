@@ -8,6 +8,7 @@ import 'folder/natures/dart_project_folder.dart';
 import 'folder/natures/git_folder.dart';
 import 'folder/natures/extension_folder.dart';
 import 'folder/natures/buildkit_folder.dart';
+import 'folder/natures/language_folders.dart';
 import 'traversal/command_context.dart';
 
 /// Exception thrown when a placeholder cannot be resolved.
@@ -135,6 +136,18 @@ class ExecutePlaceholderContext {
   bool get hasTypeScript => hasNature<TypeScriptFolder>();
   bool get hasVsCodeExtension => hasNature<VsCodeExtensionFolder>();
   bool get hasBuildkit => hasNature<BuildkitFolder>();
+  bool get hasJavaScript => hasNature<JavaScriptFolder>();
+  bool get hasPython => hasNature<PythonFolder>();
+  bool get hasJava => hasNature<JavaFolder>();
+  bool get hasGo => hasNature<GoFolder>();
+  bool get hasRust => hasNature<RustFolder>();
+  bool get hasC => hasNature<CFolder>();
+  bool get hasCpp => hasNature<CppFolder>();
+
+  /// The project's language nature (TypeScript, JavaScript, Python, Java,
+  /// Go, Rust, C, C++), if it has one.
+  LanguageProjectFolder? get languageProject =>
+      getNature<LanguageProjectFolder>();
   /// Always false: tom_project.yaml is retired.
   @Deprecated('tom_project.yaml is retired; use hasBuildkit.')
   // ignore: deprecated_member_use_from_same_package
@@ -179,6 +192,13 @@ class ExecutePlaceholderResolver {
     'typescript.exists',
     'vscode-extension.exists',
     'buildkit.exists',
+    'javascript.exists',
+    'python.exists',
+    'java.exists',
+    'go.exists',
+    'rust.exists',
+    'c.exists',
+    'cpp.exists',
     'dart.publishable',
     'flutter.isPlugin',
     'git.isSubmodule',
@@ -252,6 +272,32 @@ class ExecutePlaceholderResolver {
         return ctx.hasVsCodeExtension.toString();
       case 'buildkit.exists':
         return ctx.hasBuildkit.toString();
+      case 'javascript.exists':
+        return ctx.hasJavaScript.toString();
+      case 'python.exists':
+        return ctx.hasPython.toString();
+      case 'java.exists':
+        return ctx.hasJava.toString();
+      case 'go.exists':
+        return ctx.hasGo.toString();
+      case 'rust.exists':
+        return ctx.hasRust.toString();
+      case 'c.exists':
+        return ctx.hasC.toString();
+      case 'cpp.exists':
+        return ctx.hasCpp.toString();
+      case 'language':
+        final language = ctx.languageProject;
+        if (language == null) {
+          throw UnresolvedPlaceholderException(
+            placeholder,
+            ctx.folderPath,
+            message:
+                'not a TypeScript, JavaScript, Python, Java, Go, Rust, C or '
+                'C++ project',
+          );
+        }
+        return language.language;
 
       // Dart attributes
       case 'dart.name':
@@ -500,6 +546,14 @@ class ExecutePlaceholderResolver {
       'typescript.exists': 'true if TypeScript project',
       'vscode-extension.exists': 'true if VS Code extension',
       'buildkit.exists': 'true if has buildkit.yaml',
+      'javascript.exists': 'true if JavaScript project (package.json, no tsconfig.json)',
+      'python.exists': 'true if Python project (pyproject.toml, setup.py, setup.cfg)',
+      'java.exists': 'true if Java project (pom.xml, build.gradle)',
+      'go.exists': 'true if Go module (go.mod)',
+      'rust.exists': 'true if Rust crate (Cargo.toml)',
+      'c.exists': 'true if C project (Makefile / CMakeLists.txt, C sources)',
+      'cpp.exists': 'true if C++ project (Makefile / CMakeLists.txt, C++ sources)',
+      'language': 'Language of a non-Dart project (typescript, javascript, python, java, go, rust, c, cpp)',
 
       // Dart/Flutter attributes
       'dart.name': 'Project name from pubspec',

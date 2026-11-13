@@ -4,6 +4,7 @@ import '../folder/fs_folder.dart';
 import '../folder/run_folder.dart';
 import '../folder/natures/dart_project_folder.dart';
 import '../folder/natures/git_folder.dart';
+import '../folder/natures/language_folders.dart';
 import 'build_order.dart';
 import 'command_context.dart';
 import 'filter_pipeline.dart';
@@ -347,8 +348,10 @@ abstract class BuildBase {
     return natures.any((nature) {
       // Exact runtime type match
       if (nature.runtimeType == type) return true;
-      // DartProjectFolder hierarchy — any Dart project subtype satisfies
+      // Abstract natures: any subtype satisfies.
       if (type == DartProjectFolder) return nature is DartProjectFolder;
+      if (type == LanguageProjectFolder) return nature is LanguageProjectFolder;
+      if (type == NativeProjectFolder) return nature is NativeProjectFolder;
       return false;
     });
   }

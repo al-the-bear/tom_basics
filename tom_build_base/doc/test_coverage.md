@@ -59,7 +59,8 @@ This document lists all testable features across `tom_build_base` and tracks tes
 | 44 | [Item Exit Codes and Process Trees](#44-item-exit-codes-and-process-trees) | 5 | 5✅ | `v2/core/item_exit_code_test.dart` | [→](#44-item-exit-codes-and-process-trees) |
 | 45 | [Repeated Multi Options](#45-repeated-multi-options) | 5 | 5✅ | `v2/core/multi_option_repeat_test.dart` | [→](#45-repeated-multi-options) |
 | 46 | [Project Groups](#46-project-groups) | 7 | 7✅ | `v2/traversal/project_groups_test.dart` | [→](#46-project-groups) |
-| — | **Total** | **1002** | **1002✅** | | |
+| 47 | [Language Natures](#47-language-natures) | 15 | 15✅ | `v2/traversal/language_natures_test.dart` | [→](#47-language-natures) |
+| — | **Total** | **1017** | **1017✅** | | |
 
 > Every row links to a section, and the counts are measured from
 > `dart test --reporter json -j 1` rather than maintained by hand. Run it
@@ -978,6 +979,33 @@ Groups are derived from the directory walk: git repositories and
 
 ---
 
+## 47. Language Natures
+
+**Test file:** `test/v2/traversal/language_natures_test.dart`
+
+The natures of the SOM runtime languages other than Dart; the fixtures copy the
+`tom_som_<lang>_runtime` layouts.
+
+| ID | Feature | Status | Description |
+|----|---------|--------|-------------|
+| BB-LNG-1 | JavaScript | ✅ | `package.json` without `tsconfig.json`: name, version, scripts. |
+| BB-LNG-2 | TypeScript | ✅ | `tsconfig.json`: a language project, never also JavaScript. |
+| BB-LNG-3 | Python | ✅ | `pyproject.toml` `[project]`; `setup.py` / `setup.cfg`. |
+| BB-LNG-4 | Java | ✅ | `pom.xml` own artifactId / version (not parent, comment or dependency); Gradle. |
+| BB-LNG-5 | Go | ✅ | `go.mod` module path. |
+| BB-LNG-6 | Rust | ✅ | `Cargo.toml` `[package]`. |
+| BB-LNG-7 | C / C++ | ✅ | Makefile or CMake; any C++ source makes it C++. |
+| BB-LNG-8 | Docs Makefile | ✅ | No sources: no project. |
+| BB-LNG-9 | Dart | ✅ | No language nature on a Dart project. |
+| BB-LNG-10 | Selection | ✅ | `LanguageProjectFolder` / `NativeProjectFolder` select their subtypes; Dart natures none. |
+| BB-LNG-11 | YAML tool definition | ✅ | Every nature name parses. |
+| BB-LNG-12 | Placeholders | ✅ | `%{<lang>.exists}`, `%{language}`. |
+| BB-LNG-13 | Scan | ✅ | A language project is not descended into without `-r`. |
+| BB-LNG-14 | Version files | ✅ | Read and write in pubspec, package.json, pyproject, Cargo, pom; nothing else changes. |
+| BB-LNG-15 | No version | ✅ | Go and C state none. |
+
+---
+
 ## Test Gaps & Potential Additions
 
 The current test suite is comprehensive. Areas where additional tests could be valuable:
@@ -990,4 +1018,4 @@ The current test suite is comprehensive. Areas where additional tests could be v
 | `--dump-definitions` output format | Tested in ToolRunner | Validate complete YAML structure | Low |
 | ConfigLoader with nested `@{...}` in `@[...]` | ✅ Recursive test exists | Additional nesting depth scenarios | Low |
 
-Overall coverage assessment: **Excellent — 1002 tests covering all features.**
+Overall coverage assessment: **Excellent — 1017 tests covering all features.**

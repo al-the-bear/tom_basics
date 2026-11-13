@@ -4,6 +4,7 @@ import 'package:glob/glob.dart';
 import 'package:path/path.dart' as p;
 
 import '../folder/fs_folder.dart';
+import 'project_files.dart';
 import '../workspace_utils.dart' show kAlwaysSkipDirectories;
 
 /// Global skip file that blocks all tools.
@@ -114,10 +115,12 @@ class FolderScanner {
     // Recursion semantics:
     // - Non-project directories (containers) are ALWAYS traversed to find
     //   projects. That is the purpose of --scan.
-    // - Project directories (identified by pubspec.yaml) are only recursed
-    //   into when `recursive` is true. This controls whether nested projects
-    //   inside a project are discovered.
-    final isProjectDir = File(p.join(dir.path, 'pubspec.yaml')).existsSync();
+    // - Project directories (a pubspec.yaml, or the project file of any other
+    //   language the build tools know: package.json, pyproject.toml, pom.xml,
+    //   go.mod, Cargo.toml, a Makefile beside C/C++ sources, ...) are only
+    //   recursed into when `recursive` is true. This controls whether nested
+    //   projects inside a project (its test fixtures) are discovered.
+    final isProjectDir = isProjectFolder(dir.path);
     if (!recursive && isProjectDir) return;
 
     // Check if this directory has {toolBasename}.yaml with recursive: false
