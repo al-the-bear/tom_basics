@@ -1927,7 +1927,7 @@ Using build base from D4rt scripts requires bridging the gap between scripting c
 ```dart
 // In a .d4rt or .dcli script
 import 'package:tom_build_base/tom_build_base_v2.dart';
-import 'package:dcli/dcli.dart';
+import 'package:tom_dcli/dcli.dart';
 
 void main() async {
   // Project traversal with typed info

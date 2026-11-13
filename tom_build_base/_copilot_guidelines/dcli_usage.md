@@ -9,7 +9,7 @@ tom_build_base uses DCli for file system operations, process execution, and path
 ## Import
 
 ```dart
-import 'package:dcli/dcli.dart';
+import 'package:tom_dcli/dcli.dart';
 ```
 
 ## Common Patterns in tom_build_base
