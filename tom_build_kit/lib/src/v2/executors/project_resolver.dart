@@ -10,7 +10,8 @@ import 'package:glob/glob.dart';
 import 'package:glob/list_local_fs.dart';
 import 'package:path/path.dart' as p;
 import 'package:tom_build_base/tom_build_base.dart' show TomBuildConfig;
-import 'package:tom_build_base/tom_build_base_v2.dart' show findWorkspaceRoot;
+import 'package:tom_build_base/tom_build_base_v2.dart'
+    show findWorkspaceRootOrNull;
 
 import '../../project_scanner.dart' show scanForDartProjects;
 import 'package:yaml/yaml.dart';
@@ -135,7 +136,7 @@ class ProjectResolver {
     // If pattern is a simple name (no path separators), search the workspace
     if (!resolvedPattern.contains('/') &&
         !resolvedPattern.contains(p.separator)) {
-      final workspaceRoot = findWorkspaceRoot(basePath);
+      final workspaceRoot = findWorkspaceRootOrNull(basePath) ?? basePath;
       _log('Searching workspace for project: $resolvedPattern');
 
       // Search workspace recursively for a project with matching name

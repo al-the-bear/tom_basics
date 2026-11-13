@@ -8,7 +8,7 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 import 'package:tom_build_base/tom_build_base.dart'
-    show findWorkspaceRoot, toStringList, ProcessRunner;
+    show findWorkspaceRootOrNull, toStringList, ProcessRunner;
 import 'package:tom_build_base/tom_build_base_v2.dart';
 import 'package:yaml/yaml.dart';
 
@@ -151,7 +151,8 @@ class RunnerExecutor extends CommandExecutor {
     final cliInclude = _toStringList(cmdOpts['include-builders']);
     final cliExclude = _toStringList(cmdOpts['exclude-builders']);
 
-    final rootPath = findWorkspaceRoot(context.executionRoot);
+    final rootPath =
+        findWorkspaceRootOrNull(context.executionRoot) ?? context.executionRoot;
 
     // Get effective filter
     final filter = _BuilderFilter.getEffective(
@@ -239,7 +240,8 @@ class RunnerExecutor extends CommandExecutor {
     final failed = result.exitCode != 0;
     final combined =
         '${result.stdout.toLowerCase()}\n${result.stderr.toLowerCase()}';
-    final hasSignalWords = combined.contains('error') ||
+    final hasSignalWords =
+        combined.contains('error') ||
         combined.contains('warn') ||
         combined.contains('fail');
 

@@ -12,7 +12,7 @@ import 'dart:io';
 import 'package:dcli/dcli.dart' as dcli;
 import 'package:path/path.dart' as p;
 import 'package:tom_build_base/tom_build_base.dart'
-    show findWorkspaceRoot, ProcessRunner;
+    show findWorkspaceRootOrNull, ProcessRunner;
 import 'package:tom_build_base/tom_build_base_v2.dart';
 import 'package:yaml/yaml.dart';
 
@@ -264,7 +264,7 @@ class CompilerExecutor extends CommandExecutor {
     // (folder, nature, path placeholders from ExecutePlaceholderResolver).
     final placeholderCtx = ExecutePlaceholderContext.fromCommandContext(
       context,
-      findWorkspaceRoot(projectPath),
+      findWorkspaceRootOrNull(projectPath) ?? projectPath,
     );
 
     final savedDir = Directory.current.path;
@@ -556,10 +556,7 @@ class CompilerExecutor extends CommandExecutor {
       print('  Compiling $fileName for $targetPlatform');
     }
 
-    _ensureTargetOutputDirectory(
-      targetPlatform: targetPlatform,
-      args: args,
-    );
+    _ensureTargetOutputDirectory(targetPlatform: targetPlatform, args: args);
 
     for (final template in commandTemplates) {
       var command = _resolvePlaceholders(
@@ -644,7 +641,8 @@ class CompilerExecutor extends CommandExecutor {
         final shellFailed = result.exitCode != 0;
         final shellCombined =
             '${result.stdout.toLowerCase()}\n${result.stderr.toLowerCase()}';
-        final shellHasSignals = shellCombined.contains('error') ||
+        final shellHasSignals =
+            shellCombined.contains('error') ||
             shellCombined.contains('warn') ||
             shellCombined.contains('fail');
         if (args.verbose || shellFailed || shellHasSignals) {
@@ -652,10 +650,14 @@ class CompilerExecutor extends CommandExecutor {
           // body (e.g. the umbrella `tom` build) stays readable; verbose keeps
           // the full output since the user explicitly asked for detail.
           if (result.stdout.isNotEmpty) {
-            stdout.write(args.verbose ? result.stdout : capOutput(result.stdout));
+            stdout.write(
+              args.verbose ? result.stdout : capOutput(result.stdout),
+            );
           }
           if (result.stderr.isNotEmpty) {
-            stderr.write(args.verbose ? result.stderr : capOutput(result.stderr));
+            stderr.write(
+              args.verbose ? result.stderr : capOutput(result.stderr),
+            );
           }
         }
         return !shellFailed;
@@ -699,7 +701,8 @@ class CompilerExecutor extends CommandExecutor {
         final scanFailed = shellScanResult.exitCode != 0;
         final scanCombined =
             '${shellScanResult.stdout.toLowerCase()}\n${shellScanResult.stderr.toLowerCase()}';
-        final scanHasSignals = scanCombined.contains('error') ||
+        final scanHasSignals =
+            scanCombined.contains('error') ||
             scanCombined.contains('warn') ||
             scanCombined.contains('fail');
         if (args.verbose || scanFailed || scanHasSignals) {
@@ -1088,7 +1091,6 @@ class CompilerExecutor extends CommandExecutor {
       }
     }
   }
-
 }
 
 /// The outcome of [CompilerExecutor.planTargets].

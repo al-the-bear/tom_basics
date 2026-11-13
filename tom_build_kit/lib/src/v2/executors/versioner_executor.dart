@@ -10,7 +10,11 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 import 'package:tom_build_base/tom_build_base.dart'
-    show TomBuildConfig, hasTomBuildConfig, findWorkspaceRoot, ProcessRunner;
+    show
+        TomBuildConfig,
+        hasTomBuildConfig,
+        findWorkspaceRootOrNull,
+        ProcessRunner;
 import 'package:tom_build_base/tom_build_base_v2.dart';
 import 'package:yaml/yaml.dart';
 
@@ -116,7 +120,8 @@ class VersionerExecutor extends CommandExecutor {
     final projectName = context.name;
 
     // Load workspace config (cached)
-    _wsRoot ??= findWorkspaceRoot(context.executionRoot);
+    _wsRoot ??=
+        findWorkspaceRootOrNull(context.executionRoot) ?? context.executionRoot;
     _wsConfig ??=
         VersionerConfig.loadFromMasterYaml(_wsRoot!) ?? const VersionerConfig();
 

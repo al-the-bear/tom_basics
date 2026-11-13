@@ -337,7 +337,8 @@ class BuiltinCommands {
   Future<bool> _runPubGetAll(List<String> args) async {
     final wsRoot = rootPath.isNotEmpty
         ? rootPath
-        : findWorkspaceRoot(Directory.current.path);
+        : findWorkspaceRootOrNull(Directory.current.path) ??
+              Directory.current.path;
     if (verbose) {
       print(
         '  [builtin] Running pubgetall (-R $wsRoot --scan $wsRoot --recursive)...',
@@ -363,7 +364,8 @@ class BuiltinCommands {
   Future<bool> _runPubUpdateAll(List<String> args) async {
     final wsRoot = rootPath.isNotEmpty
         ? rootPath
-        : findWorkspaceRoot(Directory.current.path);
+        : findWorkspaceRootOrNull(Directory.current.path) ??
+              Directory.current.path;
     if (verbose) {
       print(
         '  [builtin] Running pubupdateall (-R $wsRoot --scan $wsRoot --recursive)...',

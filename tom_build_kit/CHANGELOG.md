@@ -1,3 +1,14 @@
+## 1.14.1
+
+### Changed — the workspace root is the nearest `buildkit_master.yaml`
+
+buildkit takes tom_build_base ^2.23.0, where `buildkit_master.yaml` is the one
+workspace marker (`tom.code-workspace` no longer counts). Each lookup
+(`pubgetall`, the compiler's placeholders, project search, runner, versioner)
+uses `findWorkspaceRootOrNull` and falls back to its start directory outside a
+workspace, as before. The `build_project` fixture's tool finds the workspace
+the same way.
+
 ## 1.14.0
 
 ### Added — `:boundaries`, the context-boundary check

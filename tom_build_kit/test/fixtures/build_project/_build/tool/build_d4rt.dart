@@ -79,21 +79,16 @@ void main(List<String> args) async {
   print('Done!');
 }
 
+/// The workspace root: the nearest directory holding `buildkit_master.yaml`.
 String? _findWorkspaceRoot() {
-  var dir = Directory.current;
-  while (dir.path != dir.parent.path) {
-    if (File('${dir.path}/tom_workspace.yaml').existsSync()) {
+  var dir = Directory.current.absolute;
+  while (true) {
+    if (File('${dir.path}/buildkit_master.yaml').existsSync()) {
       return dir.path;
     }
+    if (dir.path == dir.parent.path) return null;
     dir = dir.parent;
   }
-  // Fallback: check if we're in the workspace
-  final current = Directory.current.path;
-  if (current.contains('tom2')) {
-    final idx = current.indexOf('tom2');
-    return current.substring(0, idx + 4);
-  }
-  return null;
 }
 
 Future<String> _getGitCommit(String workspaceRoot) async {
