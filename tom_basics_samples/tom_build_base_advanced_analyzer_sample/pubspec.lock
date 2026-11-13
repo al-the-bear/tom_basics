@@ -423,14 +423,14 @@ packages:
       path: "../../tom_analyzer_shared"
       relative: true
     source: path
-    version: "0.13.0"
+    version: "0.13.1"
   tom_build_base:
     dependency: "direct main"
     description:
       path: "../../tom_build_base"
       relative: true
     source: path
-    version: "2.21.0"
+    version: "2.23.0"
   typed_data:
     dependency: transitive
     description:
