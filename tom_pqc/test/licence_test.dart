@@ -52,12 +52,14 @@ void main() {
     );
   });
 
-  test('no assembly and no architecture back end is vendored', () {
+  test('no assembly, no architecture back end and no upstream docs are '
+      'vendored', () {
     final entries = Directory(_vendored)
         .listSync(recursive: true)
         .map((e) => p.relative(e.path, from: _vendored).replaceAll(r'\', '/'));
     expect(entries.where((e) => e.endsWith('.S') || e.endsWith('.s')), isEmpty);
     expect(entries.where((e) => e.split('/').contains('native')), isEmpty);
+    expect(entries.where((e) => e.endsWith('.md')), isEmpty);
   });
 
   test('the package\'s own C files are BSD-3-Clause', () {

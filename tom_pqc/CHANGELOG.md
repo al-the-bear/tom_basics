@@ -15,4 +15,5 @@
   overwritten when disposed or finalized.
 - Randomness from the operating system's generator.
 - Tested with NIST's ACVP vectors for ML-KEM-768 (keyGen, encapsulation,
-  decapsulation, both key checks).
+  decapsulation, both key checks) and with every ML-KEM-768 case of
+  Wycheproof (commit `65ca494727a52944c204441c860b039e6786b99b`).

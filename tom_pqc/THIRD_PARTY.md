@@ -14,8 +14,9 @@ directly under `native/` (`tom_pqc.c`, `tom_pqc.h`, `tom_pqc_random.c`,
 mlkem-native is the PQ Code Package's ML-KEM implementation (FIPS 203), a
 maintained fork of the public-domain Kyber reference code; its copyright
 holders are named at the top of each file. Only the portable C is vendored:
-the `src/native/` and `src/fips202/native/` back ends and `mlkem_native_asm.S`
-are left out, and no file is changed. The vendored `mlkem_native_config.h` is
+the `src/native/` and `src/fips202/native/` back ends, `mlkem_native_asm.S`
+and the directory's `README.md` (documentation, CC-BY-4.0, linking into
+upstream folders that are not vendored) are left out, and no file is changed. The vendored `mlkem_native_config.h` is
 not used; `native/tom_pqc_mlkem_config.h` configures the build instead.
 
 To update: replace `native/mlkem-native/` with the `mlkem/` directory of the
@@ -37,3 +38,12 @@ permissive licence. They are not bundled: pub fetches them.
 ACVP vectors ([usnistgov/ACVP-Server](https://github.com/usnistgov/ACVP-Server),
 commit `975de31eb83d87039ec88934fdc47d8c312b892d`), a work of the US
 government, extracted by `tool/extract_acvp_vectors.py`.
+
+`test/vectors/wycheproof/` holds Wycheproof's four ML-KEM-768 files
+(`mlkem_768_keygen_seed_test.json`, `mlkem_768_encaps_test.json`,
+`mlkem_768_test.json`, `mlkem_768_semi_expanded_decaps_test.json`) from
+[C2SP/wycheproof](https://github.com/C2SP/wycheproof) `testvectors_v1/`,
+commit `65ca494727a52944c204441c860b039e6786b99b`, unchanged, under
+**Apache-2.0** with Wycheproof's `LICENSE` beside them. `SOURCE.json` records
+the commit and each file's SHA-256; `tool/extract_wycheproof_vectors.py`
+copies them.

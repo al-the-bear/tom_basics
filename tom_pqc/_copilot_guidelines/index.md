@@ -15,7 +15,7 @@ package README.
 | `hook/build.dart` | compiles the two `.c` files per target with `native_toolchain_c` |
 | `lib/src/native_backend.dart` | the `@Native` bindings |
 | `lib/src/pqc_backend.dart` | `PqcBackend` (the Dart side of the interface) and `NativePqcBackend`; not exported |
-| `test/vectors/` | NIST ACVP vectors, written by `tool/extract_acvp_vectors.py` |
+| `test/vectors/` | NIST ACVP vectors (`tool/extract_acvp_vectors.py`) and Wycheproof's files with their `SOURCE.json` (`tool/extract_wycheproof_vectors.py`) |
 
 ## Rules
 
@@ -37,8 +37,8 @@ package README.
 1. Clone `https://github.com/pq-code-package/mlkem-native` into the
    workspace `ztmp/` and check out the new release.
 2. Replace `native/mlkem-native/` with its `mlkem/` directory, leaving out
-   `src/native/`, `src/fips202/native/` and `mlkem_native_asm.S`; copy the
-   repository's `LICENSE` into it.
+   `src/native/`, `src/fips202/native/`, `mlkem_native_asm.S` and
+   `README.md`; copy the repository's `LICENSE` into it.
 3. Change the commit in `THIRD_PARTY.md`, `TOM_PQC_BACKEND_NAME` in
    `native/tom_pqc.c` and the CHANGELOG (`test/licence_test.dart` holds them
    together).
@@ -47,9 +47,14 @@ package README.
 
 ## Refreshing the vectors
 
-Clone `https://github.com/usnistgov/ACVP-Server` into `ztmp/`, check out the
-commit wanted, run `tool/extract_acvp_vectors.py <clone>`, and update the
-commit in `THIRD_PARTY.md`.
+- **ACVP:** clone `https://github.com/usnistgov/ACVP-Server` into `ztmp/`,
+  check out the commit wanted, run `tool/extract_acvp_vectors.py <clone>`, and
+  update the commit in `THIRD_PARTY.md`.
+- **Wycheproof:** clone `https://github.com/C2SP/wycheproof` into `ztmp/`,
+  check out the commit wanted, run `tool/extract_wycheproof_vectors.py
+  <clone>` (it rewrites `SOURCE.json` with the commit and the SHA-256s), and
+  update the commit in `THIRD_PARTY.md` and the CHANGELOG. The case counts in
+  `test/wycheproof_ml_kem_768_test.dart` change with the files.
 
 ## Testing on the other desktop platforms
 
@@ -58,3 +63,46 @@ Run by a person: copy the package with `tom_test_support` and `tom_github_api`
 (its dev dependencies) into the host's workspace `ztmp/`, then
 `dart pub get && dart test` (on legiondary01 MSVC is found through vswhere),
 and remove the copy afterwards.
+
+## Bundling: what each build carries (spike, 2026-11-13)
+
+The design asks whether the service's executable, `tsm` and the Flutter
+desktop app bundle the hook's library on every fleet platform, with a
+library built by hand as the fallback where one does not. Measured with two
+throwaway consumers, each a separate package with a path dependency on
+`tom_pqc` that runs one ML-KEM-768 round trip and prints `PQC_SPIKE OK`: a
+CLI built with `dart build cli` (as `tsm` and the service will be) and a
+Flutter desktop app (`flutter create`, `flutter build <os> --release`).
+
+| Platform (host) | `dart test` (ACVP, Wycheproof, API, licence) | `dart build cli` | Flutter desktop release |
+| --- | --- | --- | --- |
+| macOS arm64 (mbp) | 676/676 | `bundle/lib/libtom_pqc.dylib`; runs, also after the bundle is moved | `Contents/Frameworks/tom_pqc.framework`; the app runs |
+| Linux x64 (bigbeast) | 676/676 | `bundle/lib/libtom_pqc.so`; runs | `bundle/lib/libtom_pqc.so`, mapped in `data/flutter_assets/NativeAssetsManifest.json`; not launched: bigbeast has no display |
+| Windows x64 (legiondary01, MSVC) | 676/676 | `bundle\lib\tom_pqc.dll`; runs | `tom_pqc.dll` beside the exe, mapped in the manifest; the app runs (started over SSH) |
+| macOS x64 | — | not buildable: `dart build cli` on macOS arm64 targets only Linux | — |
+| Linux arm64 | — | no cross C compiler on mbp or bigbeast | — |
+
+**Result: every fleet platform's build bundles the library, so no hand-built
+fallback is needed.** The library goes into each build's own place (`lib/`
+of a CLI bundle, the app's `Frameworks/` on macOS, beside the executable on
+Windows), and the native-assets manifest names it.
+
+What the table does not cover, and where it is caught up:
+
+- **The Linux desktop app has not been launched.** The bundle and manifest
+  are right; the first launch on a Linux machine with a display is the
+  desktop app's (tsm_a23) or the fleet rollout's (tsm_a28).
+- **macOS x64 and Linux arm64 are not fleet platforms** (mbp is arm64,
+  bomber and bigbeast x64, legiondary01 x64). The C code compiles and links
+  for macOS x86_64 (`clang -arch x86_64`, the 11 exported symbols), and an
+  x86_64 C harness run under Rosetta passed the first ACVP key-generation
+  vector and a round trip; the Dart side there is untested. Linux arm64 needs
+  an `aarch64-linux-gnu` toolchain or an arm64 host.
+
+To repeat the spike, run by a person: create the two consumers in the
+workspace `ztmp/` (a `bin/` script, and a `flutter create --platforms
+macos,linux,windows` app whose `main()` calls the round trip and exits),
+`dart build cli` and `flutter build <os> --release` (Flutter under the
+workspace flutter lock), run them, and remove the folder afterwards. On a
+host without the package checked out, copy `tom_pqc` next to them and point
+the path dependency at the copy.

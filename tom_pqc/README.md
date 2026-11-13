@@ -53,8 +53,10 @@ collected undisposed. Dispose as soon as a secret is no longer needed.
 ## Platforms
 
 The build hook compiles the C code with the platform's C compiler (clang,
-gcc or MSVC, found by `native_toolchain_c`) for macOS (arm64, x64), Linux
-(x64, arm64) and Windows (x64). The random bytes come from the operating
+gcc or MSVC, found by `native_toolchain_c`) for the target of the build. The
+library is bundled by `dart test` / `dart run`, by `dart build cli` (in the
+bundle's `lib/`) and by Flutter desktop release builds, verified on macOS
+arm64, Linux x64 and Windows x64. The random bytes come from the operating
 system: `SecRandomCopyBytes` on macOS, `getrandom` on Linux,
 `BCryptGenRandom` on Windows. iOS and Android are not built yet.
 
@@ -76,7 +78,10 @@ dart test
 
 runs NIST's ACVP known-answer vectors for ML-KEM-768 (key generation,
 encapsulation, decapsulation with implicit rejection, and both key checks),
-the API's behaviour, and the licence checks.
+every ML-KEM-768 case of Project Wycheproof (key generation from seeds,
+encapsulation including unreduced and wrong-length keys, decapsulation
+including malformed, malleable and wrong-length ciphertexts and corrupted
+keys), the API's behaviour, and the licence checks.
 
 ## Licence
 

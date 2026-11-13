@@ -24,6 +24,8 @@ dependencies:
   meta: ^1.15.0
 
 dev_dependencies:
+  # SHA-256 of the pinned Wycheproof files (test/wycheproof_ml_kem_768_test.dart).
+  crypto: ^3.0.6
   lints: ^6.0.0
   path: ^1.9.0
   test: ^1.25.6
