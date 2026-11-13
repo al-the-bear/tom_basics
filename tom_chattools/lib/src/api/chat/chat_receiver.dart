@@ -21,14 +21,15 @@ class ChatReceiver {
 
   /// Create a receiver from a username/handle.
   const ChatReceiver.username(String username)
-      : this._(ChatReceiverType.username, username);
+    : this._(ChatReceiverType.username, username);
 
   /// Create a receiver from a phone number.
-  const ChatReceiver.phone(String phone) : this._(ChatReceiverType.phone, phone);
+  const ChatReceiver.phone(String phone)
+    : this._(ChatReceiverType.phone, phone);
 
   /// Create a receiver for a group/channel by ID.
   const ChatReceiver.group(String groupId)
-      : this._(ChatReceiverType.group, groupId);
+    : this._(ChatReceiverType.group, groupId);
 
   @override
   String toString() => 'ChatReceiver($type: $value)';

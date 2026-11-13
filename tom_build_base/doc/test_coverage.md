@@ -16,7 +16,7 @@ This document lists all testable features across `tom_build_base` and tracks tes
 | 1 | [Command Prefix Matching](#1-command-prefix-matching) | 24 | 24✅ | `v2/command_prefix_test.dart` | [→](#1-command-prefix-matching) |
 | 2 | [Execute Placeholder Resolver](#2-execute-placeholder-resolver) | 55 | 55✅ | `v2/execute_placeholder_test.dart` | [→](#2-execute-placeholder-resolver) |
 | 3 | [Macro Expansion](#3-macro-expansion) | 24 | 24✅ | `v2/macro_expansion_test.dart` | [→](#3-macro-expansion) |
-| 4 | [CLI Argument Parser](#4-cli-argument-parser) | 115 | 115✅ | `v2/core/cli_arg_parser_test.dart` | [→](#4-cli-argument-parser) |
+| 4 | [CLI Argument Parser](#4-cli-argument-parser) | 117 | 117✅ | `v2/core/cli_arg_parser_test.dart` | [→](#4-cli-argument-parser) |
 | 5 | [CommandDefinition](#5-commanddefinition) | 15 | 15✅ | `v2/core/command_definition_test.dart` | [→](#5-commanddefinition) |
 | 6 | [Completion Generator](#6-completion-generator) | 30 | 30✅ | `v2/core/completion_generator_test.dart` | [→](#6-completion-generator) |
 | 7 | [Features — Modes, Defines, Macros, Pipelines](#7-features--modes-defines-macros-pipelines) | 33 | 33✅ | `v2/core/features_test.dart` | [→](#7-features--modes-defines-macros-pipelines) |
@@ -33,7 +33,7 @@ This document lists all testable features across `tom_build_base` and tracks tes
 | 18 | [Folder Scanner](#18-folder-scanner) | 23 | 23✅ | `v2/traversal/folder_scanner_test.dart` | [→](#18-folder-scanner) |
 | 19 | [Nature Detector](#19-nature-detector) | 39 | 39✅ | `v2/traversal/nature_detector_test.dart` | [→](#19-nature-detector) |
 | 20 | [Nature Filter](#20-nature-filter) | 20 | 20✅ | `v2/traversal/nature_filter_test.dart` | [→](#20-nature-filter) |
-| 21 | [Filter Pipeline](#21-filter-pipeline) | 44 | 44✅ | `v2/traversal/filter_pipeline_test.dart` | [→](#21-filter-pipeline) |
+| 21 | [Filter Pipeline](#21-filter-pipeline) | 47 | 47✅ | `v2/traversal/filter_pipeline_test.dart` | [→](#21-filter-pipeline) |
 | 22 | [Build Order](#22-build-order) | 15 | 15✅ | `v2/traversal/build_order_test.dart` | [→](#22-build-order) |
 | 23 | [Traversal Info](#23-traversal-info) | 22 | 22✅ | `v2/traversal/traversal_info_test.dart` | [→](#23-traversal-info) |
 | 24 | [Build Base Integration](#24-build-base-integration) | 22 | 22✅ | `v2/traversal/build_base_integration_test.dart` | [→](#24-build-base-integration) |
@@ -62,7 +62,8 @@ This document lists all testable features across `tom_build_base` and tracks tes
 | 47 | [Language Natures](#47-language-natures) | 16 | 16✅ | `v2/traversal/language_natures_test.dart` | [→](#47-language-natures) |
 | 48 | [Project Listing](#48-project-listing) | 7 | 7✅ | `v2/traversal/project_listing_test.dart` | [→](#48-project-listing) |
 | 49 | [Broken Pipe](#49-broken-pipe) | 3 | 3✅ | `v2/core/broken_pipe_test.dart` | [→](#49-broken-pipe) |
-| — | **Total** | **1028** | **1028✅** | | |
+| 50 | [Option Suppression Refused](#50-option-suppression-refused) | 4 | 4✅ | `v2/core/option_suppression_test.dart` | [→](#50-option-suppression-refused) |
+| — | **Total** | **1037** | **1037✅** | | |
 
 > Every row links to a section, and the counts are measured from
 > `dart test --reporter json -j 1` rather than maintained by hand. Run it
@@ -480,11 +481,15 @@ Tests for the recently implemented features: modes, persistent defines, runtime 
 
 | ID | Feature | Status | Description |
 |----|---------|--------|-------------|
-| BB_FPL_1–8 | Chaining multiple filters | ✅ | Sequential filter application. |
-| BB_FPL_9–16 | Project/exclude glob patterns | ✅ | `--project` and `--exclude` globs. |
-| BB_FPL_17–24 | Module filtering | ✅ | Module boundary handling. |
-| BB_FPL_25–32 | Git-based traversal ordering | ✅ | Inner-first/outer-first git ordering. |
-| BB_FPL_33–40 | Combined filter scenarios | ✅ | Real-world multi-filter pipelines. |
+| BB-FLT-1–4, 30–34 | Project filter | ✅ | `--project` by folder pattern, `project_id` and name from `buildkit.yaml`, case-insensitive, mixed. |
+| BB-FLT-41–47 | Project filter by path | ✅ | Absolute paths (native, forward-slash, backslash) and paths through links. |
+| BB-FLT-5–8, 35–36 | Exclude filter | ✅ | Path patterns, names, globs, project ids and names. |
+| BB-FLT-9–14 | Test projects and combinations | ✅ | `zom_*` excluded by default, `--test`, `--test-only`; include and exclude together. |
+| BB-FLT-15–20 | Git-mode filters | ✅ | `--modules`, `--skip-modules`, path exclude and `zom_*` on the repositories of a workspace-shaped fixture. |
+| BB-FLT-21–24 | FolderScanner | ✅ | Recursive and root-only scans, recursion excludes, hidden folders. |
+| BB-FLT-25–27 | GitRepoFinder | ✅ | On a fixture tree, never the live workspace: nested and submodule-shaped (`.git` file) repositories found, those under `build/`, `node_modules/` and hidden folders not; none in a plain folder. |
+| BB-FLT-28–29 | FolderSorter | ✅ | Inner-first and outer-first order. |
+| BB-FLT-37–40 | RepositoryIdLookup | ✅ | Id to name, case-insensitive, unknown ids unchanged, `isRepositoryId`. |
 
 ---
 
@@ -1037,6 +1042,23 @@ die with an uncaught EPIPE and a stack trace. The fixtures in
 | BB-PIPE-1 | `stdout.writeln` into `head -1` | ✅ | One line, nothing on stderr, exit 0. |
 | BB-PIPE-2 | `isBrokenPipe` | ✅ | EPIPE (and the Windows codes) yes, other errors no. |
 | BB-PIPE-3 | A ToolRunner tool's `--help` into `head -1` | ✅ | Through ConsoleMarkdownSink: one line, nothing on stderr, exit 0. |
+
+---
+
+## 50. Option Suppression Refused
+
+**Test file:** `test/v2/core/option_suppression_test.dart`
+
+The commands of a run share one traversal, so an option cannot be taken away
+from one of them. `-X-` and `--name-` are refused instead of being read as an
+option with the value `-`.
+
+| ID | Feature | Status | Description |
+|----|---------|--------|-------------|
+| BB-SUPP-1 | `:cmd -s-` | ✅ | One argument error naming `-s-`; `scan` stays unset (not `-`). |
+| BB-SUPP-2 | Every form, either side of a command | ✅ | `-v-`, `-n-`, `-r-`, `--scan-`, `--verbose-` before and after a command; two at once give two errors. |
+| BB-SUPP-3 | Values are untouched | ✅ | `-sdir-`, `--scan dir-`, `--scan=-`, a lone `-` and ordinary options give no error. |
+| BB-SUPP-4 | ToolRunner refuses the run | ✅ | An `Error:` line naming `-v-`, a failed result, no command runs. |
 
 ---
 

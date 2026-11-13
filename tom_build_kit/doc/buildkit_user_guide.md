@@ -39,6 +39,7 @@ This package extends the shared infrastructure from **tom_build_base**:
   - [DCli Command](#dcli-command)
   - [Execute Command](#execute-command)
   - [Boundaries Command](#boundaries-command)
+  - [Projects Command](#projects-command)
   - [Status Command](#status-command)
 - [Command Prefix Matching](#command-prefix-matching)
 - [Help Topics](#help-topics)
@@ -61,7 +62,7 @@ This package extends the shared infrastructure from **tom_build_base**:
   - [Stdin Piping](#stdin-piping)
 - [Platform Filtering](#platform-filtering)
   - [Platform Aliases](#platform-aliases)
-- [Per-Tool Option Override](#per-tool-option-override)
+- [Options in Multi-Command Runs](#options-in-multi-command-runs)
 - [Project Scanning](#project-scanning)
   - [Scan Behavior](#scan-behavior)
   - [Exclusion Filters](#exclusion-filters)
@@ -448,6 +449,7 @@ Built-in commands run the respective tools directly via their Dart implementatio
 | `gitcheckout` | Checkout branches/tags across repositories |
 | `gitreset` | Reset repositories to specific state |
 | `gitsync` | Sync (fetch + merge/rebase) all repositories |
+| `projects` | List the projects buildkit works on; `--json` for one machine-readable document (see [Projects Command](#projects-command)) |
 | `status` | Show buildkit version, binary status, and git state |
 | `dcli` | Execute Dart scripts/expressions via dcli |
 | `execute` | Run shell commands in each folder with placeholder substitution (aliases: `exec`, `x`) |
@@ -704,6 +706,35 @@ A rule that matches nothing is reported, not skipped, so a rule that has rotted 
 | `--tests` | Also check `test/`, whatever the rules' `tests:` says |
 
 Run it by hand from the repository, or from a project's own check script; it is never scheduled.
+
+### Projects Command
+
+`:projects` (alias `proj`) lists the projects buildkit works on: exactly the
+folders a project command such as `:build` visits, with the same selection
+(`buildkit_master.yaml` `navigation:` defaults, skip markers, `-p`, `-r`,
+`--exclude-projects`, `--group`). It is how tools outside Dart, the VS Code
+extension among them, learn the workspace's projects.
+
+```bash
+bk :projects                 # path, id and natures per project, then the count
+bk :projects --json          # one JSON document on stdout
+bk :projects --all --json    # every project of the tree, past the navigation: excludes
+bk -r --group tom_ai :projects --json
+```
+
+`--all` leaves out the `navigation:` excludes of `buildkit_master.yaml`
+(which keep whole subtrees, e.g. `ai_build/**`, from the build commands); skip
+markers and the selection options still apply. The extension lists with it.
+
+The JSON document is `{formatVersion, tool, root, all, count, projects}`; each
+project is `{id, name, path, absolutePath, language, type, natures, version?,
+description?}`: `id` and `name` from the project's `buildkit.yaml`
+(`project_id`, `name`), else the name its project file states, else the folder
+name; `path` relative to the root with `/`; `type` the primary nature (e.g.
+`flutter`, `dart_package`, `python`); `natures` every nature (e.g. `git`,
+`buildkit`). Messages of the walk (skipped folders) go to stderr, so stdout
+holds the document alone. `formatVersion` is raised only for a change that is
+not backwards compatible.
 
 ### Status Command
 
@@ -1373,28 +1404,28 @@ core:
 
 ---
 
-## Per-Tool Option Override
+## Options in Multi-Command Runs
 
-When chaining commands, global options (like `--scan`, `--verbose`, `--dry-run`) are inherited by all steps. Use the `-X-` syntax to suppress a specific option for one command:
+When you chain commands, the global options (`--scan`, `--verbose`, `--dry-run`, ...) apply to every command of the run, wherever you write them, and the commands share one traversal. `buildkit -n :versioner :compiler` and `buildkit :versioner :compiler -n` are the same run. The same holds after a pipeline name: `buildkit test-simple --dry-run` is a dry run of the pipeline.
+
+What a command can have for itself:
 
 ```bash
-# Scan with cleanup but NOT with compiler
-buildkit -s . :cleanup -s- --project tom_* :compiler
+# --project / --exclude after a command narrow that command's projects
+buildkit -s . :cleanup --project tom_* :compiler
 
-# Verbose for versioner but not for runner
-buildkit -v :versioner :runner -v-
-
-# Dry-run for all except versioner
-buildkit -n :versioner -n- :compiler :runner
+# options the command declares itself go to that command
+buildkit :versioner --version 9.9.9
 ```
 
-| Suppression | Effect |
-|-------------|--------|
-| `-s-` | Suppress `--scan` for this command |
-| `-v-` | Suppress `--verbose` for this command |
-| `-n-` | Suppress `--dry-run` for this command |
+An option cannot be taken away from one command. `-X-` (e.g. `-s-`, `-v-`, `-n-`) and `--name-` (e.g. `--scan-`) are refused before anything runs:
 
-The `-X-` syntax works for any single-letter option flag.
+```text
+$ buildkit -v :versioner :runner -v-
+Error: -v-: per-command option suppression is not supported. The options of a run apply to all of its commands; run the command on its own without the option instead.
+```
+
+Run such a command on its own instead: `buildkit -v :versioner` and then `buildkit :runner`.
 
 ---
 

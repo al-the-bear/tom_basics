@@ -24,11 +24,12 @@ which messenger you target.
   Telegram connection; nothing else changes in your code.
 - **Two ways to receive.** Block-and-wait with `getMessages` (with `minWait` /
   `maxWait` / `interval` tuning) or subscribe to the live `onMessage` stream.
-- **Telegram today.** A complete Telegram Bot API implementation (via
-  [`televerse`](https://pub.dev/packages/televerse)) ships now; WhatsApp and
-  Signal are reserved in the settings model for future implementations.
+- **Telegram today.** A Telegram Bot API implementation that talks to the
+  Bot API over HTTP itself ships now; WhatsApp and Signal are reserved in the
+  settings model for future implementations.
 
-Pure Dart, no Flutter dependency — works in servers, bots, and CLI tools.
+Pure Dart, no Flutter dependency and no third-party dependency — works in
+servers, bots, and CLI tools.
 
 ---
 
@@ -36,7 +37,7 @@ Pure Dart, no Flutter dependency — works in servers, bots, and CLI tools.
 
 ```yaml
 dependencies:
-  tom_chattools: ^1.0.2
+  tom_chattools: ^2.0.0
 ```
 
 or from the command line:
@@ -45,9 +46,8 @@ or from the command line:
 dart pub add tom_chattools
 ```
 
-Requires the Dart SDK `^3.10.4`. Pulls in
-[`televerse`](https://pub.dev/packages/televerse) for the Telegram backend. For
-Telegram you also need a **bot token** from
+Requires the Dart SDK `^3.10.4` and nothing else: the Telegram backend calls
+the Bot API with `dart:io`. For Telegram you also need a **bot token** from
 [@BotFather](https://t.me/BotFather) — see [Telegram setup](#telegram-setup).
 
 ---
@@ -83,7 +83,7 @@ Telegram you also need a **bot token** from
 | ---- | ------- |
 | `ChatSettings` | Platform-agnostic, auto-detected connection settings |
 | `ChatSettings.telegram(token, …)` | Convenience constructor for Telegram |
-| `TelegramChatConfig` | Telegram-specific config (created internally by `connect`) |
+| `TelegramChatConfig` | Telegram-specific config (created internally by `connect`): token, polling, `apiBaseUrl` (a local Bot API server; `ChatSettings.telegramApiBaseUrl` sets it through `connect`) |
 
 ---
 
@@ -288,6 +288,11 @@ api.onMessage.listen((msg) {
 });
 ```
 
+A Telegram message also carries `rawData`: `telegram_message`, the Bot API
+`Message` as Telegram sent it (a JSON map), and `telegram_chat_id`, the chat
+it came from (in a group, not the sender's id). A refused Bot API call throws
+`TelegramApiException` (`method`, `errorCode`, `description`).
+
 To pull only certain kinds in a `getMessages` call, pass a `ChatMessageFilter`:
 
 ```dart
@@ -330,7 +335,7 @@ package:tom_chattools/tom_chattools.dart   (single export surface)
 │
 └── telegram/                  ← Telegram implementation
     ├── TelegramChatConfig         token + polling options
-    └── TelegramChat               ChatApi over televerse
+    └── TelegramChat               ChatApi over the Bot API (HTTP, long polling)
                                    (future: WhatsApp, Signal)
 ```
 
@@ -410,7 +415,6 @@ other messengers as their implementations land.
 
 - [LICENSE](LICENSE) — BSD-3-Clause licence text.
 - [Telegram Bot API](https://core.telegram.org/bots/api) — the underlying API.
-- [`televerse`](https://pub.dev/packages/televerse) — the Telegram client library.
 - [BotFather commands](https://core.telegram.org/bots#6-botfather) — bot administration.
 - Source library docs — every public type in `lib/src/` carries dartdoc.
 
@@ -418,7 +422,7 @@ other messengers as their implementations land.
 
 ## Status
 
-Stable (`1.0.2`). Telegram is fully implemented; `ChatSettings` reserves
+Stable (`2.0.0`). Telegram is fully implemented; `ChatSettings` reserves
 WhatsApp and Signal slots for future backends. The public API is
 platform-agnostic, so adding a backend does not change application code.
 `dart analyze` is clean.

@@ -254,6 +254,12 @@ These options are part of `commonOptions` in the V2 `ToolRunner` framework and a
 
 **`--dump-definitions`** serializes the tool's complete definition — all commands, options, nature requirements, and features — as YAML. This is used by host tools for auto-discovery during [nested tool wiring](tool_inheritance_and_nesting.md).
 
+### Options and commands
+
+The navigation and framework options of a run apply to all of its commands, wherever they stand: `buildkit -n :versioner :compiler` and `buildkit :versioner :compiler -n` are the same run, and the commands share one traversal. Only `--project` / `--exclude` written after a command narrow that one command's projects; options a command declares itself go to that command. An option written after a pipeline name counts like one before it (`buildkit test-simple --dry-run` is a dry run).
+
+There is no way to take an option away from one command. `-X-` (one letter, e.g. `-s-`, `-v-`) and `--name-` (e.g. `--scan-`) are refused with an error before anything runs, rather than read as an option with the value `-`; run that command on its own without the option instead. A value ending in a dash is still a value: `-sdir-` scans `dir-`. `CliArgs.argumentErrors` holds the refusals for a caller that parses arguments itself.
+
 ## Implementation Guide
 
 ### Adding Navigation to Your Tool

@@ -21,6 +21,10 @@ class ChatSettings {
   /// Telegram bot token from @BotFather.
   static const String telegramToken = 'TELEGRAM_TOKEN';
 
+  /// Key for the Telegram Bot API root (default `https://api.telegram.org`):
+  /// a local Bot API server, or a test double.
+  static const String telegramApiBaseUrl = 'TELEGRAM_API_BASE_URL';
+
   // ============ Future Platform Settings ============
 
   /// WhatsApp Business API token (future).

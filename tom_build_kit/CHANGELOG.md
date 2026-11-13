@@ -1,3 +1,32 @@
+## 1.20.0
+
+### Changed — `-X-` is refused (tom_build_base 2.28.0)
+
+The user guide described `-X-` (`-s-`, `-v-`, `-n-`) as taking an option away
+from one command of a multi-command run. That never existed: the commands of a
+run share one traversal, and `buildkit :versioner -s-` read `-s-` as
+`--scan -`. On tom_build_base 2.28.0, `-X-` and `--name-` are refused with an
+error before anything runs. The guide's "Options in Multi-Command Runs" section
+says what holds: the options of a run apply to all of its commands, wherever
+they stand, also after a pipeline name. BKT_OPT01 tests the refusal; BKT_DRY01
+(an option after a pipeline name, bug #15) runs again instead of being
+skipped.
+
+## 1.19.0
+
+### Added — `:projects`: the projects buildkit works on
+
+- `buildkit :projects` lists every project a project command would visit
+  (the same traversal, `buildkit_master.yaml` navigation defaults, `-p`, `-r`,
+  `--exclude-projects`, `--group`) with id, name, path and natures;
+  `--json` prints one JSON document (`formatVersion` 1) for callers outside
+  Dart. The VS Code extension lists projects with it instead of the retired
+  generated workspace manifest (tom_build_base ^2.27.0, `listProjectsFor`).
+  `--all` lists every project of the tree, past the `navigation:` excludes.
+  Alias `proj`. BK-PRJ-1..5.
+- The primary nature of `:build` / `:test` / `:clean` is tom_build_base's
+  `primaryProjectNature` (the same order as before).
+
 ## 1.18.0
 
 ### Changed — dcli is `tom_dcli`

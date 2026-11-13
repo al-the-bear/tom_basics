@@ -25,6 +25,7 @@ import 'executors/git_executors.dart';
 import 'executors/findproject_executor.dart';
 import 'executors/publisher_executor.dart';
 import 'executors/runner_executor.dart';
+import 'executors/projects_executor.dart';
 import 'executors/status_executor.dart';
 import 'executors/unreferenced_executor.dart';
 import 'executors/versioner_executor.dart';
@@ -313,6 +314,7 @@ Map<String, CommandExecutor> createBuildkitExecutors() {
     'dependencies': DependenciesExecutor(),
     'boundaries': BoundariesExecutor(),
     'publisher': PublisherExecutor(),
+    'projects': ProjectsExecutor(),
     'status': StatusExecutor(),
     'buildsorter': BuildSorterExecutor(),
     'unreferenced': UnreferencedExecutor(),

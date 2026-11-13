@@ -257,7 +257,18 @@ class WorkspaceNavigationArgs {
   ///
   /// This allows buildkit to pass navigation options to underlying commands
   /// without duplicating option definitions.
-  List<String> toArgs({String? rootPath, Set<String> suppress = const {}}) {
+  ///
+  /// [suppress] (short option letters to leave out) belonged to per-command
+  /// option suppression, which does not exist: the parser refuses `-X-`.
+  /// Nothing passes it; it goes with the next major release.
+  List<String> toArgs({
+    String? rootPath,
+    @Deprecated(
+      'Per-command option suppression does not exist (the parser refuses '
+      '`-X-`); removed in the next major release.',
+    )
+    Set<String> suppress = const {},
+  }) {
     final args = <String>[];
 
     if (rootPath != null && !suppress.contains('R')) {

@@ -166,6 +166,11 @@ class CliArgs {
   // Extra options captured as key-value pairs
   final Map<String, dynamic> extraOptions;
 
+  /// Arguments the parser refused, one message each (e.g. `-s-`: per-command
+  /// option suppression is not supported). [ToolRunner] reports them and
+  /// stops before anything runs; a caller parsing by hand checks it itself.
+  final List<String> argumentErrors;
+
   const CliArgs({
     this.scan,
     this.recursive = false,
@@ -209,6 +214,7 @@ class CliArgs {
     this.commands = const [],
     this.commandArgs = const {},
     this.extraOptions = const {},
+    this.argumentErrors = const [],
   });
 
   /// Convert to ProjectTraversalInfo.
@@ -415,6 +421,7 @@ class CliArgs {
     List<String>? commands,
     Map<String, PerCommandArgs>? commandArgs,
     Map<String, dynamic>? extraOptions,
+    List<String>? argumentErrors,
   }) {
     return CliArgs(
       scan: scan ?? this.scan,
@@ -460,6 +467,7 @@ class CliArgs {
       commands: commands ?? this.commands,
       commandArgs: commandArgs ?? this.commandArgs,
       extraOptions: extraOptions ?? this.extraOptions,
+      argumentErrors: argumentErrors ?? this.argumentErrors,
     );
   }
 
@@ -546,6 +554,12 @@ class CliArgParser {
   CliArgParser({this.toolDefinition, this.allowedOptions = const []});
 
   /// Parse command-line arguments.
+  /// `-X-` (one letter) or `--name-`: the per-command suppression syntax.
+  /// `-sdir-` stays `-s` with the value `dir-`.
+  static final _suppressionForm = RegExp(
+    r'^(-[A-Za-z]|--[A-Za-z][A-Za-z0-9-]*)-$',
+  );
+
   CliArgs parse(List<String> args) {
     final result = _ParseState();
 
@@ -570,6 +584,21 @@ class CliArgParser {
         result.commands.add(cmdName);
         result.currentCommand = cmdName;
         result.commandArgs[cmdName] = _PerCommandState();
+        i++;
+        continue;
+      }
+
+      // `-X-` / `--name-` would take an option away from one command of a
+      // multi-command run, but the run's commands share one traversal, so
+      // there is nothing per command to take it from. Refused rather than
+      // read as an option with the value `-` (`-s-` used to become
+      // `--scan -`).
+      if (_suppressionForm.hasMatch(arg)) {
+        result.argumentErrors.add(
+          '`$arg`: per-command option suppression is not supported. The '
+          'options of a run apply to all of its commands; run the command on '
+          'its own without the option instead.',
+        );
         i++;
         continue;
       }
@@ -1175,6 +1204,7 @@ class CliArgParser {
 
 // Internal parse state
 class _ParseState {
+  final List<String> argumentErrors = [];
   String? scan;
   bool scanExplicitlySet = false;
   bool recursive = false;
@@ -1267,6 +1297,7 @@ class _ParseState {
         ),
       ),
       extraOptions: extraOptions,
+      argumentErrors: argumentErrors,
     );
   }
 }

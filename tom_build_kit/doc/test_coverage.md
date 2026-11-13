@@ -29,7 +29,9 @@ This document lists all testable features across buildkit tools and tracks test 
 | 14 | [Built-in Commands — Parsing & Resolution](#14-built-in-commands--parsing--resolution) | 19 | 19✅ | `builtin_commands_test.dart` | [→](#14-built-in-commands--parsing--resolution) |
 | 15 | [Unreferenced — Export Audit](#15-unreferenced--export-audit) | 9 | 9✅ | `unreferenced_exports_test.dart` | [→](#15-unreferenced--export-audit) |
 | 16 | [Build, Test, Clean — Per Nature](#16-build-test-clean--per-nature) | 7 | 7✅ | `project_action_test.dart` | [→](#16-build-test-clean--per-nature) |
-| — | **Total** | **162** | **162✅** | | |
+| 17 | [Projects — The Project Listing](#17-projects--the-project-listing) | 5 | 5✅ | `projects_command_test.dart` | [→](#17-projects--the-project-listing) |
+| 18 | [Versioner — Build Number](#2-versioner--version-file-generation) | 5 | 5✅ | `versioner_build_number_test.dart` | [→](#2-versioner--version-file-generation) |
+| — | **Total** | **172** | **172✅** | | |
 
 ---
 
@@ -196,9 +198,9 @@ Uses workspace-level pipeline configuration from `buildkit_master.yaml`.
 | BKT_HLP01 | `--help` shows usage | ✅ | Run `buildkit --help`. Verify usage text displayed. |
 | BKT_CMD01 | Direct command execution (`:versioner`) | ✅ | Run `buildkit :versioner --project _build`. Verify versioner executes. |
 | BKT_PIP01 | Pipeline execution (`build`, `clean`) | ✅ | Run `buildkit clean --project _build`. Verify pipeline steps execute in order. |
-| BKT_DRY01 | `--dry-run` on pipeline (flags after pipeline name) | ✅ | Bug #15 FIXED: warning added when known flags appear after pipeline name. Test skipped since behavior is by design. |
-| BKT_DRY02 | `--dry-run` before pipeline name (workaround) | ✅ | Run `buildkit --dry-run --project _build test-simple`. Verify [DRY RUN] markers and no execution. Documents workaround for bug #15. |
-| BKT_OPT01 | Per-step option suppression (`-s-`, `-v-`) | ⏭ skipped: not implemented (build_tom aft_kit-52) | Run `buildkit :versioner -s- --project _build`. Verify `-s` not passed to versioner. |
+| BKT_DRY01 | `--dry-run` after the pipeline name | ✅ | `buildkit test-simple --project tom_ai/basics/tom_build_kit --dry-run`: an option after a pipeline name counts like one before it (bug #15 fixed); [DRY RUN] markers, no step executed. |
+| BKT_DRY02 | `--dry-run` before the pipeline name | ✅ | The same run with the flags first: [PIPELINE:shell] markers, no step executed. |
+| BKT_OPT01 | Per-step option suppression (`-s-`) is refused | ✅ | `buildkit --project tom_ai/basics/tom_build_kit --dry-run :versioner -s-` fails with an `Error:` naming `-s-` ("not supported") and does not scan `<root>/-`. |
 | BKT_SHL01 | Shell command execution in pipeline | ✅ | Configure pipeline step with `shell echo hello`. Run. Verify "hello" in output. |
 | BKT_XPJ01 | `--exclude-projects` filters pipeline targets | ✅ | Run `buildkit build --exclude-projects 'zom_*'`. Verify no `zom_` projects processed by any pipeline step. |
 | BKT_XPJ02 | `--exclude` combined with `--exclude-projects` | ✅ | Run `buildkit build --exclude '*.g.dart' --exclude-projects 'xternal/tom_module_basics/*'`. Verify both file-level and project-level exclusions applied independently. |
@@ -512,3 +514,16 @@ The integration suites run on the machine's workspace clone (tom_test_support `T
 | BK-ACT-6 | Clean | ✅ | Default paths and globs deleted, sources kept. |
 | BK-ACT-7 | Bump | ✅ | `:bumpversion` in package.json, pyproject.toml, Cargo.toml, pom.xml; Go skipped. |
 
+---
+
+## 17. Projects — The Project Listing
+
+**Test file:** `test/projects_command_test.dart`
+
+| ID | Feature | Status | Description |
+|----|---------|--------|-------------|
+| BK-PRJ-1 | JSON | ✅ | One document: format version, root, count; each project with identity from `buildkit.yaml`, path, language, type, natures, version; skipped and nested projects left out. |
+| BK-PRJ-2 | Selection | ✅ | `-r` lists nested fixtures; `-p` and `--exclude-projects` select as for every project command. |
+| BK-PRJ-3 | Table | ✅ | Without `--json`: path, id, natures per line and the count. |
+| BK-PRJ-4 | `-R` | ✅ | Run from another directory with `-R` and `-s`, the listing is of that root. |
+| BK-PRJ-5 | `--all` | ✅ | The `navigation:` excludes of `buildkit_master.yaml` apply by default and not with `--all`. |

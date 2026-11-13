@@ -1,3 +1,22 @@
+## 2.28.0
+
+### Changed — `-X-` is refused, not read as an option with the value `-`
+
+`buildkit :versioner -s-` read `-s-` as `-s` with the value `-`, a global
+`--scan -`, and failed later with a puzzling "matched no project ... (scanned
+<root>/-)". The guide described `-X-` as taking an option away from one command
+of a multi-command run, but the commands of a run share one traversal, so
+there is nothing per command to take an option from. The parser now refuses
+`-X-` (one letter) and `--name-` with a clear message in
+`CliArgs.argumentErrors`, and `ToolRunner` prints each as `Error: ...` and
+fails before anything runs. Values ending in a dash are unchanged (`-sdir-` is
+`--scan dir-`). BB-SUPP-1..4.
+
+### Deprecated
+
+`WorkspaceNavigationArgs.toArgs(suppress:)`: nothing passes it, and the
+suppression it served does not exist. Removed in the next major release.
+
 ## 2.27.0
 
 ### Fixed — a tool whose output is cut off exits quietly

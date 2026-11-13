@@ -1,6 +1,6 @@
 # Tom Crypto
 
-Published on pub.dev as [`tom_crypto` 1.4.0](https://pub.dev/packages/tom_crypto).
+Published on pub.dev as [`tom_crypto` 1.5.0](https://pub.dev/packages/tom_crypto).
 
 > Part of the **Tom framework** by al-the-bear.
 > © 2024–2026 Peter Nicolai Alexis Kyaw — BSD-3-Clause, see [LICENSE](LICENSE).
@@ -46,7 +46,7 @@ command-line tools, and builds on [`pointycastle`](https://pub.dev/packages/poin
 
 ```yaml
 dependencies:
-  tom_crypto: ^1.1.0
+  tom_crypto: ^1.5.0
 ```
 
 or from the command line:
@@ -130,8 +130,10 @@ of your own (a TOTP shared secret, an API key) rather than reaching for
 
 | Capability | API | Notes |
 | ---------- | --- | ----- |
-| Hold a secret | `TomProtectedValue.of(secret)` | XOR-ed with a per-instance salt from `TomSecureBytes` |
-| Read it | `reveal()` | The one accessor — every read is a call a reader can find |
+| Hold a secret | `TomProtectedValue.of(secret)`, `TomProtectedValue.fromBytes(bytes)` | XOR-ed with a per-instance salt from `TomSecureBytes`; `fromBytes` zeroes the buffer it is given |
+| Read it as text | `reveal()` | A `String`, which cannot be wiped afterwards |
+| Read its bytes | `withRevealed((bytes) => ...)`, `revealInto(buffer)` | `withRevealed` zeroes the bytes when the callback returns; `revealInto` writes into the caller's buffer |
+| Drop it | `dispose()` | Zeroes the masked bytes and the salt; a read afterwards throws `StateError` |
 | Compare it | `digest`, `==` | SHA-256 of the plaintext; two values of one secret are equal |
 | Show it | `toString()`, `TomProtectedValue.mask` | Always the mask, never the secret |
 
@@ -386,7 +388,7 @@ package:tom_crypto/tom_crypto.dart   (the barrel; protected_value.dart is a seco
 | `rsaSign` / `rsaVerify` | RSA-SHA-256 signatures |
 | `RsaKeyHelper` | Key generation and PEM parse/encode |
 | `TomSecureBytes` | The package's only draw of raw random bytes |
-| `TomProtectedValue` | A secret in memory, read only through `reveal()` |
+| `TomProtectedValue` | A secret in memory, read only through `reveal()`, `withRevealed()` or `revealInto()` |
 
 The JWT layer and the protected value are the parts that reach into
 `tom_basics` (for `TomBaseException` and `tomLog`, and for `tomSha256Hex`); the password and RSA layers depend only on
