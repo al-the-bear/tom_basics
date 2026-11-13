@@ -1,3 +1,15 @@
+## 2.30.1
+
+### Fixed — help shows only the options a tool has
+
+- `--help` printed hidden options (`OptionDefinition(hidden: true)`); it no
+  longer does.
+- A tool that visits no projects (neither project nor git traversal) no
+  longer lists the options that only steer a traversal or a nested run
+  (`--exclude`, `--test`, `--test-only`, `--execution-root`, `--modes`,
+  `--nested`) in its help and shell completion. Parsing is unchanged.
+  BB-STA-5.
+
 ## 2.30.0
 
 ### Added — single-command tools that visit no projects

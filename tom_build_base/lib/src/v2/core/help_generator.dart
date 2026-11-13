@@ -251,7 +251,7 @@ class HelpGenerator {
 
   /// Write options in formatted help style.
   static void _writeOptions(StringBuffer buf, List<OptionDefinition> options) {
-    for (final opt in options) {
+    for (final opt in options.where((o) => !o.hidden)) {
       final shortPart = opt.abbr != null ? '-${opt.abbr}, ' : '    ';
       final longPart = '--${opt.name}';
 

@@ -5,7 +5,7 @@ import 'package:tom_build_base/tom_build_base_v2.dart';
 /// neither project nor git traversal) runs once, and its own global options
 /// keep their short forms even where a navigation option has the same letter.
 ///
-/// Test IDs: BB-STA-1..4.
+/// Test IDs: BB-STA-1..5.
 
 const _server = ToolDefinition(
   name: 'standalone',
@@ -94,16 +94,14 @@ void main() {
     await run(['--instance=watcher', '--directory=/b', '--port=1']);
     final first = recorder.runs[0].extraOptions;
     final second = recorder.runs[1].extraOptions;
-    expect((first['instance'], first['directory'], first['foreground']), (
-      'watcher',
-      '/a',
-      true,
-    ));
-    expect((second['instance'], second['directory'], second['port']), (
-      'watcher',
-      '/b',
-      '1',
-    ));
+    expect(
+      (first['instance'], first['directory'], first['foreground']),
+      ('watcher', '/a', true),
+    );
+    expect(
+      (second['instance'], second['directory'], second['port']),
+      ('watcher', '/b', '1'),
+    );
   });
 
   test('BB-STA-4: --version prints the versionString; nothing runs '
@@ -111,6 +109,35 @@ void main() {
     final result = await run(['--version']);
     expect(result.success, isTrue);
     expect(out.toString().split('\n').first, 'Standalone 1.2.3+7');
+    expect(recorder.runs, isEmpty);
+  });
+
+  test('BB-STA-5: --help shows the tool\'s options and the shared ones, not '
+      'hidden options and not the traversal options it cannot use '
+      '[2026-11-13]', () async {
+    final result = await run(['--help']);
+    expect(result.success, isTrue);
+    final text = out.toString();
+    for (final shown in [
+      '--port',
+      '--directory',
+      '--foreground',
+      '--help',
+      '--version',
+      '--verbose',
+    ]) {
+      expect(text, contains(shown));
+    }
+    for (final hidden in [
+      '--instance',
+      '--exclude',
+      '--test-only',
+      '--execution-root',
+      '--modes',
+      '--nested',
+    ]) {
+      expect(text, isNot(contains(hidden)), reason: hidden);
+    }
     expect(recorder.runs, isEmpty);
   });
 }

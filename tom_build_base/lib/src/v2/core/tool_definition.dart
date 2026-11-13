@@ -16,6 +16,16 @@ enum ToolMode {
 }
 
 /// Navigation features supported by a tool.
+/// The common options that only steer a traversal or a nested run.
+const _traversalOnlyOptions = {
+  'exclude',
+  'test',
+  'test-only',
+  'execution-root',
+  'modes',
+  'nested',
+};
+
 class NavigationFeatures {
   /// Whether tool supports project traversal.
   final bool projectTraversal;
@@ -316,10 +326,16 @@ class ToolDefinition {
     // `--dry-run` is offered only by tools that implement it: ToolRunner
     // refuses the flag when `features.dryRun` is false, so advertising it
     // there would promise a mode the tool does not have.
+    // A tool that visits no projects (neither project nor git traversal) has
+    // no use for the options that steer a traversal or a nested run.
+    final visitsNoProjects =
+        !features.projectTraversal && !features.gitTraversal;
     result.addAll(
-      features.dryRun
-          ? commonOptions
-          : commonOptions.where((o) => o.name != 'dry-run'),
+      commonOptions.where(
+        (o) =>
+            (features.dryRun || o.name != 'dry-run') &&
+            !(visitsNoProjects && _traversalOnlyOptions.contains(o.name)),
+      ),
     );
 
     // Add feature-specific options (not in commonOptions)
