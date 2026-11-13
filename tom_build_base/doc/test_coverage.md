@@ -64,7 +64,8 @@ This document lists all testable features across `tom_build_base` and tracks tes
 | 49 | [Broken Pipe](#49-broken-pipe) | 3 | 3✅ | `v2/core/broken_pipe_test.dart` | [→](#49-broken-pipe) |
 | 50 | [Option Suppression Refused](#50-option-suppression-refused) | 4 | 4✅ | `v2/core/option_suppression_test.dart` | [→](#50-option-suppression-refused) |
 | 51 | [--list Runs Nothing](#51---list-runs-nothing) | 7 | 7✅ | `v2/core/list_flag_test.dart` | [→](#51---list-runs-nothing) |
-| — | **Total** | **1044** | **1044✅** | | |
+| 52 | [Standalone Tools](#52-standalone-tools) | 4 | 4✅ | `v2/core/standalone_tool_test.dart` | [→](#52-standalone-tools) |
+| — | **Total** | **1048** | **1048✅** | | |
 
 > Every row links to a section, and the counts are measured from
 > `dart test --reporter json -j 1` rather than maintained by hand. Run it
@@ -1079,6 +1080,22 @@ command the projects it would run on, with a pipeline its steps.
 | BB-LIST-5 | `--list :define` | ✅ | The master file is unchanged. |
 | BB-LIST-6 | `--list <pipeline>` | ✅ | Its steps are listed; its shell step does not run. |
 | BB-LIST-7 | `handlesListMode` | ✅ | An executor with its own list mode is called with `listOnly` set; the others are not. |
+
+---
+
+## 52. Standalone Tools
+
+**Test file:** `test/v2/core/standalone_tool_test.dart`
+
+A single-command tool that visits no projects (a daemon, a server) runs once,
+and its own global options keep their short forms.
+
+| ID | Feature | Status | Description |
+|----|---------|--------|-------------|
+| BB-STA-1 | Runs once | ✅ | `executeWithoutTraversal` once, no project visited; its failure is the run's. |
+| BB-STA-2 | Own short forms win | ✅ | `-p` is the tool's `--port`, `-f` its `--foreground`; no `--project`, no `--force`. |
+| BB-STA-3 | Value forms, hidden option, stray argument | ✅ | `--instance watcher` and `--instance=watcher`; a positional argument does not stop the run. |
+| BB-STA-4 | `--version` | ✅ | Prints the `versionString`; nothing runs. |
 
 ---
 

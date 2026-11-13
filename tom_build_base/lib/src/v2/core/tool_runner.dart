@@ -650,6 +650,13 @@ class ToolRunner {
       return const ToolResult.failure('No default executor configured');
     }
 
+    // A single-command tool that visits no projects (a daemon, a server:
+    // neither project nor git traversal) runs once, in the current directory.
+    if (!_effectiveTool.features.projectTraversal &&
+        !_effectiveTool.features.gitTraversal) {
+      return executor.executeWithoutTraversal(cliArgs);
+    }
+
     return _runWithTraversal(executor, null, cliArgs);
   }
 

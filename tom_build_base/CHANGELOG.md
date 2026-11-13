@@ -1,3 +1,21 @@
+## 2.30.0
+
+### Added — single-command tools that visit no projects
+
+A `ToolMode.singleCommand` tool whose features have neither project nor git
+traversal (`NavigationFeatures.minimal`) runs its default executor's
+`executeWithoutTraversal` once, in the current directory, instead of walking
+the workspace: daemons and servers (the process monitor, the ledger server)
+get the shared `--help`, `--version` and option parsing without a traversal.
+Single-command tools with traversal are unchanged.
+
+### Changed — a tool's own global options keep their short forms
+
+A short form a tool declares for one of its own global options now means
+that option even where a navigation option has the same letter (`-p` was
+always `--project`, `-f` always `--force`): a server's `-p` is its port. No
+tool declared such a clash before, so nothing else changes. BB-STA-1..4.
+
 ## 2.29.0
 
 ### Fixed — `--list` runs nothing

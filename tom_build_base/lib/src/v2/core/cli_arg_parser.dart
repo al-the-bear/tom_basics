@@ -1072,6 +1072,13 @@ class CliArgParser {
   }
 
   String _shortToLong(String short, {String? currentCommand}) {
+    // A short form the tool declares for one of its own global options is
+    // that option, even where a navigation option has the same letter: a
+    // server's `-p` is its port, not `--project`.
+    for (final opt in toolDefinition?.globalOptions ?? const []) {
+      if (opt.abbr == short) return opt.name;
+    }
+
     const mapping = {
       's': 'scan',
       'r': 'recursive',

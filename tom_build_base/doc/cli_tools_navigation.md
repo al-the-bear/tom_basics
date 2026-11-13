@@ -255,6 +255,15 @@ These options are part of `commonOptions` in the V2 `ToolRunner` framework and a
 
 **`--dump-definitions`** serializes the tool's complete definition — all commands, options, nature requirements, and features — as YAML. This is used by host tools for auto-discovery during [nested tool wiring](tool_inheritance_and_nesting.md).
 
+### Tools that visit no projects
+
+A single-command tool whose features have neither project nor git traversal
+(`NavigationFeatures.minimal`), such as a daemon or a server, runs its
+executor's `executeWithoutTraversal` once in the current directory; it gets
+`--help`, `--version` and option parsing from ToolRunner all the same. A short
+form a tool declares for its own global options (`-p` for `--port`) means that
+option even where a navigation option has the same letter.
+
 ### Options and commands
 
 The navigation and framework options of a run apply to all of its commands, wherever they stand: `buildkit -n :versioner :compiler` and `buildkit :versioner :compiler -n` are the same run, and the commands share one traversal. Only `--project` / `--exclude` written after a command narrow that one command's projects; options a command declares itself go to that command. An option written after a pipeline name counts like one before it (`buildkit test-simple --dry-run` is a dry run).
