@@ -235,24 +235,32 @@ void main() {
       expect(projects.isNotEmpty, isTrue);
     });
 
-    test('runner excludes devops/tom_build_cli by basename', () async {
-      log.start('EXCL_BN05', 'runner excludes tom_build_cli by basename');
+    test('runner excludes core/tom_core_kernel by basename', () async {
+      log.start('EXCL_BN05', 'runner excludes tom_core_kernel by basename');
+      // Listed without the exclusion (it has a build.yaml), so the exclusion
+      // below is what removes it.
+      final baseline = parseListOutput(await runToolList('runner'));
+      expect(
+        baseline.map(p.basename),
+        contains('tom_core_kernel'),
+        reason: 'tom_core_kernel must be a runner project for this test',
+      );
       final stdout = await runToolList(
         'runner',
-        extraArgs: ['--exclude-projects', 'tom_build_cli'],
+        extraArgs: ['--exclude-projects', 'tom_core_kernel'],
       );
       final projects = parseListOutput(stdout);
-      // No project should match basename tom_build_cli
+      // No project should match basename tom_core_kernel
       bool allExcluded = true;
       for (final proj in projects) {
-        if (p.basename(proj) == 'tom_build_cli') allExcluded = false;
+        if (p.basename(proj) == 'tom_core_kernel') allExcluded = false;
         expect(
           p.basename(proj),
-          isNot(equals('tom_build_cli')),
-          reason: 'tom_build_cli should be excluded',
+          isNot(equals('tom_core_kernel')),
+          reason: 'tom_core_kernel should be excluded',
         );
       }
-      log.expectation('no tom_build_cli basename in list', allExcluded);
+      log.expectation('no tom_core_kernel basename in list', allExcluded);
       log.expectation(
         'other projects remain (found ${projects.length})',
         projects.isNotEmpty,
@@ -548,7 +556,7 @@ void main() {
 
       // Discover a real project the runner tool lists (one with a build.yaml)
       // rather than hardcoding a path. Layout-agnostic: the previous literal
-      // 'devops/tom_build_cli' assumed a flat root layout, but in this nested
+      // 'devops/<package>' assumed a flat root layout, but in this nested
       // checkout projects live under tom_ai/..., so placeSkipFile threw
       // PathNotFoundException. The runner --list output interleaves
       // '-> :runner skipped/listed' status lines with the clean project-path

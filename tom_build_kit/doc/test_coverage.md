@@ -251,7 +251,7 @@ Comprehensive cross-tool tests for all project exclusion features. Tests every t
 | EXCL_BN02 | Cleanup excludes by basename | ✅ | `--exclude-projects '_build'`. Verify `_build` absent. |
 | EXCL_BN03 | Compiler excludes by basename | ✅ | `--exclude-projects '_build'`. Verify `_build` absent. |
 | EXCL_BN04 | Dependencies excludes by basename | ✅ | `--exclude-projects '_build'`. Verify `_build` absent. |
-| EXCL_BN05 | Runner excludes by basename | ✅ | `--exclude-projects 'tom_build_cli'`. Verify no `tom_build_cli` basename. |
+| EXCL_BN05 | Runner excludes by basename | ✅ | `tom_core_kernel` is listed without the exclusion; with `--exclude-projects 'tom_core_kernel'` no `tom_core_kernel` basename. |
 | EXCL_BN06 | VersionBump excludes by basename | ✅ | `--exclude-projects '_build'`. Verify `_build` absent from `--list`. Bug #13 FIXED. |
 | EXCL_BN07 | Glob pattern excludes multiple | ✅ | `--exclude-projects 'tom_core_*'`. Verify no `tom_core_*` basenames. |
 
@@ -272,7 +272,7 @@ Comprehensive cross-tool tests for all project exclusion features. Tests every t
 | EXCL_SF02 | Skip file excludes from cleanup | ✅ | Place skip file in `_build`. Verify absent. |
 | EXCL_SF03 | Skip file excludes from compiler | ✅ | Place skip file in `_build`. Verify absent. |
 | EXCL_SF04 | Skip file excludes from dependencies | ✅ | Place skip file in `_build`. Verify absent. |
-| EXCL_SF05 | Skip file excludes from runner | ✅ | Place skip file in `devops/tom_build_cli`. Verify absent. |
+| EXCL_SF05 | Skip file excludes from runner | ✅ | Place a skip file in a project the runner lists. Verify absent. |
 | EXCL_SF06 | Skip file excludes from versionbump | ✅ | Place skip file. Verify versionbump excludes project. Bug #13 FIXED. |
 | EXCL_SF07 | Skip file in parent excludes children | ✅ | Place skip file in `core/`. No `core/*` children found. |
 | EXCL_SF08 | Skip file cleanup in tearDown | ✅ | Verify file exists after placement, removed in tearDown. |

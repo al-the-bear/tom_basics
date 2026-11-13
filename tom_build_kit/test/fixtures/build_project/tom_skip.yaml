@@ -7,8 +7,8 @@
 # run the tools against that provisioned copy. The fixture itself must never be
 # treated as a buildable project by a real workspace-wide run: its pubspec has
 # `../tom/devops/...` path dependencies that only resolve in the fictional build
-# layout, and its `buildkit.yaml` declares seven pseudo-binaries (deploy,
-# doc_scanner, docspecs, md2latex, md2pdf, ws_analyzer, ws_prepper) that cannot
+# layout, and its `buildkit.yaml` declares five pseudo-binaries (deploy,
+# doc_scanner, docspecs, md2latex, md2pdf) that cannot
 # AOT-compile here. Without this marker, `buildkit -r :compiler` descends into
 # the fixture and emits spurious "Compilation failed" lines.
 #

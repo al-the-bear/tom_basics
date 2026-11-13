@@ -23,8 +23,6 @@ compiler:
         - bin/docspecs.dart
         - bin/md2latex.dart
         - bin/md2pdf.dart
-        - bin/ws_analyzer.dart
-        - bin/ws_prepper.dart
       targets: [darwin-arm64, linux-x64, linux-arm64, linux-armhf]
       platforms: [darwin-arm64]
 
@@ -38,8 +36,6 @@ compiler:
         - bin/docspecs.dart
         - bin/md2latex.dart
         - bin/md2pdf.dart
-        - bin/ws_analyzer.dart
-        - bin/ws_prepper.dart
       platforms: [darwin-x64, linux-*, win32-*]
 
   postcompile:

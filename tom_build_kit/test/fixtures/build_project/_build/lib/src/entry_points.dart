@@ -4,9 +4,6 @@
 /// and re-export callable main functions.
 library;
 
-// Tom Build CLI tools - complete CLI entry points
-export 'package:tom_build_cli/cli_entry.dart';
-
 // VS Code bridge - bridge server
 export 'package:tom_vscode_bridge/bridge_server.dart';
 

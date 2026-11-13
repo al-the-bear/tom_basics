@@ -1,12 +1,11 @@
 // Doc Scanner - Documentation scanner
-// Delegates to tom_build_cli functionality
+// A pseudo-binary of the fixture (never compiled)
 import 'package:_build/_build.dart';
-import 'package:tom_build_cli/cli_entry.dart';
 
 void main(List<String> args) {
   if (isVersionRequest(args)) {
     printToolVersion('doc_scanner');
     return;
   }
-  docScannerMain(args);
+  print('doc_scanner: a pseudo-binary of the build_project test fixture');
 }

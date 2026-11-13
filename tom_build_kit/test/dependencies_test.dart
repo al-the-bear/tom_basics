@@ -73,8 +73,8 @@ void main() {
       // Should contain known _build dependencies
       expect(
         stdout,
-        contains('tom_build_cli'),
-        reason: 'Expected tom_build_cli in normal deps',
+        contains('tom_vscode_bridge'),
+        reason: 'Expected tom_vscode_bridge in normal deps',
       );
 
       // Should NOT show dev deps (+> prefix) in default mode
@@ -182,7 +182,7 @@ void main() {
         expect(result.exitCode, equals(0));
 
         // _build has path dependencies to other workspace projects (e.g.
-        // tom_build_cli, tom_basics). Those projects have their own deps.
+        // tom_vscode_bridge, tom_deploy_tools). Those projects have their own deps.
         // Bug #16 FIXED: deep mode now shows indented sub-dependencies.
         final lines = stdout.split('\n');
         final indentedDepLines = lines.where(
