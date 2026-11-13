@@ -33,7 +33,7 @@ This document lists all testable features across `tom_build_base` and tracks tes
 | 18 | [Folder Scanner](#18-folder-scanner) | 23 | 23✅ | `v2/traversal/folder_scanner_test.dart` | [→](#18-folder-scanner) |
 | 19 | [Nature Detector](#19-nature-detector) | 39 | 39✅ | `v2/traversal/nature_detector_test.dart` | [→](#19-nature-detector) |
 | 20 | [Nature Filter](#20-nature-filter) | 20 | 20✅ | `v2/traversal/nature_filter_test.dart` | [→](#20-nature-filter) |
-| 21 | [Filter Pipeline](#21-filter-pipeline) | 44 | 44✅ | `v2/traversal/filter_pipeline_test.dart` | [→](#21-filter-pipeline) |
+| 21 | [Filter Pipeline](#21-filter-pipeline) | 47 | 47✅ | `v2/traversal/filter_pipeline_test.dart` | [→](#21-filter-pipeline) |
 | 22 | [Build Order](#22-build-order) | 15 | 15✅ | `v2/traversal/build_order_test.dart` | [→](#22-build-order) |
 | 23 | [Traversal Info](#23-traversal-info) | 22 | 22✅ | `v2/traversal/traversal_info_test.dart` | [→](#23-traversal-info) |
 | 24 | [Build Base Integration](#24-build-base-integration) | 22 | 22✅ | `v2/traversal/build_base_integration_test.dart` | [→](#24-build-base-integration) |
@@ -62,7 +62,7 @@ This document lists all testable features across `tom_build_base` and tracks tes
 | 47 | [Language Natures](#47-language-natures) | 16 | 16✅ | `v2/traversal/language_natures_test.dart` | [→](#47-language-natures) |
 | 48 | [Project Listing](#48-project-listing) | 7 | 7✅ | `v2/traversal/project_listing_test.dart` | [→](#48-project-listing) |
 | 49 | [Broken Pipe](#49-broken-pipe) | 3 | 3✅ | `v2/core/broken_pipe_test.dart` | [→](#49-broken-pipe) |
-| — | **Total** | **1028** | **1028✅** | | |
+| — | **Total** | **1031** | **1031✅** | | |
 
 > Every row links to a section, and the counts are measured from
 > `dart test --reporter json -j 1` rather than maintained by hand. Run it
@@ -480,11 +480,15 @@ Tests for the recently implemented features: modes, persistent defines, runtime 
 
 | ID | Feature | Status | Description |
 |----|---------|--------|-------------|
-| BB_FPL_1–8 | Chaining multiple filters | ✅ | Sequential filter application. |
-| BB_FPL_9–16 | Project/exclude glob patterns | ✅ | `--project` and `--exclude` globs. |
-| BB_FPL_17–24 | Module filtering | ✅ | Module boundary handling. |
-| BB_FPL_25–32 | Git-based traversal ordering | ✅ | Inner-first/outer-first git ordering. |
-| BB_FPL_33–40 | Combined filter scenarios | ✅ | Real-world multi-filter pipelines. |
+| BB-FLT-1–4, 30–34 | Project filter | ✅ | `--project` by folder pattern, `project_id` and name from `buildkit.yaml`, case-insensitive, mixed. |
+| BB-FLT-41–47 | Project filter by path | ✅ | Absolute paths (native, forward-slash, backslash) and paths through links. |
+| BB-FLT-5–8, 35–36 | Exclude filter | ✅ | Path patterns, names, globs, project ids and names. |
+| BB-FLT-9–14 | Test projects and combinations | ✅ | `zom_*` excluded by default, `--test`, `--test-only`; include and exclude together. |
+| BB-FLT-15–20 | Git-mode filters | ✅ | `--modules`, `--skip-modules`, path exclude and `zom_*` on the repositories of a workspace-shaped fixture. |
+| BB-FLT-21–24 | FolderScanner | ✅ | Recursive and root-only scans, recursion excludes, hidden folders. |
+| BB-FLT-25–27 | GitRepoFinder | ✅ | On a fixture tree, never the live workspace: nested and submodule-shaped (`.git` file) repositories found, those under `build/`, `node_modules/` and hidden folders not; none in a plain folder. |
+| BB-FLT-28–29 | FolderSorter | ✅ | Inner-first and outer-first order. |
+| BB-FLT-37–40 | RepositoryIdLookup | ✅ | Id to name, case-insensitive, unknown ids unchanged, `isRepositoryId`. |
 
 ---
 

@@ -7,11 +7,59 @@ import 'package:tom_build_base/tom_build_base_v2.dart';
 import '../../fixtures/zom_fixture.dart';
 
 /// Tests for FilterPipeline using the zom_analyzer_test fixture projects.
+/// The git repositories of [buildGitFixture], relative to its root.
+const _fixtureRepos = {
+  '.',
+  'tom_ai',
+  'tom_ai/basics',
+  'tom_ai/crypto',
+  'tom_ai/d4rt',
+  'tom_ai/xternal/native_semaphores',
+  'tom_ai/xternal/tom_dart_amqp',
+  'zom_workspaces/zom_analyzer_test',
+};
+
+/// A workspace-shaped tree of git repositories for the GitRepoFinder and
+/// git-filter tests: the root a `.git` folder, the nested repositories
+/// submodule-shaped (a `.git` file naming the gitdir) or plain, the forks
+/// under `xternal/`, a `zom_` project, a plain project that is no repository,
+/// and repositories the finder must not report (under `build/`,
+/// `node_modules/` and a hidden folder). Small, so the tests measure the
+/// finder and not the size of the machine's checkout.
+String buildGitFixture() {
+  final root = Directory.systemTemp.createTempSync('bb_flt_git_').path;
+  void gitDir(String rel) =>
+      Directory(p.join(root, rel, '.git')).createSync(recursive: true);
+  void gitFile(String rel) =>
+      (File(
+        p.join(root, rel, '.git'),
+      )..parent.createSync(recursive: true)).writeAsStringSync(
+        'gitdir: ${p.join(root, '.git', 'modules', rel)}\n',
+      );
+
+  gitDir('.');
+  gitFile('tom_ai');
+  gitFile('tom_ai/basics');
+  gitDir('tom_ai/crypto');
+  gitFile('tom_ai/d4rt');
+  gitFile('tom_ai/xternal/native_semaphores');
+  gitFile('tom_ai/xternal/tom_dart_amqp');
+  gitDir('zom_workspaces/zom_analyzer_test');
+  File(p.join(root, 'tom_ai/basics/tom_build_base/pubspec.yaml'))
+    ..parent.createSync(recursive: true)
+    ..writeAsStringSync('name: tom_build_base\n');
+  // Not repositories of the workspace: skipped by the finder.
+  gitDir('tom_ai/basics/tom_build_base/build/stray');
+  gitDir('tom_ai/node_modules/some_package');
+  gitDir('tom_ai/.dart_tool/cached');
+  return root;
+}
+
 void main() {
-  // A real git working tree enclosing this package (for git-filter tests,
-  // whose module assertions match the enclosing repo's folder structure).
+  // A workspace-shaped tree of git repositories (buildGitFixture) for the
+  // GitRepoFinder and git-filter tests; never the live workspace or its
+  // clone, whose size and load made BB-FLT-25/26 time out (build_completion2).
   late String workspaceRoot;
-  late WorkspaceCloneRoots clone;
   late String zomTestRoot;
   late FilterPipeline filter;
   late List<FsFolder> allFolders;
@@ -20,9 +68,7 @@ void main() {
     // Resolve the package root (cwd-independent) before any path helper reads
     // it; the process cwd is shared across concurrently running suites.
     await resolvePackageRoot();
-    // The machine's workspace clone, never the live tree (aft_tclone-56).
-    clone = await holdWorkspaceClone();
-    workspaceRoot = clone.workspaceRoot;
+    workspaceRoot = buildGitFixture();
     // Copy the checked-in zom fixture into a throwaway temp dir for this run.
     zomTestRoot = installZomFixture();
 
@@ -40,7 +86,7 @@ void main() {
 
   tearDownAll(() async {
     removeZomFixture(zomTestRoot);
-    await clone.release();
+    Directory(workspaceRoot).deleteSync(recursive: true);
   });
 
   setUp(() {
@@ -588,6 +634,7 @@ void main() {
         );
 
         final filtered = filter.applyGitFilters(gitFolders, info);
+        expect(filtered, isNotEmpty);
 
         // All filtered folders should contain 'basics' in path
         for (final folder in filtered) {
@@ -607,6 +654,8 @@ void main() {
         );
 
         final filtered = filter.applyGitFilters(gitFolders, info);
+        expect(filtered.where((f) => f.path.contains('basics')), isNotEmpty);
+        expect(filtered.where((f) => f.path.contains('d4rt')), isNotEmpty);
 
         // All filtered folders should contain basics OR d4rt
         for (final folder in filtered) {
@@ -623,6 +672,9 @@ void main() {
           executionRoot: workspaceRoot,
           gitMode: GitTraversalMode.innerFirst,
           modules: [],
+          // Only the module filter is under test: the default test-project
+          // filter would drop the fixture's zom_ repository.
+          includeTestProjects: true,
         );
 
         final filtered = filter.applyGitFilters(gitFolders, info);
@@ -641,6 +693,8 @@ void main() {
         );
 
         final filtered = filter.applyGitFilters(gitFolders, info);
+        expect(gitFolders.where((f) => f.path.contains('crypto')), isNotEmpty);
+        expect(filtered, isNotEmpty);
 
         // No filtered folders should contain 'crypto' in path
         for (final folder in filtered) {
@@ -662,6 +716,8 @@ void main() {
         );
 
         final filtered = filter.applyGitFilters(gitFolders, info);
+        expect(gitFolders.where((f) => f.path.contains('xternal')), isNotEmpty);
+        expect(filtered, isNotEmpty);
 
         for (final folder in filtered) {
           expect(
@@ -682,6 +738,8 @@ void main() {
         );
 
         final filtered = filter.applyGitFilters(gitFolders, info);
+        expect(gitFolders.where((f) => f.name.startsWith('zom_')), isNotEmpty);
+        expect(filtered, isNotEmpty);
 
         for (final folder in filtered) {
           expect(folder.name.startsWith('zom_'), isFalse);
@@ -794,6 +852,12 @@ void main() {
           reason: '${folder.path} should have .git',
         );
       }
+      // Exactly the fixture's repositories: nested and submodule-shaped ones
+      // found, those under build/, node_modules/ and hidden folders not.
+      expect(
+        repos.map((r) => p.relative(r.path, from: workspaceRoot)).toSet(),
+        _fixtureRepos,
+      );
     });
 
     test('BB-FLT-26: Finds submodules [2026-02-12]', () async {
