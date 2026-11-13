@@ -199,6 +199,24 @@ const boundariesOptions = <OptionDefinition>[
   ),
 ];
 
+/// Options for the projects command.
+const projectsOptions = <OptionDefinition>[
+  OptionDefinition.flag(
+    name: 'json',
+    description:
+        'One JSON document on stdout: {formatVersion, tool, root, count, '
+        'projects: [{id, name, path, absolutePath, language, type, natures, '
+        'version?, description?}]}',
+  ),
+  OptionDefinition.flag(
+    name: 'all',
+    description:
+        'Every project of the tree: leave out the navigation: excludes of '
+        'buildkit_master.yaml (skip markers and the selection options still '
+        'apply)',
+  ),
+];
+
 const statusOptions = <OptionDefinition>[
   OptionDefinition.flag(name: 'json', description: 'Output in JSON format'),
   OptionDefinition.flag(
@@ -692,6 +710,24 @@ const publisherCommand = CommandDefinition(
   examples: ['buildkit :publisher', 'buildkit :publisher --show-all'],
 );
 
+const projectsCommand = CommandDefinition(
+  name: 'projects',
+  description:
+      'List the projects buildkit works on: id, name, path, language, natures',
+  aliases: ['proj'],
+  options: projectsOptions,
+  worksWithNatures: {DartProjectFolder, LanguageProjectFolder},
+  requiresTraversal: false,
+  supportsProjectTraversal: true,
+  canRunStandalone: true,
+  examples: [
+    'buildkit :projects',
+    'buildkit :projects --json',
+    'buildkit :projects --all --json',
+    'buildkit -r --group tom_ai :projects',
+  ],
+);
+
 const statusCommand = CommandDefinition(
   name: 'status',
   description: 'Show buildkit version, binary status, and git state',
@@ -1145,6 +1181,7 @@ final buildkitTool = ToolDefinition(
     dependenciesCommand,
     boundariesCommand,
     publisherCommand,
+    projectsCommand,
     statusCommand,
     buildsorterCommand,
     unreferencedCommand,

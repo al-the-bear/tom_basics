@@ -194,6 +194,7 @@ Options:
 | `:cleanup` | Clean build artifacts. |
 | `:dependencies` | Report/resolve inter-project dependencies. |
 | `:publisher` | Publish packages. |
+| `:projects` | List the projects buildkit works on (`--json`: one machine-readable document). |
 | `:status` | Show tool/repo status across the workspace. |
 | `:buildsorter` | Compute the dependency build order. |
 | `:execute` | Execute a shell command in each traversed folder. |

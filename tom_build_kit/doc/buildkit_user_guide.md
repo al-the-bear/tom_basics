@@ -39,6 +39,7 @@ This package extends the shared infrastructure from **tom_build_base**:
   - [DCli Command](#dcli-command)
   - [Execute Command](#execute-command)
   - [Boundaries Command](#boundaries-command)
+  - [Projects Command](#projects-command)
   - [Status Command](#status-command)
 - [Command Prefix Matching](#command-prefix-matching)
 - [Help Topics](#help-topics)
@@ -448,6 +449,7 @@ Built-in commands run the respective tools directly via their Dart implementatio
 | `gitcheckout` | Checkout branches/tags across repositories |
 | `gitreset` | Reset repositories to specific state |
 | `gitsync` | Sync (fetch + merge/rebase) all repositories |
+| `projects` | List the projects buildkit works on; `--json` for one machine-readable document (see [Projects Command](#projects-command)) |
 | `status` | Show buildkit version, binary status, and git state |
 | `dcli` | Execute Dart scripts/expressions via dcli |
 | `execute` | Run shell commands in each folder with placeholder substitution (aliases: `exec`, `x`) |
@@ -704,6 +706,35 @@ A rule that matches nothing is reported, not skipped, so a rule that has rotted 
 | `--tests` | Also check `test/`, whatever the rules' `tests:` says |
 
 Run it by hand from the repository, or from a project's own check script; it is never scheduled.
+
+### Projects Command
+
+`:projects` (alias `proj`) lists the projects buildkit works on: exactly the
+folders a project command such as `:build` visits, with the same selection
+(`buildkit_master.yaml` `navigation:` defaults, skip markers, `-p`, `-r`,
+`--exclude-projects`, `--group`). It is how tools outside Dart, the VS Code
+extension among them, learn the workspace's projects.
+
+```bash
+bk :projects                 # path, id and natures per project, then the count
+bk :projects --json          # one JSON document on stdout
+bk :projects --all --json    # every project of the tree, past the navigation: excludes
+bk -r --group tom_ai :projects --json
+```
+
+`--all` leaves out the `navigation:` excludes of `buildkit_master.yaml`
+(which keep whole subtrees, e.g. `ai_build/**`, from the build commands); skip
+markers and the selection options still apply. The extension lists with it.
+
+The JSON document is `{formatVersion, tool, root, all, count, projects}`; each
+project is `{id, name, path, absolutePath, language, type, natures, version?,
+description?}`: `id` and `name` from the project's `buildkit.yaml`
+(`project_id`, `name`), else the name its project file states, else the folder
+name; `path` relative to the root with `/`; `type` the primary nature (e.g.
+`flutter`, `dart_package`, `python`); `natures` every nature (e.g. `git`,
+`buildkit`). Messages of the walk (skipped folders) go to stderr, so stdout
+holds the document alone. `formatVersion` is raised only for a change that is
+not backwards compatible.
 
 ### Status Command
 

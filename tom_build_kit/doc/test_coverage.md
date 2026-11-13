@@ -29,7 +29,9 @@ This document lists all testable features across buildkit tools and tracks test 
 | 14 | [Built-in Commands — Parsing & Resolution](#14-built-in-commands--parsing--resolution) | 19 | 19✅ | `builtin_commands_test.dart` | [→](#14-built-in-commands--parsing--resolution) |
 | 15 | [Unreferenced — Export Audit](#15-unreferenced--export-audit) | 9 | 9✅ | `unreferenced_exports_test.dart` | [→](#15-unreferenced--export-audit) |
 | 16 | [Build, Test, Clean — Per Nature](#16-build-test-clean--per-nature) | 7 | 7✅ | `project_action_test.dart` | [→](#16-build-test-clean--per-nature) |
-| — | **Total** | **162** | **162✅** | | |
+| 17 | [Projects — The Project Listing](#17-projects--the-project-listing) | 5 | 5✅ | `projects_command_test.dart` | [→](#17-projects--the-project-listing) |
+| 18 | [Versioner — Build Number](#2-versioner--version-file-generation) | 5 | 5✅ | `versioner_build_number_test.dart` | [→](#2-versioner--version-file-generation) |
+| — | **Total** | **172** | **172✅** | | |
 
 ---
 
@@ -512,3 +514,16 @@ The integration suites run on the machine's workspace clone (tom_test_support `T
 | BK-ACT-6 | Clean | ✅ | Default paths and globs deleted, sources kept. |
 | BK-ACT-7 | Bump | ✅ | `:bumpversion` in package.json, pyproject.toml, Cargo.toml, pom.xml; Go skipped. |
 
+---
+
+## 17. Projects — The Project Listing
+
+**Test file:** `test/projects_command_test.dart`
+
+| ID | Feature | Status | Description |
+|----|---------|--------|-------------|
+| BK-PRJ-1 | JSON | ✅ | One document: format version, root, count; each project with identity from `buildkit.yaml`, path, language, type, natures, version; skipped and nested projects left out. |
+| BK-PRJ-2 | Selection | ✅ | `-r` lists nested fixtures; `-p` and `--exclude-projects` select as for every project command. |
+| BK-PRJ-3 | Table | ✅ | Without `--json`: path, id, natures per line and the count. |
+| BK-PRJ-4 | `-R` | ✅ | Run from another directory with `-R` and `-s`, the listing is of that root. |
+| BK-PRJ-5 | `--all` | ✅ | The `navigation:` excludes of `buildkit_master.yaml` apply by default and not with `--all`. |

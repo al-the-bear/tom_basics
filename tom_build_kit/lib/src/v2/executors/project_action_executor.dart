@@ -66,28 +66,6 @@ class ActionStep {
   ].join(' && ');
 }
 
-/// The nature that decides a project's defaults, when it has several: Dart
-/// first, then the other languages.
-RunFolder? primaryNature(List<RunFolder> natures) {
-  for (final pick in <bool Function(RunFolder)>[
-    (n) => n is FlutterProjectFolder,
-    (n) => n is DartProjectFolder,
-    (n) => n is TypeScriptFolder,
-    (n) => n is JavaScriptFolder,
-    (n) => n is PythonFolder,
-    (n) => n is JavaFolder,
-    (n) => n is GoFolder,
-    (n) => n is RustFolder,
-    (n) => n is CppFolder,
-    (n) => n is CFolder,
-  ]) {
-    for (final n in natures) {
-      if (pick(n)) return n;
-    }
-  }
-  return null;
-}
-
 /// The step of [action] for the project at [projectPath] with [natures]:
 /// its `buildkit.yaml` entry when there is one, else the default of its
 /// primary nature; null when the project has no nature the action knows.
@@ -98,7 +76,7 @@ ActionStep? actionStepFor(
 ) {
   final configured = _configuredStep(action, projectPath);
   if (configured != null) return configured;
-  final nature = primaryNature(natures);
+  final nature = primaryProjectNature(natures);
   if (nature == null) return null;
   return _defaultStep(action, nature, projectPath);
 }

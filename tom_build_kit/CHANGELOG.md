@@ -1,3 +1,18 @@
+## 1.19.0
+
+### Added — `:projects`: the projects buildkit works on
+
+- `buildkit :projects` lists every project a project command would visit
+  (the same traversal, `buildkit_master.yaml` navigation defaults, `-p`, `-r`,
+  `--exclude-projects`, `--group`) with id, name, path and natures;
+  `--json` prints one JSON document (`formatVersion` 1) for callers outside
+  Dart. The VS Code extension lists projects with it instead of the retired
+  generated workspace manifest (tom_build_base ^2.27.0, `listProjectsFor`).
+  `--all` lists every project of the tree, past the `navigation:` excludes.
+  Alias `proj`. BK-PRJ-1..5.
+- The primary nature of `:build` / `:test` / `:clean` is tom_build_base's
+  `primaryProjectNature` (the same order as before).
+
 ## 1.18.0
 
 ### Changed — dcli is `tom_dcli`
