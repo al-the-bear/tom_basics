@@ -22,8 +22,6 @@ import 'command_executor.dart';
 import 'wiring_loader.dart';
 import '../execute_placeholder.dart';
 import '../folder/fs_folder.dart';
-import '../folder/natures/dart_project_folder.dart';
-import '../folder/run_folder.dart';
 import '../traversal/command_context.dart';
 import '../traversal/traversal_info.dart';
 import '../traversal/build_base.dart';
@@ -883,18 +881,14 @@ class ToolRunner {
     if (!hasRequired && !hasWorksWith) return false;
 
     if (hasRequired) {
-      return reqNatures.every((type) => _matchesNature(context.natures, type));
+      return reqNatures.every(
+        (type) => BuildBase.matchesNature(context.natures, type),
+      );
     }
 
-    return workNatures.any((type) => _matchesNature(context.natures, type));
-  }
-
-  bool _matchesNature(List<RunFolder> natures, Type type) {
-    if (type == FsFolder) return true;
-    if (type == DartProjectFolder) {
-      return natures.any((n) => n is DartProjectFolder);
-    }
-    return natures.any((n) => n.runtimeType == type);
+    return workNatures.any(
+      (type) => BuildBase.matchesNature(context.natures, type),
+    );
   }
 
   Future<ToolResult?> _tryRunPipelineInvocation(CliArgs cliArgs) async {

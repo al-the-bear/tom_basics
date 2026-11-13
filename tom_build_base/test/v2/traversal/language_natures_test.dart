@@ -320,6 +320,41 @@ void main() {
     });
   });
 
+  group('ToolRunner', () {
+    test('BB-LNG-16: a command\'s abstract natures select the same folders '
+        'through ToolRunner as through BuildBase.traverse', () async {
+      File(p.join(tmp.path, 'buildkit_master.yaml')).writeAsStringSync('');
+      project('a_go', {'go.mod': 'module a\n'});
+      project('b_dart', {'pubspec.yaml': 'name: b_dart\n'});
+      project('c_none', {'README.md': ''});
+      final seen = <String>[];
+      final tool = ToolDefinition(
+        name: 'langtool',
+        description: 'test',
+        mode: ToolMode.multiCommand,
+        commands: [
+          CommandDefinition(
+            name: 'each',
+            description: 'each',
+            worksWithNatures: {DartProjectFolder, LanguageProjectFolder},
+          ),
+        ],
+      );
+      final previous = Directory.current;
+      Directory.current = tmp;
+      try {
+        await ToolRunner(
+          tool: tool,
+          executors: {'each': _Recorder(seen)},
+          output: StringBuffer(),
+        ).run(['-s', '.', ':each']);
+      } finally {
+        Directory.current = previous;
+      }
+      expect(seen..sort(), ['a_go', 'b_dart']);
+    });
+  });
+
   group('version files', () {
     test('BB-LNG-14: read and write the version in each format, the rest '
         'of the file kept', () {
@@ -356,4 +391,15 @@ void main() {
       );
     });
   });
+}
+
+class _Recorder extends CommandExecutor {
+  final List<String> seen;
+  _Recorder(this.seen);
+
+  @override
+  Future<ItemResult> execute(CommandContext context, CliArgs args) async {
+    seen.add(context.name);
+    return ItemResult.success(path: context.path, name: context.name);
+  }
 }

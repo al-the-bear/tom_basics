@@ -59,8 +59,8 @@ This document lists all testable features across `tom_build_base` and tracks tes
 | 44 | [Item Exit Codes and Process Trees](#44-item-exit-codes-and-process-trees) | 5 | 5✅ | `v2/core/item_exit_code_test.dart` | [→](#44-item-exit-codes-and-process-trees) |
 | 45 | [Repeated Multi Options](#45-repeated-multi-options) | 5 | 5✅ | `v2/core/multi_option_repeat_test.dart` | [→](#45-repeated-multi-options) |
 | 46 | [Project Groups](#46-project-groups) | 7 | 7✅ | `v2/traversal/project_groups_test.dart` | [→](#46-project-groups) |
-| 47 | [Language Natures](#47-language-natures) | 15 | 15✅ | `v2/traversal/language_natures_test.dart` | [→](#47-language-natures) |
-| — | **Total** | **1017** | **1017✅** | | |
+| 47 | [Language Natures](#47-language-natures) | 16 | 16✅ | `v2/traversal/language_natures_test.dart` | [→](#47-language-natures) |
+| — | **Total** | **1018** | **1018✅** | | |
 
 > Every row links to a section, and the counts are measured from
 > `dart test --reporter json -j 1` rather than maintained by hand. Run it
@@ -1003,6 +1003,7 @@ The natures of the SOM runtime languages other than Dart; the fixtures copy the
 | BB-LNG-13 | Scan | ✅ | A language project is not descended into without `-r`. |
 | BB-LNG-14 | Version files | ✅ | Read and write in pubspec, package.json, pyproject, Cargo, pom; nothing else changes. |
 | BB-LNG-15 | No version | ✅ | Go and C state none. |
+| BB-LNG-16 | ToolRunner | ✅ | A command's abstract natures select the same folders through ToolRunner as through traversal. |
 
 ---
 
@@ -1018,4 +1019,4 @@ The current test suite is comprehensive. Areas where additional tests could be v
 | `--dump-definitions` output format | Tested in ToolRunner | Validate complete YAML structure | Low |
 | ConfigLoader with nested `@{...}` in `@[...]` | ✅ Recursive test exists | Additional nesting depth scenarios | Low |
 
-Overall coverage assessment: **Excellent — 1017 tests covering all features.**
+Overall coverage assessment: **Excellent — 1018 tests covering all features.**

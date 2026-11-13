@@ -321,12 +321,12 @@ abstract class BuildBase {
   ) {
     if (requiredNatures != null && requiredNatures.isNotEmpty) {
       // Must have ALL required natures
-      return requiredNatures.every((type) => _matchesNature(natures, type));
+      return requiredNatures.every((type) => matchesNature(natures, type));
     }
 
     if (worksWithNatures.isNotEmpty) {
       // Must have at least ONE supported nature
-      return worksWithNatures.any((type) => _matchesNature(natures, type));
+      return worksWithNatures.any((type) => matchesNature(natures, type));
     }
 
     // Should not reach here — validated at traverse() entry
@@ -339,8 +339,12 @@ abstract class BuildBase {
   ///
   /// Special cases:
   /// - [FsFolder] always matches (every folder is an FsFolder by definition)
-  /// - [DartProjectFolder] matches any Dart project subtype (hierarchy check)
-  static bool _matchesNature(List<RunFolder> natures, Type type) {
+  /// - [DartProjectFolder], [LanguageProjectFolder] and
+  ///   [NativeProjectFolder] match any of their subtypes
+  ///
+  /// The one rule for every caller (traversal and `ToolRunner`), so a
+  /// command's natures select the same folders however it is run.
+  static bool matchesNature(List<RunFolder> natures, Type type) {
     // FsFolder always matches — every traversed folder is an FsFolder
     if (type == FsFolder) return true;
 

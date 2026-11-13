@@ -1,3 +1,12 @@
+## 2.26.1
+
+### Fixed — `ToolRunner` matched natures by its own copy of the rule
+
+`ToolRunner` decided which folders a command runs on with a private copy of
+the nature matching that knew only `DartProjectFolder` as an abstract type, so
+a command working with `LanguageProjectFolder` (2.26.0) ran on no language
+project. Both now use `BuildBase.matchesNature`. BB-LNG-16.
+
 ## 2.26.0
 
 ### Added — natures for every SOM runtime language
