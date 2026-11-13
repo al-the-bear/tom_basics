@@ -1,5 +1,10 @@
 # Tom Build Configuration for Build Tool
 
+project_id: BLD
+name: build
+description: >-
+  Build workspace entrypoint
+
 versioner:
 
 cleanup:
