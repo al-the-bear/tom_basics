@@ -65,7 +65,8 @@ This document lists all testable features across `tom_build_base` and tracks tes
 | 50 | [Option Suppression Refused](#50-option-suppression-refused) | 4 | 4✅ | `v2/core/option_suppression_test.dart` | [→](#50-option-suppression-refused) |
 | 51 | [--list Runs Nothing](#51---list-runs-nothing) | 7 | 7✅ | `v2/core/list_flag_test.dart` | [→](#51---list-runs-nothing) |
 | 52 | [Standalone Tools](#52-standalone-tools) | 5 | 5✅ | `v2/core/standalone_tool_test.dart` | [→](#52-standalone-tools) |
-| — | **Total** | **1049** | **1049✅** | | |
+| 53 | [After the Traversal](#53-after-the-traversal) | 5 | 5✅ | `v2/core/after_traversal_test.dart` | [→](#53-after-the-traversal) |
+| — | **Total** | **1054** | **1054✅** | | |
 
 > Every row links to a section, and the counts are measured from
 > `dart test --reporter json -j 1` rather than maintained by hand. Run it
@@ -1097,6 +1098,23 @@ and its own global options keep their short forms.
 | BB-STA-3 | Value forms, hidden option, stray argument | ✅ | `--instance watcher` and `--instance=watcher`; a positional argument does not stop the run. |
 | BB-STA-4 | `--version` | ✅ | Prints the `versionString`; nothing runs. |
 | BB-STA-5 | `--help` | ✅ | The tool's and the shared options; no hidden option, no traversal-only option. |
+
+---
+
+## 53. After the Traversal
+
+**Test file:** `test/v2/core/after_traversal_test.dart`
+
+`CommandExecutor.afterTraversal` lets an executor sum up over every project
+it visited.
+
+| ID | Feature | Status | Description |
+|----|---------|--------|-------------|
+| BB-AFT-1 | Called once | ✅ | After the traversal, with every visited project's result. |
+| BB-AFT-2 | Per command | ✅ | With two commands each gets only the results tagged with its own name. |
+| BB-AFT-3 | Its failure counts | ✅ | A returned failure fails the run; an exception becomes a failure item. |
+| BB-AFT-4 | Not under `--list` | ✅ | The executor neither runs nor sums up. |
+| BB-AFT-5 | Default | ✅ | Answers nothing; the run's results are unchanged. |
 
 ---
 

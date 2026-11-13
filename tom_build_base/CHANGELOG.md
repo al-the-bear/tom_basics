@@ -1,3 +1,16 @@
+## 2.31.0
+
+### Added — `CommandExecutor.afterTraversal`
+
+An executor can sum up over the projects it visited: ToolRunner calls
+`afterTraversal(results, args)` once per command after its traversal, with
+the results that command's `execute` returned (in visit order; with several
+commands, each gets its own). A returned `ItemResult` joins the run's
+results, so a failure there (a report that could not be written) fails the
+run; an exception becomes a failure item. The default answers null and
+changes nothing. Not called under `--list`. Used by testkit's `:report`.
+BB-AFT-1..5.
+
 ## 2.30.1
 
 ### Fixed — help shows only the options a tool has

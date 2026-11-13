@@ -934,6 +934,12 @@ class CommandExecutor {
 }
 ```
 
+After the traversal ToolRunner calls each executor's `afterTraversal(results,
+args)` once, with the results of its own command, so an executor can sum up
+over the projects it visited (testkit's `:report` prints its one table
+there). An `ItemResult` it returns joins the run's results; the default
+returns null. It is not called under `--list`.
+
 ### Filter Precedence and Order
 
 Understanding filter order is critical for predictable behavior:

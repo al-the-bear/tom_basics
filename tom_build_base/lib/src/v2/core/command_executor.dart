@@ -33,6 +33,19 @@ abstract class CommandExecutor {
   /// nothing, so `--list` never runs a command.
   bool get handlesListMode => false;
 
+  /// Called once after the traversal of this executor's command, with the
+  /// results [execute] returned for the projects it visited, in visit order.
+  /// An executor that sums up over projects (a report table, a total) writes
+  /// that here; per-project output stays in [execute].
+  ///
+  /// A returned [ItemResult] joins the run's results, so a failure (e.g. a
+  /// report file that could not be written) fails the run; null adds nothing.
+  /// Not called under `--list`, where the executor does not run.
+  Future<ItemResult?> afterTraversal(
+    List<ItemResult> results,
+    CliArgs args,
+  ) async => null;
+
   /// A failure [ItemResult] when [context]'s project locks packages the pub
   /// cache cannot supply, or null when it can supply them all.
   ///

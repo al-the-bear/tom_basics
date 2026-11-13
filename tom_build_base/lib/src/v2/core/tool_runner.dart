@@ -376,6 +376,30 @@ class ToolRunner {
     return completer.future;
   }
 
+  /// Calls [executor]'s [CommandExecutor.afterTraversal] with the results of
+  /// its command and answers the item it adds to the run, if any; an
+  /// exception there becomes a failure item, as one in `execute` does.
+  Future<ItemResult?> _afterTraversal(
+    CommandExecutor executor,
+    String commandName,
+    List<ItemResult> results,
+    CliArgs cliArgs,
+  ) async {
+    try {
+      return await executor.afterTraversal(List.unmodifiable(results), cliArgs);
+    } catch (error, stackTrace) {
+      if (verbose) {
+        output.writeln('     STACK: $stackTrace');
+      }
+      return ItemResult.failure(
+        path: '',
+        name: commandName,
+        commandName: commandName,
+        error: 'Unhandled exception after :$commandName: $error',
+      );
+    }
+  }
+
   void _printStartupTiming(String label, Duration phase, Duration total) {
     output.writeln(
       '[startup] $label: +${_formatMs(phase)} (total ${_formatMs(total)})',
@@ -863,6 +887,14 @@ class ToolRunner {
     );
     if (unmatchedError != null) return ToolResult.failure(unmatchedError);
 
+    for (final entry in resolved) {
+      final extra = await _afterTraversal(entry.executor, entry.cmd.name, [
+        for (final r in results)
+          if (r.commandName == entry.cmd.name) r,
+      ], cliArgs);
+      if (extra != null) results.add(extra);
+    }
+
     return ToolResult.fromItems(results);
   }
 
@@ -1311,6 +1343,14 @@ class ToolRunner {
     );
     if (unmatchedError != null) return ToolResult.failure(unmatchedError);
 
+    final extra = await _afterTraversal(
+      executor,
+      cmd?.name ?? 'default',
+      results,
+      cliArgs,
+    );
+    if (extra != null) results.add(extra);
+
     return ToolResult.fromItems(results);
   }
 
@@ -1401,7 +1441,13 @@ class ToolRunner {
       executionRoot: cwd,
     );
     final result = await executor.execute(context, cliArgs);
-    return ToolResult.fromItems([result]);
+    final extra = await _afterTraversal(
+      executor,
+      cliArgs.commands.isEmpty ? 'default' : cliArgs.commands.first,
+      [result],
+      cliArgs,
+    );
+    return ToolResult.fromItems([result, ?extra]);
   }
 
   /// Lazy wire nested tools into the effective tool definition.
