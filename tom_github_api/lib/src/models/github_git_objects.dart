@@ -14,6 +14,45 @@ class GitHubGitRef {
   String toString() => 'GitHubGitRef($ref -> $sha)';
 }
 
+/// The author or committer of a git commit: a name and an address, and the
+/// time (null: the time GitHub records the commit).
+class GitHubGitIdentity {
+  final String name;
+  final String email;
+  final DateTime? date;
+
+  const GitHubGitIdentity({required this.name, required this.email, this.date});
+
+  factory GitHubGitIdentity.fromJson(Map<String, dynamic> json) =>
+      GitHubGitIdentity(
+        name: json['name'] as String? ?? '',
+        email: json['email'] as String? ?? '',
+        date: json['date'] is String
+            ? DateTime.parse(json['date'] as String)
+            : null,
+      );
+
+  /// The request body of the git data API.
+  Map<String, dynamic> toJson() => {
+        'name': name,
+        'email': email,
+        if (date != null) 'date': date!.toUtc().toIso8601String(),
+      };
+
+  @override
+  bool operator ==(Object other) =>
+      other is GitHubGitIdentity &&
+      other.name == name &&
+      other.email == email &&
+      other.date == date;
+
+  @override
+  int get hashCode => Object.hash(name, email, date);
+
+  @override
+  String toString() => 'GitHubGitIdentity($name <$email>)';
+}
+
 /// A commit as the git data API returns it — the object graph, not the
 /// human-facing commit view of the repos API.
 class GitHubGitCommit {
@@ -22,11 +61,19 @@ class GitHubGitCommit {
   final List<String> parentShas;
   final String message;
 
+  /// Who wrote the change, when the response names them.
+  final GitHubGitIdentity? author;
+
+  /// Who made the commit, when the response names them.
+  final GitHubGitIdentity? committer;
+
   const GitHubGitCommit({
     required this.sha,
     required this.treeSha,
     required this.parentShas,
     required this.message,
+    this.author,
+    this.committer,
   });
 
   factory GitHubGitCommit.fromJson(Map<String, dynamic> json) => GitHubGitCommit(
@@ -37,6 +84,13 @@ class GitHubGitCommit {
             (p as Map<String, dynamic>)['sha'] as String,
         ],
         message: json['message'] as String? ?? '',
+        author: json['author'] is Map<String, dynamic>
+            ? GitHubGitIdentity.fromJson(json['author'] as Map<String, dynamic>)
+            : null,
+        committer: json['committer'] is Map<String, dynamic>
+            ? GitHubGitIdentity.fromJson(
+                json['committer'] as Map<String, dynamic>)
+            : null,
       );
 
   @override

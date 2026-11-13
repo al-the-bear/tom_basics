@@ -108,12 +108,18 @@ class GitHubGitApi {
         await _http.get('/repos/$owner/$repo/git/commits/$sha'),
       );
 
+  /// A new commit of [treeSha] on [parentShas]. [author] and [committer]
+  /// name who wrote and who made it; without them GitHub records the
+  /// authenticated user for both, and with only [author] it records the
+  /// author as committer too.
   Future<GitHubGitCommit> createCommit({
     required String owner,
     required String repo,
     required String message,
     required String treeSha,
     required List<String> parentShas,
+    GitHubGitIdentity? author,
+    GitHubGitIdentity? committer,
   }) async =>
       GitHubGitCommit.fromJson(
         await _http.post(
@@ -122,6 +128,8 @@ class GitHubGitApi {
             'message': message,
             'tree': treeSha,
             'parents': parentShas,
+            if (author != null) 'author': author.toJson(),
+            if (committer != null) 'committer': committer.toJson(),
           },
         ),
       );

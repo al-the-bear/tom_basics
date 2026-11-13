@@ -123,6 +123,56 @@ void main() {
     });
   });
 
+  group('FAKEGH-A commit identities', () {
+    test('FAKEGH-A1: a commit records the author and committer it was given; '
+        'without them, the authenticated user, as GitHub does', () async {
+      final server = FakeGitHubServer()..authenticatedUser = 'alice';
+      final head = server.commitFiles('o/r', {'a.txt': 'one'});
+      final git = _client(server).git;
+      final base = await git.getCommit(owner: 'o', repo: 'r', sha: head);
+      const device = GitHubGitIdentity(
+        name: 'bigbeast',
+        email: 'bigbeast@tsm.invalid',
+      );
+      final named = await git.createCommit(
+        owner: 'o',
+        repo: 'r',
+        message: 'named',
+        treeSha: base.treeSha,
+        parentShas: [head],
+        author: device,
+        committer: device,
+      );
+      expect(named.author, device);
+      expect(server.commits[named.sha]!.committer, {
+        'name': 'bigbeast',
+        'email': 'bigbeast@tsm.invalid',
+      });
+      final read = await git.getCommit(owner: 'o', repo: 'r', sha: named.sha);
+      expect(read.committer, device);
+
+      final plain = await git.createCommit(
+        owner: 'o',
+        repo: 'r',
+        message: 'plain',
+        treeSha: base.treeSha,
+        parentShas: [named.sha],
+      );
+      expect(plain.author!.name, 'alice');
+      expect(plain.committer!.name, 'alice');
+
+      final authorOnly = await git.createCommit(
+        owner: 'o',
+        repo: 'r',
+        message: 'author only',
+        treeSha: base.treeSha,
+        parentShas: [plain.sha],
+        author: device,
+      );
+      expect(authorOnly.committer, device);
+    });
+  });
+
   group('FAKEGH-I issues through GitHubApiClient', () {
     test('FAKEGH-I1: a created issue is listed and carries the actor',
         () async {

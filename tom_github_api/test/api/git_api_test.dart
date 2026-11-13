@@ -300,6 +300,55 @@ void main() {
       expect(body['parents'], ['head-1']);
       expect(commit.sha, 'commit-2');
       expect(commit.parentShas, ['head-1']);
+      expect(body.containsKey('author'), isFalse);
+      expect(body.containsKey('committer'), isFalse);
+      expect(commit.author, isNull);
+    });
+
+    test('createCommit sends the author and the committer it is given, and '
+        'reads them back', () async {
+      late http.Request seen;
+      final identity = {'name': 'bigbeast', 'email': 'bigbeast@tsm.invalid'};
+      final client = GitHubApiClient(
+        token: 'test',
+        httpClient: createMockClient(
+          {
+            'POST /repos/o/r/git/commits': MockResponse(201, {
+              'sha': 'commit-3',
+              'tree': {'sha': 'tree-3'},
+              'parents': [
+                {'sha': 'head-2'}
+              ],
+              'message': 'tsm: fleet.kdbx from bigbeast',
+              'author': {...identity, 'date': '2026-11-13T10:00:00Z'},
+              'committer': {...identity, 'date': '2026-11-13T10:00:00Z'},
+            }),
+          },
+          onRequest: (r) => seen = r,
+        ),
+      );
+      addTearDown(client.close);
+
+      const who = GitHubGitIdentity(
+        name: 'bigbeast',
+        email: 'bigbeast@tsm.invalid',
+      );
+      final commit = await client.git.createCommit(
+        owner: 'o',
+        repo: 'r',
+        message: 'tsm: fleet.kdbx from bigbeast',
+        treeSha: 'tree-3',
+        parentShas: const ['head-2'],
+        author: who,
+        committer: who,
+      );
+
+      final body = jsonDecode(seen.body) as Map<String, dynamic>;
+      expect(body['author'], identity);
+      expect(body['committer'], identity);
+      expect(commit.author!.name, 'bigbeast');
+      expect(commit.committer!.email, 'bigbeast@tsm.invalid');
+      expect(commit.committer!.date, DateTime.utc(2026, 11, 13, 10));
     });
   });
 

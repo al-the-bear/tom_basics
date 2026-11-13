@@ -1,10 +1,13 @@
 # Changelog
 
-No version of this package has been published to pub.dev. The version numbers
-below are the ones `pubspec.yaml` has carried, and each entry lists what landed
-while the pubspec carried that number. The top entry is the version the first
-publish will carry, and it is still open: a change to the public API adds a
-line to it.
+## 1.4.0
+
+- `GitHubGitIdentity` and `createCommit`'s `author` and `committer`: a commit
+  names who wrote and who made it instead of the authenticated user;
+  `GitHubGitCommit.author` / `.committer` read them back.
+- `FakeGitHubServer` records a commit's author and committer
+  (`FakeCommit.author` / `.committer`), defaulting as GitHub does to the
+  authenticated user (`FakeGitHubServer.authenticatedUser`) and the author.
 
 ## 1.3.0
 

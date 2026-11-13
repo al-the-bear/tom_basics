@@ -158,7 +158,19 @@ class FakeCommit {
   final List<String> parents;
   final String message;
 
-  const FakeCommit(this.treeSha, this.parents, this.message);
+  /// The author and committer as the request named them (`{name, email,
+  /// date?}`); when the request names neither, the authenticated user, as
+  /// GitHub records it (see [FakeGitHubServer.authenticatedUser]).
+  final Map<String, dynamic>? author;
+  final Map<String, dynamic>? committer;
+
+  const FakeCommit(
+    this.treeSha,
+    this.parents,
+    this.message, {
+    this.author,
+    this.committer,
+  });
 }
 
 /// The fake server. Wire it into a client with
@@ -166,6 +178,10 @@ class FakeCommit {
 /// baseUrl: FakeGitHubServer.baseUrl)`.
 class FakeGitHubServer {
   static const baseUrl = 'https://fake.github.test';
+
+  /// The login of the token's owner: GitHub's author and committer of a
+  /// commit whose request names neither.
+  String authenticatedUser = 'token-owner';
 
   /// `owner/repo` → repository.
   final Map<String, FakeGitHubRepo> repos = {};
@@ -367,7 +383,8 @@ class FakeGitHubServer {
 
   String _putCommit(FakeCommit commit) {
     final sha = _sha1(
-      'commit ${commit.treeSha} ${commit.parents.join(',')} ${commit.message}',
+      'commit ${commit.treeSha} ${commit.parents.join(',')} ${commit.message}'
+      ' ${commit.author} ${commit.committer}',
       const [],
     );
     commits[sha] = commit;
@@ -656,20 +673,34 @@ class FakeGitHubServer {
       'message': commit.message,
       'tree': {'sha': commit.treeSha},
       'parents': [for (final p in commit.parents) {'sha': p}],
+      if (commit.author != null) 'author': commit.author,
+      if (commit.committer != null) 'committer': commit.committer,
     });
   }
 
   http.Response _createCommit(Map<String, dynamic> body) {
+    // As GitHub: without an author the authenticated user writes the commit,
+    // without a committer the author made it.
+    final user = {
+      'name': authenticatedUser,
+      'email': '$authenticatedUser@users.noreply.github.com',
+    };
+    final author = (body['author'] as Map<String, dynamic>?) ?? user;
+    final committer = (body['committer'] as Map<String, dynamic>?) ?? author;
     final sha = _putCommit(FakeCommit(
       body['tree'] as String,
       [for (final p in body['parents'] as List<dynamic>) p as String],
       body['message'] as String? ?? '',
+      author: author,
+      committer: committer,
     ));
     return _json(201, {
       'sha': sha,
       'message': body['message'],
       'tree': {'sha': body['tree']},
       'parents': [for (final p in body['parents'] as List<dynamic>) {'sha': p}],
+      'author': author,
+      'committer': committer,
     });
   }
 

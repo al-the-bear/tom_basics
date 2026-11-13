@@ -1,6 +1,6 @@
 # Tom GitHub API
 
-Published on pub.dev as [`tom_github_api` 1.3.0](https://pub.dev/packages/tom_github_api).
+Published on pub.dev as [`tom_github_api` 1.4.0](https://pub.dev/packages/tom_github_api).
 
 > Tom GitHub API is part of the **Tom framework** by al-the-bear.
 > Distributed under the terms in this package's license — see
@@ -524,7 +524,7 @@ it, it calls `http`, and it depends on nothing else in the workspace.
 
 ## Status
 
-- **Version:** 1.3.0, not published. See [`CHANGELOG.md`](CHANGELOG.md).
+- **Version:** 1.4.0, published on pub.dev. See [`CHANGELOG.md`](CHANGELOG.md).
 - **SDK:** Dart `^3.10.8`
 - **Runtime dependencies:** `http: ^1.3.0` (only).
 - **Surface:** Issues, Labels, Comments, Search, Workflow dispatch, the git
