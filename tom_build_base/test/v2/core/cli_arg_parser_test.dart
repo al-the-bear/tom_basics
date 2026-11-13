@@ -1280,6 +1280,7 @@ const CliArgs _populatedArgs = CliArgs(
     ),
   },
   extraOptions: {'extra': 'x'},
+  argumentErrors: ['`-s-`: refused'],
 );
 
 /// Every field of [CliArgs], projected onto values that compare by value.
@@ -1339,6 +1340,7 @@ Map<String, Object?> _fieldsOf(CliArgs a) => {
     ]),
   ),
   'extraOptions': a.extraOptions,
+  'argumentErrors': a.argumentErrors,
 };
 
 /// The `this.<field>` parameter names of the `CliArgs` constructor, read from

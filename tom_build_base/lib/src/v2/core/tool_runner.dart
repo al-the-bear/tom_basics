@@ -456,6 +456,17 @@ class ToolRunner {
       );
     }
 
+    // Arguments the parser refused (e.g. `-s-`) stop the run before anything
+    // else: a run carried out without what the caller wrote is the wrong run.
+    if (cliArgs.argumentErrors.isNotEmpty) {
+      for (final error in cliArgs.argumentErrors) {
+        output.writeln('Error: $error');
+      }
+      return ToolResult.failure(
+        'Invalid arguments: ${cliArgs.argumentErrors.join('; ')}',
+      );
+    }
+
     // --dump-definitions: serialize tool definition and exit immediately.
     // Intercepted before any wiring or traversal.
     if (cliArgs.dumpDefinitions) {

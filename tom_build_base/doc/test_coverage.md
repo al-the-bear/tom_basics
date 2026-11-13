@@ -16,7 +16,7 @@ This document lists all testable features across `tom_build_base` and tracks tes
 | 1 | [Command Prefix Matching](#1-command-prefix-matching) | 24 | 24✅ | `v2/command_prefix_test.dart` | [→](#1-command-prefix-matching) |
 | 2 | [Execute Placeholder Resolver](#2-execute-placeholder-resolver) | 55 | 55✅ | `v2/execute_placeholder_test.dart` | [→](#2-execute-placeholder-resolver) |
 | 3 | [Macro Expansion](#3-macro-expansion) | 24 | 24✅ | `v2/macro_expansion_test.dart` | [→](#3-macro-expansion) |
-| 4 | [CLI Argument Parser](#4-cli-argument-parser) | 115 | 115✅ | `v2/core/cli_arg_parser_test.dart` | [→](#4-cli-argument-parser) |
+| 4 | [CLI Argument Parser](#4-cli-argument-parser) | 117 | 117✅ | `v2/core/cli_arg_parser_test.dart` | [→](#4-cli-argument-parser) |
 | 5 | [CommandDefinition](#5-commanddefinition) | 15 | 15✅ | `v2/core/command_definition_test.dart` | [→](#5-commanddefinition) |
 | 6 | [Completion Generator](#6-completion-generator) | 30 | 30✅ | `v2/core/completion_generator_test.dart` | [→](#6-completion-generator) |
 | 7 | [Features — Modes, Defines, Macros, Pipelines](#7-features--modes-defines-macros-pipelines) | 33 | 33✅ | `v2/core/features_test.dart` | [→](#7-features--modes-defines-macros-pipelines) |
@@ -62,7 +62,8 @@ This document lists all testable features across `tom_build_base` and tracks tes
 | 47 | [Language Natures](#47-language-natures) | 16 | 16✅ | `v2/traversal/language_natures_test.dart` | [→](#47-language-natures) |
 | 48 | [Project Listing](#48-project-listing) | 7 | 7✅ | `v2/traversal/project_listing_test.dart` | [→](#48-project-listing) |
 | 49 | [Broken Pipe](#49-broken-pipe) | 3 | 3✅ | `v2/core/broken_pipe_test.dart` | [→](#49-broken-pipe) |
-| — | **Total** | **1031** | **1031✅** | | |
+| 50 | [Option Suppression Refused](#50-option-suppression-refused) | 4 | 4✅ | `v2/core/option_suppression_test.dart` | [→](#50-option-suppression-refused) |
+| — | **Total** | **1037** | **1037✅** | | |
 
 > Every row links to a section, and the counts are measured from
 > `dart test --reporter json -j 1` rather than maintained by hand. Run it
@@ -1041,6 +1042,23 @@ die with an uncaught EPIPE and a stack trace. The fixtures in
 | BB-PIPE-1 | `stdout.writeln` into `head -1` | ✅ | One line, nothing on stderr, exit 0. |
 | BB-PIPE-2 | `isBrokenPipe` | ✅ | EPIPE (and the Windows codes) yes, other errors no. |
 | BB-PIPE-3 | A ToolRunner tool's `--help` into `head -1` | ✅ | Through ConsoleMarkdownSink: one line, nothing on stderr, exit 0. |
+
+---
+
+## 50. Option Suppression Refused
+
+**Test file:** `test/v2/core/option_suppression_test.dart`
+
+The commands of a run share one traversal, so an option cannot be taken away
+from one of them. `-X-` and `--name-` are refused instead of being read as an
+option with the value `-`.
+
+| ID | Feature | Status | Description |
+|----|---------|--------|-------------|
+| BB-SUPP-1 | `:cmd -s-` | ✅ | One argument error naming `-s-`; `scan` stays unset (not `-`). |
+| BB-SUPP-2 | Every form, either side of a command | ✅ | `-v-`, `-n-`, `-r-`, `--scan-`, `--verbose-` before and after a command; two at once give two errors. |
+| BB-SUPP-3 | Values are untouched | ✅ | `-sdir-`, `--scan dir-`, `--scan=-`, a lone `-` and ordinary options give no error. |
+| BB-SUPP-4 | ToolRunner refuses the run | ✅ | An `Error:` line naming `-v-`, a failed result, no command runs. |
 
 ---
 
