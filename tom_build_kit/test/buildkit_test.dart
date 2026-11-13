@@ -68,27 +68,24 @@ void main() {
       final result = await ws.runPipeline('--list', []);
       log.capture('buildkit --list', result);
 
-      // --list exits non-zero (1 = error/no direct result)
-      expect(
-        result.exitCode,
-        isNot(equals(0)),
-        reason: '--list exits with non-zero exit code',
-      );
+      // Since 1.21.0 (tom_build_base 2.29.0) `--list` alone lists the
+      // commands and pipelines and runs nothing; listing is a success.
+      expect(result.exitCode, 0, reason: '--list lists and exits 0');
 
-      // Output should show usage or available commands/pipelines
       final combined = '${result.stdout}\n${result.stderr}';
-      final hasUsageInfo =
-          combined.contains('buildkit') ||
-          combined.contains('Usage') ||
-          combined.contains('pipeline');
+      final namesPipelines =
+          combined.contains('test-simple') && combined.contains('test-shell');
+      final namesCommands = combined.contains(':versioner');
       expect(
-        hasUsageInfo,
+        namesPipelines,
         isTrue,
-        reason: '--list should show some usage info',
+        reason: 'the fixture\'s pipelines are listed',
       );
+      expect(namesCommands, isTrue, reason: 'the commands are listed');
 
-      log.expectation('non-zero exit', result.exitCode != 0);
-      log.expectation('has usage info', hasUsageInfo);
+      log.expectation('exit 0', result.exitCode == 0);
+      log.expectation('names the pipelines', namesPipelines);
+      log.expectation('names the commands', namesCommands);
     });
 
     test('--help shows usage information', () async {

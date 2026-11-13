@@ -39,6 +39,7 @@ This package extends the shared infrastructure from **tom_build_base**:
   - [DCli Command](#dcli-command)
   - [Execute Command](#execute-command)
   - [Boundaries Command](#boundaries-command)
+  - [Apidoc Command](#apidoc-command)
   - [Projects Command](#projects-command)
   - [Status Command](#status-command)
 - [Command Prefix Matching](#command-prefix-matching)
@@ -352,7 +353,7 @@ buildkit:
       executable: true
       core:
         - commands:
-            - cleanup
+            - buildkit :cleanup
             - shell rm -rf build/
 
     build:
@@ -360,9 +361,9 @@ buildkit:
       runBefore: clean
       core:
         - commands:
-            - versioner
-            - runner
-            - compiler
+            - buildkit :versioner
+            - buildkit :runner
+            - buildkit :compiler
 
     deploy:
       executable: true
@@ -393,8 +394,8 @@ Each step in `precore`, `core`, or `postcore` is a map:
 ```yaml
 core:
   - commands:
-      - versioner
-      - compiler
+      - buildkit :versioner
+      - buildkit :compiler
     platforms:
       - darwin-arm64
       - linux-x64
@@ -402,7 +403,7 @@ core:
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `commands` | List\<String\> | Commands to execute in this step |
+| `commands` | List\<String\> | Commands to execute in this step: `buildkit :<command> ...`, `shell ...`, `shell-scan ...`, `stdin ...` or `print ...` |
 | `platforms` | List\<String\> | Platforms this step applies to (empty or omitted = all platforms) |
 
 ### Pipeline Phases
@@ -437,6 +438,7 @@ Built-in commands run the respective tools directly via their Dart implementatio
 | `cleanup` | Delete the globs a project's `buildkit.yaml` `cleanup:` lists (alias `cl`) |
 | `dependencies` | Dependency tree visualization |
 | `boundaries` | Context-boundary check: imports across a package's bounded contexts |
+| `apidoc` | Generate each Dart package's dartdoc API documentation into `build/api` (never `doc/`) and count its warnings (see [Apidoc Command](#apidoc-command)) |
 | `pubget` | Run `dart pub get` on projects |
 | `pubgetall` | Shortcut for `pubget --scan . --recursive` |
 | `pubupdate` | Run `dart pub upgrade` on projects |
@@ -457,17 +459,17 @@ Built-in commands run the respective tools directly via their Dart implementatio
 | `dcli` | Execute Dart scripts/expressions via dcli |
 | `execute` | Run shell commands in each folder with placeholder substitution (aliases: `exec`, `x`) |
 
-Commands can include arguments in pipeline definitions:
+A pipeline step runs a built-in command as `buildkit :<command>` (the `buildkit` on `PATH`, with its arguments); the other step kinds are `shell`, `shell-scan`, `stdin` and `print`. A bare command name (`- versioner`) is refused:
 
 ```yaml
 core:
   - commands:
-      - versioner --no-git
-      - compiler --dry-run
-      - runner --command build
+      - buildkit :versioner --no-git
+      - buildkit :compiler --dry-run
+      - buildkit :runner --command build
 ```
 
-When a pipeline specifies `--project`, built-in commands automatically receive the project path (unless `--project` is already in their arguments). The `dcli` command is exempt from `--project` injection — it uses the working directory instead.
+Options the pipeline sets (e.g. `--project`) are passed to each `buildkit` step unless the step gives the option itself. A `dcli` script runs as a `shell dcli ...` step, in the workspace directory.
 
 **Get help for a specific command:**
 
@@ -582,11 +584,11 @@ buildkit:
       executable: true
       precore:
         - commands:
-            - dcli ~s/build_hook.dart -no-init-source
+            - shell dcli ~s/build_hook.dart -no-init-source
       core:
         - commands:
-            - versioner
-            - compiler
+            - buildkit :versioner
+            - buildkit :compiler
 ```
 
 #### Compiler Usage
@@ -709,6 +711,69 @@ A rule that matches nothing is reported, not skipped, so a rule that has rotted 
 | `--tests` | Also check `test/`, whatever the rules' `tests:` says |
 
 Run it by hand from the repository, or from a project's own check script; it is never scheduled.
+
+### Apidoc Command
+
+The `apidoc` command runs `dart doc` in every Dart package the traversal selects and writes the API documentation into
+a generated folder of the package, `build/api` by default. `doc/` holds hand-authored documents only, so dartdoc's own
+default `doc/api` is never used; `build/` is gitignored in the workspace's repositories, and when git would track the
+output folder the command says so.
+
+**Syntax:**
+
+```bash
+bk :apidoc [--output <dir>]
+bk -s tom_ai/basics :apidoc              # every package in the folder
+bk -s . -r :apidoc --output build/apidoc
+```
+
+**Per package** it prints dartdoc's `warning:` / `error:` lines and one result line:
+
+```text
+  tom_ai/basics/tom_basics_samples: skipped — no lib/ library to document
+  tom_ai/basics/tom_crypto: ok — 2 libraries, 0 warnings, 3 of 91 public elements undocumented -> build/api
+  tom_ai/basics/tom_chattools: ok — 1 library, 1 warning (1 unresolved reference), 9 of 125 public elements undocumented -> build/api
+```
+
+- **warnings** is dartdoc's own count (`Found N warnings and M errors`); unresolved doc references (`[Name]` that
+  names nothing) are counted separately.
+- **undocumented** counts the public elements in dartdoc's `index.json` without a doc comment.
+
+**Verdicts and exit code:**
+
+- **ok**: dartdoc ran and reported no error; the package passes, whatever its warnings.
+- **failed**: dartdoc exited non-zero or reported errors (a package's `dartdoc_options.yaml` can turn warnings into
+  errors, e.g. `errors: [unresolved-doc-reference]`), or documented no public library; buildkit exits 1. The other
+  packages are still documented.
+- **refused before dartdoc runs**: a package without `.dart_tool/package_config.json` (run `buildkit :pubget` first;
+  dartdoc would otherwise document it against imports it cannot see), and an `--output` inside a `doc/` folder,
+  outside the package or absolute.
+- **skipped**: a package without a library in `lib/` (outside `lib/src/`), e.g. a samples folder; it does not fail
+  the run.
+
+The output folder is deleted before each run, so no page of a removed library stays. `--dry-run` prints the `dart doc`
+call and writes nothing.
+
+**Options:**
+
+| Option | Description |
+|--------|-------------|
+| `--output=<dir>` | Folder for the API docs, relative to each package (default `build/api`; never inside `doc/`) |
+
+**In a pipeline:**
+
+```yaml
+buildkit:
+  pipelines:
+    apidoc:
+      executable: true
+      core:
+        - commands:
+            - buildkit :pubget
+            - buildkit :apidoc
+```
+
+Run it by hand from the repository; it is never scheduled.
 
 ### Projects Command
 
@@ -1372,7 +1437,7 @@ Steps can be filtered by platform to run only on specific operating systems or a
 core:
   # Run on all platforms
   - commands:
-      - versioner
+      - buildkit :versioner
 
   # Run only on macOS
   - commands:
@@ -1541,9 +1606,9 @@ buildkit:
     build:
       core:
         - commands:
-            - versioner
-            - runner
-            - compiler
+            - buildkit :versioner
+            - buildkit :runner
+            - buildkit :compiler
 ```
 
 ```bash
@@ -1558,16 +1623,16 @@ buildkit:
     clean:
       core:
         - commands:
-            - cleanup
+            - buildkit :cleanup
             - shell rm -rf build/
 
     build:
       runBefore: clean
       core:
         - commands:
-            - versioner
-            - runner
-            - compiler
+            - buildkit :versioner
+            - buildkit :runner
+            - buildkit :compiler
 ```
 
 ```bash
@@ -1582,8 +1647,8 @@ buildkit:
     build:
       core:
         - commands:
-            - versioner
-            - compiler
+            - buildkit :versioner
+            - buildkit :compiler
 
       postcore:
         # macOS code signing
@@ -1678,14 +1743,14 @@ buildkit:
     build:
       precore:
         - commands:
-            - dcli ~s/build_hook.dart -no-init-source
+            - shell dcli ~s/build_hook.dart -no-init-source
       core:
         - commands:
-            - versioner
-            - compiler
+            - buildkit :versioner
+            - buildkit :compiler
       postcore:
         - commands:
-            - dcli ~s/post_build.dart
+            - shell dcli ~s/post_build.dart
 ```
 
 ### DCli via Stdin in Pipeline

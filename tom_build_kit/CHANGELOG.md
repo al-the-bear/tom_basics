@@ -1,3 +1,24 @@
+## 1.22.0
+
+### Added — `:apidoc`, dartdoc API documentation per package
+
+`buildkit -s tom_ai/basics :apidoc` runs `dart doc` in every Dart package of
+the traversal and writes into `build/api` (`--output <dir>`, relative to the
+package; never inside `doc/`, which holds hand-authored documents only). Per
+package it prints dartdoc's warning and error lines and one result line:
+libraries, warnings (unresolved doc references counted apart), and how many
+public elements of `index.json` have no doc comment. A non-zero exit, dartdoc
+errors or no public library fail the package; an unresolved package
+(`.dart_tool/package_config.json` missing) is refused before dartdoc runs; a
+package without a `lib/` library is skipped. Usable as a pipeline step
+(`buildkit :apidoc`). BK-APIDOC-1..9; user guide, Apidoc Command.
+
+### Fixed — the user guide's pipeline examples
+
+The examples wrote pipeline steps as bare command names (`- versioner`) and a
+`dcli` step, which the pipeline loader refuses; they now read
+`buildkit :versioner` and `shell dcli ...`, and the text names the step kinds.
+
 ## 1.21.0
 
 ### Fixed — `--list` runs nothing (tom_build_base 2.29.0)

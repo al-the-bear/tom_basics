@@ -13,6 +13,7 @@ import 'dart:io';
 import 'package:tom_build_base/tom_build_base.dart';
 
 import 'executors/project_action_executor.dart';
+import 'executors/apidoc_executor.dart';
 import 'executors/boundaries_executor.dart';
 import 'executors/buildsorter_executor.dart';
 import 'executors/bumppubspec_executor.dart';
@@ -313,6 +314,7 @@ Map<String, CommandExecutor> createBuildkitExecutors() {
     'cleanup': CleanupExecutor(),
     'dependencies': DependenciesExecutor(),
     'boundaries': BoundariesExecutor(),
+    'apidoc': ApidocExecutor(),
     'publisher': PublisherExecutor(),
     'projects': ProjectsExecutor(),
     'status': StatusExecutor(),

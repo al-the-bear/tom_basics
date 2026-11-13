@@ -199,6 +199,17 @@ const boundariesOptions = <OptionDefinition>[
   ),
 ];
 
+/// Options for the apidoc command.
+const apidocOptions = <OptionDefinition>[
+  OptionDefinition.option(
+    name: 'output',
+    description:
+        'Folder for the API docs, relative to each package '
+        '(default build/api; never inside doc/)',
+    valueName: 'dir',
+  ),
+];
+
 /// Options for the projects command.
 const projectsOptions = <OptionDefinition>[
   OptionDefinition.flag(
@@ -697,6 +708,24 @@ const boundariesCommand = CommandDefinition(
   ],
 );
 
+const apidocCommand = CommandDefinition(
+  name: 'apidoc',
+  description:
+      'Generate the dartdoc API documentation of each Dart package into '
+      'build/api (not doc/) and count its warnings',
+  options: apidocOptions,
+  worksWithNatures: {DartProjectFolder},
+  supportsProjectTraversal: true,
+  supportsGitTraversal: false,
+  requiresTraversal: true,
+  canRunStandalone: true,
+  examples: [
+    'buildkit :apidoc',
+    'buildkit -s tom_ai/basics :apidoc',
+    'buildkit -s . -r :apidoc --output build/apidoc',
+  ],
+);
+
 const publisherCommand = CommandDefinition(
   name: 'publisher',
   description: 'Show publishing status for all projects',
@@ -1182,6 +1211,7 @@ final buildkitTool = ToolDefinition(
     cleanupCommand,
     dependenciesCommand,
     boundariesCommand,
+    apidocCommand,
     publisherCommand,
     projectsCommand,
     statusCommand,

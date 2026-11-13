@@ -443,6 +443,22 @@ Unit tests for argument parsing and command shorthand resolution.
 | BK-BND-5 | No rules, asked for: NOT MEASURED, exit 1 | ✅ | `:boundaries` inside a package without the section. |
 | BK-BND-6 | No rules, met in a traversal: skipped by name | ✅ | A folder with a clean package and one without rules; exit 0. |
 
+### Apidoc
+
+**Test file:** `test/apidoc_test.dart` (BK-APIDOC-1..3 read dartdoc's output; 4..9 run `bin/buildkit.dart` on fixture packages under `.dart_tool`)
+
+| ID | Feature | Status | How to Test |
+|----|---------|--------|-------------|
+| BK-APIDOC-1 | Warnings, unresolved references, libraries, undocumented elements | ✅ | dartdoc output and an `index.json` with one element without `desc`. |
+| BK-APIDOC-2 | Failures | ✅ | A non-zero exit, dartdoc errors, no public library. |
+| BK-APIDOC-3 | Output folder | ✅ | Inside the package, never inside `doc/`, not absolute. |
+| BK-APIDOC-4 | Success | ✅ | A package with one unresolved reference: `build/api/index.html` written, no `doc/`, the warning and the result line printed; exit 0. |
+| BK-APIDOC-5 | A failing package | ✅ | A package whose `dartdoc_options.yaml` makes the unresolved reference an error: exit 1, its error line printed; the other package is still documented. |
+| BK-APIDOC-6 | Refused before dartdoc | ✅ | A package without `package_config.json`; `--output doc/api`. |
+| BK-APIDOC-7 | `--dry-run` | ✅ | The `dart doc` call is printed, nothing written. |
+| BK-APIDOC-8 | Pipeline step | ✅ | A pipeline with `buildkit :apidoc`, run with this source's buildkit on `PATH`. |
+| BK-APIDOC-9 | Relative `--scan`; no `lib/` | ✅ | `-s pkgs` from the fixture root: the docs land in each package's `build/api`; a package without `lib/` is skipped. |
+
 ### Bootstrap — Shell Setup
 
 **Test file:** `test/bootstrap_binaries_test.dart` (sources `bootstrap_binaries.sh`'s functions in a temporary `HOME`; nothing is built)
