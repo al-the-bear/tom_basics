@@ -1,5 +1,6 @@
-## 0.7.1
+## 0.8.1
 
+- The entry below shipped first in 0.8.0, whose changelog named it 0.7.1.
 - **A clone's release removes an untracked nested repository too** (`git
   clean -ffd`): the checkout a submodule leaves behind when it is removed
   upstream (tom_ai's retired `xternal/tom_kdbx`) stayed in the clone, which
