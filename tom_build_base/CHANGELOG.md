@@ -1,5 +1,13 @@
 ## 2.27.0
 
+### Changed — dcli is `tom_dcli`
+
+`tom_dcli` ^10.4.7+tom.1 in place of `dcli`: the Tom Framework's fork of dcli
+10.4.7, which reads INI files with its own `IniConfig` instead of the LGPL-3.0
+`ini` package. Every tool built on this package compiled `ini` in, and no
+compiled Dart program can meet the LGPL's relinking requirement. Same API
+under `package:tom_dcli/...`.
+
 ### Added — the projects as the tools see them
 
 - `listProjects(ProjectTraversalInfo)` / `listProjectsFor(cliArgs,
