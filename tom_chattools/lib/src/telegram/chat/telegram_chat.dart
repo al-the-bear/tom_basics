@@ -4,21 +4,25 @@ library;
 import 'dart:async';
 import 'dart:io';
 
-import 'package:televerse/telegram.dart' as tg_models;
-import 'package:televerse/televerse.dart' as tg;
-
 import '../../api/chat/chat_api.dart';
 import '../telegram_config.dart';
+import 'telegram_bot_client.dart';
 
 export '../telegram_config.dart';
+export 'telegram_bot_client.dart' show TelegramApiException;
 
 /// Telegram implementation of [ChatApi].
 ///
-/// Uses the Televerse library to communicate with Telegram Bot API.
+/// Talks to the Telegram Bot API over HTTP itself ([TelegramBotClient]):
+/// long polling (`getUpdates`) for incoming messages, `sendMessage` and the
+/// `send<Document|Photo|Video|Audio>` uploads for outgoing ones, `getFile` for
+/// attachments.
 class TelegramChat extends ChatApi {
   final TelegramChatConfig _config;
-  late final tg.Bot _bot;
+  late final TelegramBotClient _client;
   bool _connected = false;
+  int _offset = 0;
+  String? _botId;
 
   final StreamController<ChatMessage> _messageController =
       StreamController<ChatMessage>.broadcast();
@@ -34,130 +38,184 @@ class TelegramChat extends ChatApi {
 
   @override
   Future<void> initialize() async {
-    _bot = tg.Bot(_config.token);
+    _client = TelegramBotClient(_config.token, baseUrl: _config.apiBaseUrl);
     _connected = true;
 
     // Start listening for updates if configured for polling
     if (_config.usePolling) {
-      _startPolling();
+      unawaited(_poll());
     }
   }
 
-  void _startPolling() {
-    _bot.onMessage((ctx) {
-      final message = _convertMessage(ctx.message);
-      if (message != null) {
-        _messageController.add(message);
+  /// Long polling: `getUpdates` in a loop, each message onto [onMessage],
+  /// until [disconnect]. A failed call is retried after a short pause.
+  Future<void> _poll() async {
+    try {
+      final me = await _client.call('getMe');
+      if (me is Map) {
+        _botId = me['id']?.toString();
       }
-    });
-
-    // Start the bot with configured polling timeout
-    final fetcher = tg.LongPollingFetcher(
-      _bot.api,
-      config: tg.LongPollingConfig(
-        timeout: _config.pollingTimeout,
-        limit: 100,
-      ),
-    );
-    _bot.start(fetcher);
+    } catch (_) {
+      // Without getMe the bot's own messages are not marked isSelf; polling goes on.
+    }
+    while (_connected) {
+      try {
+        final updates = await _client.call('getUpdates', {
+          'offset': _offset,
+          'timeout': _config.pollingTimeout,
+          'limit': 100,
+          if (_config.allowedUpdates != null)
+            'allowed_updates': _config.allowedUpdates,
+        });
+        if (updates is! List) {
+          continue;
+        }
+        for (final update in updates) {
+          if (update is! Map) {
+            continue;
+          }
+          final id = update['update_id'];
+          if (id is int && id >= _offset) {
+            _offset = id + 1;
+          }
+          final msg = update['message'];
+          if (msg is Map) {
+            final message = _convertMessage(Map<String, dynamic>.from(msg));
+            if (_connected && !_messageController.isClosed) {
+              _messageController.add(message);
+            }
+          }
+        }
+      } catch (_) {
+        if (!_connected) {
+          break;
+        }
+        await Future<void>.delayed(const Duration(seconds: 2));
+      }
+    }
   }
 
-  ChatMessage? _convertMessage(tg_models.Message? msg) {
-    if (msg == null) return null;
-
-    final from = msg.from;
-    
-    // Debug logging for text vs caption
-    print('[TelegramChat] Message received:');
-    print('  msg.text: ${msg.text == null ? "null" : (msg.text!.isEmpty ? "empty" : "\"${msg.text}\"")}');
-    print('  msg.caption: ${msg.caption == null ? "null" : (msg.caption!.isEmpty ? "empty" : "\"${msg.caption}\"")}');
-    print('  hasPhoto: ${msg.photo != null}');
-    print('  hasDocument: ${msg.document != null}');
-    print('  hasVideo: ${msg.video != null}');
-    print('  hasAudio: ${msg.audio != null}');
-    
-    // Use text if available, otherwise use caption (for messages with attachments)
-    final messageText = msg.text ?? msg.caption;
-    print('  → Using messageText: ${messageText == null ? "null" : "\"$messageText\""}');
-    
-    // Extract attachments from the message
-    final attachments = _extractAttachments(msg);
-    print('  → Extracted ${attachments.length} attachment(s)');
-    
+  /// A Bot API `Message` (JSON) as a [ChatMessage]: the text or caption, the
+  /// sender, the attachments; `rawData` holds the message as Telegram sent it
+  /// (`telegram_message`) and its chat id (`telegram_chat_id`).
+  ChatMessage _convertMessage(Map<String, dynamic> msg) {
+    final from = msg['from'] is Map
+        ? Map<String, dynamic>.from(msg['from'] as Map)
+        : null;
+    final chat = msg['chat'] is Map
+        ? Map<String, dynamic>.from(msg['chat'] as Map)
+        : null;
+    final reply = msg['reply_to_message'] is Map
+        ? msg['reply_to_message'] as Map
+        : null;
+    final messageId = msg['message_id']?.toString() ?? '';
+    final date = msg['date'] is int ? msg['date'] as int : 0;
+    final fromId = from?['id']?.toString();
     return ChatMessage(
-      id: msg.messageId.toString(),
-      text: messageText,
+      id: messageId,
+      // Text, else the caption (a message with an attachment).
+      text: (msg['text'] ?? msg['caption']) as String?,
       sender: ChatSender(
-        id: from?.id.toString() ?? 'unknown',
-        name: _buildName(from?.firstName, from?.lastName),
-        username: from?.username,
-        isSelf: from?.isBot == true && from?.id.toString() == _getBotId(),
+        id: fromId ?? 'unknown',
+        name: _buildName(
+          from?['first_name'] as String?,
+          from?['last_name'] as String?,
+        ),
+        username: from?['username'] as String?,
+        isSelf: from?['is_bot'] == true && fromId != null && fromId == _botId,
       ),
-      timestamp: DateTime.fromMillisecondsSinceEpoch(msg.date * 1000),
+      timestamp: DateTime.fromMillisecondsSinceEpoch(date * 1000),
       type: _getMessageType(msg),
-      platformMessageId: msg.messageId.toString(),
-      replyToMessageId: msg.replyToMessage?.messageId.toString(),
-      attachments: attachments,
-      rawData: {'telegram_message': msg},
+      platformMessageId: messageId,
+      replyToMessageId: reply?['message_id']?.toString(),
+      attachments: _extractAttachments(msg),
+      rawData: {
+        'telegram_message': msg,
+        if (chat?['id'] != null) 'telegram_chat_id': chat!['id'].toString(),
+      },
     );
   }
-  
+
   /// Extract attachments from a Telegram message.
-  List<ChatAttachment> _extractAttachments(tg_models.Message msg) {
+  List<ChatAttachment> _extractAttachments(Map<String, dynamic> msg) {
     final attachments = <ChatAttachment>[];
-    
+    Map<String, dynamic>? part(String key) =>
+        msg[key] is Map ? Map<String, dynamic>.from(msg[key] as Map) : null;
+
     // Photo - Telegram sends multiple sizes, get the largest
-    if (msg.photo != null && msg.photo!.isNotEmpty) {
-      final largest = msg.photo!.reduce((a, b) => 
-          a.width * a.height > b.width * b.height ? a : b);
-      attachments.add(ChatAttachment(
-        type: ChatAttachmentType.image,
-        url: largest.fileId,  // File ID for downloading
-        fileName: 'photo.jpg',
-        mimeType: 'image/jpeg',
-      ));
+    final photos = msg['photo'];
+    if (photos is List && photos.isNotEmpty) {
+      final sizes = photos.whereType<Map>().toList();
+      if (sizes.isNotEmpty) {
+        int area(Map p) =>
+            ((p['width'] as int?) ?? 0) * ((p['height'] as int?) ?? 0);
+        final largest = sizes.reduce((a, b) => area(a) > area(b) ? a : b);
+        attachments.add(
+          ChatAttachment(
+            type: ChatAttachmentType.image,
+            url:
+                largest['file_id']?.toString() ?? '', // File ID for downloading
+            fileName: 'photo.jpg',
+            mimeType: 'image/jpeg',
+            fileSize: largest['file_size'] as int?,
+          ),
+        );
+      }
     }
-    
-    // Document
-    if (msg.document != null) {
-      attachments.add(ChatAttachment(
-        type: ChatAttachmentType.document,
-        url: msg.document!.fileId,
-        fileName: msg.document!.fileName ?? 'document',
-        mimeType: msg.document!.mimeType,
-      ));
+
+    final document = part('document');
+    if (document != null) {
+      attachments.add(
+        ChatAttachment(
+          type: ChatAttachmentType.document,
+          url: document['file_id']?.toString() ?? '',
+          fileName: document['file_name'] as String? ?? 'document',
+          mimeType: document['mime_type'] as String?,
+          fileSize: document['file_size'] as int?,
+        ),
+      );
     }
-    
-    // Video
-    if (msg.video != null) {
-      attachments.add(ChatAttachment(
-        type: ChatAttachmentType.video,
-        url: msg.video!.fileId,
-        fileName: msg.video!.fileName ?? 'video.mp4',
-        mimeType: msg.video!.mimeType,
-      ));
+
+    final video = part('video');
+    if (video != null) {
+      attachments.add(
+        ChatAttachment(
+          type: ChatAttachmentType.video,
+          url: video['file_id']?.toString() ?? '',
+          fileName: video['file_name'] as String? ?? 'video.mp4',
+          mimeType: video['mime_type'] as String?,
+          fileSize: video['file_size'] as int?,
+        ),
+      );
     }
-    
-    // Audio
-    if (msg.audio != null) {
-      attachments.add(ChatAttachment(
-        type: ChatAttachmentType.audio,
-        url: msg.audio!.fileId,
-        fileName: msg.audio!.fileName ?? 'audio.mp3',
-        mimeType: msg.audio!.mimeType,
-      ));
+
+    final audio = part('audio');
+    if (audio != null) {
+      attachments.add(
+        ChatAttachment(
+          type: ChatAttachmentType.audio,
+          url: audio['file_id']?.toString() ?? '',
+          fileName: audio['file_name'] as String? ?? 'audio.mp3',
+          mimeType: audio['mime_type'] as String?,
+          fileSize: audio['file_size'] as int?,
+        ),
+      );
     }
-    
+
     // Voice message
-    if (msg.voice != null) {
-      attachments.add(ChatAttachment(
-        type: ChatAttachmentType.audio,
-        url: msg.voice!.fileId,
-        fileName: 'voice.ogg',
-        mimeType: msg.voice!.mimeType,
-      ));
+    final voice = part('voice');
+    if (voice != null) {
+      attachments.add(
+        ChatAttachment(
+          type: ChatAttachmentType.audio,
+          url: voice['file_id']?.toString() ?? '',
+          fileName: 'voice.ogg',
+          mimeType: voice['mime_type'] as String?,
+          fileSize: voice['file_size'] as int?,
+        ),
+      );
     }
-    
+
     return attachments;
   }
 
@@ -166,50 +224,55 @@ class TelegramChat extends ChatApi {
     return [firstName, lastName].where((s) => s != null).join(' ');
   }
 
-  String? _getBotId() {
-    // Will be populated after getMe is called
-    return null; // TODO: cache bot info
-  }
-
-  ChatMessageType _getMessageType(tg_models.Message msg) {
-    if (msg.photo != null) return ChatMessageType.image;
-    if (msg.video != null) return ChatMessageType.video;
-    if (msg.audio != null) return ChatMessageType.audio;
-    if (msg.voice != null) return ChatMessageType.audio;
-    if (msg.document != null) return ChatMessageType.document;
-    if (msg.sticker != null) return ChatMessageType.sticker;
-    if (msg.location != null) return ChatMessageType.location;
-    if (msg.contact != null) return ChatMessageType.contact;
-    if (msg.text != null) return ChatMessageType.text;
+  ChatMessageType _getMessageType(Map<String, dynamic> msg) {
+    if (msg['photo'] != null) return ChatMessageType.image;
+    if (msg['video'] != null) return ChatMessageType.video;
+    if (msg['audio'] != null) return ChatMessageType.audio;
+    if (msg['voice'] != null) return ChatMessageType.audio;
+    if (msg['document'] != null) return ChatMessageType.document;
+    if (msg['sticker'] != null) return ChatMessageType.sticker;
+    if (msg['location'] != null) return ChatMessageType.location;
+    if (msg['contact'] != null) return ChatMessageType.contact;
+    if (msg['text'] != null) return ChatMessageType.text;
     return ChatMessageType.unknown;
   }
 
   @override
-  Future<ChatMessage> sendMessage(ChatReceiver receiver, String text, {String? parseMode}) async {
+  Future<ChatMessage> sendMessage(
+    ChatReceiver receiver,
+    String text, {
+    String? parseMode,
+  }) async {
     final chatId = await _resolveChatId(receiver);
-    final tgParseMode = _toTelegramParseMode(parseMode);
-    final result = await _bot.api.sendMessage(chatId, text, parseMode: tgParseMode);
+    final result = await _client.call('sendMessage', {
+      'chat_id': chatId,
+      'text': text,
+      'parse_mode': _toTelegramParseMode(parseMode),
+    });
+    final messageId = result is Map
+        ? result['message_id']?.toString() ?? ''
+        : '';
 
     return ChatMessage(
-      id: result.messageId.toString(),
+      id: messageId,
       text: text,
       sender: const ChatSender.self(),
       timestamp: DateTime.now(),
       type: ChatMessageType.text,
-      platformMessageId: result.messageId.toString(),
+      platformMessageId: messageId,
     );
   }
-  
-  /// Convert string parse mode to Telegram ParseMode enum.
-  tg_models.ParseMode? _toTelegramParseMode(String? parseMode) {
+
+  /// The Bot API's `parse_mode` for a parse mode name (any case); null when unknown.
+  String? _toTelegramParseMode(String? parseMode) {
     if (parseMode == null) return null;
     switch (parseMode.toLowerCase()) {
       case 'markdown':
-        return tg_models.ParseMode.markdown;
+        return 'Markdown';
       case 'markdownv2':
-        return tg_models.ParseMode.markdownV2;
+        return 'MarkdownV2';
       case 'html':
-        return tg_models.ParseMode.html;
+        return 'HTML';
       default:
         return null;
     }
@@ -218,7 +281,7 @@ class TelegramChat extends ChatApi {
   @override
   Future<ChatMessage> send(ChatReceiver receiver, ChatMessage message) async {
     final chatId = await _resolveChatId(receiver);
-    
+
     // Handle attachments first
     if (message.attachments.isNotEmpty) {
       for (final attachment in message.attachments) {
@@ -234,52 +297,53 @@ class TelegramChat extends ChatApi {
         attachments: message.attachments,
       );
     }
-    
+
     // For text-only messages
     if (message.text != null) {
       return sendMessage(receiver, message.text!);
     }
     throw UnsupportedError('Message must have text or attachments');
   }
-  
+
   /// Send a file attachment via Telegram.
-  Future<void> _sendAttachment(tg.ID chatId, ChatAttachment attachment, String? caption) async {
-    final file = tg.InputFile.fromFile(File(attachment.url), name: attachment.fileName);
-    
-    switch (attachment.type) {
-      case ChatAttachmentType.document:
-        await _bot.api.sendDocument(chatId, file, caption: caption);
-        break;
-      case ChatAttachmentType.image:
-        await _bot.api.sendPhoto(chatId, file, caption: caption);
-        break;
-      case ChatAttachmentType.video:
-        await _bot.api.sendVideo(chatId, file, caption: caption);
-        break;
-      case ChatAttachmentType.audio:
-        await _bot.api.sendAudio(chatId, file, caption: caption);
-        break;
-      default:
-        // Default to document for unknown types
-        await _bot.api.sendDocument(chatId, file, caption: caption);
-    }
+  /// Send a file attachment via Telegram (`url` is the local file's path).
+  Future<void> _sendAttachment(
+    Object chatId,
+    ChatAttachment attachment,
+    String? caption,
+  ) async {
+    // The upload method and its file field; unknown types go as a document.
+    final (method, field) = switch (attachment.type) {
+      ChatAttachmentType.image => ('sendPhoto', 'photo'),
+      ChatAttachmentType.video => ('sendVideo', 'video'),
+      ChatAttachmentType.audio => ('sendAudio', 'audio'),
+      _ => ('sendDocument', 'document'),
+    };
+    await _client.upload(
+      method,
+      {'chat_id': chatId, 'caption': caption},
+      field,
+      File(attachment.url),
+      fileName: attachment.fileName,
+    );
   }
 
-  Future<tg.ID> _resolveChatId(ChatReceiver receiver) async {
+  /// The Bot API's `chat_id`: a number, or `@username`.
+  Future<Object> _resolveChatId(ChatReceiver receiver) async {
     switch (receiver.type) {
       case ChatReceiverType.id:
-        return tg.ID.create(int.parse(receiver.value));
+        return int.parse(receiver.value);
       case ChatReceiverType.username:
         // Telegram requires @ prefix for usernames in some contexts
-        final username = receiver.value.startsWith('@')
+        return receiver.value.startsWith('@')
             ? receiver.value
             : '@${receiver.value}';
-        return tg.ID.create(username);
       case ChatReceiverType.group:
-        return tg.ID.create(int.parse(receiver.value));
+        return int.parse(receiver.value);
       case ChatReceiverType.phone:
         throw UnsupportedError(
-            'Telegram Bot API does not support sending by phone number');
+          'Telegram Bot API does not support sending by phone number',
+        );
     }
   }
 
@@ -395,50 +459,25 @@ class TelegramChat extends ChatApi {
     // We need to call getFile to get the file path, then download it
     final fileId = attachment.url;
     if (fileId.isEmpty) return null;
-    
+
     try {
-      // Get the file info from Telegram
-      final file = await _bot.api.getFile(fileId);
-      final filePath = file.filePath;
-      if (filePath == null) {
-        print('[TelegramChat] getFile returned no filePath for $fileId');
-        return null;
-      }
-      
-      // Construct the download URL
-      final downloadUrl = 'https://api.telegram.org/file/bot${_config.token}/$filePath';
-      print('[TelegramChat] Downloading: $downloadUrl');
-      
-      // Download the file
-      final httpClient = HttpClient();
-      try {
-        final request = await httpClient.getUrl(Uri.parse(downloadUrl));
-        final response = await request.close();
-        if (response.statusCode == 200) {
-          final bytes = <int>[];
-          await for (final chunk in response) {
-            bytes.addAll(chunk);
-          }
-          print('[TelegramChat] Downloaded ${bytes.length} bytes');
-          return bytes;
-        } else {
-          print('[TelegramChat] Download failed: HTTP ${response.statusCode}');
-        }
-      } finally {
-        httpClient.close();
-      }
-    } catch (e, stack) {
-      print('[TelegramChat] Failed to download attachment: $e');
-      print(stack);
+      // getFile answers the file's path; the bytes come from the file endpoint.
+      final file = await _client.call('getFile', {'file_id': fileId});
+      final filePath = file is Map ? file['file_path'] as String? : null;
+      if (filePath == null) return null;
+      return await _client.download(filePath);
+    } on TelegramApiException {
+      return null;
+    } on IOException {
+      return null;
     }
-    return null;
   }
 
   @override
   Future<void> disconnect() async {
     _connected = false;
     await _messageController.close();
-    // Stop the bot polling and close connections
-    await _bot.stop();
+    // Ends a long poll in flight and closes the connections.
+    _client.close();
   }
 }

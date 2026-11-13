@@ -33,16 +33,22 @@ class TelegramChatConfig extends ChatConfig {
   /// Allowed update types to receive (empty = all).
   final List<String>? allowedUpdates;
 
+  /// The Bot API root. `https://api.telegram.org` by default; a local Bot API
+  /// server or a test double can stand in for it.
+  final String apiBaseUrl;
+
   const TelegramChatConfig({
     required this.token,
     this.usePolling = true,
     this.pollingTimeout = 2,
     this.allowedUpdates,
+    this.apiBaseUrl = 'https://api.telegram.org',
   });
 
   @override
   String get platform => 'telegram';
 
   @override
-  ChatApi createApi( ChatSettings settings ) => TelegramChat(this)..settings = settings;
+  ChatApi createApi(ChatSettings settings) =>
+      TelegramChat(this)..settings = settings;
 }

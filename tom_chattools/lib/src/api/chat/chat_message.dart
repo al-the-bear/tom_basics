@@ -113,10 +113,10 @@ class ChatSender {
 
   /// Create a sender representing the current user.
   const ChatSender.self()
-      : id = 'self',
-        name = null,
-        username = null,
-        isSelf = true;
+    : id = 'self',
+      name = null,
+      username = null,
+      isSelf = true;
 
   @override
   String toString() =>

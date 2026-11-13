@@ -41,13 +41,13 @@ class ChatResponse {
 
   /// Create an empty successful response.
   const ChatResponse.empty()
-      : messages = const [],
-        success = true,
-        status = ChatResponseStatus.ok,
-        error = null,
-        waitDuration = Duration.zero,
-        hasMore = false,
-        metadata = null;
+    : messages = const [],
+      success = true,
+      status = ChatResponseStatus.ok,
+      error = null,
+      waitDuration = Duration.zero,
+      hasMore = false,
+      metadata = null;
 
   /// Create an error response.
   factory ChatResponse.error(String message, {ChatResponseStatus? status}) {
@@ -93,10 +93,7 @@ class ChatResponse {
 
   /// Get only text content from all messages.
   List<String> get textContent {
-    return messages
-        .where((m) => m.text != null)
-        .map((m) => m.text!)
-        .toList();
+    return messages.where((m) => m.text != null).map((m) => m.text!).toList();
   }
 
   @override

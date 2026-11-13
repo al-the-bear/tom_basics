@@ -13,7 +13,7 @@ abstract class ChatConfig {
   /// Create the appropriate ChatAPI implementation for this config.
   ///
   /// This is called internally by [ChatApi.connect].
-  ChatApi createApi( ChatSettings settings );
+  ChatApi createApi(ChatSettings settings);
 
   const ChatConfig();
 }

@@ -53,6 +53,9 @@ abstract class ChatApi {
         token: settings[ChatSettings.telegramToken]!,
         usePolling: settings.usePolling,
         pollingTimeout: settings.pollingTimeout.inSeconds,
+        apiBaseUrl:
+            settings[ChatSettings.telegramApiBaseUrl] ??
+            'https://api.telegram.org',
       );
       final api = config.createApi(settings);
       await api.initialize();
@@ -74,7 +77,11 @@ abstract class ChatApi {
   /// for platforms that support it (e.g., Telegram).
   ///
   /// Returns the sent [ChatMessage] with platform-specific metadata.
-  Future<ChatMessage> sendMessage(ChatReceiver receiver, String text, {String? parseMode});
+  Future<ChatMessage> sendMessage(
+    ChatReceiver receiver,
+    String text, {
+    String? parseMode,
+  });
 
   /// Send a message with optional attachments or formatting.
   ///
@@ -132,9 +139,5 @@ class ChatMessageFilter {
   /// Only include messages after this timestamp.
   final DateTime? after;
 
-  const ChatMessageFilter({
-    this.from,
-    this.types,
-    this.after,
-  });
+  const ChatMessageFilter({this.from, this.types, this.after});
 }

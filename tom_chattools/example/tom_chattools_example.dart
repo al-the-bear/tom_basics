@@ -2,9 +2,11 @@ import 'package:tom_chattools/tom_chattools.dart';
 
 void main() async {
   // Example: Connect to Telegram
-  final api = await ChatApi.connect(ChatSettings.telegram(
-    'YOUR_BOT_TOKEN', // Get this from @BotFather
-  ));
+  final api = await ChatApi.connect(
+    ChatSettings.telegram(
+      'YOUR_BOT_TOKEN', // Get this from @BotFather
+    ),
+  );
 
   // Define the receiver (user/chat to communicate with)
   final receiver = ChatReceiver.id('123456789');
