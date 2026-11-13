@@ -1,3 +1,12 @@
+## 1.5.0
+
+- **Added to `TomProtectedValue`:** `fromBytes` (protects any bytes and
+  zeroes the buffer it is given), `withRevealed` (the plaintext's bytes for
+  the duration of a callback, zeroed afterwards, also when it throws),
+  `revealInto` (the plaintext written into the caller's buffer), `dispose`
+  (zeroes the masked bytes and the salt; a read afterwards throws
+  `StateError`, the digest and length stay) and `isDisposed`.
+
 ## 1.4.0
 
 - **Added: `TomProtectedValue`** — a secret held in memory, XOR-ed with a
