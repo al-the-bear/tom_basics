@@ -26,7 +26,7 @@
 /// live repository on this machine, so unpushed commits are included and
 /// uncommitted edits are not. [TomWorkspaceClone.release] resets it again and
 /// gives the lock back. A reset checks out the recorded commit, `git reset
-/// --hard` and `git clean -fd` in every repository: tracked and untracked
+/// --hard` and `git clean -ffd` in every repository: tracked and untracked
 /// changes go, ignored files (`.dart_tool/`, `pubspec.lock`) stay, so package
 /// resolution is not redone from scratch every run.
 ///
@@ -392,7 +392,9 @@ class TomWorkspaceClone {
       if (status.trim().isEmpty && atHead) continue;
       if (!atHead) await _checkout(dir, head);
       await _git(dir, ['reset', '--quiet', '--hard']);
-      await _git(dir, ['clean', '-fdq']);
+      // -ff: also an untracked nested repository, e.g. the checkout a
+      // submodule removed upstream leaves behind. Ignored files stay.
+      await _git(dir, ['clean', '-ffdq']);
       cleaned++;
     }
     if (cleaned > 0) _log('reset $cleaned repositories');

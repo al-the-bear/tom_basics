@@ -355,6 +355,28 @@ void main() {
     expect(TomWorkspaceClone.findLiveRoot(from: mid)?.path, live);
   });
 
+  test('WC-14: release removes the leftover checkout of a submodule that '
+      'is no longer recorded (an untracked nested repository) [2026-11-13]',
+      () async {
+    final clone = await acquire();
+    final mid = p.join(cloneDir.path, 'pkgs/mid');
+    // What a submodule removed upstream leaves behind in a checkout: a
+    // repository of its own, now untracked in its parent.
+    final leftover = Directory(p.join(mid, 'retired'))..createSync();
+    await Process.run('git', ['init', '-q'], workingDirectory: leftover.path);
+    File(p.join(leftover.path, 'lib.dart')).writeAsStringSync('x');
+
+    await clone.release();
+
+    expect(leftover.existsSync(), isFalse);
+    expect(
+      (await Process.run('git', ['status', '--porcelain'],
+              workingDirectory: mid))
+          .stdout,
+      isEmpty,
+    );
+  });
+
   test('WC-12: the default location is a sibling named <name>_testclone, '
       'unless TOM_TEST_WORKSPACE says otherwise [2026-11-07]', () {
     final env = Platform.environment[tomTestWorkspaceEnv];

@@ -1,3 +1,11 @@
+## 0.7.1
+
+- **A clone's release removes an untracked nested repository too** (`git
+  clean -ffd`): the checkout a submodule leaves behind when it is removed
+  upstream (tom_ai's retired `xternal/tom_kdbx`) stayed in the clone, which
+  then never came back clean and failed every suite that checks it. Ignored
+  files still stay. WC-14.
+
 ## 0.8.0
 
 - `tomIsGplFamily(text)` (`licence_audit.dart`): whether a licence text is of
