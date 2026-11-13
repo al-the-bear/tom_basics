@@ -7,7 +7,8 @@
   `ListedProject`s (id and name from `buildkit.yaml`, path, language, primary
   nature, natures, version, description; `toJson()`), for
   `buildkit :projects --json` and the VS Code extension, which no longer reads
-  a generated workspace manifest. BB-PLS-1..7.
+  a generated workspace manifest. `navigationDefaults: false` lists every
+  project of the tree, past the `navigation:` excludes. BB-PLS-1..7.
 - `primaryProjectNature` (moved here from buildkit) and `natureName`.
 - `TraversalDefaults.load(basePath)`: the `navigation:` section of the
   workspace's `buildkit_master.yaml`, formerly private to `ToolRunner`.

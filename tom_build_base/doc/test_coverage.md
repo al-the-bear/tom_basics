@@ -1016,7 +1016,7 @@ The projects a traversal selects, as `buildkit :projects --json` prints them.
 |----|---------|--------|-------------|
 | BB-PLS-1 | Listing | ✅ | Dart and language projects with identity from `buildkit.yaml` (else the project file), version, language, type and natures; skipped, nested and `zom_` projects are left out. |
 | BB-PLS-2 | `-r` | ✅ | Fixture projects inside a project are listed with recursion. |
-| BB-PLS-3 | Navigation defaults | ✅ | `listProjectsFor` applies `buildkit_master.yaml` `navigation:` (`exclude-projects`). |
+| BB-PLS-3 | Navigation defaults | ✅ | `listProjectsFor` applies `buildkit_master.yaml` `navigation:` (`exclude-projects`); `navigationDefaults: false` leaves them out. |
 | BB-PLS-4 | `TraversalDefaults.load` | ✅ | Reads the navigation section; null without one. |
 | BB-PLS-5 | JSON | ✅ | Absent fields are left out. |
 | BB-PLS-6 | Primary nature | ✅ | Flutter before Dart before the other languages. |

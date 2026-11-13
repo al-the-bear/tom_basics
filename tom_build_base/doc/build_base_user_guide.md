@@ -317,7 +317,9 @@ selects, in its order, as `ListedProject`s: exactly the folders
 `LanguageProjectFolder`. `listProjectsFor(cliArgs, executionRoot: root)` builds
 the traversal from parsed arguments and the `navigation:` defaults of the
 workspace's `buildkit_master.yaml` (`TraversalDefaults.load`), so it selects
-what a project command given the same arguments would. A relative `--scan` is
+what a project command given the same arguments would; `navigationDefaults:
+false` leaves those defaults out (their `exclude:` keeps whole subtrees from the
+build commands), for every project of the tree. A relative `--scan` is
 resolved against the current directory, as in `ToolRunner`.
 
 A `ListedProject` carries `id` (`project_id` from `buildkit.yaml`, else the

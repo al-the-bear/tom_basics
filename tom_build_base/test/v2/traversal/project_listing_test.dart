@@ -106,7 +106,8 @@ void main() {
   );
 
   test('BB-PLS-3: listProjectsFor applies the navigation defaults of '
-      'buildkit_master.yaml, like a project command', () async {
+      'buildkit_master.yaml, like a project command; navigationDefaults: '
+      'false leaves them out', () async {
     standardWorkspace(master: 'navigation:\n  exclude-projects:\n    - py\n');
     final previous = Directory.current;
     Directory.current = ws;
@@ -117,6 +118,17 @@ void main() {
         'apps/tool',
         'langs/go',
       });
+      final all = await listProjectsFor(
+        CliArgs(),
+        executionRoot: ws.path,
+        navigationDefaults: false,
+      );
+      expect(all.map((e) => e.path).toSet(), {
+        'pkgs/core',
+        'apps/tool',
+        'langs/py',
+        'langs/go',
+      }, reason: 'without the navigation defaults every project is listed');
     } finally {
       Directory.current = previous;
     }

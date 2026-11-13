@@ -175,12 +175,19 @@ Future<List<ListedProject>> listProjects(ProjectTraversalInfo info) async {
 /// [executionRoot], with the `navigation:` defaults of the workspace's
 /// `buildkit_master.yaml` ([TraversalDefaults.load]) — the selection a
 /// project command given the same arguments would make.
+///
+/// [navigationDefaults] false leaves those defaults out (their `exclude:`
+/// patterns keep whole subtrees from the build commands): every project of
+/// the tree, as far as skip markers and [args] allow.
 Future<List<ListedProject>> listProjectsFor(
   CliArgs args, {
   required String executionRoot,
+  bool navigationDefaults = true,
 }) => listProjects(
   args.toProjectTraversalInfo(
     executionRoot: executionRoot,
-    configDefaults: TraversalDefaults.load(executionRoot),
+    configDefaults: navigationDefaults
+        ? TraversalDefaults.load(executionRoot)
+        : null,
   ),
 );
