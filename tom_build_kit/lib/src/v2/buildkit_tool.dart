@@ -205,8 +205,18 @@ const apidocOptions = <OptionDefinition>[
     name: 'output',
     description:
         'Folder for the API docs, relative to each package '
-        '(default build/api; never inside doc/)',
+        '(default build/api_doc; never inside doc/)',
     valueName: 'dir',
+  ),
+];
+
+/// Options for the apisummary command.
+const apisummaryOptions = <OptionDefinition>[
+  OptionDefinition.flag(
+    name: 'strict',
+    description:
+        'Exit 1 when a summary misses public API or names API '
+        'that does not exist',
   ),
 ];
 
@@ -712,7 +722,7 @@ const apidocCommand = CommandDefinition(
   name: 'apidoc',
   description:
       'Generate the dartdoc API documentation of each Dart package into '
-      'build/api (not doc/) and count its warnings',
+      'build/api_doc (not doc/) and count its warnings',
   options: apidocOptions,
   worksWithNatures: {DartProjectFolder},
   supportsProjectTraversal: true,
@@ -723,6 +733,24 @@ const apidocCommand = CommandDefinition(
     'buildkit :apidoc',
     'buildkit -s tom_ai/basics :apidoc',
     'buildkit -s . -r :apidoc --output build/apidoc',
+  ],
+);
+
+const apisummaryCommand = CommandDefinition(
+  name: 'apisummary',
+  description:
+      'Compare each package\'s public API with its doc/api/api_summary_*.md: '
+      'API the summary misses, and names it gives that do not exist',
+  options: apisummaryOptions,
+  worksWithNatures: {DartProjectFolder},
+  supportsProjectTraversal: true,
+  supportsGitTraversal: false,
+  requiresTraversal: true,
+  canRunStandalone: true,
+  examples: [
+    'buildkit :apisummary',
+    'buildkit -s tom_ai/core :apisummary',
+    'buildkit -p tom_core_message_bus :apisummary --strict',
   ],
 );
 
@@ -1212,6 +1240,7 @@ final buildkitTool = ToolDefinition(
     dependenciesCommand,
     boundariesCommand,
     apidocCommand,
+    apisummaryCommand,
     publisherCommand,
     projectsCommand,
     statusCommand,

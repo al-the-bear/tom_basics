@@ -11,10 +11,11 @@ import 'package:tom_build_base/tom_build_base.dart' show ProcessRunner;
 import 'package:tom_build_base/tom_build_base_v2.dart';
 
 /// The folder `:apidoc` writes into when `--output` is not given, relative
-/// to the package. `build/` is gitignored across the workspace; `doc/` holds
-/// hand-authored documents only, so dartdoc's own default `doc/api` is not
-/// used.
-const kApidocDefaultOutput = 'build/api';
+/// to the package: the workspace's place for generated API reference
+/// (`_bin/check_doc_runner_output.py`), gitignored with `build/`; `doc/`
+/// holds hand-authored documents only, so dartdoc's own default `doc/api` is
+/// not used.
+const kApidocDefaultOutput = 'build/api_doc';
 
 /// What one `dart doc` run said, read from its output and the `index.json`
 /// it wrote.

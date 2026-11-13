@@ -80,7 +80,7 @@ Success! Docs generated into /x/build/api
 
     test('BK-APIDOC-3: the output folder stays in the package and out of '
         'doc/ [2026-11-13]', () {
-      expect(refuseApidocOutput('build/api'), isNull);
+      expect(refuseApidocOutput('build/api_doc'), isNull);
       expect(refuseApidocOutput('build/apidoc'), isNull);
       expect(refuseApidocOutput('doc/api'), contains('doc/'));
       expect(refuseApidocOutput('build/doc/api'), contains('doc/'));
@@ -134,7 +134,7 @@ Success! Docs generated into /x/build/api
 
     String out(ProcessResult r) => '${r.stdout}${r.stderr}';
 
-    test('BK-APIDOC-4: writes the API docs to build/api, not doc/, and '
+    test('BK-APIDOC-4: writes the API docs to build/api_doc, not doc/, and '
         'prints the warnings per package [2026-11-13]', () async {
       final good = await package('good', {
         'lib/good.dart': '/// Refers to [Missing].\nclass A {}\n\nclass B {}\n',
@@ -142,7 +142,7 @@ Success! Docs generated into /x/build/api
       final r = await buildkit([':apidoc']);
       expect(r.exitCode, 0, reason: out(r));
       expect(
-        File(p.join(good, 'build', 'api', 'index.html')).existsSync(),
+        File(p.join(good, 'build', 'api_doc', 'index.html')).existsSync(),
         isTrue,
       );
       expect(Directory(p.join(good, 'doc')).existsSync(), isFalse);
@@ -158,7 +158,7 @@ Success! Docs generated into /x/build/api
         text,
         contains('good: ok — 1 library, 1 warning (1 unresolved reference)'),
       );
-      expect(text, contains('public elements undocumented -> build/api'));
+      expect(text, contains('public elements undocumented -> build/api_doc'));
     });
 
     test('BK-APIDOC-5: a package whose dartdoc fails fails the run; the '
@@ -179,7 +179,7 @@ Success! Docs generated into /x/build/api
       expect(text, contains('strict: dart doc failed (exit 1, 1 error(s))'));
       expect(text, contains('good: ok'));
       expect(
-        File(p.join(good, 'build', 'api', 'index.html')).existsSync(),
+        File(p.join(good, 'build', 'api_doc', 'index.html')).existsSync(),
         isTrue,
       );
     });
@@ -249,13 +249,13 @@ Success! Docs generated into /x/build/api
       expect(r.exitCode, 0, reason: out(r));
       expect(out(r), contains('good: ok'));
       expect(
-        File(p.join(good, 'build', 'api', 'index.html')).existsSync(),
+        File(p.join(good, 'build', 'api_doc', 'index.html')).existsSync(),
         isTrue,
       );
     });
 
     test('BK-APIDOC-9: with a relative --scan the docs land in each '
-        'package\'s build/api; a package without lib/ is skipped, not '
+        'package\'s build/api_doc; a package without lib/ is skipped, not '
         'failed [2026-11-13]', () async {
       final good = await package('pkgs/good', {
         'lib/good.dart': '/// A.\nclass A {}\n',
@@ -275,7 +275,7 @@ Success! Docs generated into /x/build/api
       ], workingDirectory: root.path);
       expect(r.exitCode, 0, reason: out(r));
       expect(
-        File(p.join(good, 'build', 'api', 'index.html')).existsSync(),
+        File(p.join(good, 'build', 'api_doc', 'index.html')).existsSync(),
         isTrue,
         reason: out(r),
       );

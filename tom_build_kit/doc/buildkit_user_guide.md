@@ -40,6 +40,7 @@ This package extends the shared infrastructure from **tom_build_base**:
   - [Execute Command](#execute-command)
   - [Boundaries Command](#boundaries-command)
   - [Apidoc Command](#apidoc-command)
+  - [Apisummary Command](#apisummary-command)
   - [Projects Command](#projects-command)
   - [Status Command](#status-command)
 - [Command Prefix Matching](#command-prefix-matching)
@@ -438,7 +439,8 @@ Built-in commands run the respective tools directly via their Dart implementatio
 | `cleanup` | Delete the globs a project's `buildkit.yaml` `cleanup:` lists (alias `cl`) |
 | `dependencies` | Dependency tree visualization |
 | `boundaries` | Context-boundary check: imports across a package's bounded contexts |
-| `apidoc` | Generate each Dart package's dartdoc API documentation into `build/api` (never `doc/`) and count its warnings (see [Apidoc Command](#apidoc-command)) |
+| `apidoc` | Generate each Dart package's dartdoc API documentation into `build/api_doc` (never `doc/`) and count its warnings (see [Apidoc Command](#apidoc-command)) |
+| `apisummary` | Compare each Dart package's public API with its hand-authored `doc/api/api_summary_*.md`: API the summary misses, and names it gives that do not exist (see [Apisummary Command](#apisummary-command)) |
 | `pubget` | Run `dart pub get` on projects |
 | `pubgetall` | Shortcut for `pubget --scan . --recursive` |
 | `pubupdate` | Run `dart pub upgrade` on projects |
@@ -715,9 +717,10 @@ Run it by hand from the repository, or from a project's own check script; it is 
 ### Apidoc Command
 
 The `apidoc` command runs `dart doc` in every Dart package the traversal selects and writes the API documentation into
-a generated folder of the package, `build/api` by default. `doc/` holds hand-authored documents only, so dartdoc's own
-default `doc/api` is never used; `build/` is gitignored in the workspace's repositories, and when git would track the
-output folder the command says so.
+a generated folder of the package, `build/api_doc` by default: the workspace's place for generated API reference
+(`_bin/check_doc_runner_output.py`). `doc/` holds hand-authored documents only, so dartdoc's own default `doc/api` is
+never used; `build/` is gitignored in the workspace's repositories, and when git would track the output folder the
+command says so.
 
 **Syntax:**
 
@@ -731,8 +734,8 @@ bk -s . -r :apidoc --output build/apidoc
 
 ```text
   tom_ai/basics/tom_basics_samples: skipped — no lib/ library to document
-  tom_ai/basics/tom_crypto: ok — 2 libraries, 0 warnings, 3 of 91 public elements undocumented -> build/api
-  tom_ai/basics/tom_chattools: ok — 1 library, 1 warning (1 unresolved reference), 9 of 125 public elements undocumented -> build/api
+  tom_ai/basics/tom_crypto: ok — 2 libraries, 0 warnings, 3 of 91 public elements undocumented -> build/api_doc
+  tom_ai/basics/tom_chattools: ok — 1 library, 1 warning (1 unresolved reference), 9 of 125 public elements undocumented -> build/api_doc
 ```
 
 - **warnings** is dartdoc's own count (`Found N warnings and M errors`); unresolved doc references (`[Name]` that
@@ -758,7 +761,7 @@ call and writes nothing.
 
 | Option | Description |
 |--------|-------------|
-| `--output=<dir>` | Folder for the API docs, relative to each package (default `build/api`; never inside `doc/`) |
+| `--output=<dir>` | Folder for the API docs, relative to each package (default `build/api_doc`; never inside `doc/`) |
 
 **In a pipeline:**
 
@@ -774,6 +777,69 @@ buildkit:
 ```
 
 Run it by hand from the repository; it is never scheduled.
+
+### Apisummary Command
+
+The `apisummary` command says where a package's API summaries are out of date. The summaries
+(`doc/api/api_summary_*.md`, written by hand as `_copilot_guidelines/dart/api_summary_creation.md` describes) drift
+from the code; `doc/` is hand-authored, so the command writes nothing there. It reads the package's public API with
+the analyzer's parser — what the `lib/*.dart` entry points export, `show` / `hide` applied: classes, mixins, enums,
+extensions, extension types, typedefs, top-level functions and constants, and the public members of the types — and
+compares it with the summaries in both directions.
+
+**Syntax:**
+
+```bash
+bk :apisummary [--strict]
+bk -s tom_ai/core -r :apisummary          # every package under the folder
+bk -p tom_core_message_bus :apisummary --strict
+```
+
+**Per package** it prints one line per finding and a result line:
+
+```text
+  tom_ai/core/tom_core_message_bus: missing from the summary: TomBusHeaders.tenant (field, lib/src/bus.dart:61)
+  tom_ai/core/tom_core_message_bus: missing from the summary: TomBusTrace.tenantOf (method, lib/src/trace.dart:95)
+  tom_ai/core/tom_core_message_bus: out of date — 61 public symbols, 64 summary claims in 1 file(s); 2 missing, 0 not in the API
+```
+
+**Missing from the summary** — public API no summary names:
+
+- a type, function or constant whose name appears nowhere in the summaries; its members are then not listed one by one;
+- a member whose name appears nowhere in its type's section (`### Type`), in the section of a supertype the package
+  declares (an interface's methods), or — for an extension — in the extended type's section; a type without a section
+  of its own counts as documented wherever its members are named.
+
+Not counted: `@override` members, operators, `toString` / `hashCode` / `noSuchMethod`, enum values, the unnamed
+constructor.
+
+**Not in the API** — a name a summary presents as API that the package does not declare:
+
+- a `### Name` heading (a type or a top-level function), or a `#### Name` under a heading that groups declarations;
+- the first cell of a member table (Property, Method, Member, Value, Constant, Operator, Constructor, Field, Factory,
+  Static member, Declaration) inside a type's section, and of a Function / Constant / Typedef / Class table outside one;
+- a `` `Type.member` `` code span naming one of the package's types.
+
+A member claim is checked against everything the type declares — overrides, enum values and named constructors
+included — and what it inherits from the package's own types or gains from its extensions. When the type has a
+supertype from another package, a name it does not declare cannot be judged and is not reported. A plain capitalised
+one-word heading (`### Codes`) is read as prose unless the package declares the name, and all-capitals first cells
+(`POST`, `GET`) as a protocol's words.
+
+**Verdicts and exit code:**
+
+- **up to date**: no finding.
+- **out of date**: findings, printed; the package passes unless `--strict`, which fails it (buildkit exits 1).
+- **NOT MEASURED**: the package has no `doc/api/api_summary_*.md` (the index alone is no summary); listed under
+  *Skipped*, never a pass and never a failure.
+
+**Options:**
+
+| Option | Description |
+|--------|-------------|
+| `--strict` | Exit 1 when a summary misses public API or names API that does not exist |
+
+Run it by hand from the repository, or from a pipeline step (`buildkit :apisummary --strict`); it is never scheduled.
 
 ### Projects Command
 

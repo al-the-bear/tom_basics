@@ -254,32 +254,18 @@ UnreferencedExportReport auditUnreferencedExports({
   final checked = <String>[];
   var testSeams = 0;
   for (final pubspec in auditedPackages) {
-    final exported = <String, PublicDeclaration>{};
-    for (final entryPoint in _entryPointsOf(pubspec.directory)) {
-      for (final e in exportedDeclarationsOf(entryPoint).entries) {
-        exported.putIfAbsent(e.key, () => e.value);
+    for (final symbol in exportedSymbolsOf(pubspec.directory, pubspec.name)) {
+      checked.add('${pubspec.name} ${symbol.symbol}');
+      final name = symbol.symbol.contains('.')
+          ? symbol.symbol.substring(symbol.symbol.indexOf('.') + 1)
+          : symbol.symbol;
+      if (symbol.namedInOwnFile || referenced(name, symbol.file)) continue;
+      final namedByTests = namedInTests.contains(name);
+      if (symbol.declaredTestSeam && namedByTests) {
+        testSeams++;
+        continue;
       }
-    }
-    final byFile = <String, List<PublicDeclaration>>{};
-    for (final d in exported.values) {
-      byFile.putIfAbsent(p.normalize(p.absolute(d.file)), () => []).add(d);
-    }
-    for (final entry in byFile.entries) {
-      final file = entry.key;
-      final wanted = {for (final d in entry.value) d.name};
-      for (final symbol in _symbolsDeclaredIn(file, pubspec.name, wanted)) {
-        checked.add('${pubspec.name} ${symbol.symbol}');
-        final name = symbol.symbol.contains('.')
-            ? symbol.symbol.substring(symbol.symbol.indexOf('.') + 1)
-            : symbol.symbol;
-        if (symbol.namedInOwnFile || referenced(name, file)) continue;
-        final namedByTests = namedInTests.contains(name);
-        if (symbol.declaredTestSeam && namedByTests) {
-          testSeams++;
-          continue;
-        }
-        findings.add(UnreferencedExport(symbol, namedByTests: namedByTests));
-      }
+      findings.add(UnreferencedExport(symbol, namedByTests: namedByTests));
     }
   }
   findings.sort((a, b) {
@@ -326,6 +312,58 @@ UnreferencedExportReport auditUnreferencedExports({
 }
 
 /// The `lib/*.dart` files of [packageDir]: its public entry points.
+/// The public API of the package [packageName] at [packageDir]: the
+/// top-level declarations its `lib/*.dart` entry points export
+/// (`exportedDeclarationsOf`, with `show`/`hide` applied), and for a type
+/// among them its public members — methods, getters, setters, fields and
+/// named constructors; not `@override` members, operators or the `Object`
+/// members. An extension's own name is left out unless
+/// [includeExtensionNames]: no call site writes it, but a document does.
+/// Top-level variables only with [includeVariables].
+List<ExportedSymbol> exportedSymbolsOf(
+  String packageDir,
+  String packageName, {
+  bool includeExtensionNames = false,
+  bool includeVariables = false,
+}) {
+  final exported = exportedTopLevelOf(
+    packageDir,
+    includeVariables: includeVariables,
+  );
+  final byFile = <String, Set<String>>{};
+  for (final d in exported.values) {
+    byFile.putIfAbsent(p.normalize(p.absolute(d.file)), () => {}).add(d.name);
+  }
+  return [
+    for (final entry in byFile.entries)
+      ..._symbolsDeclaredIn(
+        entry.key,
+        packageName,
+        entry.value,
+        includeExtensionNames: includeExtensionNames,
+      ),
+  ];
+}
+
+/// The top-level declarations the `lib/*.dart` entry points of the package
+/// at [packageDir] export, by name; top-level variables only with
+/// [includeVariables].
+Map<String, PublicDeclaration> exportedTopLevelOf(
+  String packageDir, {
+  bool includeVariables = false,
+}) {
+  final exported = <String, PublicDeclaration>{};
+  for (final entryPoint in _entryPointsOf(packageDir)) {
+    for (final e in exportedDeclarationsOf(
+      entryPoint,
+      includeVariables: includeVariables,
+    ).entries) {
+      exported.putIfAbsent(e.key, () => e.value);
+    }
+  }
+  return exported;
+}
+
 List<String> _entryPointsOf(String packageDir) {
   final lib = Directory(p.join(packageDir, 'lib'));
   if (!lib.existsSync()) return const [];
@@ -358,8 +396,9 @@ Set<String> _identifiersIn(String file) {
 List<ExportedSymbol> _symbolsDeclaredIn(
   String file,
   String package,
-  Set<String> wanted,
-) {
+  Set<String> wanted, {
+  bool includeExtensionNames = false,
+}) {
   final result = parseString(
     content: File(file).readAsStringSync(),
     path: file,
@@ -553,6 +592,17 @@ List<ExportedSymbol> _symbolsDeclaredIn(
         // symbol a consumer names; its members are, and each is checked.
         final name = declaration.name;
         if (name == null || !wanted.contains(name.lexeme)) continue;
+        if (includeExtensionNames) {
+          found.add(
+            symbol(
+              name.lexeme,
+              'extension',
+              name.offset,
+              self: declaration,
+              seam: _isTestSeam(declaration.metadata),
+            ),
+          );
+        }
         members(
           name.lexeme,
           declaration,

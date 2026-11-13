@@ -459,6 +459,21 @@ Unit tests for argument parsing and command shorthand resolution.
 | BK-APIDOC-8 | Pipeline step | ✅ | A pipeline with `buildkit :apidoc`, run with this source's buildkit on `PATH`. |
 | BK-APIDOC-9 | Relative `--scan`; no `lib/` | ✅ | `-s pkgs` from the fixture root: the docs land in each package's `build/api`; a package without `lib/` is skipped. |
 
+### Apisummary
+
+**Test file:** `test/apisummary_test.dart` (BK-APISUM-1..6 call the check on fixture packages; 7..8 run `bin/buildkit.dart` on them under `.dart_tool`)
+
+| ID | Feature | Status | How to Test |
+|----|---------|--------|-------------|
+| BK-APISUM-1 | A complete summary | ✅ | Class, enum, extension, function and constant documented: no finding. |
+| BK-APISUM-2 | A missing class | ✅ | The `Base` section removed: `Base` reported (class, its file), its members not one by one. |
+| BK-APISUM-3 | Removed member, function, class | ✅ | A `checkout` row, a `closeCart` row and a `### SavedCart` heading: each reported with the summary line. |
+| BK-APISUM-4 | Missing member and constant; code span | ✅ | `total` and `maxItems` removed; `` `Cart.discount()` `` in prose names a member that does not exist. |
+| BK-APISUM-5 | Supertype and extension sections; inherited members | ✅ | `save` (inherited) and `hashCode` in `Cart`'s table are no stale claims; `CartTools.clear` documented in `Cart`'s table. |
+| BK-APISUM-6 | No summary | ✅ | Not measured; the index alone is no summary. |
+| BK-APISUM-7 | The command, `--strict` | ✅ | Both directions printed; exit 0 without `--strict`, 1 with it. |
+| BK-APISUM-8 | Up to date; not measured | ✅ | `--strict` passes an up-to-date package; a package without a summary is named NOT MEASURED. |
+
 ### Bootstrap — Shell Setup
 
 **Test file:** `test/bootstrap_binaries_test.dart` (sources `bootstrap_binaries.sh`'s functions in a temporary `HOME`; nothing is built)

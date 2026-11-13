@@ -1,3 +1,30 @@
+## 1.23.0
+
+### Added — `:apisummary`, where an API summary is out of date
+
+`buildkit -p <package> :apisummary` reads the package's public API with the
+analyzer's parser (what the `lib/*.dart` entry points export, `show` / `hide`
+applied, top-level constants included — tom_build_base 2.32.0) and compares it
+with its hand-authored `doc/api/api_summary_*.md` in both directions: public
+API no summary names (a member is looked for in its type's section, a
+supertype's, or the extended type's), and names a summary presents as API —
+a `### Name` heading, a member-table cell, a `Type.member` code span — that
+the package no longer declares. It writes nothing. `--strict` exits 1 on a
+finding; a package without a summary is NOT MEASURED and skipped.
+BK-APISUM-1..8; user guide, Apisummary Command; api_summary_creation.md.
+
+### Changed — `:apidoc` writes into `build/api_doc`
+
+The default output is now `build/api_doc`, the workspace's place for
+generated API reference (`_bin/check_doc_runner_output.py`), instead of
+`build/api`.
+
+### Changed — the exported-symbol listing is shared
+
+`exportedSymbolsOf` / `exportedTopLevelOf` (lib/src/unreferenced) list a
+package's public API for both the unreferenced-export audit and
+`:apisummary`; the audit's findings are unchanged.
+
 ## 1.22.0
 
 ### Added — `:apidoc`, dartdoc API documentation per package
