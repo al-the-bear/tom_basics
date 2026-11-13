@@ -7,7 +7,7 @@
 /// - Folder scanning and nature detection ([FolderScanner], [NatureDetector])
 /// - Pipeline configuration and execution ([PipelineConfig], [PipelineExecutor])
 /// - Help generation and shell completion ([HelpGenerator], [CompletionGenerator])
-/// - Configuration loading from `buildkit_master.yaml` / `tom_master.yaml`
+/// - Configuration loading from `buildkit_master.yaml` / `buildkit.yaml`
 ///
 /// ## Quick Start
 ///

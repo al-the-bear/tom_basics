@@ -48,8 +48,8 @@ const kAlwaysSkipDirectories = <String>{
 /// holds `buildkit_master.yaml`, or null when there is none.
 ///
 /// `buildkit_master.yaml` is the one workspace marker. Nothing else marks a
-/// workspace, so a `tom_workspace.yaml`, a `.tom_metadata/` folder or a
-/// `.code-workspace` file below the root is not mistaken for it. A caller that
+/// workspace, so no other file below the root (a `.code-workspace` file, say)
+/// is mistaken for it. A caller that
 /// can work outside a workspace decides itself what to use instead.
 String? findWorkspaceRootOrNull(String startPath) {
   var current = p.normalize(p.absolute(startPath));
