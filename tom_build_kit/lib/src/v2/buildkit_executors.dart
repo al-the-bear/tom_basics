@@ -12,6 +12,7 @@ import 'dart:io';
 
 import 'package:tom_build_base/tom_build_base.dart';
 
+import 'executors/project_action_executor.dart';
 import 'executors/boundaries_executor.dart';
 import 'executors/buildsorter_executor.dart';
 import 'executors/bumppubspec_executor.dart';
@@ -300,6 +301,9 @@ class DcliExecutor extends CommandExecutor {
 Map<String, CommandExecutor> createBuildkitExecutors() {
   return {
     // Build tools
+    'build': ProjectActionExecutor(ProjectAction.build),
+    'test': ProjectActionExecutor(ProjectAction.test),
+    'clean': ProjectActionExecutor(ProjectAction.clean),
     'versioner': VersionerExecutor(),
     'bumpversion': BumpVersionExecutor(),
     'bumppubspec': BumpPubspecExecutor(),

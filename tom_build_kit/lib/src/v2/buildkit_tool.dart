@@ -522,10 +522,12 @@ const versionerCommand = CommandDefinition(
 
 const bumpversionCommand = CommandDefinition(
   name: 'bumpversion',
-  description: 'Bump pubspec.yaml versions across projects',
+  description:
+      'Bump project versions across projects (pubspec.yaml, package.json, '
+      'pyproject.toml, Cargo.toml, pom.xml)',
   aliases: ['bump'],
   options: bumpversionOptions,
-  worksWithNatures: {DartProjectFolder},
+  worksWithNatures: {DartProjectFolder, LanguageProjectFolder},
   supportsProjectTraversal: true,
   supportsGitTraversal: false,
   requiresTraversal: false,
@@ -586,7 +588,7 @@ const runnerCommand = CommandDefinition(
 const cleanupCommand = CommandDefinition(
   name: 'cleanup',
   description: 'Clean generated and temporary files',
-  aliases: ['clean', 'cl'],
+  aliases: ['cl'],
   options: cleanupOptions,
   worksWithNatures: {DartProjectFolder},
   supportsProjectTraversal: true,
@@ -598,6 +600,48 @@ const cleanupCommand = CommandDefinition(
     'buildkit :cleanup --force',
     'buildkit :cleanup --max-files=200',
   ],
+);
+
+/// The natures `:build`, `:test` and `:clean` work on: Dart projects and
+/// every other SOM runtime language.
+const _projectActionNatures = {DartProjectFolder, LanguageProjectFolder};
+
+const buildCommand = CommandDefinition(
+  name: 'build',
+  description: 'Build each project with its language\'s tool',
+  worksWithNatures: _projectActionNatures,
+  supportsProjectTraversal: true,
+  supportsGitTraversal: false,
+  requiresTraversal: true,
+  canRunStandalone: true,
+  examples: [
+    'buildkit -s tom_ai/ai_build -r --project "tom_som_*_runtime" :build',
+    'buildkit :build --dry-run',
+  ],
+);
+
+const testCommand = CommandDefinition(
+  name: 'test',
+  description: 'Run each project\'s tests with its language\'s tool',
+  worksWithNatures: _projectActionNatures,
+  supportsProjectTraversal: true,
+  supportsGitTraversal: false,
+  requiresTraversal: true,
+  canRunStandalone: true,
+  examples: ['buildkit --group ai_build :test', 'buildkit :test --list'],
+);
+
+const cleanCommand = CommandDefinition(
+  name: 'clean',
+  description:
+      'Remove each project\'s build outputs with its language\'s tool '
+      '(for buildkit.yaml cleanup: globs, see :cleanup)',
+  worksWithNatures: _projectActionNatures,
+  supportsProjectTraversal: true,
+  supportsGitTraversal: false,
+  requiresTraversal: true,
+  canRunStandalone: true,
+  examples: ['buildkit :clean', 'buildkit :clean --dry-run'],
 );
 
 const dependenciesCommand = CommandDefinition(
@@ -1089,6 +1133,9 @@ final buildkitTool = ToolDefinition(
   ],
   commands: [
     // Build tools
+    buildCommand,
+    testCommand,
+    cleanCommand,
     versionerCommand,
     bumpversionCommand,
     bumppubspecCommand,

@@ -1,3 +1,19 @@
+## 1.16.0
+
+### Added — `:build`, `:test`, `:clean` for every SOM runtime language
+
+- New commands run one step in every selected project with its language's
+  own tool, by its nature (tom_build_base ^2.26.1): Dart / Flutter, TypeScript,
+  JavaScript, Python, Java (Maven, Gradle), Go, Rust, C / C++ (make, CMake). A
+  `build:` / `test:` / `clean:` entry in the project's `buildkit.yaml` replaces
+  the default (a command, a list, or `false`); `--list` / `--dry-run` show the
+  command. Proven on the 18 SOM runtime packages (build, test, clean all
+  green). BK-ACT-1..7.
+- `:bumpversion` bumps the version file of every language project
+  (`package.json`, `pyproject.toml`, `Cargo.toml`, `pom.xml` besides
+  `pubspec.yaml`); Go and C / C++ have none and are skipped.
+- `:clean` is no longer an alias of `:cleanup` (which keeps `cl`).
+
 ## 1.15.1
 
 ### Changed — the project identity comes from `buildkit.yaml`

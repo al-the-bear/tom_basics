@@ -1,8 +1,11 @@
 /// Native v2 executor for the bumpversion command.
 ///
-/// Bumps pubspec.yaml versions across projects. All projects get a patch
+/// Bumps project versions across projects, in each project's own version
+/// file (`pubspec.yaml`, `package.json`, `pyproject.toml`, `Cargo.toml`,
+/// `pom.xml`; see tom_build_base's `ProjectVersionFile`). Go modules and C /
+/// C++ projects state no version and are skipped. All projects get a patch
 /// bump by default; use --minor/--major to specify projects for different
-/// bump types. Optionally runs the versioner after bumping.
+/// bump types. Optionally runs the versioner (Dart) after bumping.
 library;
 
 import 'dart:convert';
@@ -10,7 +13,6 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 import 'package:tom_build_base/tom_build_base_v2.dart';
-import 'package:yaml/yaml.dart';
 
 import 'versioner_executor.dart';
 
@@ -27,6 +29,10 @@ enum BumpType {
   @override
   String toString() => name;
 }
+
+/// The natures `:bumpversion` works on: Dart projects and every other
+/// language project with a version file.
+const _versionNatures = {DartProjectFolder, LanguageProjectFolder};
 
 // =============================================================================
 // BumpVersion Executor
@@ -69,13 +75,14 @@ class BumpVersionExecutor extends CommandExecutor {
 
     // List mode
     if (args.listOnly) {
-      print('Projects with pubspec.yaml:');
+      print('Projects with a version file:');
       await BuildBase.traverse(
         info: traversalInfo,
-        worksWithNatures: {DartProjectFolder},
+        worksWithNatures: _versionNatures,
         run: (context) async {
-          if (File('${context.path}/pubspec.yaml').existsSync()) {
-            print('  ${context.relativePath}');
+          final versionFile = ProjectVersionFile.of(context.path);
+          if (versionFile != null) {
+            print('  ${context.relativePath} (${versionFile.fileName})');
           }
           return true;
         },
@@ -90,23 +97,26 @@ class BumpVersionExecutor extends CommandExecutor {
 
     await BuildBase.traverse(
       info: traversalInfo,
-      worksWithNatures: {DartProjectFolder},
+      worksWithNatures: _versionNatures,
       run: (context) async {
-        final pubspecFile = File('${context.path}/pubspec.yaml');
-        if (!pubspecFile.existsSync()) {
+        if (ProjectVersionFile.of(context.path) == null) {
+          if (args.verbose) {
+            print('  Skipping ${context.relativePath}: no version file');
+          }
           skipped++;
           return true;
         }
 
+        final projectName = _projectName(context);
         final bumpType = _determineBumpType(
           context.name,
           context.path,
-          _readPubspecName(context.path),
+          projectName,
           minorProjects,
           majorProjects,
           matchedSelectors,
         );
-        processedProjects.add(_readPubspecName(context.path) ?? context.name);
+        processedProjects.add(projectName ?? context.name);
 
         // Show mode
         if (args.dumpConfig) {
@@ -261,33 +271,26 @@ class BumpVersionExecutor extends CommandExecutor {
   }
 
 
-  /// Read `name:` from a project's pubspec, or null when there is none.
-  String? _readPubspecName(String projectPath) {
-    final pubspecFile = File('$projectPath/pubspec.yaml');
-    if (!pubspecFile.existsSync()) return null;
-    try {
-      final yaml = loadYaml(pubspecFile.readAsStringSync()) as YamlMap?;
-      return yaml?['name']?.toString();
-    } catch (_) {
-      return null;
+  /// The project's name for selectors: the pubspec `name:` of a Dart
+  /// project, the project file's name of any other language.
+  String? _projectName(CommandContext context) {
+    for (final nature in context.natures) {
+      if (nature is DartProjectFolder) return nature.projectName;
+      if (nature is LanguageProjectFolder) return nature.projectName;
     }
+    return null;
   }
 
-  /// Read the current version from pubspec.yaml.
+  /// Read the current version from the project's version file.
   String? _readCurrentVersion(String projectPath) {
-    final pubspecFile = File('$projectPath/pubspec.yaml');
-    if (!pubspecFile.existsSync()) return null;
-
-    try {
-      final content = pubspecFile.readAsStringSync();
-      final yaml = loadYaml(content) as YamlMap?;
-      return yaml?['version']?.toString();
-    } catch (_) {
-      return null;
-    }
+    final versionFile = ProjectVersionFile.of(projectPath);
+    if (versionFile == null) return null;
+    return versionFile.read(
+      File(p.join(projectPath, versionFile.fileName)).readAsStringSync(),
+    );
   }
 
-  /// Bump the version in a project's pubspec.yaml.
+  /// Bump the version in a project's version file.
   bool _bumpProject(
     String projectPath,
     BumpType bumpType,
@@ -295,37 +298,38 @@ class BumpVersionExecutor extends CommandExecutor {
     required bool verbose,
     required bool dryRun,
   }) {
-    final pubspecFile = File('$projectPath/pubspec.yaml');
-    if (!pubspecFile.existsSync()) {
-      print('  Error: No pubspec.yaml in ${p.relative(projectPath, from: basePath)}');
+    final versionFile = ProjectVersionFile.of(projectPath);
+    if (versionFile == null) {
+      print('  Error: No version file in ${p.relative(projectPath, from: basePath)}');
       return false;
     }
+    final file = File(p.join(projectPath, versionFile.fileName));
 
     try {
-      final content = pubspecFile.readAsStringSync();
-      final yaml = loadYaml(content) as YamlMap?;
-      if (yaml == null || !yaml.containsKey('version')) {
+      final content = file.readAsStringSync();
+      final currentVersion = versionFile.read(content);
+      if (currentVersion == null) {
         if (verbose) {
-          print('  Skipping ${p.basename(projectPath)}: no version field');
+          print('  Skipping ${p.basename(projectPath)}: no version field in '
+              '${versionFile.fileName}');
         }
         return true;
       }
 
-      final currentVersion = yaml['version'].toString();
       final newVersion = _bumpVersionString(currentVersion, bumpType);
 
       if (dryRun) {
         print('  [DRY RUN] ${p.basename(projectPath)}: '
-            '$currentVersion -> $newVersion ($bumpType)');
+            '$currentVersion -> $newVersion ($bumpType, ${versionFile.fileName})');
         return true;
       }
 
-      // Update pubspec.yaml
-      final newContent = _updateVersionInYaml(content, newVersion);
-      pubspecFile.writeAsStringSync(newContent);
+      file.writeAsStringSync(versionFile.write(content, newVersion));
 
-      // Reset build counter
-      _resetBuildCounter(projectPath, verbose: verbose);
+      // Reset the Dart build counter (versioner)
+      if (versionFile.fileName == 'pubspec.yaml') {
+        _resetBuildCounter(projectPath, verbose: verbose);
+      }
 
       print('  ${p.basename(projectPath)}: $currentVersion -> $newVersion ($bumpType)');
       return true;
@@ -352,12 +356,6 @@ class BumpVersionExecutor extends CommandExecutor {
       case BumpType.patch:
         return '$major.$minor.${patch + 1}';
     }
-  }
-
-  /// Update the version field in YAML content while preserving formatting.
-  String _updateVersionInYaml(String content, String newVersion) {
-    final versionRegex = RegExp(r'^version:\s*[\S]+', multiLine: true);
-    return content.replaceFirst(versionRegex, 'version: $newVersion');
   }
 
   /// Reset the build counter in tom_build_state.json.

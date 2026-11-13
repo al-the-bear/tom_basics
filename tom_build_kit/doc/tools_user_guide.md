@@ -33,6 +33,7 @@ This package extends the shared infrastructure from **tom_build_base**:
 - [Tools](#tools)
   - [Versioner](#versioner)
   - [BumpVersion](#bumpversion)
+  - [Build, Test, Clean](#build-test-clean)
   - [Cleanup](#cleanup)
   - [Compiler](#compiler)
   - [Runner](#runner)
@@ -64,6 +65,7 @@ Tom Build Kit provides seven CLI tools and additional built-in commands that sha
 |------|--------|---------|
 | **Versioner** | `versioner` | Generate `version.versioner.dart` files with build metadata |
 | **BumpVersion** | `bumpversion` | Bump `pubspec.yaml` versions across projects |
+| **Build, Test, Clean** | `build`, `test`, `clean` | One step in every project with its language's tool |
 | **Cleanup** | `cleanup` | Remove generated and temporary files with safety checks |
 | **Compiler** | `compiler` | Cross-platform Dart compilation with pre/post-compile phases |
 | **Runner** | `runner` | `build_runner` wrapper with builder filtering |
@@ -416,9 +418,60 @@ Running `versioner --project _build --variable-prefix myCustom` uses `myCustom` 
 
 ---
 
+### Build, Test, Clean
+
+`buildkit :build`, `:test` and `:clean` run one step in every selected project
+with its language's tool, by the project's nature:
+
+| Nature | Detected by | `:build` | `:test` | `:clean` |
+|--------|-------------|----------|---------|----------|
+| Flutter | `pubspec.yaml` + Flutter SDK | `flutter analyze` | `flutter test` | `flutter clean` |
+| Dart | `pubspec.yaml` | `dart analyze` | `dart test` | delete `build/` |
+| TypeScript | `tsconfig.json` | `npm run build`, else `npx tsc -p .` | `npm test` (if there is a test script) | `npm run clean`, else delete `dist/` |
+| JavaScript | `package.json` without `tsconfig.json` | `npm run build` (if there is one) | `npm test`, else `node --test` | `npm run clean` (if there is one) |
+| Python | `pyproject.toml`, `setup.py`, `setup.cfg` | `python3 -m compileall` | `python3 -m pytest -q` | delete `build/`, `dist/`, `*.egg-info`, `__pycache__/` |
+| Java | `pom.xml` / `build.gradle(.kts)` | `mvn package -DskipTests` / `gradle build -x test` | `mvn test` / `gradle test` | `mvn clean` / `gradle clean` |
+| Go | `go.mod` | `go build ./...` | `go test ./...` | `go clean ./...` |
+| Rust | `Cargo.toml` | `cargo build` | `cargo test` | `cargo clean` |
+| C / C++ | `Makefile` / `CMakeLists.txt` beside C or C++ sources | `make` / `cmake --build build` | `make test` / `ctest` | `make clean` / delete `build/` |
+
+TypeScript and JavaScript run `npm install` first when the project declares
+dependencies and has no `node_modules/`. A project with several natures (a
+Dart package with a `package.json`) takes the first in the table.
+
+A `build:`, `test:` or `clean:` entry in the project's `buildkit.yaml` replaces
+the default: one command, a list run in order, or `false` for nothing to do.
+The commands run with `sh -c` in the project folder (`cmd /c` on Windows):
+
+```yaml
+# tom_som_java_runtime/buildkit.yaml
+build: ./build_jar.sh
+test: ./run_tests.sh
+clean: rm -rf build target
+```
+
+`--list` and `--dry-run` print each project's command and where it comes from
+(`buildkit.yaml` or the nature's default) without running it. A failing command
+fails its project and names the command and exit code; exit 127 means the
+toolchain is not on `PATH`.
+
+`:bumpversion` bumps the version in each project's own version file:
+`pubspec.yaml`, `package.json`, `pyproject.toml` (`[project]` /
+`[tool.poetry]`), `Cargo.toml` (`[package]`) or `pom.xml` (the project's own
+`<version>`). Go modules and C / C++ projects state no version and are
+skipped. `--versioner` and the build counter apply to Dart projects.
+
+Other per-language steps (run, watch, publish) are pipelines in
+`buildkit_master.yaml`, selected with `--project` or `--group`.
+
+---
+
 ### BumpVersion
 
-Bumps `pubspec.yaml` versions across multiple projects with optional versioner integration.
+Bumps project versions across multiple projects, in each project's own version
+file (`pubspec.yaml`, `package.json`, `pyproject.toml`, `Cargo.toml`,
+`pom.xml`), with optional versioner integration for Dart projects. Go modules and
+C / C++ projects state no version and are skipped.
 
 **Usage:**
 
@@ -445,7 +498,7 @@ buildkit :bumpversion [tool-options]
 
 **Project matching:** The `--minor` and `--major` values match against the project's folder name or relative path suffix. Comma-separated lists are expanded.
 
-**Build state reset:** After bumping, `tom_build_state.json` is reset to `buildNumber: 0` so the next versioner run starts fresh.
+**Build state reset:** After bumping a Dart project, `tom_build_state.json` is reset to `buildNumber: 0` so the next versioner run starts fresh.
 
 **Versioner integration:** With `--versioner`, automatically runs the versioner tool after bumping. The flags `--scan`, `--project`, `--recursive`, `--verbose`, `--dry-run`, and `--exclude` are forwarded.
 

@@ -427,11 +427,14 @@ Built-in commands run the respective tools directly via their Dart implementatio
 
 | Command | Description |
 |---------|-------------|
+| `build` | Build each project with its language's tool (see [Build, Test, Clean](#build-test-clean)) |
+| `test` | Run each project's tests with its language's tool |
+| `clean` | Remove each project's build outputs with its language's tool |
 | `versioner` | Generate `version.versioner.dart` files with build metadata |
-| `bumpversion` | Bump `pubspec.yaml` versions across projects |
+| `bumpversion` | Bump versions across projects (`pubspec.yaml`, `package.json`, `pyproject.toml`, `Cargo.toml`, `pom.xml`) |
 | `compiler` | Cross-platform Dart compilation |
 | `runner` | `build_runner` wrapper with builder filtering |
-| `cleanup` | Clean generated and temporary files |
+| `cleanup` | Delete the globs a project's `buildkit.yaml` `cleanup:` lists (alias `cl`) |
 | `dependencies` | Dependency tree visualization |
 | `boundaries` | Context-boundary check: imports across a package's bounded contexts |
 | `pubget` | Run `dart pub get` on projects |
@@ -471,6 +474,57 @@ When a pipeline specifies `--project`, built-in commands automatically receive t
 buildkit help :compiler
 buildkit help :versioner
 buildkit help :dcli
+```
+
+### Build, Test, Clean
+
+`:build`, `:test` and `:clean` do the same step in every selected project, each
+with its language's own tool, chosen by the project's nature:
+
+| Nature | Detected by | `:build` | `:test` | `:clean` |
+|--------|-------------|----------|---------|----------|
+| Flutter | `pubspec.yaml` + Flutter SDK | `flutter analyze` | `flutter test` | `flutter clean` |
+| Dart | `pubspec.yaml` | `dart analyze` | `dart test` | delete `build/` |
+| TypeScript | `tsconfig.json` | `npm run build`, else `npx tsc -p .` | `npm test` (if there is a test script) | `npm run clean`, else delete `dist/` |
+| JavaScript | `package.json` without `tsconfig.json` | `npm run build` (if there is one) | `npm test`, else `node --test` | `npm run clean` (if there is one) |
+| Python | `pyproject.toml`, `setup.py`, `setup.cfg` | `python3 -m compileall` | `python3 -m pytest -q` | delete `build/`, `dist/`, `*.egg-info`, `__pycache__/` |
+| Java | `pom.xml` / `build.gradle(.kts)` | `mvn package -DskipTests` / `gradle build -x test` | `mvn test` / `gradle test` | `mvn clean` / `gradle clean` |
+| Go | `go.mod` | `go build ./...` | `go test ./...` | `go clean ./...` |
+| Rust | `Cargo.toml` | `cargo build` | `cargo test` | `cargo clean` |
+| C / C++ | `Makefile` / `CMakeLists.txt` beside C or C++ sources | `make` / `cmake --build build` | `make test` / `ctest` | `make clean` / delete `build/` |
+
+TypeScript and JavaScript run `npm install` first when the project declares
+dependencies and has no `node_modules/`. A project with several natures (a
+Dart package with a `package.json`) takes the first in the table.
+
+A `build:`, `test:` or `clean:` entry in the project's `buildkit.yaml` replaces
+the default: one command, a list run in order, or `false` for nothing to do.
+The commands run with `sh -c` in the project folder (`cmd /c` on Windows):
+
+```yaml
+# tom_som_java_runtime/buildkit.yaml
+build: ./build_jar.sh
+test: ./run_tests.sh
+clean: rm -rf build target
+```
+
+`--list` and `--dry-run` print each project's command and where it comes from
+(`buildkit.yaml` or the nature's default) without running it. A failing command
+fails its project and names the command and exit code; exit 127 means the
+toolchain is not on `PATH`.
+
+`:bumpversion` bumps the version in each project's own version file:
+`pubspec.yaml`, `package.json`, `pyproject.toml` (`[project]` /
+`[tool.poetry]`), `Cargo.toml` (`[package]`) or `pom.xml` (the project's own
+`<version>`). Go modules and C / C++ projects state no version and are
+skipped. `--versioner` and the build counter apply to Dart projects.
+
+Other per-language steps (run, watch, publish) are pipelines in
+`buildkit_master.yaml`, selected with `--project` or `--group`.
+
+```bash
+buildkit -s tom_ai/ai_build --project 'tom_som_*_runtime,tom_som_*_v0' :test
+buildkit --group basics :build --dry-run
 ```
 
 ### DCli Command

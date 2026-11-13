@@ -28,7 +28,8 @@ This document lists all testable features across buildkit tools and tracks test 
 | 13 | [Script Utilities — Multi-Line & Stdin](#13-script-utilities--multi-line--stdin) | 12 | 12✅ | `script_utils_test.dart` | [→](#13-script-utilities--multi-line--stdin) |
 | 14 | [Built-in Commands — Parsing & Resolution](#14-built-in-commands--parsing--resolution) | 19 | 19✅ | `builtin_commands_test.dart` | [→](#14-built-in-commands--parsing--resolution) |
 | 15 | [Unreferenced — Export Audit](#15-unreferenced--export-audit) | 9 | 9✅ | `unreferenced_exports_test.dart` | [→](#15-unreferenced--export-audit) |
-| — | **Total** | **155** | **155✅** | | |
+| 16 | [Build, Test, Clean — Per Nature](#16-build-test-clean--per-nature) | 7 | 7✅ | `project_action_test.dart` | [→](#16-build-test-clean--per-nature) |
+| — | **Total** | **162** | **162✅** | | |
 
 ---
 
@@ -489,3 +490,20 @@ The integration suites run on the machine's workspace clone (tom_test_support `T
 | BK-CLEAN-6 | An untracked file inside a submodule does | ✅ | |
 | BK-CLEAN-7 | A submodule whose only change is that its own submodule moved is not dirty | ✅ | Nested submodule two levels down. |
 | BK-CLEAN-8 | A modified file two levels down is | ✅ | Reported as the top submodule's path. |
+
+---
+
+## 16. Build, Test, Clean — Per Nature
+
+**Test file:** `test/project_action_test.dart`
+
+| ID | Feature | Status | Description |
+|----|---------|--------|-------------|
+| BK-ACT-1 | Defaults | ✅ | Each language's default build / test / clean step. |
+| BK-ACT-2 | buildkit.yaml | ✅ | A command, a list or `false` replaces the default; a map is refused. |
+| BK-ACT-3 | Primary nature | ✅ | Dart before the other languages; no nature, no step. |
+| BK-ACT-4 | Run / dry run | ✅ | `:test` runs the step in the project; `--dry-run` runs nothing. |
+| BK-ACT-5 | Failure | ✅ | A failing command fails the run and is named. |
+| BK-ACT-6 | Clean | ✅ | Default paths and globs deleted, sources kept. |
+| BK-ACT-7 | Bump | ✅ | `:bumpversion` in package.json, pyproject.toml, Cargo.toml, pom.xml; Go skipped. |
+
