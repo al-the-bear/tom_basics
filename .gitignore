@@ -297,3 +297,7 @@ bk_master.yaml
 
 # Local development folders (repo-specific - add as needed)
 # /some_local_folder/
+
+# Retired build state (build_tom build_cleanup7): the build number lives in
+# version.versioner.dart; an old buildkit that still writes this file is ignored.
+tom_build_state.json
