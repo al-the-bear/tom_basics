@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=../../../../../../.tom/json-schema/buildkit/buildkit_master.schema.json
 # Test fixture: buildkit_master.yaml for compiler failure exit-code tests.
 #
 # Targets the provisioned `_build` project, whose overlaid buildkit.yaml

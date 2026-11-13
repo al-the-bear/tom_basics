@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=../../../../../../../../.tom/json-schema/buildkit/buildkit.schema.json
 # Test fixture: _build/buildkit.yaml for versioner tests.
 #
 # This config is copied over the workspace _build/buildkit.yaml during tests.

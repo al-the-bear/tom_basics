@@ -730,10 +730,9 @@ class FolderScanner {
 | `buildkit_skip.yaml` | Skip this folder and all descendants |
 | `buildkit_master.yaml` | Buildkit workspace root — treated as boundary |
 
-**Project subfolders:** By default, the scanner continues into directories even after finding a project folder — this allows detecting nested projects. This can be prevented in two ways:
+**Project subfolders:** By default, the scanner continues into directories even after finding a project folder — this allows detecting nested projects. The `--recursion-exclude` option (and `navigation.recursion-exclude` in `buildkit_master.yaml`) names patterns of directories it does not enter.
 
-1. **`--recursion-exclude` option** — Specify patterns to prevent entering specific directories
-2. **`buildkit.yaml` with `recursive: false`** — In the project's `buildkit.yaml`, set `recursive: false` to prevent the scanner from entering that project's subfolders
+A project's `buildkit.yaml` may hold `recursive: false`; it is read into `BuildkitFolder.recursive`, but the scanner does not act on it yet (build_tom aft_bkcfg_akmt-build-file-readers-and-docs-disagree).
 
 **Rationale:** When a folder contains a workspace marker file, it represents an independent workspace root. The scanner stops at these boundaries to avoid accidentally processing nested workspaces that should be handled separately.
 

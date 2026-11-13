@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=../../../../../../.tom/json-schema/buildkit/buildkit_master.schema.json
 # Pipeline test fixture for BuildKit integration tests
 #
 # Defines test pipelines for verifying pipeline orchestration,

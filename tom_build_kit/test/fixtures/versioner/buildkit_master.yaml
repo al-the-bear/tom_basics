@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=../../../../../../.tom/json-schema/buildkit/buildkit_master.schema.json
 # Test fixture: Minimal buildkit_master.yaml for versioner tests.
 #
 # Targets only tom_build_kit itself via its project-level buildkit.yaml.

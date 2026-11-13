@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=../../../../../../../../.tom/json-schema/buildkit/buildkit.schema.json
 # Test fixture: _build compiler config that always fails to compile.
 #
 # The single compile section runs `shell exit 1`, which the pipeline-prefix
