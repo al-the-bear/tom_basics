@@ -1,6 +1,6 @@
 name: tom_build_kit
 description: Build orchestration tool with pipelines that integrates Tom build tools.
-version: 1.29.0
+version: 1.30.0
 repository: https://github.com/al-the-bear/tom_basics
 
 environment:

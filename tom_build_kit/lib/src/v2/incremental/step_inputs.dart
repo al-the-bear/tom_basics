@@ -123,22 +123,36 @@ Future<String> stepFingerprint({
   required String projectPath,
   required String step,
   required String configuration,
-}) async {
-  final sink = _HashSink();
-  final input = sha256.startChunkedConversion(sink);
-  void add(String line) => input.add(utf8.encode('$line\n'));
+}) async => _hashLines([
+  'buildkit ${BuildkitVersionInfo.version}',
+  'dart ${await dartSdkVersion() ?? '?'}',
+  'step $step',
+  'configuration ${configuration.length}',
+  configuration,
+  'inputs ${projectInputsHash(projectPath)}',
+]);
 
-  add('buildkit ${BuildkitVersionInfo.version}');
-  add('dart ${await dartSdkVersion() ?? '?'}');
-  add('step $step');
-  add('configuration ${configuration.length}');
-  add(configuration);
-  _addFiles(add, 'project', projectPath);
+/// The hash of [projectPath]'s files, its `pubspec.lock` and
+/// `pubspec_overrides.yaml`, and the files of its path dependencies: what a
+/// step's result depends on in the project itself (see the library comment).
+/// Relative paths only, so the same project in another clone hashes the same.
+String projectInputsHash(String projectPath) {
+  final lines = <String>[];
+  _addFiles(lines.add, 'project', projectPath);
   for (final name in const ['pubspec.lock', 'pubspec_overrides.yaml']) {
-    add('$name ${_fileHash(File(p.join(projectPath, name)))}');
+    lines.add('$name ${_fileHash(File(p.join(projectPath, name)))}');
   }
   for (final dep in pathDependencies(projectPath)) {
-    _addFiles(add, 'dependency ${dep.name}', dep.path);
+    _addFiles(lines.add, 'dependency ${dep.name}', dep.path);
+  }
+  return _hashLines(lines);
+}
+
+String _hashLines(Iterable<String> lines) {
+  final sink = _HashSink();
+  final input = sha256.startChunkedConversion(sink);
+  for (final line in lines) {
+    input.add(utf8.encode('$line\n'));
   }
   input.close();
   return sink.value.toString();

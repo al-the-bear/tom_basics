@@ -554,6 +554,19 @@ Unit tests for argument parsing and command shorthand resolution.
 | BK-INC-6 | The project's files | ✅ | In git: tracked and untracked files, not ignored ones or `.dart_tool`; outside git: every file outside `.dart_tool`, `build` and hidden folders. |
 | BK-INC-7 | Path dependencies | ✅ | The `source: path` packages of a lock, with absolute paths. |
 
+### Build cache
+
+**Test file:** `test/compile_cache_test.dart` (unit tests on a temporary cache folder; BK-CACHE-6 runs `bin/buildkit.dart` on a fixture project under `.dart_tool` with `TOM_BUILDKIT_CACHE_DIR` set, compiling with `dart compile kernel`)
+
+| ID | Feature | Status | How to Test |
+|----|---------|--------|-------------|
+| BK-CACHE-1 | What is cacheable; the key | ✅ | `mkdir` + `dart compile ... -o` is cacheable, any other command or a compile without output is not; the key ignores the output path and changes with inputs, SDK and target. |
+| BK-CACHE-2 | Hit | ✅ | A stored compile is copied back, executable; an unknown key copies nothing. |
+| BK-CACHE-3 | Miss | ✅ | Another Dart SDK or other inputs (a changed lock) miss. |
+| BK-CACHE-4 | Eviction | ✅ | Past the size limit the entry used longest ago is deleted; a restored entry counts as used. |
+| BK-CACHE-5 | Folder and limit | ✅ | `~/.tom/cache/buildkit` and 2048 MB by default; `TOM_BUILDKIT_CACHE_DIR`, `TOM_BUILDKIT_CACHE_MAX_MB`. |
+| BK-CACHE-6 | `buildkit :compiler` | ✅ | A deleted binary comes back from the cache on `--force`; a changed lock compiles (a second entry); the lock switched back hits; `--force --no-cache` compiles. |
+
 ### Bootstrap — Shell Setup
 
 **Test file:** `test/bootstrap_binaries_test.dart` (sources `bootstrap_binaries.sh`'s functions in a temporary `HOME`; nothing is built)

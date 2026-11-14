@@ -100,6 +100,12 @@ const compilerOptions = <OptionDefinition>[
         'since its last successful run',
   ),
   OptionDefinition.flag(
+    name: 'no-cache',
+    description:
+        'Compile instead of copying a binary from the build cache, and do not '
+        'store the result in it',
+  ),
+  OptionDefinition.flag(
     name: 'all-platforms',
     description:
         'Compile every target a section lists, not only the current '
@@ -688,6 +694,7 @@ const compilerCommand = CommandDefinition(
     'buildkit :compiler --executable=buildkit.dart,compiler.dart',
     'buildkit :compiler -e buildkit.dart -t linux-x64',
     'buildkit :compiler --force',
+    'buildkit :compiler --force --no-cache',
   ],
 );
 

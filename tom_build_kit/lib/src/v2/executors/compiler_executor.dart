@@ -19,6 +19,8 @@ import 'package:yaml/yaml.dart';
 import '../../compiler_config.dart';
 import '../../platform_utils.dart';
 import '../../script_utils.dart' as script_utils;
+import '../dart_sdk_version.dart';
+import '../incremental/compile_cache.dart';
 import '../incremental/step_inputs.dart';
 
 // =============================================================================
@@ -217,6 +219,14 @@ class CompilerExecutor extends CommandExecutor with DeclaresStepInputs {
     final cmdOpts = _getCmdOpts(args);
     final compileAllPlatforms = cmdOpts['all-platforms'] == true;
 
+    // The build cache, unless `--no-cache` or a dry run (which compiles
+    // nothing and so neither reads nor fills it).
+    final cache = args.dryRun || compileCacheDisabled(cmdOpts)
+        ? null
+        : CompileCache.fromEnvironment();
+    String? projectInputs;
+    String inputsHash() => projectInputs ??= projectInputsHash(projectPath);
+
     // Parse target filter from CLI
     final targetFilter = <String>[];
     final targetsArg = cmdOpts['targets'];
@@ -382,6 +392,9 @@ class CompilerExecutor extends CommandExecutor with DeclaresStepInputs {
               currentPlatform: currentPlatform,
               commandTemplates: section.pipelineCommands,
               args: args,
+              cache: cache,
+              inputsHash: inputsHash,
+              projectName: context.name,
             );
             if (success) {
               compilationCount++;
@@ -560,6 +573,9 @@ class CompilerExecutor extends CommandExecutor with DeclaresStepInputs {
     required String currentPlatform,
     required List<String> commandTemplates,
     required CliArgs args,
+    CompileCache? cache,
+    String Function()? inputsHash,
+    String projectName = '',
   }) async {
     final normalizedFilePath = p.normalize(file);
     final filePath = Platform.isWindows
@@ -582,8 +598,9 @@ class CompilerExecutor extends CommandExecutor with DeclaresStepInputs {
 
     _ensureTargetOutputDirectory(targetPlatform: targetPlatform, args: args);
 
+    final commands = <String>[];
     for (final template in commandTemplates) {
-      var command = _resolvePlaceholders(
+      final command = _resolvePlaceholders(
         template,
         filePath: filePath,
         fileName: fileName,
@@ -599,8 +616,35 @@ class CompilerExecutor extends CommandExecutor with DeclaresStepInputs {
         currentPlatform: currentPlatform,
       );
       _warnMisusedPlaceholders(command, 'compile ($targetPlatform)');
+      commands.add(_replaceEnvVars(command));
+    }
+
+    // The build cache stands in for the whole compile when every command is
+    // one it can repeat (compile_cache.dart).
+    final plan = cache == null || inputsHash == null
+        ? null
+        : _cachePlan(commands);
+    String? key;
+    List<String>? outputs;
+    if (plan != null) {
+      key = plan.key(
+        inputsHash: inputsHash!(),
+        dartSdk: await dartSdkVersion() ?? '?',
+        targetPlatform: targetPlatform,
+      );
+      outputs = [
+        for (final o in plan.outputs)
+          p.normalize(p.join(Directory.current.path, o)),
+      ];
+      if (cache!.restore(key, outputs)) {
+        print('  $fileBasename ($targetPlatform): from the build cache');
+        return true;
+      }
+    }
+
+    for (final command in commands) {
       final success = await _executePipelineCommand(
-        rawCommand: _replaceEnvVars(command),
+        rawCommand: command,
         args: args,
         phaseLabel: 'compile ($targetPlatform)',
       );
@@ -610,7 +654,42 @@ class CompilerExecutor extends CommandExecutor with DeclaresStepInputs {
       }
     }
 
+    if (plan != null) {
+      try {
+        cache!.store(
+          key!,
+          outputs!,
+          description: {
+            'project': projectName,
+            'file': filePath,
+            'target': targetPlatform,
+          },
+        );
+      } on FileSystemException catch (e) {
+        // The binary is built; a cache that cannot be written costs only the
+        // next compile.
+        print('  Warning: build cache not written: ${e.message} (${e.path})');
+      }
+    }
     return true;
+  }
+
+  /// The cache plan of the resolved pipeline [commands], or null when one
+  /// of them is not a shell command the cache can stand in for.
+  CompileCachePlan? _cachePlan(List<String> commands) {
+    final bodies = <String>[];
+    for (final command in commands) {
+      final parsed = PipelineCommandPrefixParser.parse(
+        command,
+        toolPrefix: 'buildkit',
+      );
+      if (parsed == null || parsed.prefix != PipelineCommandPrefix.shell) {
+        return null;
+      }
+      final body = parsed.body.trim();
+      bodies.add(Platform.isWindows ? appendExeToCompileOutput(body) : body);
+    }
+    return CompileCachePlan.of(bodies);
   }
 
   Future<bool> _executePipelineCommand({

@@ -1,3 +1,16 @@
+## 1.30.0
+
+### Added — the build cache of `:compiler`
+
+`:compiler` keeps each binary it compiles in `~/.tom/cache/buildkit/`
+(`TOM_BUILDKIT_CACHE_DIR`), keyed by the project's inputs (files, lock, path
+dependencies), the Dart SDK version, the target platform and the compile
+commands without their output paths, and copies it from there instead of
+compiling when the same compile comes again. Only pipelines of `dart compile
+... -o` and `mkdir` commands are cached. The entries used longest ago are
+evicted past 2048 MB (`TOM_BUILDKIT_CACHE_MAX_MB`); `--no-cache` compiles and
+stores nothing. BK-CACHE-1..6.
+
 ## 1.29.0
 
 ### Added — skipping a project whose inputs did not change

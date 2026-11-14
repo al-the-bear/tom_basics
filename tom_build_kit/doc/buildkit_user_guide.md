@@ -24,6 +24,7 @@ This package extends the shared infrastructure from **tom_build_base**:
   - [Options](#options)
   - [Run time](#run-time)
   - [Skipping unchanged projects](#skipping-unchanged-projects)
+  - [Build cache](#build-cache)
   - [Project Selection](#project-selection)
 - [Execution Modes](#execution-modes)
   - [Project Mode](#project-mode)
@@ -224,8 +225,32 @@ while nothing changes.
   given anywhere on the command line it applies to all of them.
 - `--dry-run` skips an up-to-date project too, and records nothing.
 - What a step writes outside the project is not an input: a binary `:compiler` wrote and someone deleted is not
-  noticed. Run `buildkit :compiler --force` to write it again.
+  noticed. Run `buildkit :compiler --force` to write it again (from the build cache, below).
 - Every other command runs in every project each time.
+
+### Build cache
+
+`:compiler` keeps the binaries it compiles in a cache outside the repositories and copies a binary from there instead
+of compiling it again when the same inputs were compiled before — after switching a branch back, in a second clone,
+after `--force`:
+
+```text
+$ buildkit :compiler --force
+  buildkit.dart (darwin-arm64): from the build cache
+```
+
+- **The key** of a compile is the hash of the project's inputs (its files, `pubspec.lock`, path dependencies — the
+  same as in [Skipping unchanged projects](#skipping-unchanged-projects)), the Dart SDK version, the target platform
+  and the compile commands with their output paths left out. Another SDK, another lock or another source misses; the
+  same compile into another `TOM_BINARY_PATH` hits.
+- **What is cached:** one file compiled for one target whose pipeline holds only `dart compile <kind> ... -o <output>`
+  and `mkdir` commands (every pipeline in this workspace). A pipeline with any other command — a copy, a signing step,
+  a script — always runs, since the cache could not repeat what it does.
+- **Where:** `~/.tom/cache/buildkit/` (`TOM_BUILDKIT_CACHE_DIR` to put it elsewhere), one folder per key with
+  `entry.json` (project, file, target, size, when created and last used) and the outputs.
+- **Size:** after each new entry, the entries used longest ago are deleted until the cache holds at most 2048 MB
+  (`TOM_BUILDKIT_CACHE_MAX_MB`). Deleting the folder empties it.
+- `--no-cache` compiles and stores nothing; `--dry-run` neither reads nor fills the cache.
 
 ### Project Selection
 

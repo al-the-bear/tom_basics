@@ -617,6 +617,8 @@ buildkit :compiler [tool-options]
 |------|-------|-------------|
 | `--targets <list>` | `-t` | Target platforms to compile for (comma-separated) |
 | `--executable <list>` | `-e` | Filter to specific executable file(s) (comma-separated) |
+| `--force` | `-f` | Compile also projects whose inputs did not change since their last compile (buildkit user guide, "Skipping unchanged projects") |
+| `--no-cache` | | Compile instead of copying the binary from the build cache, and store nothing (buildkit user guide, "Build cache") |
 
 The `--executable` option filters which files are compiled. Only files whose basename matches one of the specified names will be processed:
 
