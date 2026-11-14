@@ -1,3 +1,19 @@
+## 1.25.0
+
+### Added — `:doccheck`, the documents each package lacks
+
+`buildkit -s tom_ai/basics :doccheck` reports per package what the workspace
+guidelines ask for and is missing: README.md, its attribution blockquote,
+its required sections (default Features, Installation, Quick start,
+Documentation — the ones component_module_readme_example.md and
+documentation_guidelines.md share), CHANGELOG.md, an example, user docs in
+doc/, and an index in a `_copilot_guidelines/` folder. `--strict` exits 1 on
+a gap. The checks and sections come from `doccheck:` in buildkit_master.yaml;
+a package opts out in its buildkit.yaml, always with a reason (`skip:`,
+`exclude: {check: reason}`, its own `readme-sections:`); an opt-out without a
+reason or with an unknown check is a configuration error. BK-DOCCHK-1..8;
+user guide, Doccheck Command.
+
 ## 1.24.1
 
 ### Fixed — a hung md2pdf no longer stops `:apireference` for good

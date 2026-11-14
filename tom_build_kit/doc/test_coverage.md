@@ -490,6 +490,21 @@ Unit tests for argument parsing and command shorthand resolution.
 | BK-APIREF-8 | Real tom_md2pdf | ✅ | The output starts with `%PDF-`. |
 | BK-APIREF-9 | `--timeout` | ✅ | A stand-in md2pdf that hangs is stopped after 3 s; the package fails, naming the limit. |
 
+### Doccheck
+
+**Test file:** `test/doccheck_test.dart` (BK-DOCCHK-1..5 call the check on fixture packages; 6..8 run `bin/buildkit.dart` on them under `.dart_tool`)
+
+| ID | Feature | Status | How to Test |
+|----|---------|--------|-------------|
+| BK-DOCCHK-1 | A complete package | ✅ | README with attribution and the four sections, CHANGELOG, example, doc/, guidelines index: no gap. |
+| BK-DOCCHK-2 | An incomplete package | ✅ | Every missing document and section named, in check order; no README at all. |
+| BK-DOCCHK-3 | Matching | ✅ | Case and hyphens aside, a heading in fenced code and a blockquote after the first section not counted, no guidelines folder needs no index. |
+| BK-DOCCHK-4 | Configuration | ✅ | The master's checks and sections, a package's own sections, an exclusion and a skip with their reasons. |
+| BK-DOCCHK-5 | Configuration errors | ✅ | An unknown check, an exclusion and a skip without a reason. |
+| BK-DOCCHK-6 | The command, `--strict` | ✅ | Gaps per package; exit 0 without `--strict`, 1 with it. |
+| BK-DOCCHK-7 | Opted out | ✅ | A skipped package reported with its reason and no gaps; an excluded check named; `--strict` passes. |
+| BK-DOCCHK-8 | A configuration error | ✅ | Fails the package without `--strict`. |
+
 ### Bootstrap — Shell Setup
 
 **Test file:** `test/bootstrap_binaries_test.dart` (sources `bootstrap_binaries.sh`'s functions in a temporary `HOME`; nothing is built)

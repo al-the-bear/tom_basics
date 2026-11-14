@@ -4,8 +4,8 @@ The two files the build tools read have JSON schemas in the container's `.tom/js
 
 | File | Schema | What it holds |
 |------|--------|---------------|
-| `buildkit_master.yaml` (the workspace root marker) | `.tom/json-schema/buildkit/buildkit_master.schema.json` | `navigation`, `pipelines`, `macros`, `buildkit:` (defines, `<MODE>-defines`), `required-environment`, `nested_tools`, the workspace defaults of `versioner` and `build_runner`, and issuekit's `issuekit:` section |
-| `buildkit.yaml` (a project's file) | `.tom/json-schema/buildkit/buildkit.schema.json` | the identity (`project_id`, `name`, `description`, `license`), `build` / `test` / `clean`, defines, `release`, `navigation`, and one section per tool or buildkit command: `versioner`, `compiler`, `cleanup`, `build_runner`, `unreferenced`, `boundaries`, `testkit`, `d4rtgen`, `astgen`, `tom_reflection_generator`, `tom_reflector`, `tom_analyzer`, `dart-editor-bundler` |
+| `buildkit_master.yaml` (the workspace root marker) | `.tom/json-schema/buildkit/buildkit_master.schema.json` | `navigation`, `pipelines`, `macros`, `buildkit:` (defines, `<MODE>-defines`), `required-environment`, `nested_tools`, the workspace defaults of `versioner`, `build_runner` and `doccheck`, and issuekit's `issuekit:` section |
+| `buildkit.yaml` (a project's file) | `.tom/json-schema/buildkit/buildkit.schema.json` | the identity (`project_id`, `name`, `description`, `license`), `build` / `test` / `clean`, defines, `release`, `navigation`, and one section per tool or buildkit command: `versioner`, `compiler`, `cleanup`, `build_runner`, `unreferenced`, `boundaries`, `doccheck`, `testkit`, `d4rtgen`, `astgen`, `tom_reflection_generator`, `tom_reflector`, `tom_analyzer`, `dart-editor-bundler` |
 
 ## How they are kept
 

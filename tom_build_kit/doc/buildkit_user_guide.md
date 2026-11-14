@@ -42,6 +42,7 @@ This package extends the shared infrastructure from **tom_build_base**:
   - [Apidoc Command](#apidoc-command)
   - [Apisummary Command](#apisummary-command)
   - [Apireference Command](#apireference-command)
+  - [Doccheck Command](#doccheck-command)
   - [Projects Command](#projects-command)
   - [Status Command](#status-command)
 - [Command Prefix Matching](#command-prefix-matching)
@@ -443,6 +444,7 @@ Built-in commands run the respective tools directly via their Dart implementatio
 | `apidoc` | Generate each Dart package's dartdoc API documentation into `build/api_doc` (never `doc/`) and count its warnings (see [Apidoc Command](#apidoc-command)) |
 | `apisummary` | Compare each Dart package's public API with its hand-authored `doc/api/api_summary_*.md`: API the summary misses, and names it gives that do not exist (see [Apisummary Command](#apisummary-command)) |
 | `apireference` | Render each documented package's combined API reference PDF (index, module summaries, guides) with tom_md2pdf into `build/api_reference` (see [Apireference Command](#apireference-command)) |
+| `doccheck` | Report the documents each package lacks: README and its required sections, attribution, CHANGELOG, example, `doc/`, a guidelines index (see [Doccheck Command](#doccheck-command)) |
 | `pubget` | Run `dart pub get` on projects |
 | `pubgetall` | Shortcut for `pubget --scan . --recursive` |
 | `pubupdate` | Run `dart pub upgrade` on projects |
@@ -896,6 +898,71 @@ has page numbers; tom_md2pdf makes no table of contents and no forced page break
 | `--timeout=<seconds>` | How long md2pdf may take per package before it is stopped (default 600) |
 
 Run it by hand from the repository, or as a pipeline step (`buildkit :apireference`); it is never scheduled.
+
+### Doccheck Command
+
+The `doccheck` command reports, per package, which of the documents the workspace guidelines ask for are missing
+(`_copilot_guidelines/component_module_readme_example.md`, `_copilot_guidelines/documentation_guidelines.md`). It
+reads the files and writes nothing.
+
+**Syntax:**
+
+```bash
+bk :doccheck [--strict]
+bk -s tom_ai/basics :doccheck            # every package in the folder
+bk -p tom_build_kit :doccheck --strict
+```
+
+**The checks:**
+
+| Check | Holds when |
+|-------|------------|
+| `readme` | `README.md` exists |
+| `attribution` | a blockquote (`> ...`) sits between the README's title and its first `##` section |
+| `readme-sections` | every required section has a heading (level 2 to 4) containing its words, in any case, spaces and hyphens aside (`Quick-start`); the default list is the one both guidelines share: Features, Installation, Quick start, Documentation (`Further documentation` counts) |
+| `changelog` | `CHANGELOG.md` exists |
+| `example` | `example/` holds a `.dart` file |
+| `doc` | `doc/` holds a `.md` file (user documentation) |
+| `guidelines-index` | a `_copilot_guidelines/` folder, where the package has one, contains `index.md` |
+
+**Per package:**
+
+```text
+  tom_ai/basics/tom_llm: missing: readme-sections: README.md has no "Documentation" section
+  tom_ai/basics/tom_llm: missing: example: no example/ with a .dart file
+  tom_ai/basics/tom_llm: 2 gap(s) in 7 checks
+  tom_ai/basics/tom_build_kit: complete — 6 checks; excluded: example
+```
+
+Gaps fail the package only with `--strict` (buildkit exits 1). A configuration error always fails it.
+
+**Configuration** — the workspace's list in `buildkit_master.yaml`, a package's exceptions in its `buildkit.yaml`; every
+opt-out carries its reason:
+
+```yaml
+# buildkit_master.yaml (both keys optional; defaults: every check, the four sections above)
+doccheck:
+  checks: [readme, attribution, readme-sections, changelog, example, doc, guidelines-index]
+  readme-sections: [Features, Installation, Quick start, Documentation]
+
+# buildkit.yaml of a package
+doccheck:
+  skip: A test fixture, never published          # leave the package out: reported as skipped, no gaps
+  exclude:                                         # or drop single checks
+    example: A command-line tool; its usage is the README
+  readme-sections: [Overview, Usage]              # this package's own list
+```
+
+An unknown check name, or a `skip` / `exclude` entry without a reason, is a configuration error: an opt-out that does
+not parse never passes silently.
+
+**Options:**
+
+| Option | Description |
+|--------|-------------|
+| `--strict` | Exit 1 when a package lacks a document or README section |
+
+Run it by hand from the repository, or as a pipeline step (`buildkit :doccheck --strict`); it is never scheduled.
 
 ### Projects Command
 

@@ -245,6 +245,14 @@ const apireferenceOptions = <OptionDefinition>[
   ),
 ];
 
+/// Options for the doccheck command.
+const doccheckOptions = <OptionDefinition>[
+  OptionDefinition.flag(
+    name: 'strict',
+    description: 'Exit 1 when a package lacks a document or README section',
+  ),
+];
+
 /// Options for the projects command.
 const projectsOptions = <OptionDefinition>[
   OptionDefinition.flag(
@@ -798,6 +806,24 @@ const apireferenceCommand = CommandDefinition(
   ],
 );
 
+const doccheckCommand = CommandDefinition(
+  name: 'doccheck',
+  description:
+      'Report the documents each package lacks: README and its sections, '
+      'attribution, CHANGELOG, example, doc/, a guidelines index',
+  options: doccheckOptions,
+  worksWithNatures: {DartProjectFolder},
+  supportsProjectTraversal: true,
+  supportsGitTraversal: false,
+  requiresTraversal: true,
+  canRunStandalone: true,
+  examples: [
+    'buildkit :doccheck',
+    'buildkit -s tom_ai/basics :doccheck',
+    'buildkit -p tom_build_kit :doccheck --strict',
+  ],
+);
+
 const publisherCommand = CommandDefinition(
   name: 'publisher',
   description: 'Show publishing status for all projects',
@@ -1286,6 +1312,7 @@ final buildkitTool = ToolDefinition(
     apidocCommand,
     apisummaryCommand,
     apireferenceCommand,
+    doccheckCommand,
     publisherCommand,
     projectsCommand,
     statusCommand,

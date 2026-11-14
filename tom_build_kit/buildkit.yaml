@@ -7,6 +7,12 @@ description: >-
   Build infrastructure library.
 license: BSD-3-Clause
 
+doccheck:
+  exclude:
+    example: >-
+      A command-line tool: its usage is the README and doc/buildkit_user_guide.md;
+      the library entry points serve buildkit's own tools.
+
 versioner:
   variable-prefix: buildkit
 
