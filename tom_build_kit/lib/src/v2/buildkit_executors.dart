@@ -14,6 +14,7 @@ import 'package:tom_build_base/tom_build_base.dart';
 
 import 'executors/project_action_executor.dart';
 import 'executors/apidoc_executor.dart';
+import 'executors/apireference_executor.dart';
 import 'executors/apisummary_executor.dart';
 import 'executors/boundaries_executor.dart';
 import 'executors/buildsorter_executor.dart';
@@ -317,6 +318,7 @@ Map<String, CommandExecutor> createBuildkitExecutors() {
     'boundaries': BoundariesExecutor(),
     'apidoc': ApidocExecutor(),
     'apisummary': ApisummaryExecutor(),
+    'apireference': ApireferenceExecutor(),
     'publisher': PublisherExecutor(),
     'projects': ProjectsExecutor(),
     'status': StatusExecutor(),

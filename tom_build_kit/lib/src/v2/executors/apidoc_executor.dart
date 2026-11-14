@@ -10,6 +10,8 @@ import 'package:path/path.dart' as p;
 import 'package:tom_build_base/tom_build_base.dart' show ProcessRunner;
 import 'package:tom_build_base/tom_build_base_v2.dart';
 
+import 'generated_output.dart';
+
 /// The folder `:apidoc` writes into when `--output` is not given, relative
 /// to the package: the workspace's place for generated API reference
 /// (`_bin/check_doc_runner_output.py`), gitignored with `build/`; `doc/`
@@ -154,7 +156,10 @@ class ApidocExecutor extends CommandExecutor {
     final rel = relative == '.' ? context.name : relative;
     final outputOption = options['output'] as String? ?? kApidocDefaultOutput;
 
-    final refused = refuseApidocOutput(outputOption);
+    final refused = refuseGeneratedOutput(
+      outputOption,
+      defaultDir: kApidocDefaultOutput,
+    );
     if (refused != null) {
       print('  $rel: $refused');
       return ItemResult.failure(
@@ -241,7 +246,8 @@ class ApidocExecutor extends CommandExecutor {
       '  $rel: ${failure ?? 'ok'} — ${result.describe()}'
       '${failure == null ? ' -> $where' : ''}',
     );
-    if (failure == null && await _trackedByGit(packageDir, outputDir)) {
+    if (failure == null &&
+        await trackedByGit(packageDir, p.join(outputDir, 'index.html'))) {
       print(
         '  $rel: note: git would track $where; add it to .gitignore '
         '(API docs are generated)',
@@ -272,35 +278,4 @@ class ApidocExecutor extends CommandExecutor {
         .whereType<File>()
         .any((f) => f.path.endsWith('.dart') && !p.isWithin(src, f.path));
   }
-
-  /// Whether [outputDir] is in a git work tree and not ignored there.
-  Future<bool> _trackedByGit(String projectPath, String outputDir) async {
-    final probe = p.join(outputDir, 'index.html');
-    final r = await Process.run(
-      'git',
-      ['check-ignore', '-q', probe],
-      workingDirectory: projectPath,
-      runInShell: Platform.isWindows,
-    );
-    // 0: ignored; 1: not ignored; 128: not a git work tree.
-    return r.exitCode == 1;
-  }
-}
-
-/// Why [output] (relative to the package) may not take the API docs, or
-/// null: it must stay inside the package, not be the package itself, and
-/// not lie in a `doc/` folder, which holds hand-authored documents only.
-String? refuseApidocOutput(String output) {
-  if (p.isAbsolute(output)) {
-    return '--output $output: give a folder relative to the package';
-  }
-  final parts = p.split(p.normalize(output));
-  if (parts.first == '..' || parts.first == '.') {
-    return '--output $output: the folder must lie inside the package';
-  }
-  if (parts.contains('doc')) {
-    return '--output $output is in a doc/ folder, which holds hand-authored '
-        'documents only; the default is $kApidocDefaultOutput';
-  }
-  return null;
 }

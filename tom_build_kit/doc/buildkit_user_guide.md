@@ -41,6 +41,7 @@ This package extends the shared infrastructure from **tom_build_base**:
   - [Boundaries Command](#boundaries-command)
   - [Apidoc Command](#apidoc-command)
   - [Apisummary Command](#apisummary-command)
+  - [Apireference Command](#apireference-command)
   - [Projects Command](#projects-command)
   - [Status Command](#status-command)
 - [Command Prefix Matching](#command-prefix-matching)
@@ -441,6 +442,7 @@ Built-in commands run the respective tools directly via their Dart implementatio
 | `boundaries` | Context-boundary check: imports across a package's bounded contexts |
 | `apidoc` | Generate each Dart package's dartdoc API documentation into `build/api_doc` (never `doc/`) and count its warnings (see [Apidoc Command](#apidoc-command)) |
 | `apisummary` | Compare each Dart package's public API with its hand-authored `doc/api/api_summary_*.md`: API the summary misses, and names it gives that do not exist (see [Apisummary Command](#apisummary-command)) |
+| `apireference` | Render each documented package's combined API reference PDF (index, module summaries, guides) with tom_md2pdf into `build/api_reference` (see [Apireference Command](#apireference-command)) |
 | `pubget` | Run `dart pub get` on projects |
 | `pubgetall` | Shortcut for `pubget --scan . --recursive` |
 | `pubupdate` | Run `dart pub upgrade` on projects |
@@ -840,6 +842,58 @@ one-word heading (`### Codes`) is read as prose unless the package declares the 
 | `--strict` | Exit 1 when a summary misses public API or names API that does not exist |
 
 Run it by hand from the repository, or from a pipeline step (`buildkit :apisummary --strict`); it is never scheduled.
+
+### Apireference Command
+
+The `apireference` command renders a package's combined API reference PDF from its hand-authored documents — the
+summary index, the module summaries and the module guides — as `_copilot_guidelines/dart/api_reference_creation.md`
+describes. It assembles them into one Markdown document and renders it with tom_md2pdf (`md2pdf`, pure Dart: no
+Pandoc, no TeX), both into the gitignored `build/api_reference/` of the package; nothing goes into `doc/`.
+
+**Syntax:**
+
+```bash
+bk :apireference [--output <dir>] [--md2pdf <executable>]
+bk -p tom_core_message_bus :apireference
+bk -s tom_ai/core -r :apireference     # every package under the folder
+```
+
+**Inputs** (per package):
+
+| Input | Where | Required |
+|-------|-------|----------|
+| Summary index | `doc/api/api_summary_index.md` | yes |
+| Module summaries | `doc/api/api_summary_<module>.md`, at least one | yes |
+| Module guides | `doc/<module>.md` or `doc/<module>/<module>.md` | no |
+
+**The document:** the title `<Package> API Reference` and the creation date, then Part I (the index), Part II (each
+module summary, alphabetically, under `## <Module> Reference`, headings one level deeper) and Part III (each module's
+guide under `## <Module> Guide`). Table columns holding only links are removed and links become their text. The PDF
+has page numbers; tom_md2pdf makes no table of contents and no forced page breaks.
+
+**Per package:**
+
+```text
+  tom_ai/core/tom_core_message_bus: ok — index, 1 summary, 1 guide -> build/api_reference/tom_core_message_bus_api_reference.pdf (115 KB)
+```
+
+- **ok**: `build/api_reference/<package>_api_reference.pdf` and the assembled `<package>_api_reference.md` beside it.
+- **missing input**: no index, no module summary, or a summary the index links to that is not there; each is named
+  and the package fails (buildkit exits 1). The other packages are still rendered.
+- **no guide for ...**: the modules without a guide, left out of Part III; not a failure.
+- **NOT DOCUMENTED**: the package has no `doc/api/`; listed under *Skipped*.
+- md2pdf failing, or not found, fails the package.
+
+`--dry-run` names the inputs and the `md2pdf` call and writes nothing.
+
+**Options:**
+
+| Option | Description |
+|--------|-------------|
+| `--output=<dir>` | Folder for the reference, relative to each package (default `build/api_reference`; never inside `doc/`) |
+| `--md2pdf=<path>` | The tom_md2pdf executable (default `md2pdf` of the binaries layer, on `PATH`) |
+
+Run it by hand from the repository, or as a pipeline step (`buildkit :apireference`); it is never scheduled.
 
 ### Projects Command
 

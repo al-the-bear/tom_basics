@@ -474,6 +474,21 @@ Unit tests for argument parsing and command shorthand resolution.
 | BK-APISUM-7 | The command, `--strict` | ✅ | Both directions printed; exit 0 without `--strict`, 1 with it. |
 | BK-APISUM-8 | Up to date; not measured | ✅ | `--strict` passes an up-to-date package; a package without a summary is named NOT MEASURED. |
 
+### Apireference
+
+**Test file:** `test/apireference_test.dart` (BK-APIREF-1..3 collect and assemble; 4..7 run `bin/buildkit.dart` with a stand-in md2pdf; 8 with the real tom_md2pdf, compiled from the workspace when its source is there)
+
+| ID | Feature | Status | How to Test |
+|----|---------|--------|-------------|
+| BK-APIREF-1 | Inputs of a documented package | ✅ | Index, summaries in order, guides in `doc/<m>/<m>.md` and `doc/<m>.md`, guide-less modules listed; no `doc/api/` is not documented. |
+| BK-APIREF-2 | Missing inputs | ✅ | A summary the index links to is gone; no index and no module summary. |
+| BK-APIREF-3 | The assembled document | ✅ | Title and date, parts in order, headlines dropped, headings deeper outside code, link columns removed, links as text, `\|` kept. |
+| BK-APIREF-4 | Rendering | ✅ | The PDF and the Markdown in `build/api_reference/`, nothing in `doc/`; guide-less module named. |
+| BK-APIREF-5 | A package with missing inputs | ✅ | Fails naming the input; an undocumented package skipped; the complete one rendered. |
+| BK-APIREF-6 | md2pdf failing or absent | ✅ | Exit 3 from md2pdf, and an executable that is not there, fail the package. |
+| BK-APIREF-7 | `--output` in `doc/`; `--dry-run` | ✅ | Refused; the dry run writes nothing. |
+| BK-APIREF-8 | Real tom_md2pdf | ✅ | The output starts with `%PDF-`. |
+
 ### Bootstrap — Shell Setup
 
 **Test file:** `test/bootstrap_binaries_test.dart` (sources `bootstrap_binaries.sh`'s functions in a temporary `HOME`; nothing is built)

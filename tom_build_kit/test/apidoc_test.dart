@@ -11,6 +11,10 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 import 'package:tom_build_kit/src/v2/executors/apidoc_executor.dart';
+import 'package:tom_build_kit/src/v2/executors/generated_output.dart';
+
+String? refuse(String output) =>
+    refuseGeneratedOutput(output, defaultDir: kApidocDefaultOutput);
 
 final _buildkit = p.join(Directory.current.path, 'bin', 'buildkit.dart');
 
@@ -80,13 +84,13 @@ Success! Docs generated into /x/build/api
 
     test('BK-APIDOC-3: the output folder stays in the package and out of '
         'doc/ [2026-11-13]', () {
-      expect(refuseApidocOutput('build/api_doc'), isNull);
-      expect(refuseApidocOutput('build/apidoc'), isNull);
-      expect(refuseApidocOutput('doc/api'), contains('doc/'));
-      expect(refuseApidocOutput('build/doc/api'), contains('doc/'));
-      expect(refuseApidocOutput('../elsewhere'), contains('inside'));
-      expect(refuseApidocOutput('.'), contains('inside'));
-      expect(refuseApidocOutput(p.absolute('x')), contains('relative'));
+      expect(refuse('build/api_doc'), isNull);
+      expect(refuse('build/apidoc'), isNull);
+      expect(refuse('doc/api'), contains('doc/'));
+      expect(refuse('build/doc/api'), contains('doc/'));
+      expect(refuse('../elsewhere'), contains('inside'));
+      expect(refuse('.'), contains('inside'));
+      expect(refuse(p.absolute('x')), contains('relative'));
     });
   });
 

@@ -1,3 +1,24 @@
+## 1.24.0
+
+### Added — `:apireference`, a package's combined API reference PDF
+
+`buildkit -p <package> :apireference` collects the package's summary index,
+module summaries (alphabetically) and module guides
+(`doc/<module>.md` or `doc/<module>/<module>.md`), assembles them in the order
+`api_reference_creation.md` gives — Part I index, Part II module references,
+Part III guides, headings nested, link columns removed, links as text — and
+renders the PDF with tom_md2pdf (`md2pdf` from the binaries layer, or
+`--md2pdf`), both into the gitignored `build/api_reference/`; never `doc/`.
+Missing inputs (no index, no module summary, a summary the index links to)
+are named and fail the package; modules without a guide are listed; a
+package without `doc/api/` is NOT DOCUMENTED and skipped. BK-APIREF-1..8;
+user guide, Apireference Command.
+
+### Changed — one rule for generated output folders
+
+`:apidoc` and `:apireference` share `refuseGeneratedOutput` (inside the
+package, never in `doc/`) and the note when git would track the output.
+
 ## 1.23.0
 
 ### Added — `:apisummary`, where an API summary is out of date

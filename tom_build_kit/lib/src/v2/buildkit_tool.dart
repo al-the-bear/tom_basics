@@ -220,6 +220,24 @@ const apisummaryOptions = <OptionDefinition>[
   ),
 ];
 
+/// Options for the apireference command.
+const apireferenceOptions = <OptionDefinition>[
+  OptionDefinition.option(
+    name: 'output',
+    description:
+        'Folder for the reference, relative to each package '
+        '(default build/api_reference; never inside doc/)',
+    valueName: 'dir',
+  ),
+  OptionDefinition.option(
+    name: 'md2pdf',
+    description:
+        'The tom_md2pdf executable (default: md2pdf of the binaries layer, '
+        'on PATH)',
+    valueName: 'path',
+  ),
+];
+
 /// Options for the projects command.
 const projectsOptions = <OptionDefinition>[
   OptionDefinition.flag(
@@ -754,6 +772,25 @@ const apisummaryCommand = CommandDefinition(
   ],
 );
 
+const apireferenceCommand = CommandDefinition(
+  name: 'apireference',
+  description:
+      'Render each documented package\'s combined API reference PDF '
+      '(index, module summaries, guides) with tom_md2pdf into '
+      'build/api_reference',
+  options: apireferenceOptions,
+  worksWithNatures: {DartProjectFolder},
+  supportsProjectTraversal: true,
+  supportsGitTraversal: false,
+  requiresTraversal: true,
+  canRunStandalone: true,
+  examples: [
+    'buildkit :apireference',
+    'buildkit -p tom_core_message_bus :apireference',
+    'buildkit -s tom_ai/core -r :apireference --output build/reference',
+  ],
+);
+
 const publisherCommand = CommandDefinition(
   name: 'publisher',
   description: 'Show publishing status for all projects',
@@ -1241,6 +1278,7 @@ final buildkitTool = ToolDefinition(
     boundariesCommand,
     apidocCommand,
     apisummaryCommand,
+    apireferenceCommand,
     publisherCommand,
     projectsCommand,
     statusCommand,
