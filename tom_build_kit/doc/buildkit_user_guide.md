@@ -166,10 +166,30 @@ Usage: buildkit [options] <pipeline|:command> [args...] [<pipeline|:command> [ar
 | `--exclude <pattern>` | `-x` | Exclude patterns — path-based globs (multi-option) |
 | `--exclude-projects <pattern>` | — | Exclude projects by name or path (multi-option) |
 | `--modes <mode>` | — | Active modes for mode-specific defines (e.g., `DEV,CI`) |
+| `--jobs <n>` | — | Projects run at once by a command whose projects are independent (`:pubget`, `:pubgetall`, `:pubupdate`, `:pubupdateall`); default the CPU count, at most 8; `1` runs them one after another |
 | `--nested` | — | Run in nested mode — skip traversal, single-project execution |
 | `--dump-definitions` | — | Dump complete tool definition as YAML |
 
 > **Important:** Global options must appear **before** the pipeline or command name. Options placed after the pipeline name are silently ignored (BuildKit will print a warning if it detects this).
+
+### Run time
+
+Every run ends with a **Timing** section in its summary, before `Done. No errors.`:
+
+```text
+=== Timing ===
+  :pubgetall  180 project(s)  2m 57.6s  (slowest: tom_forge_ui_test 2.2s, tom_webwork_webforge 2.1s, tom_webwork_forge 2.1s)
+  Total 23.3s; the projects ran at once (2m 57.6s of project time)
+```
+
+Per command: the projects it ran on, their summed time and the three slowest; then the run's total and how much
+of it was startup and traversal — or, when the projects ran at once (`--jobs`), how much project time the total held.
+A pipeline prints `=== Pipeline <name>: timing ===` with each step's time and the pipeline's total.
+
+`:pubget`, `:pubgetall`, `:pubupdate` and `:pubupdateall` run their projects at once, up to `--jobs` (default the
+CPU count, at most 8); each project's output is printed in one piece when it is done. Every other command, and a run
+mixing them with others (the `build` pipeline's `:pubget :runner :d4rtgen :v :comp`), keeps the build order. The
+measured figures are in the build_tom quest (`buildkit_performance.build_tom.md`).
 
 ### Project Selection
 

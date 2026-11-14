@@ -423,8 +423,15 @@ class VersionerExecutor extends CommandExecutor {
     return int.parse(match.group(1)!) + 1;
   }
 
+  /// The installed Dart SDK's version, read once per run: every project
+  /// gets the same answer, and `dart --version` is a process start each.
+  static Future<String?>? _dartSdkVersion;
+
   /// Get Dart SDK version.
-  Future<String?> _getDartSdkVersion() async {
+  Future<String?> _getDartSdkVersion() =>
+      _dartSdkVersion ??= _readDartSdkVersion();
+
+  Future<String?> _readDartSdkVersion() async {
     try {
       final result = await ProcessRunner.run('dart', ['--version']);
       final output = result.stdout + result.stderr;

@@ -66,13 +66,16 @@ class PubGetExecutor extends CommandExecutor {
       print('  Working directory: ${context.name}');
     }
 
-    // Use streaming for live output
-    final exitCode = await ProcessRunner.runStreaming(
+    // Printed, not streamed: under --jobs the projects run at once, and
+    // ToolRunner keeps each project's printed output together.
+    final run = await ProcessRunner.run(
       executable,
       ['pub', 'get'],
       workingDirectory: projectPath,
       runInShell: Platform.isWindows,
     );
+    _printProcessOutput(run.stdout, run.stderr);
+    final exitCode = run.exitCode;
 
     if (exitCode != 0) {
       return ItemResult.failure(
@@ -116,12 +119,16 @@ class PubGetAllExecutor extends CommandExecutor {
       print('  Working directory: ${context.name}');
     }
 
-    final exitCode = await ProcessRunner.runStreaming(
+    // Printed, not streamed: under --jobs the projects run at once, and
+    // ToolRunner keeps each project's printed output together.
+    final run = await ProcessRunner.run(
       executable,
       ['pub', 'get'],
       workingDirectory: projectPath,
       runInShell: Platform.isWindows,
     );
+    _printProcessOutput(run.stdout, run.stderr);
+    final exitCode = run.exitCode;
 
     if (exitCode != 0) {
       return ItemResult.failure(
@@ -166,13 +173,16 @@ class PubUpdateExecutor extends CommandExecutor {
       print('  Working directory: ${context.name}');
     }
 
-    // Use streaming for live output
-    final exitCode = await ProcessRunner.runStreaming(
+    // Printed, not streamed: under --jobs the projects run at once, and
+    // ToolRunner keeps each project's printed output together.
+    final run = await ProcessRunner.run(
       executable,
       ['pub', 'upgrade'],
       workingDirectory: projectPath,
       runInShell: Platform.isWindows,
     );
+    _printProcessOutput(run.stdout, run.stderr);
+    final exitCode = run.exitCode;
 
     if (exitCode != 0) {
       return ItemResult.failure(
@@ -216,12 +226,16 @@ class PubUpdateAllExecutor extends CommandExecutor {
       print('  Working directory: ${context.name}');
     }
 
-    final exitCode = await ProcessRunner.runStreaming(
+    // Printed, not streamed: under --jobs the projects run at once, and
+    // ToolRunner keeps each project's printed output together.
+    final run = await ProcessRunner.run(
       executable,
       ['pub', 'upgrade'],
       workingDirectory: projectPath,
       runInShell: Platform.isWindows,
     );
+    _printProcessOutput(run.stdout, run.stderr);
+    final exitCode = run.exitCode;
 
     if (exitCode != 0) {
       return ItemResult.failure(
@@ -359,4 +373,13 @@ Map<String, CommandExecutor> createBuildkitExecutors() {
     'findproject': FindProjectExecutor(),
     'dcli': DcliExecutor(),
   };
+}
+
+/// Prints a finished process's output, stdout then stderr, without the
+/// trailing blank line.
+void _printProcessOutput(String out, String err) {
+  for (final text in [out, err]) {
+    final trimmed = text.trimRight();
+    if (trimmed.isNotEmpty) print(trimmed);
+  }
 }

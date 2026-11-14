@@ -530,6 +530,15 @@ Unit tests for argument parsing and command shorthand resolution.
 | BK-CLOG-5 | `:bumpversion --changelog` | ✅ | `--dry-run` prints the draft and writes nothing; the run inserts it and bumps the version. |
 | BK-CLOG-6 | Existing section kept | ✅ | The hand-written 1.0.1 section unchanged, the version bumped; without `--changelog` nothing drafted. |
 
+### Pub get at once
+
+**Test file:** `test/pubget_parallel_test.dart` (runs `bin/buildkit.dart` on three fixture packages under `.dart_tool`)
+
+| ID | Feature | Status | How to Test |
+|----|---------|--------|-------------|
+| BK-PUBJ-1 | At once, output together, timing | ✅ | `:pubget --jobs 3`: every package resolved, each project's pub output and status inside its own block; the summary's Timing section names the step. |
+| BK-PUBJ-2 | `--jobs 1` | ✅ | The same blocks one after another. |
+
 ### Bootstrap — Shell Setup
 
 **Test file:** `test/bootstrap_binaries_test.dart` (sources `bootstrap_binaries.sh`'s functions in a temporary `HOME`; nothing is built)

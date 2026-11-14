@@ -922,6 +922,7 @@ const pubgetCommand = CommandDefinition(
   supportsGitTraversal: false,
   requiresTraversal: true,
   examples: ['buildkit :pubget'],
+  parallel: true,
 );
 
 const pubgetallCommand = CommandDefinition(
@@ -933,6 +934,7 @@ const pubgetallCommand = CommandDefinition(
   requiresTraversal: true,
   supportsProjectTraversal: true,
   examples: ['buildkit :pubgetall'],
+  parallel: true,
 );
 
 const pubupdateCommand = CommandDefinition(
@@ -945,6 +947,7 @@ const pubupdateCommand = CommandDefinition(
   supportsGitTraversal: false,
   requiresTraversal: true,
   examples: ['buildkit :pubupdate'],
+  parallel: true,
 );
 
 const pubupdateallCommand = CommandDefinition(
@@ -956,6 +959,7 @@ const pubupdateallCommand = CommandDefinition(
   requiresTraversal: true,
   supportsProjectTraversal: true,
   examples: ['buildkit :pubupdateall'],
+  parallel: true,
 );
 
 const buildsorterCommand = CommandDefinition(

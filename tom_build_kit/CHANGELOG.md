@@ -1,3 +1,26 @@
+## 1.28.0
+
+### Changed — `:pubget` and `:pubupdate` run their projects at once
+
+On tom_build_base 2.34.2: `:pubget`, `:pubgetall`, `:pubupdate` and
+`:pubupdateall` are parallel commands; up to `--jobs` projects run at once
+(default the CPU count, at most 8; `--jobs 1` one after another), each
+project's pub output printed in one piece when it is done (no longer
+streamed). Measured on the workspace (180 projects, mbp): `:pubgetall`
+1m 44s -> 23 s. BK-PUBJ-1, BK-PUBJ-2.
+
+### Added — the time per step in the run summary
+
+Every run's summary has a Timing section (tom_build_base 2.33.0): per
+command the projects, their time and the slowest; the total. Pipelines
+print each step's time (a multi-line stdin command by its first line; no
+timing on a dry run, tom_build_base 2.34.2).
+
+### Changed — `:versioner` reads `dart --version` once per run
+
+The Dart SDK version written into each `version.versioner.dart` is read once
+per run instead of once per project.
+
 ## 1.27.0
 
 ### Added — `:bumpversion --changelog` drafts the CHANGELOG entry
