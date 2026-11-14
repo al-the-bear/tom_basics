@@ -1,3 +1,21 @@
+## 2.35.0
+
+### Added — commands without the colon, `--`, a command's own short flags
+
+For tools whose command line is not a project walk (`tsm get <ref>`,
+`tsm run … -- <command> [args…]`):
+
+- `ToolDefinition(prefixlessCommands: true)`: a first positional word that
+  names a command (or an alias, or an unambiguous prefix) is that command, as
+  if written with its `:`. Off by default, so a tool whose first positional
+  is a path or a pipeline name reads it as before.
+- A bare `--` ends the options: every argument after it is kept as given in
+  `CliArgs.passthroughArgs`, never read as an option or a command.
+- A short flag the current command declares is its own, ahead of the
+  navigation letters: a command's `-n` is not `--dry-run`.
+
+BB-CLI-102, BB-CLI-103, BB-CLI-104.
+
 ## 2.34.2
 
 ### Fixed — the pipeline timing block repeated step text

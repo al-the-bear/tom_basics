@@ -174,6 +174,45 @@ OptionDefinition.multi(
 )
 ```
 
+### Commands without the colon, and `--`
+
+A tool whose command line is not a walk over projects can let its commands
+be named without the `:` prefix and pass a command line on:
+
+```dart
+const tsm = ToolDefinition(
+  name: 'tsm',
+  description: 'The Tom Secrets Manager on the command line',
+  prefixlessCommands: true,          // `tsm get <ref>` = `tsm :get <ref>`
+  features: NavigationFeatures.minimal,
+  commands: [
+    CommandDefinition(
+      name: 'get',
+      description: 'Print a value',
+      requiresTraversal: false,
+      options: [
+        // The command's own `-n`, not the navigation `--dry-run`.
+        OptionDefinition.flag(name: 'newline', abbr: 'n', description: '…'),
+      ],
+    ),
+    CommandDefinition(name: 'run', description: '…', requiresTraversal: false),
+  ],
+);
+```
+
+- With `prefixlessCommands`, the first positional word that names a command
+  (or an alias or an unambiguous prefix) is that command; any later word is
+  a positional argument.
+- Everything after a bare `--` lands in `CliArgs.passthroughArgs`, as given:
+  `tsm run --map T=a/b -- env -v` passes `env -v` on.
+- A short flag a command declares wins over the navigation letters (`-n`,
+  `-v`, `-s`, …) while that command is being parsed.
+- A command with `requiresTraversal: false` runs once through its executor's
+  `executeWithoutTraversal(CliArgs)` (`CallbackExecutor.onExecuteWithoutTraversal`);
+  its options are in `args.commandArgs['<command>'].options`. Pass
+  `ToolRunner(output: stderr)` when standard output carries the command's
+  own data.
+
 ### Command Executors
 
 Implement `CommandExecutor` for each command:

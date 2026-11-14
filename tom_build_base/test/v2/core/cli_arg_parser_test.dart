@@ -11,6 +11,78 @@ void main() {
     parser = CliArgParser();
   });
 
+  // A command line a tool passes on (`tsm run -- cmd -v`), commands named
+  // without the `:` (`tsm get <ref>`), and a command's own short flags over
+  // the navigation letters (tsm's `-n`).
+  group('passthrough, prefixless commands, command short flags', () {
+    const tool = ToolDefinition(
+      name: 'tsm',
+      description: 'demo',
+      prefixlessCommands: true,
+      commands: [
+        CommandDefinition(
+          name: 'get',
+          description: 'get',
+          options: [
+            OptionDefinition.flag(name: 'newline', abbr: 'n', description: ''),
+            OptionDefinition.option(name: 'field', description: ''),
+          ],
+        ),
+        CommandDefinition(
+          name: 'run',
+          description: 'run',
+          aliases: ['r'],
+          options: [OptionDefinition.multi(name: 'map', description: '')],
+        ),
+      ],
+    );
+
+    test('BB-CLI-102: everything after a bare -- is passed through as '
+        'given [2026-11-14]', () {
+      final args = CliArgParser(
+        toolDefinition: tool,
+      ).parse(['run', '--map', 'X=a/b', '--', 'env', '-v', ':x', '--', 'y']);
+      expect(args.commands, ['run']);
+      expect(args.passthroughArgs, ['env', '-v', ':x', '--', 'y']);
+      expect(args.verbose, isFalse, reason: 'the -v is the command\'s');
+      expect(args.positionalArgs, isEmpty);
+      expect(
+        args.commandArgs['run']!.options['map'],
+        anyOf('X=a/b', ['X=a/b']),
+      );
+      expect(parser.parse(['--']).passthroughArgs, isEmpty);
+    });
+
+    test('BB-CLI-103: a tool with prefixlessCommands takes a first bare word '
+        'naming a command as the command [2026-11-14]', () {
+      final p = CliArgParser(toolDefinition: tool);
+      final get = p.parse(['get', 'team/Api/Token', '--field', 'user']);
+      expect(get.commands, ['get']);
+      expect(get.positionalArgs, ['team/Api/Token']);
+      expect(get.commandArgs['get']!.options['field'], 'user');
+      expect(p.parse(['r', '--', 'x']).commands, ['run'], reason: 'alias');
+      expect(p.parse(['get', 'run']).positionalArgs, [
+        'run',
+      ], reason: 'only the first word');
+      expect(p.parse(['nothing']).commands, isEmpty);
+      expect(p.parse([':get', 'x']).commands, ['get'], reason: 'still works');
+      final off = CliArgParser(
+        toolDefinition: tool.copyWith(prefixlessCommands: false),
+      ).parse(['get', 'x']);
+      expect(off.commands, isEmpty);
+      expect(off.positionalArgs, ['get', 'x']);
+    });
+
+    test('BB-CLI-104: a short flag the current command declares is its own, '
+        'not the navigation letter [2026-11-14]', () {
+      final p = CliArgParser(toolDefinition: tool);
+      final get = p.parse(['get', 'a/b', '-n']);
+      expect(get.dryRun, isFalse);
+      expect(get.commandArgs['get']!.options['newline'], isTrue);
+      expect(p.parse(['run', '-n']).dryRun, isTrue, reason: 'not declared');
+    });
+  });
+
   // BB-NEGFLAG (sce51): `negatable` and `defaultValue` were declared on
   // OptionDefinition from the start and read by nothing. A tool could therefore
   // not express a default-ON flag at all: `--no-x` landed in extraOptions under
@@ -1270,6 +1342,7 @@ const CliArgs _populatedArgs = CliArgs(
   includeTestProjects: true,
   testProjectsOnly: true,
   positionalArgs: ['pos'],
+  passthroughArgs: ['--rest'],
   commands: ['build'],
   commandArgs: {
     'build': PerCommandArgs(
@@ -1330,6 +1403,7 @@ Map<String, Object?> _fieldsOf(CliArgs a) => {
   'includeTestProjects': a.includeTestProjects,
   'testProjectsOnly': a.testProjectsOnly,
   'positionalArgs': a.positionalArgs,
+  'passthroughArgs': a.passthroughArgs,
   'commands': a.commands,
   'commandArgs': a.commandArgs.map(
     (name, per) => MapEntry(name, <Object?>[

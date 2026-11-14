@@ -209,6 +209,13 @@ class ToolDefinition {
   /// - `[ToolWiringEntry(...)]`: Explicit wiring entries.
   final List<ToolWiringEntry>? defaultIncludes;
 
+  /// Whether a command may be named without its `:` prefix: when the
+  /// command line names no `:command` yet and its first positional word is
+  /// the name or an alias of one of [commands], that word is the command
+  /// (`tsm get <ref>` as `tsm :get <ref>`). Off by default: a tool whose
+  /// first positional is a path or a pipeline name keeps reading it so.
+  final bool prefixlessCommands;
+
   const ToolDefinition({
     required this.name,
     required this.description,
@@ -226,6 +233,7 @@ class ToolDefinition {
     this.worksWithNatures = const {},
     this.wiringFile,
     this.defaultIncludes,
+    this.prefixlessCommands = false,
   }) : pipelineName = pipelineName ?? name;
 
   /// Whether this tool has any wiring configuration (code-level or file-level).
@@ -402,6 +410,7 @@ class ToolDefinition {
     Set<Type>? worksWithNatures,
     String? wiringFile,
     List<ToolWiringEntry>? defaultIncludes,
+    bool? prefixlessCommands,
   }) {
     return ToolDefinition(
       name: name ?? this.name,
@@ -420,6 +429,7 @@ class ToolDefinition {
       worksWithNatures: worksWithNatures ?? this.worksWithNatures,
       wiringFile: wiringFile ?? this.wiringFile,
       defaultIncludes: defaultIncludes ?? this.defaultIncludes,
+      prefixlessCommands: prefixlessCommands ?? this.prefixlessCommands,
     );
   }
 }

@@ -160,6 +160,10 @@ class CliArgs {
 
   // Positional args and commands
   final List<String> positionalArgs;
+
+  /// Every argument after a bare `--`, as given: never read as an option or
+  /// a command (a command line a tool passes on, `tsm run -- cmd -v`).
+  final List<String> passthroughArgs;
   final List<String> commands;
   final Map<String, PerCommandArgs> commandArgs;
 
@@ -211,6 +215,7 @@ class CliArgs {
     this.includeTestProjects = false,
     this.testProjectsOnly = false,
     this.positionalArgs = const [],
+    this.passthroughArgs = const [],
     this.commands = const [],
     this.commandArgs = const {},
     this.extraOptions = const {},
@@ -418,6 +423,7 @@ class CliArgs {
     bool? includeTestProjects,
     bool? testProjectsOnly,
     List<String>? positionalArgs,
+    List<String>? passthroughArgs,
     List<String>? commands,
     Map<String, PerCommandArgs>? commandArgs,
     Map<String, dynamic>? extraOptions,
@@ -464,6 +470,7 @@ class CliArgs {
       includeTestProjects: includeTestProjects ?? this.includeTestProjects,
       testProjectsOnly: testProjectsOnly ?? this.testProjectsOnly,
       positionalArgs: positionalArgs ?? this.positionalArgs,
+      passthroughArgs: passthroughArgs ?? this.passthroughArgs,
       commands: commands ?? this.commands,
       commandArgs: commandArgs ?? this.commandArgs,
       extraOptions: extraOptions ?? this.extraOptions,
@@ -574,6 +581,28 @@ class CliArgParser {
           result.currentCommand == 'define' ||
           result.currentCommand == 'undefine') {
         result.positionalArgs.add(arg);
+        i++;
+        continue;
+      }
+
+      // A bare `--` ends the options: the rest is passed through as given.
+      if (arg == '--') {
+        result.passthroughArgs.addAll(args.sublist(i + 1));
+        break;
+      }
+
+      // A command named without its prefix, where the tool allows it: the
+      // first positional word, before any command, naming one.
+      if (!arg.startsWith('-') &&
+          !arg.startsWith(':') &&
+          (toolDefinition?.prefixlessCommands ?? false) &&
+          result.commands.isEmpty &&
+          result.positionalArgs.isEmpty &&
+          toolDefinition!.findCommand(arg) != null) {
+        final cmdName = toolDefinition!.findCommand(arg)!.name;
+        result.commands.add(cmdName);
+        result.currentCommand = cmdName;
+        result.commandArgs[cmdName] = _PerCommandState();
         i++;
         continue;
       }
@@ -1080,6 +1109,14 @@ class CliArgParser {
     for (final opt in toolDefinition?.globalOptions ?? const []) {
       if (opt.abbr == short) return opt.name;
     }
+    // So is one the current command declares: its `-n` is its own, not
+    // `--dry-run`.
+    if (currentCommand != null) {
+      final cmd = toolDefinition?.findCommand(currentCommand);
+      for (final opt in cmd?.options ?? const <OptionDefinition>[]) {
+        if (opt.abbr == short) return opt.name;
+      }
+    }
 
     const mapping = {
       's': 'scan',
@@ -1253,6 +1290,7 @@ class _ParseState {
   bool includeTestProjects = false;
   bool testProjectsOnly = false;
   final List<String> positionalArgs = [];
+  final List<String> passthroughArgs = [];
   final List<String> commands = [];
   final Map<String, _PerCommandState> commandArgs = {};
   final Map<String, dynamic> extraOptions = {};
@@ -1299,6 +1337,7 @@ class _ParseState {
       includeTestProjects: includeTestProjects,
       testProjectsOnly: testProjectsOnly,
       positionalArgs: positionalArgs,
+      passthroughArgs: passthroughArgs,
       commands: commands,
       commandArgs: Map.fromEntries(
         commandArgs.entries.map(
