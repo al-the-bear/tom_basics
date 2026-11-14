@@ -6,7 +6,7 @@
 /// drive the pure renderer directly, so they run on any host without a
 /// provisioned workspace.
 ///
-/// Test IDs: SUMM01–SUMM17
+/// Test IDs: SUMM01–SUMM19
 @TestOn('!browser')
 @Timeout(Duration(seconds: 30))
 library;
@@ -205,6 +205,33 @@ void main() {
         text,
         contains('  Total 2m 06.0s, of which startup and traversal 0.6s'),
       );
+    });
+
+    test('SUMM18: projects that ran at once (more project time than the '
+        'run took) are named as such, not as negative startup '
+        '[2026-11-14]', () {
+      final text = ToolResult.fromItems([
+        timed('a', 'pubget', 6000),
+        timed('b', 'pubget', 6000),
+        timed('c', 'pubget', 6000),
+      ]).renderRunSummary(elapsed: const Duration(milliseconds: 7000));
+      expect(
+        text,
+        contains(
+          '  Total 7.0s; the projects ran at once (18.0s of project time)',
+        ),
+      );
+      expect(text, isNot(contains('startup and traversal')));
+    });
+
+    test('SUMM19: no slowest list when every project took next to no time '
+        '[2026-11-14]', () {
+      final text = ToolResult.fromItems([
+        timed('a', 'pubget', 0),
+        timed('b', 'pubget', 10),
+      ]).renderRunSummary(elapsed: const Duration(milliseconds: 900));
+      expect(text, contains('  :pubget  2 project(s)  0.0s\n'));
+      expect(text, isNot(contains('slowest')));
     });
 
     test('SUMM16: ToolRunner times each project and the run, and its summary '

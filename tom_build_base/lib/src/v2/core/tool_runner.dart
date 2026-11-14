@@ -171,7 +171,10 @@ class ToolResult {
       final label = entry.key.isEmpty || entry.key == 'default'
           ? 'run'
           : ':${entry.key}';
-      final slowest = items.length < 2
+      // A slowest list only says something when a project took a moment.
+      final slowest =
+          items.length < 2 ||
+              items.every((i) => i.duration! < const Duration(milliseconds: 50))
           ? ''
           : '  (slowest: ${([...items]..sort((a, b) => b.duration!.compareTo(a.duration!))).take(3).map((i) => '${i.name} ${formatDuration(i.duration!)}').join(', ')})';
       lines.add(
@@ -179,11 +182,18 @@ class ToolResult {
       );
     }
     if (elapsed != null) {
-      final rest = elapsed - work;
-      lines.add(
-        '  Total ${formatDuration(elapsed)}, of which startup and traversal '
-        '${formatDuration(rest.isNegative ? Duration.zero : rest)}',
-      );
+      if (work > elapsed) {
+        // More project time than the run took: the projects ran at once.
+        lines.add(
+          '  Total ${formatDuration(elapsed)}; the projects ran at once '
+          '(${formatDuration(work)} of project time)',
+        );
+      } else {
+        lines.add(
+          '  Total ${formatDuration(elapsed)}, of which startup and traversal '
+          '${formatDuration(elapsed - work)}',
+        );
+      }
     }
     lines.add('');
     return lines;

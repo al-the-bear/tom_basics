@@ -1,3 +1,12 @@
+## 2.34.1
+
+### Fixed — the Timing section of a run whose projects ran at once
+
+With `--jobs` the projects' summed time exceeds the run's: the summary now
+says `Total 22.7s; the projects ran at once (2m 53.2s of project time)`
+instead of a startup share clamped to zero. A command whose projects took
+next to no time (`--list`) gets no slowest list. SUMM18, SUMM19.
+
 ## 2.34.0
 
 ### Added — independent projects run at once (`--jobs`)
