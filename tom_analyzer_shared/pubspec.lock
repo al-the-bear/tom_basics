@@ -573,10 +573,10 @@ packages:
     dependency: "direct main"
     description:
       name: tom_build_base
-      sha256: "8de6f4b047071af622d5019cc98f608a5f6530bf5026130d613764192ecd2d9e"
+      sha256: "8dbc6352be74709772b939b35fae31c2adf0b8dfc29ecfacc860549908944349"
       url: "https://pub.dev"
     source: hosted
-    version: "2.35.0"
+    version: "2.35.2"
   tom_dcli:
     dependency: transitive
     description:
