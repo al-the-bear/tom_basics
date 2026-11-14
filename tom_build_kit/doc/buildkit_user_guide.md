@@ -251,6 +251,10 @@ $ buildkit :compiler --force
 - **Size:** after each new entry, the entries used longest ago are deleted until the cache holds at most 2048 MB
   (`TOM_BUILDKIT_CACHE_MAX_MB`). Deleting the folder empties it.
 - `--no-cache` compiles and stores nothing; `--dry-run` neither reads nor fills the cache.
+- **Per machine.** The cache is not shared between machines, and there is no remote cache: each machine of the fleet
+  builds a different platform. The fleet build (`tom_create_all_binaries` in `al_the_bear/.claude/skills/`) compiles
+  each platform once per run, on one host it elects from those reachable (the `platform:` and `build:` fields of the
+  `fleet_hosts:` registry), and the binaries reach every other host through `tom_binaries`.
 
 ### Project Selection
 
