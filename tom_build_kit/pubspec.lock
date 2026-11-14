@@ -194,7 +194,7 @@ packages:
     source: hosted
     version: "1.16.0"
   crypto:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: crypto
       sha256: e3626ae6270383c9e3a549f34c9e4cd26c09ae6a9adaab2bf4737a00340efdc4
@@ -693,10 +693,10 @@ packages:
     dependency: "direct main"
     description:
       name: tom_build_base
-      sha256: ff65880a8f0b16a64d305e0144f33c0a908d337958ca716559ee7222059b6389
+      sha256: "8de6f4b047071af622d5019cc98f608a5f6530bf5026130d613764192ecd2d9e"
       url: "https://pub.dev"
     source: hosted
-    version: "2.34.2"
+    version: "2.35.0"
   tom_dcli:
     dependency: "direct main"
     description:

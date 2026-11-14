@@ -74,7 +74,7 @@ Target project: `_build` (main repo, has `variable-prefix: tomTools` in its `bui
 | VER_SHW01 | `--show` displays project config | ✅ | Run with `--show`. Verify `variable-prefix` and `tomTools` appear. |
 | VER_OVR01 | `--version` overrides pubspec version | ✅ | Run with `--version 9.9.9`. Verify `version = '9.9.9'` in output. |
 | VER_PFX01 | `--variable-prefix` overrides project config | ✅ | Run with `--variable-prefix myCustom`. Verify `class MyCustomVersionInfo`. Bug #12 FIXED. |
-| VER_BLD01 | Build number increments on each run | ✅ | Run versioner twice. Extract `buildNumber` from each. Verify second = first + 1. |
+| VER_BLD01 | Build number increments on each run that writes | ✅ | Run versioner, then again with `--force` (unchanged, it would be skipped: BK-INC-5). Extract `buildNumber` from each. Verify second = first + 1. |
 | VBN-1 | No versioner file: build 1 | ✅ | Run on a project without a stamp. Verify `buildNumber = 1`. |
 | VBN-2 | Counts on from the versioner file | ✅ | Stamp with build 41 (older version). Run twice. Verify 42, then 43; the version is the pubspec's. |
 | VBN-3 | A stamp without a build number is a named error | ✅ | Stamp without `buildNumber`. Verify the run fails, `VersionerFileException` names the file, the file is untouched. |
@@ -538,6 +538,21 @@ Unit tests for argument parsing and command shorthand resolution.
 |----|---------|--------|-------------|
 | BK-PUBJ-1 | At once, output together, timing | ✅ | `:pubget --jobs 3`: every package resolved, each project's pub output and status inside its own block; the summary's Timing section names the step. |
 | BK-PUBJ-2 | `--jobs 1` | ✅ | The same blocks one after another. |
+
+### Skipping unchanged projects
+
+**Test file:** `test/incremental_steps_test.dart` (runs `bin/buildkit.dart` on a fixture workspace under `.dart_tool`, a git repository of its own; its compile step appends one line per run to a log beside the projects)
+
+| ID | Feature | Status | How to Test |
+|----|---------|--------|-------------|
+| BK-INC-1 | Unchanged projects skipped | ✅ | A second `:compiler` compiles nothing and reports both projects up to date; `.dart_tool/buildkit/steps.json` holds the step. |
+| BK-INC-2 | A changed input runs again | ✅ | A changed source, a changed (gitignored) `pubspec.lock`, a changed path dependency and a new untracked file each make exactly the affected projects compile again. |
+| BK-INC-3 | `--force`; failures | ✅ | `--force` compiles both again; a failed compile removes the project's entry, and the next run runs it again. |
+| BK-INC-4 | Dry run | ✅ | A dry run records nothing; after a real run it reports the project up to date. |
+| BK-INC-5 | `:versioner` | ✅ | A second run writes no new build; `--force` writes one. |
+| BK-INC-8 | A later step rewrites an input | ✅ | `:compiler :versioner`: the second run compiles again (the version file changed) and skips the versioner; the third skips both. |
+| BK-INC-6 | The project's files | ✅ | In git: tracked and untracked files, not ignored ones or `.dart_tool`; outside git: every file outside `.dart_tool`, `build` and hidden folders. |
+| BK-INC-7 | Path dependencies | ✅ | The `source: path` packages of a lock, with absolute paths. |
 
 ### Bootstrap — Shell Setup
 

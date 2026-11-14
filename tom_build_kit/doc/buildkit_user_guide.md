@@ -22,6 +22,8 @@ This package extends the shared infrastructure from **tom_build_base**:
 - [Installation](#installation)
 - [Command Line Usage](#command-line-usage)
   - [Options](#options)
+  - [Run time](#run-time)
+  - [Skipping unchanged projects](#skipping-unchanged-projects)
   - [Project Selection](#project-selection)
 - [Execution Modes](#execution-modes)
   - [Project Mode](#project-mode)
@@ -190,6 +192,40 @@ A pipeline prints `=== Pipeline <name>: timing ===` with each step's time and th
 CPU count, at most 8); each project's output is printed in one piece when it is done. Every other command, and a run
 mixing them with others (the `build` pipeline's `:pubget :runner :d4rtgen :v :comp`), keeps the build order. The
 measured figures are in the build_tom quest (`buildkit_performance.build_tom.md`).
+
+### Skipping unchanged projects
+
+`:compiler`, `:versioner` and `:runner` (with `--command=build`, the default) skip a project whose inputs did not
+change since the step last succeeded there:
+
+```text
+$ buildkit :compiler
+  tom_build_kit: :compiler up to date (inputs unchanged; --force runs it)
+```
+
+The summary counts such a project as skipped. **The inputs** of a step in a project are:
+
+- the project's files — the ones git lists (tracked, and untracked files that are not ignored); outside a git work
+  tree, or in a folder git ignores, every file except those in `.dart_tool/`, `build/` and hidden folders;
+- `pubspec.lock` and `pubspec_overrides.yaml`, also when they are gitignored (a library's lock is);
+- the files of every path dependency the lock names;
+- the step's configuration: its options on the command line, the workspace's `buildkit_master.yaml`, and for
+  `:compiler` the platform it runs on and `TOM_BINARY_PATH`;
+- the buildkit version and the Dart SDK version (`dart --version`).
+
+The hash of these is recorded per step in `<project>/.dart_tool/buildkit/steps.json` right after a successful run,
+so the files the step wrote itself count as unchanged on the next run. A failed run removes the entry, and deleting
+`.dart_tool` makes every step run again. A step that changes a file an earlier step read makes the earlier step run
+once more on the next run: in the `build` pipeline, `:versioner` writes `version.versioner.dart` after `:runner` has
+run, so the second `buildkit build` runs `:runner` again (and `:versioner` skips), and from the third on both skip
+while nothing changes.
+
+- `--force` (`-f`) runs the step in every project anyway and records the new state. It is also `:cleanup`'s flag;
+  given anywhere on the command line it applies to all of them.
+- `--dry-run` skips an up-to-date project too, and records nothing.
+- What a step writes outside the project is not an input: a binary `:compiler` wrote and someone deleted is not
+  noticed. Run `buildkit :compiler --force` to write it again.
+- Every other command runs in every project each time.
 
 ### Project Selection
 

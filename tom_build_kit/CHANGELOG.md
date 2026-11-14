@@ -1,3 +1,25 @@
+## 1.29.0
+
+### Added — skipping a project whose inputs did not change
+
+`:compiler`, `:versioner` and `:runner` (`--command=build`) skip a project
+whose inputs are unchanged since the step last succeeded there, and report it
+as up to date. The inputs: the project's files as git lists them (tracked and
+untracked, not ignored), `pubspec.lock` and `pubspec_overrides.yaml`, the files
+of its path dependencies, the step's options, `buildkit_master.yaml`, the
+buildkit and Dart SDK versions (`:compiler` also its platform and
+`TOM_BINARY_PATH`). The hash taken after the last successful run is kept per
+step in `<project>/.dart_tool/buildkit/steps.json`; a failed run removes it.
+`--force` runs every project anyway. Every other command runs as before.
+BK-INC-1..8.
+
+### Changed
+
+- `:versioner` no longer writes a new build number when its project did not
+  change; VER_BLD01 now forces its second run.
+- The Dart SDK version is read by one helper for `:versioner` and the
+  incremental steps.
+
 ## 1.28.0
 
 ### Changed — `:pubget` and `:pubupdate` run their projects at once

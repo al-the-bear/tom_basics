@@ -19,6 +19,7 @@ import 'package:yaml/yaml.dart';
 import '../../compiler_config.dart';
 import '../../platform_utils.dart';
 import '../../script_utils.dart' as script_utils;
+import '../incremental/step_inputs.dart';
 
 // =============================================================================
 // CompilerConfig (v2 version)
@@ -113,7 +114,26 @@ class _CompilerConfig {
 // =============================================================================
 
 /// Native v2 executor for the `:compiler` command.
-class CompilerExecutor extends CommandExecutor {
+class CompilerExecutor extends CommandExecutor with DeclaresStepInputs {
+  @override
+  String get stepName => 'compiler';
+
+  /// A project with a `compiler:` section that does not opt out of being
+  /// compiled by buildkit.
+  @override
+  bool tracksInputs(CommandContext context, CliArgs args) =>
+      _hasCompilerConfig(context.path) &&
+      !_skipsCompileWithBuildkit(context.path);
+
+  /// Its options, the workspace's compiler sections (buildkit_master.yaml),
+  /// the platform it compiles on and where binaries go (`TOM_BINARY_PATH`).
+  @override
+  String stepConfiguration(CommandContext context, CliArgs args) =>
+      '${optionsText(_getCmdOpts(args))}\n'
+      'platform ${PlatformUtils.getCurrentPlatform()}\n'
+      'TOM_BINARY_PATH ${Platform.environment['TOM_BINARY_PATH'] ?? ''}\n'
+      '${masterConfiguration(context.path)}';
+
   /// Its `--list` mode lists the projects and changes nothing.
   @override
   bool get handlesListMode => true;

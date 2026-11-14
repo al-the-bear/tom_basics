@@ -16,6 +16,8 @@ import 'package:tom_build_base/tom_build_base.dart'
         ProcessRunner;
 import 'package:tom_build_base/tom_build_base_v2.dart';
 import 'package:yaml/yaml.dart';
+import '../dart_sdk_version.dart';
+import '../incremental/step_inputs.dart';
 
 // =============================================================================
 // Versioner Configuration
@@ -119,7 +121,22 @@ class VersionerFileException implements Exception {
 /// Uses `requiresTraversal: true` — ToolRunner traverses projects and calls
 /// [execute] per folder. Each folder is checked for versioner config before
 /// generating the version file.
-class VersionerExecutor extends CommandExecutor {
+class VersionerExecutor extends CommandExecutor with DeclaresStepInputs {
+  @override
+  String get stepName => 'versioner';
+
+  /// A project with a `versioner:` entry in its buildkit.yaml.
+  @override
+  bool tracksInputs(CommandContext context, CliArgs args) =>
+      hasTomBuildConfig(context.path, 'versioner');
+
+  /// Its options and the workspace's versioner defaults (in
+  /// buildkit_master.yaml); the project's own entry is one of its files.
+  @override
+  String stepConfiguration(CommandContext context, CliArgs args) =>
+      '${optionsText(_getCommandOptions(args))}\n'
+      '${masterConfiguration(context.path)}';
+
   /// Its `--list` mode lists the projects and changes nothing.
   @override
   bool get handlesListMode => true;
@@ -292,7 +309,7 @@ class VersionerExecutor extends CommandExecutor {
       final buildNumber = nextBuildNumber(File(outputPath));
 
       // Get Dart SDK version
-      final dartSdkVersion = await _getDartSdkVersion();
+      final sdkVersion = await dartSdkVersion();
 
       // Build timestamp
       final buildTime = DateTime.now().toUtc().toIso8601String();
@@ -304,7 +321,7 @@ class VersionerExecutor extends CommandExecutor {
         buildTime: buildTime,
         gitCommit: gitCommit,
         buildNumber: buildNumber,
-        dartSdkVersion: dartSdkVersion,
+        dartSdkVersion: sdkVersion,
         className: config.className,
       );
 
@@ -425,25 +442,6 @@ class VersionerExecutor extends CommandExecutor {
 
   /// The installed Dart SDK's version, read once per run: every project
   /// gets the same answer, and `dart --version` is a process start each.
-  static Future<String?>? _dartSdkVersion;
-
-  /// Get Dart SDK version.
-  Future<String?> _getDartSdkVersion() =>
-      _dartSdkVersion ??= _readDartSdkVersion();
-
-  Future<String?> _readDartSdkVersion() async {
-    try {
-      final result = await ProcessRunner.run('dart', ['--version']);
-      final output = result.stdout + result.stderr;
-      final match = RegExp(r'Dart SDK version:\s+(\S+)').firstMatch(output);
-      if (match != null) return match.group(1);
-      final versionMatch = RegExp(r'(\d+\.\d+\.\d+)').firstMatch(output);
-      return versionMatch?.group(1);
-    } catch (_) {
-      return null;
-    }
-  }
-
   /// Generate the version.versioner.dart file content.
   /// The Dart source of a `version.versioner.dart` file.
   ///

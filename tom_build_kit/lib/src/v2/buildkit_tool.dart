@@ -13,6 +13,13 @@ import '../version.versioner.dart';
 
 /// Options for versioner command.
 const versionerOptions = <OptionDefinition>[
+  OptionDefinition.flag(
+    name: 'force',
+    abbr: 'f',
+    description:
+        'Run it in every project, also where its inputs did not change '
+        'since its last successful run',
+  ),
   OptionDefinition.option(
     name: 'output',
     abbr: 'O',
@@ -86,6 +93,13 @@ const bumppubspecOptions = <OptionDefinition>[
 /// Options for compiler command.
 const compilerOptions = <OptionDefinition>[
   OptionDefinition.flag(
+    name: 'force',
+    abbr: 'f',
+    description:
+        'Run it in every project, also where its inputs did not change '
+        'since its last successful run',
+  ),
+  OptionDefinition.flag(
     name: 'all-platforms',
     description:
         'Compile every target a section lists, not only the current '
@@ -110,6 +124,13 @@ const compilerOptions = <OptionDefinition>[
 
 /// Options for runner command.
 const runnerOptions = <OptionDefinition>[
+  OptionDefinition.flag(
+    name: 'force',
+    abbr: 'f',
+    description:
+        'Run it in every project, also where its inputs did not change '
+        'since its last successful run',
+  ),
   OptionDefinition.option(
     name: 'command',
     abbr: 'c',
@@ -613,6 +634,7 @@ const versionerCommand = CommandDefinition(
     'buildkit :versioner',
     'buildkit :versioner --output lib/src/version.versioner.dart',
     'buildkit :versioner --variable-prefix myApp',
+    'buildkit :versioner --force',
   ],
 );
 
@@ -665,6 +687,7 @@ const compilerCommand = CommandDefinition(
     'buildkit :compiler --targets=linux-x64,darwin-arm64',
     'buildkit :compiler --executable=buildkit.dart,compiler.dart',
     'buildkit :compiler -e buildkit.dart -t linux-x64',
+    'buildkit :compiler --force',
   ],
 );
 
@@ -682,6 +705,7 @@ const runnerCommand = CommandDefinition(
     'buildkit :runner',
     'buildkit :runner --command=watch',
     'buildkit :runner --include-builders=freezed',
+    'buildkit :runner --force',
   ],
 );
 

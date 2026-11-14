@@ -11,6 +11,7 @@ import 'package:tom_build_base/tom_build_base.dart'
     show findWorkspaceRootOrNull, toStringList, ProcessRunner;
 import 'package:tom_build_base/tom_build_base_v2.dart';
 import 'package:yaml/yaml.dart';
+import '../incremental/step_inputs.dart';
 
 // =============================================================================
 // Configuration
@@ -71,7 +72,24 @@ class _BuilderFilter {
 // =============================================================================
 
 /// Native v2 executor for the `:runner` command.
-class RunnerExecutor extends CommandExecutor {
+class RunnerExecutor extends CommandExecutor with DeclaresStepInputs {
+  @override
+  String get stepName => 'runner';
+
+  /// A project with a build.yaml, when the build_runner command is `build`
+  /// (`watch` and `serve` keep running and always start).
+  @override
+  bool tracksInputs(CommandContext context, CliArgs args) =>
+      File('${context.path}/build.yaml').existsSync() &&
+      (_getCmdOpts(args)['command']?.toString() ?? 'build') == 'build';
+
+  /// Its options and the workspace's builder filters
+  /// (buildkit_master.yaml); build.yaml is one of the project's files.
+  @override
+  String stepConfiguration(CommandContext context, CliArgs args) =>
+      '${optionsText(_getCmdOpts(args))}\n'
+      '${masterConfiguration(context.path)}';
+
   /// Its `--list` mode lists the projects and changes nothing.
   @override
   bool get handlesListMode => true;

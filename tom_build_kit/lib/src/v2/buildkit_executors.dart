@@ -34,6 +34,7 @@ import 'executors/projects_executor.dart';
 import 'executors/status_executor.dart';
 import 'executors/unreferenced_executor.dart';
 import 'executors/versioner_executor.dart';
+import 'incremental/step_inputs.dart';
 
 // =============================================================================
 // Pub Command Executors
@@ -324,11 +325,11 @@ Map<String, CommandExecutor> createBuildkitExecutors() {
     'build': ProjectActionExecutor(ProjectAction.build),
     'test': ProjectActionExecutor(ProjectAction.test),
     'clean': ProjectActionExecutor(ProjectAction.clean),
-    'versioner': VersionerExecutor(),
+    'versioner': IncrementalStep(VersionerExecutor()),
     'bumpversion': BumpVersionExecutor(),
     'bumppubspec': BumpPubspecExecutor(),
-    'compiler': CompilerExecutor(),
-    'runner': RunnerExecutor(),
+    'compiler': IncrementalStep(CompilerExecutor()),
+    'runner': IncrementalStep(RunnerExecutor()),
     'cleanup': CleanupExecutor(),
     'dependencies': DependenciesExecutor(),
     'boundaries': BoundariesExecutor(),

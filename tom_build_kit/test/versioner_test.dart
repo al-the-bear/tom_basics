@@ -316,8 +316,10 @@ void main() {
       );
     });
 
-    test('build number increments on each run', () async {
-      log.start('VER_BLD01', 'build number increments on each run');
+    // An unchanged project is up to date and skipped (incremental steps,
+    // BK-INC-5); the build number counts on with every run that writes.
+    test('build number increments on each run that writes', () async {
+      log.start('VER_BLD01', 'build number increments on each run that writes');
       await ws.installFixture('versioner');
 
       // First run
@@ -331,10 +333,11 @@ void main() {
       ).readAsStringSync();
       final buildNum1 = _extractBuildNumber(content1);
 
-      // Second run
+      // Second run: nothing changed, so it is forced.
       final result2 = await ws.runTool('versioner', [
         '--project',
         targetProject,
+        '--force',
       ]);
       log.capture('versioner --project _build (run 2)', result2);
       final content2 = File(
