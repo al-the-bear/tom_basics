@@ -1,3 +1,17 @@
+## 2.34.0
+
+### Added — independent projects run at once (`--jobs`)
+
+A command whose projects are independent declares
+`CommandDefinition(parallel: true)`; ToolRunner then runs up to `--jobs <n>`
+of its projects at once (default: the CPU count, at most 8; `--jobs 1` one
+after another), in both traversal paths. Each project's printed output is
+held back and printed in one piece when it is done; the results keep the
+traversal order; a failure does not stop the others. A run of several
+commands runs folders at once only when every one is parallel; `--list` and
+every other command keep the build order. `--jobs` is a navigation option
+(before or after the command). BB-JOBS-1..5.
+
 ## 2.33.0
 
 ### Added — the run summary shows where the time went

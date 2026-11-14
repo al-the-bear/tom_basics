@@ -66,7 +66,8 @@ This document lists all testable features across `tom_build_base` and tracks tes
 | 51 | [--list Runs Nothing](#51---list-runs-nothing) | 7 | 7✅ | `v2/core/list_flag_test.dart` | [→](#51---list-runs-nothing) |
 | 52 | [Standalone Tools](#52-standalone-tools) | 5 | 5✅ | `v2/core/standalone_tool_test.dart` | [→](#52-standalone-tools) |
 | 53 | [After the Traversal](#53-after-the-traversal) | 5 | 5✅ | `v2/core/after_traversal_test.dart` | [→](#53-after-the-traversal) |
-| — | **Total** | **1060** | **1060✅** | | |
+| 54 | [Projects at Once](#54-projects-at-once) | 5 | 5✅ | `v2/core/parallel_jobs_test.dart` | [→](#54-projects-at-once) |
+| — | **Total** | **1065** | **1065✅** | | | | |
 
 > Every row links to a section, and the counts are measured from
 > `dart test --reporter json -j 1` rather than maintained by hand. Run it
@@ -1121,6 +1122,22 @@ it visited.
 | BB-AFT-3 | Its failure counts | ✅ | A returned failure fails the run; an exception becomes a failure item. |
 | BB-AFT-4 | Not under `--list` | ✅ | The executor neither runs nor sums up. |
 | BB-AFT-5 | Default | ✅ | Answers nothing; the run's results are unchanged. |
+
+---
+
+## 54. Projects at Once
+
+**Test file:** `test/v2/core/parallel_jobs_test.dart`
+
+`CommandDefinition.parallel` and `--jobs`.
+
+| ID | Feature | Status | Description |
+|----|---------|--------|-------------|
+| BB-JOBS-1 | At once, at most `--jobs` | ✅ | Four sleeping projects with `--jobs 2`: two at a time, faster; `--jobs 1` one after another. |
+| BB-JOBS-2 | Output and results | ✅ | Each project's lines together; results in traversal order; a failure does not stop the others. |
+| BB-JOBS-3 | Not parallel | ✅ | A command without `parallel` ignores `--jobs`. |
+| BB-JOBS-4 | Several commands | ✅ | Folders at once only when every command is parallel. |
+| BB-JOBS-5 | `--list`; default | ✅ | `--list` runs nothing; without `--jobs` more than one job on a machine with several CPUs. |
 
 ---
 

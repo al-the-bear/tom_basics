@@ -72,6 +72,11 @@ class CommandDefinition {
   /// Whether command is hidden from help.
   final bool hidden;
 
+  /// Whether the command's projects are independent of each other (no
+  /// build order, no shared state): ToolRunner then runs up to `--jobs`
+  /// of them at once, each project's printed output kept together.
+  final bool parallel;
+
   const CommandDefinition({
     required this.name,
     required this.description,
@@ -88,6 +93,7 @@ class CommandDefinition {
     this.examples = const [],
     this.canRunStandalone = false,
     this.hidden = false,
+    this.parallel = false,
   });
 
   /// Get all options including traversal options if supported.

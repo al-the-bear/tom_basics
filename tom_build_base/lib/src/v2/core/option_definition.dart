@@ -123,6 +123,14 @@ class OptionDefinition {
 /// Standard options for project traversal.
 const List<OptionDefinition> projectTraversalOptions = [
   OptionDefinition.option(
+    name: 'jobs',
+    description:
+        'Projects run at once by a command whose projects are independent, '
+        'such as :pubget (default: the CPU count, at most 8; 1 runs them '
+        'one after another)',
+    valueName: 'n',
+  ),
+  OptionDefinition.option(
     name: 'scan',
     abbr: 's',
     description: 'Starting path for scan',

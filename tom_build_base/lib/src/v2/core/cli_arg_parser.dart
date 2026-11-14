@@ -993,6 +993,7 @@ class CliArgParser {
       'guide',
       'dump-config',
       'config',
+      'jobs',
     };
     return globalFlags.contains(name);
   }
@@ -1039,6 +1040,7 @@ class CliArgParser {
       'skip-modules',
       'config',
       'completion',
+      'jobs',
     };
     if (valueOptions.contains(name)) return true;
 

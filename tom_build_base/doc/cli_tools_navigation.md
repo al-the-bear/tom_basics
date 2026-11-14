@@ -255,6 +255,25 @@ These options are part of `commonOptions` in the V2 `ToolRunner` framework and a
 
 **`--dump-definitions`** serializes the tool's complete definition — all commands, options, nature requirements, and features — as YAML. This is used by host tools for auto-discovery during [nested tool wiring](tool_inheritance_and_nesting.md).
 
+### Projects at once (`--jobs`)
+
+A command whose projects are independent of each other declares
+`CommandDefinition(parallel: true)` (buildkit's `:pubget`, `:pubgetall`,
+`:pubupdate`, `:pubupdateall`). ToolRunner then runs up to `--jobs <n>` of its
+projects at once — by default the CPU count, at most 8; `--jobs 1` runs them one
+after another. What a project prints is held back and printed in one piece when
+the project is done, so the lines of projects running at once never interleave;
+the results keep the traversal order. A run of several commands runs folders at
+once only when every command in it is parallel; every other command, and
+`--list`, keeps the traversal (build) order.
+
+### Timing
+
+`runToCompletion` ends with a **Timing** section in the run summary: per command
+the projects it ran on, their summed time and the three slowest, then the
+run's total and how much of it was startup and traversal. A pipeline prints its
+own `=== Pipeline <name>: timing ===` block with each command's time.
+
 ### Tools that visit no projects
 
 A single-command tool whose features have neither project nor git traversal

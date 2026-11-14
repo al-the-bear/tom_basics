@@ -480,6 +480,37 @@ class ToolRunner {
     }
   }
 
+  /// The pool a parallel [cmd]'s projects run in, or null to run them one
+  /// after another: `--jobs <n>` (written before or after the command), by
+  /// default the CPU count, at most 8.
+  _JobPool? _poolFor(CommandDefinition cmd, CliArgs cliArgs) {
+    if (!cmd.parallel || _listOnly) return null;
+    final value =
+        cliArgs.optionsFor(cmd.name)['jobs'] ?? cliArgs.extraOptions['jobs'];
+    final jobs = value == null
+        ? (Platform.numberOfProcessors < 8 ? Platform.numberOfProcessors : 8)
+        : int.tryParse('$value') ?? 1;
+    return jobs > 1 ? _JobPool(jobs) : null;
+  }
+
+  /// Runs [action] with everything it prints held back and written to
+  /// [output] in one piece when it is done, so projects running at once do
+  /// not interleave their lines. [action] writes its own lines to the sink
+  /// it is given.
+  Future<T> _heldOutput<T>(Future<T> Function(StringSink out) action) async {
+    final buffer = StringBuffer();
+    try {
+      return await runZoned(
+        () => action(buffer),
+        zoneSpecification: ZoneSpecification(
+          print: (self, parent, zone, line) => buffer.writeln(line),
+        ),
+      );
+    } finally {
+      if (buffer.isNotEmpty) output.write(buffer.toString());
+    }
+  }
+
   void _printStartupTiming(String label, Duration phase, Duration total) {
     output.writeln(
       '[startup] $label: +${_formatMs(phase)} (total ${_formatMs(total)})',
@@ -857,6 +888,11 @@ class ToolRunner {
 
     final masterDefines = _loadMasterDefines(cliArgs.modes);
     final results = <ItemResult>[];
+    // Folders run at once only when every command of the run is parallel.
+    final pool = resolved.every((e) => e.cmd.parallel)
+        ? _poolFor(resolved.first.cmd, cliArgs)
+        : null;
+    final pending = <List<ItemResult>>[];
 
     final processingResult = await BuildBase.traverse(
       info: traversalInfo,
@@ -921,46 +957,66 @@ class ToolRunner {
 
         if (runnable.isEmpty) return true;
 
-        // The stand-in under --list prints its own line per project.
-        if (!runnable.every((e) => e.executor is _ListingExecutor)) {
-          output.writeln('>>> ${context.relativePath}');
+        // The folder's commands, one after another; the folder itself runs
+        // beside others when every command of the run is parallel.
+        Future<List<ItemResult>> folderWork(StringSink out) async {
+          final folderResults = <ItemResult>[];
+          // The stand-in under --list prints its own line per project.
+          if (!runnable.every((e) => e.executor is _ListingExecutor)) {
+            out.writeln('>>> ${context.relativePath}');
+          }
+
+          for (final runEntry in runnable) {
+            final result = await _executeItemGuarded(
+              context: context,
+              commandName: runEntry.cmd.name,
+              action: () =>
+                  runEntry.executor.execute(context, runEntry.resolvedArgs),
+            );
+            // Tag result with the command that produced it.
+            final tagged = ItemResult(
+              path: result.path,
+              name: result.name,
+              commandName: runEntry.cmd.name,
+              success: result.success,
+              skipped: result.skipped,
+              message: result.message,
+              error: result.error,
+              exitCode: result.exitCode,
+              duration: result.duration,
+            );
+            folderResults.add(tagged);
+
+            if (runEntry.executor is! _ListingExecutor) {
+              out.writeln(
+                '  -> :${runEntry.cmd.name} ${_formatCommandStatus(tagged)}',
+              );
+            }
+
+            if (!tagged.success) {
+              // Stop remaining commands for this folder, continue traversal.
+              break;
+            }
+          }
+          return folderResults;
         }
 
-        for (final runEntry in runnable) {
-          final result = await _executeItemGuarded(
-            context: context,
-            commandName: runEntry.cmd.name,
-            action: () =>
-                runEntry.executor.execute(context, runEntry.resolvedArgs),
-          );
-          // Tag result with the command that produced it.
-          final tagged = ItemResult(
-            path: result.path,
-            name: result.name,
-            commandName: runEntry.cmd.name,
-            success: result.success,
-            skipped: result.skipped,
-            message: result.message,
-            error: result.error,
-            exitCode: result.exitCode,
-            duration: result.duration,
-          );
-          results.add(tagged);
-
-          if (runEntry.executor is! _ListingExecutor) {
-            output.writeln(
-              '  -> :${runEntry.cmd.name} ${_formatCommandStatus(tagged)}',
-            );
-          }
-
-          if (!tagged.success) {
-            // Stop remaining commands for this folder, continue traversal.
-            break;
-          }
+        if (pool == null) {
+          results.addAll(await folderWork(output));
+        } else {
+          final slot = pending.length;
+          pending.add(const []);
+          pool.add(() async {
+            pending[slot] = await _heldOutput(folderWork);
+          });
         }
         return true;
       },
     );
+    if (pool != null) {
+      await pool.drain();
+      results.addAll(pending.expand((r) => r));
+    }
 
     final unmatchedError = _reportUnmatchedProjects(
       processingResult,
@@ -1337,6 +1393,12 @@ class ToolRunner {
 
     // Execute with traversal
     final results = <ItemResult>[];
+    // A parallel command's projects run at once (--jobs); --list stays in
+    // order, its stand-in only names each project.
+    final pool = cmd != null && cmd.parallel && executor is! _ListingExecutor
+        ? _poolFor(cmd, cliArgs)
+        : null;
+    final pending = <ItemResult?>[];
 
     final processingResult = await BuildBase.traverse(
       info: traversalInfo,
@@ -1376,10 +1438,9 @@ class ToolRunner {
           }
         }
 
+        final header = verbose ? '>>> ${context.relativePath}' : null;
         // Show progress for folder being processed.
-        if (verbose) {
-          output.writeln('>>> ${context.relativePath}');
-        }
+        if (pool == null && header != null) output.writeln(header);
 
         // Resolve %{...} placeholders in CLI args per folder.
         // Uses skipUnknown: true so command-specific placeholders (e.g.,
@@ -1408,15 +1469,30 @@ class ToolRunner {
           (s) => _resolveDefineString(s, projectDefines),
         );
 
-        final result = await _executeItemGuarded(
+        Future<ItemResult> work() => _executeItemGuarded(
           context: context,
           commandName: cmd?.name ?? 'default',
           action: () => executor.execute(context, resolvedArgs),
         );
-        results.add(result);
+        if (pool == null) {
+          results.add(await work());
+        } else {
+          final slot = pending.length;
+          pending.add(null);
+          pool.add(() async {
+            pending[slot] = await _heldOutput((out) {
+              if (header != null) out.writeln(header);
+              return work();
+            });
+          });
+        }
         return true; // Continue to next
       },
     );
+    if (pool != null) {
+      await pool.drain();
+      results.addAll(pending.whereType<ItemResult>());
+    }
 
     final unmatchedError = _reportUnmatchedProjects(
       processingResult,
@@ -2697,4 +2773,33 @@ class _ListingExecutor extends CommandExecutor {
     );
     return const ToolResult.success();
   }
+}
+
+/// At most [size] tasks at once; [drain] waits for every task added.
+class _JobPool {
+  _JobPool(this.size);
+
+  final int size;
+  int _running = 0;
+  final _waiting = <Completer<void>>[];
+  final _tasks = <Future<void>>[];
+
+  void add(Future<void> Function() task) => _tasks.add(_run(task));
+
+  Future<void> _run(Future<void> Function() task) async {
+    while (_running >= size) {
+      final turn = Completer<void>();
+      _waiting.add(turn);
+      await turn.future;
+    }
+    _running++;
+    try {
+      await task();
+    } finally {
+      _running--;
+      if (_waiting.isNotEmpty) _waiting.removeAt(0).complete();
+    }
+  }
+
+  Future<void> drain() => Future.wait(_tasks);
 }
