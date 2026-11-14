@@ -67,7 +67,8 @@ This document lists all testable features across `tom_build_base` and tracks tes
 | 52 | [Standalone Tools](#52-standalone-tools) | 5 | 5✅ | `v2/core/standalone_tool_test.dart` | [→](#52-standalone-tools) |
 | 53 | [After the Traversal](#53-after-the-traversal) | 5 | 5✅ | `v2/core/after_traversal_test.dart` | [→](#53-after-the-traversal) |
 | 54 | [Projects at Once](#54-projects-at-once) | 5 | 5✅ | `v2/core/parallel_jobs_test.dart` | [→](#54-projects-at-once) |
-| — | **Total** | **1068** | **1068✅** | | | | |
+| 55 | [Windows Paths in the Filters](#55-windows-paths-in-the-filters) | 6 | 6✅ | `v2/traversal/windows_path_filter_test.dart` | [→](#55-windows-paths-in-the-filters) |
+| — | **Total** | **1074** | **1074✅** | | | | |
 
 > Every row links to a section, and the counts are measured from
 > `dart test --reporter json -j 1` rather than maintained by hand. Run it
@@ -1141,6 +1142,19 @@ it visited.
 | BB-JOBS-3 | Not parallel | ✅ | A command without `parallel` ignores `--jobs`. |
 | BB-JOBS-4 | Several commands | ✅ | Folders at once only when every command is parallel. |
 | BB-JOBS-5 | `--list`; default | ✅ | `--list` runs nothing; without `--jobs` more than one job on a machine with several CPUs. |
+
+---
+
+## 55. Windows Paths in the Filters
+
+**Test file:** `test/v2/traversal/windows_path_filter_test.dart` (the filters under the Windows path context, on any host)
+
+| ID | Feature | Status | Description |
+|----|---------|--------|-------------|
+| BB-WINX-1–2 | `navigation: exclude` on Windows paths | ✅ | Each pattern form (`dir/**`, `a/b/**`, `**/x`) excludes its `C:\...` folder; all together keep only the other projects. |
+| BB-WINX-3–4 | Relative path patterns on Windows paths | ✅ | `--exclude-projects` (also with the drive letter in another case) and `--project` match the relative Windows path. |
+| BB-WINX-5 | `--recursion-exclude` | ✅ | A Windows path matches as the POSIX one does. |
+| BB-WINX-6 | POSIX parity | ✅ | The same patterns give the same result on POSIX paths. |
 
 ---
 

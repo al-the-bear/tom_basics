@@ -13,6 +13,12 @@ import 'traversal_info.dart';
 
 /// Applies filters to folder lists based on TraversalInfo configuration.
 class FilterPipeline {
+  /// [pathContext] computes relative paths; the platform's by default. Tests
+  /// pass `p.windows` to run the matchers on Windows paths on any host.
+  FilterPipeline({p.Context? pathContext}) : _path = pathContext ?? p.context;
+
+  final p.Context _path;
+
   /// Apply filters for project traversal mode.
   List<FsFolder> applyProjectFilters(
     List<FsFolder> folders,
@@ -67,7 +73,7 @@ class FilterPipeline {
                 !_matchesNamePattern(f.name, info.excludeProjects) &&
                 !_matchesFullPath(f.path, info.excludeProjects) &&
                 !_matchesRelativePath(
-                  p.relative(f.path, from: info.executionRoot),
+                  _path.relative(f.path, from: info.executionRoot),
                   info.excludeProjects,
                 ),
           )
@@ -135,17 +141,23 @@ class FilterPipeline {
 
   /// Check if path matches any of the patterns (for exclude filters).
   /// Uses substring matching - *flutter* matches any path containing 'flutter'.
+  ///
+  /// Path and pattern are compared with `/` separators: a pattern is written
+  /// with `/` (`xternal/**`), and on Windows the folder path has `\`, so
+  /// without it no `navigation: exclude` matched there (build_completion29).
   bool _matchesPathPattern(String path, List<String> patterns) {
-    for (final pattern in patterns) {
+    final normalizedPath = _normalizeSeparators(path);
+    for (final rawPattern in patterns) {
+      final pattern = _normalizeSeparators(rawPattern);
       // Extract the core pattern by removing wildcards
       final barePattern = pattern.replaceAll('*', '');
-      if (barePattern.isNotEmpty && path.contains(barePattern)) {
+      if (barePattern.isNotEmpty && normalizedPath.contains(barePattern)) {
         return true;
       }
       // Also try glob match for full path patterns like **/node_modules/**
       try {
-        final glob = Glob(pattern);
-        if (glob.matches(path)) return true;
+        final glob = Glob(pattern, context: p.posix);
+        if (glob.matches(normalizedPath)) return true;
       } catch (_) {
         // Invalid glob pattern - already handled by substring match
       }
@@ -176,7 +188,7 @@ class FilterPipeline {
     if (_matchesFullPath(folder.path, patterns)) return true;
     // Try path-based matching for relative patterns containing a separator.
     if (executionRoot != null) {
-      final relativePath = p.relative(folder.path, from: executionRoot);
+      final relativePath = _path.relative(folder.path, from: executionRoot);
       if (_matchesRelativePath(relativePath, patterns)) return true;
     }
     return false;
@@ -256,7 +268,7 @@ class FilterPipeline {
       if (_pathEquals(normalizedFolder, _normalizeSeparators(pattern))) {
         return true;
       }
-      if (!p.isAbsolute(pattern)) continue;
+      if (!_path.isAbsolute(pattern)) continue;
       canonicalFolder ??= _normalizeSeparators(_resolveLinks(folderPath));
       if (_pathEquals(
         canonicalFolder,
@@ -289,7 +301,8 @@ class FilterPipeline {
       if (!_isPathPattern(pattern)) continue;
       final normalizedPattern = _normalizeSeparators(pattern);
       try {
-        final glob = Glob(normalizedPattern);
+        // POSIX context: both sides use `/`, whatever the host's style.
+        final glob = Glob(normalizedPattern, context: p.posix);
         if (glob.matches(normalizedPath)) return true;
       } catch (_) {
         // Invalid glob — try simple string prefix match as fallback

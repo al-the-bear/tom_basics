@@ -1,3 +1,18 @@
+## 2.35.2
+
+### Fixed — `navigation: exclude` on Windows
+
+On Windows a folder path has `\` separators, so the exclude patterns of
+`buildkit_master.yaml` (`xternal/**`, `ai_build/**`, ...) and `--exclude`
+matched nothing there: buildkit walked 43 excluded projects on legiondary01
+(the forks under `xternal/` among them) and none on macOS or Linux. The path
+filters now compare paths and patterns with `/` and match globs in the POSIX
+context, on every host: `--exclude` / navigation excludes, `--exclude-projects`
+and `--project` path patterns, and `--recursion-exclude`.
+`FilterPipeline(pathContext:)` computes relative paths in a given context
+(tests run the filters under `p.windows`); `FolderScanner.matchesRecursionExclude`
+is the scanner's match. BB-WINX-1..6.
+
 ## 2.35.1
 
 ### Fixed — help of a tool with commands without the colon

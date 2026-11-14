@@ -202,12 +202,26 @@ class FolderScanner {
     return false;
   }
 
+  /// Whether a folder at [path] named [name] matches one of the
+  /// `--recursion-exclude` [patterns], so the scan does not descend into it.
+  static bool matchesRecursionExclude(
+    String path,
+    String name,
+    List<String> patterns,
+  ) => _matchesAny(path, name, patterns);
+
   /// Check if path or name matches any of the patterns.
-  bool _matchesAny(String path, String name, List<String> patterns) {
-    for (final pattern in patterns) {
+  ///
+  /// Path and pattern are compared with `/` separators in the POSIX context,
+  /// so a pattern written with `/` matches a Windows path as it matches a
+  /// POSIX one.
+  static bool _matchesAny(String rawPath, String name, List<String> patterns) {
+    final path = rawPath.replaceAll(r'\', '/');
+    for (final rawPattern in patterns) {
+      final pattern = rawPattern.replaceAll(r'\', '/');
       // Try glob match on path
       try {
-        final glob = Glob(pattern);
+        final glob = Glob(pattern, context: p.posix);
         if (glob.matches(path) || glob.matches(name)) {
           return true;
         }
