@@ -1,3 +1,23 @@
+## 1.26.0
+
+### Added — `:docsite`, the API docs of the selected packages in one site
+
+`buildkit -s tom_ai/basics :apidoc :docsite` copies each selected
+package's dartdoc output (`build/api_doc`, `--api-doc`) into one gitignored
+folder (`build/doc_site` under the workspace root, `--output`), renders its
+README beside it, and writes an index page: every package with API docs,
+sorted, with version and description from its pubspec and links to its API
+docs and README; packages without API docs are named below. Built once the
+traversal is over (tom_build_base's `afterTraversal`), replacing the folder
+whole. Served locally (`dart pub global run dhttpd --path build/doc_site`).
+New dependency: `markdown` (README rendering). BK-DOCSITE-1..5; user
+guide, Docsite Command.
+
+### Changed — the output-folder rule names its base
+
+`refuseGeneratedOutput` says "inside the workspace root" for a folder
+relative to it (`:docsite`), "inside the package" for the others.
+
 ## 1.25.0
 
 ### Added — `:doccheck`, the documents each package lacks

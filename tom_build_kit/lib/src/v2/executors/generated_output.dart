@@ -6,17 +6,22 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 
-/// Why [output] (relative to the package) may not take a command's
-/// generated files, or null: it must stay inside the package, not be the
-/// package itself, and not lie in a `doc/` folder, which holds hand-authored
-/// documents only. [defaultDir] is named in the refusal.
-String? refuseGeneratedOutput(String output, {required String defaultDir}) {
+/// Why [output] (relative to the [base] folder — the package, or the
+/// workspace root) may not take a command's generated files, or null: it
+/// must stay inside [base], not be [base] itself, and not lie in a `doc/`
+/// folder, which holds hand-authored documents only. [defaultDir] is named
+/// in the refusal.
+String? refuseGeneratedOutput(
+  String output, {
+  required String defaultDir,
+  String base = 'package',
+}) {
   if (p.isAbsolute(output)) {
-    return '--output $output: give a folder relative to the package';
+    return '--output $output: give a folder relative to the $base';
   }
   final parts = p.split(p.normalize(output));
   if (parts.first == '..' || parts.first == '.') {
-    return '--output $output: the folder must lie inside the package';
+    return '--output $output: the folder must lie inside the $base';
   }
   if (parts.contains('doc')) {
     return '--output $output is in a doc/ folder, which holds hand-authored '

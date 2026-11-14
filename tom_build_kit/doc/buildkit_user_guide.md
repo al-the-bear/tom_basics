@@ -43,6 +43,7 @@ This package extends the shared infrastructure from **tom_build_base**:
   - [Apisummary Command](#apisummary-command)
   - [Apireference Command](#apireference-command)
   - [Doccheck Command](#doccheck-command)
+  - [Docsite Command](#docsite-command)
   - [Projects Command](#projects-command)
   - [Status Command](#status-command)
 - [Command Prefix Matching](#command-prefix-matching)
@@ -445,6 +446,7 @@ Built-in commands run the respective tools directly via their Dart implementatio
 | `apisummary` | Compare each Dart package's public API with its hand-authored `doc/api/api_summary_*.md`: API the summary misses, and names it gives that do not exist (see [Apisummary Command](#apisummary-command)) |
 | `apireference` | Render each documented package's combined API reference PDF (index, module summaries, guides) with tom_md2pdf into `build/api_reference` (see [Apireference Command](#apireference-command)) |
 | `doccheck` | Report the documents each package lacks: README and its required sections, attribution, CHANGELOG, example, `doc/`, a guidelines index (see [Doccheck Command](#doccheck-command)) |
+| `docsite` | Assemble the selected packages' dartdoc output into one browsable site with an index page, in `build/doc_site` (see [Docsite Command](#docsite-command)) |
 | `pubget` | Run `dart pub get` on projects |
 | `pubgetall` | Shortcut for `pubget --scan . --recursive` |
 | `pubupdate` | Run `dart pub upgrade` on projects |
@@ -963,6 +965,50 @@ not parse never passes silently.
 | `--strict` | Exit 1 when a package lacks a document or README section |
 
 Run it by hand from the repository, or as a pipeline step (`buildkit :doccheck --strict`); it is never scheduled.
+
+### Docsite Command
+
+The `docsite` command assembles the dartdoc output `apidoc` writes per package (`build/api_doc`) into one folder with
+an index page across the selected packages, to browse locally. Nothing is published and nothing is scheduled.
+
+**Syntax:**
+
+```bash
+bk -s tom_ai/basics :apidoc :docsite      # generate the API docs, then the site
+bk -s tom_ai/basics :docsite              # the site from API docs generated before
+bk -s . -r :docsite --output build/site
+```
+
+**The site** (default `build/doc_site` under the workspace root, gitignored with `build/`):
+
+```text
+build/doc_site/
+  index.html                 the packages: name, version, description, links
+  <package>/api/...          its dartdoc output, as generated
+  <package>/readme.html      its README.md, rendered
+```
+
+The index is a table of every selected package that has API docs, sorted by name: the package name (linked to its API
+docs), the version and description from its `pubspec.yaml`, and a link to its rendered README. Selected packages
+without API docs are named below the table, without a link; run `buildkit :apidoc` for them first. The folder is
+replaced as a whole on each run, so it holds exactly the packages of that run.
+
+**Serving it** — dartdoc's search needs a web server, not `file://`:
+
+```bash
+dart pub global activate dhttpd     # once
+dart pub global run dhttpd --path build/doc_site     # then http://localhost:8080/
+```
+
+**Options:**
+
+| Option | Description |
+|--------|-------------|
+| `--output=<dir>` | Folder for the site, relative to the workspace root (default `build/doc_site`; never inside `doc/`) |
+| `--api-doc=<dir>` | Each package's dartdoc output, relative to the package (default `build/api_doc`, where `apidoc` writes) |
+
+`--dry-run` reads the packages and writes nothing. Run it by hand from the repository, or as a pipeline step
+(`buildkit :apidoc :docsite`); it is never scheduled.
 
 ### Projects Command
 

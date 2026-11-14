@@ -505,6 +505,18 @@ Unit tests for argument parsing and command shorthand resolution.
 | BK-DOCCHK-7 | Opted out | ✅ | A skipped package reported with its reason and no gaps; an excluded check named; `--strict` passes. |
 | BK-DOCCHK-8 | A configuration error | ✅ | Fails the package without `--strict`. |
 
+### Docsite
+
+**Test file:** `test/docsite_test.dart` (BK-DOCSITE-1..3 read, render and build; 4..5 run `bin/buildkit.dart` on fixture packages under `.dart_tool`)
+
+| ID | Feature | Status | How to Test |
+|----|---------|--------|-------------|
+| BK-DOCSITE-1 | A package as the site shows it | ✅ | Name, version, description from the pubspec; API docs and README found or not. |
+| BK-DOCSITE-2 | The index | ✅ | Every package with API docs linked to its API docs and README, sorted, HTML escaped; one without API docs named without a link. |
+| BK-DOCSITE-3 | Building | ✅ | API docs copied, README rendered, an older site replaced whole. |
+| BK-DOCSITE-4 | The command | ✅ | Two packages with API docs and one without: `build/doc_site/index.html` links both, names the third. |
+| BK-DOCSITE-5 | `--output` in `doc/`; `--dry-run` | ✅ | Refused; the dry run writes nothing. |
+
 ### Bootstrap — Shell Setup
 
 **Test file:** `test/bootstrap_binaries_test.dart` (sources `bootstrap_binaries.sh`'s functions in a temporary `HOME`; nothing is built)

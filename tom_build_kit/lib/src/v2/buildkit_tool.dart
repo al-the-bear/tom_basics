@@ -253,6 +253,24 @@ const doccheckOptions = <OptionDefinition>[
   ),
 ];
 
+/// Options for the docsite command.
+const docsiteOptions = <OptionDefinition>[
+  OptionDefinition.option(
+    name: 'output',
+    description:
+        'Folder for the site, relative to the workspace root '
+        '(default build/doc_site; never inside doc/)',
+    valueName: 'dir',
+  ),
+  OptionDefinition.option(
+    name: 'api-doc',
+    description:
+        'Each package\'s dartdoc output, relative to the package '
+        '(default build/api_doc, where :apidoc writes)',
+    valueName: 'dir',
+  ),
+];
+
 /// Options for the projects command.
 const projectsOptions = <OptionDefinition>[
   OptionDefinition.flag(
@@ -824,6 +842,24 @@ const doccheckCommand = CommandDefinition(
   ],
 );
 
+const docsiteCommand = CommandDefinition(
+  name: 'docsite',
+  description:
+      'Assemble the selected packages\' dartdoc output (:apidoc) into one '
+      'browsable site with an index page, in build/doc_site',
+  options: docsiteOptions,
+  worksWithNatures: {DartProjectFolder},
+  supportsProjectTraversal: true,
+  supportsGitTraversal: false,
+  requiresTraversal: true,
+  canRunStandalone: true,
+  examples: [
+    'buildkit -s tom_ai/basics :apidoc :docsite',
+    'buildkit -s tom_ai/basics :docsite',
+    'buildkit -s . -r :docsite --output build/site',
+  ],
+);
+
 const publisherCommand = CommandDefinition(
   name: 'publisher',
   description: 'Show publishing status for all projects',
@@ -1313,6 +1349,7 @@ final buildkitTool = ToolDefinition(
     apisummaryCommand,
     apireferenceCommand,
     doccheckCommand,
+    docsiteCommand,
     publisherCommand,
     projectsCommand,
     statusCommand,
