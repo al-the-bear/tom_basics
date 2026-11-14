@@ -3,6 +3,7 @@
 Comprehensive reference for the individual build tools in the `tom_build_kit` package.
 
 For the BuildKit pipeline orchestrator, see [buildkit_user_guide.md](buildkit_user_guide.md).
+For how the workspace uses the tools day to day, see [best_practices.md](best_practices.md).
 
 ## Related Documentation
 

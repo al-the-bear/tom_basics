@@ -657,8 +657,8 @@ const bumpversionCommand = CommandDefinition(
   requiresTraversal: false,
   canRunStandalone: true,
   examples: [
-    'buildkit :bumpversion --type=minor',
-    'bumpversion --set=2.0.0',
+    'buildkit -p tom_build_kit :bumpversion',
+    'buildkit -p tom_build_kit :bumpversion --minor tom_build_kit --versioner',
     'buildkit -p tom_build_kit :bumpversion --minor tom_build_kit --changelog',
   ],
 );
