@@ -11,6 +11,7 @@ import 'binary_helpers.dart';
 import 'cli_arg_parser.dart';
 import 'pipeline_config.dart';
 import 'tool_definition.dart';
+import 'tool_runner.dart' show formatDuration;
 
 class PipelineOptionResolver {
   static Map<String, String> resolveEffectiveOptions({
@@ -180,18 +181,37 @@ class ToolPipelineExecutor {
         definition.postcore,
       ];
 
-      for (final steps in sections) {
-        for (final step in steps) {
-          for (final command in step.commands) {
-            final ok = await _executeCommand(
-              command: command,
-              workspaceDir: workspaceDir,
-              cliArgs: cliArgs,
-              pipelineOptions: definition.globalOptions,
-              invocationOptions: invocationOptions,
-            );
-            if (!ok) return false; // fail-fast
+      // The time of each command, printed when the pipeline's own steps
+      // end (failed or not): the per-step summary of a pipeline run.
+      final timings = <(String, Duration, bool)>[];
+      final total = Stopwatch()..start();
+      try {
+        for (final steps in sections) {
+          for (final step in steps) {
+            for (final command in step.commands) {
+              final watch = Stopwatch()..start();
+              final ok = await _executeCommand(
+                command: command,
+                workspaceDir: workspaceDir,
+                cliArgs: cliArgs,
+                pipelineOptions: definition.globalOptions,
+                invocationOptions: invocationOptions,
+              );
+              timings.add((command.raw.trim(), watch.elapsed, ok));
+              if (!ok) return false; // fail-fast
+            }
           }
+        }
+      } finally {
+        if (timings.isNotEmpty) {
+          output.writeln('');
+          output.writeln('=== Pipeline $pipelineName: timing ===');
+          for (final (command, took, ok) in timings) {
+            output.writeln(
+              '  $command  ${formatDuration(took)}${ok ? '' : '  (failed)'}',
+            );
+          }
+          output.writeln('  Total ${formatDuration(total.elapsed)}');
         }
       }
 

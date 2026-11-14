@@ -6,11 +6,14 @@
 /// drive the pure renderer directly, so they run on any host without a
 /// provisioned workspace.
 ///
-/// Test IDs: SUMM01–SUMM13
+/// Test IDs: SUMM01–SUMM17
 @TestOn('!browser')
 @Timeout(Duration(seconds: 30))
 library;
 
+import 'dart:io';
+
+import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 import 'package:tom_build_base/tom_build_base_v2.dart';
 
@@ -150,4 +153,148 @@ void main() {
       expect(summary.endsWith('\n'), isFalse);
     });
   });
+
+  group('timing', () {
+    ItemResult timed(String name, String cmd, int ms) => ItemResult(
+      path: name,
+      name: name,
+      commandName: cmd,
+      duration: Duration(milliseconds: ms),
+    );
+
+    test('SUMM14: the time per step, its projects and its slowest '
+        'projects, then the total with startup and traversal [2026-11-14]', () {
+      final text = ToolResult.fromItems([
+        timed('a', 'pubget', 1200),
+        timed('b', 'pubget', 3400),
+        timed('c', 'pubget', 500),
+        timed('d', 'pubget', 2100),
+        timed('a', 'versioner', 300),
+      ]).renderRunSummary(elapsed: const Duration(milliseconds: 9000));
+      final lines = text.split('\n');
+      expect(lines, contains('=== Timing ==='));
+      expect(
+        lines,
+        contains(
+          '  :pubget  4 project(s)  7.2s  (slowest: b 3.4s, d 2.1s, a 1.2s)',
+        ),
+      );
+      expect(lines, contains('  :versioner  1 project(s)  0.3s'));
+      expect(
+        lines,
+        contains('  Total 9.0s, of which startup and traversal 1.5s'),
+      );
+      expect(lines.last, 'Done. No errors.');
+      expect(
+        text.indexOf('=== Timing ==='),
+        lessThan(text.indexOf('Done. No errors.')),
+      );
+    });
+
+    test('SUMM15: items without a duration and no elapsed time render no '
+        'timing; minutes are written as minutes [2026-11-14]', () {
+      expect(
+        ToolResult.fromItems([_ok('a', cmd: 'x')]).renderRunSummary(),
+        isNot(contains('Timing')),
+      );
+      final text = ToolResult.fromItems([
+        timed('a', 'compiler', 125400),
+      ]).renderRunSummary(elapsed: const Duration(milliseconds: 126000));
+      expect(text, contains('  :compiler  1 project(s)  2m 05.4s'));
+      expect(
+        text,
+        contains('  Total 2m 06.0s, of which startup and traversal 0.6s'),
+      );
+    });
+
+    test('SUMM16: ToolRunner times each project and the run, and its summary '
+        'shows them [2026-11-14]', () async {
+      final root = Directory.systemTemp.createTempSync('summ_timing_');
+      addTearDown(() => root.deleteSync(recursive: true));
+      File(p.join(root.path, 'buildkit_master.yaml')).writeAsStringSync('');
+      for (final name in ['alpha', 'beta']) {
+        File(p.join(root.path, name, 'pubspec.yaml'))
+          ..parent.createSync(recursive: true)
+          ..writeAsStringSync('name: $name\n');
+      }
+      final out = StringBuffer();
+      final result = await ToolRunner(
+        tool: const ToolDefinition(
+          name: 'timer',
+          description: 'Times its projects',
+          version: '1.0.0',
+          mode: ToolMode.multiCommand,
+          features: NavigationFeatures.all,
+          commands: [
+            CommandDefinition(
+              name: 'nap',
+              description: 'Sleeps per project',
+              requiresTraversal: true,
+              supportsProjectTraversal: true,
+              worksWithNatures: {DartProjectFolder},
+            ),
+          ],
+        ),
+        output: out,
+        executors: {'nap': _Napper()},
+      ).runToCompletion(['-R', root.path, '-s', root.path, '-r', ':nap']);
+      expect(result.itemResults, hasLength(2));
+      for (final item in result.itemResults) {
+        expect(
+          item.duration,
+          greaterThanOrEqualTo(const Duration(milliseconds: 50)),
+        );
+        expect(item.commandName, 'nap');
+      }
+      expect(out.toString(), contains('=== Timing ==='));
+      expect(out.toString(), contains('  :nap  2 project(s)  '));
+      expect(out.toString(), contains('  Total '));
+    });
+
+    test('SUMM17: a pipeline prints the time of each of its steps and its '
+        'total [2026-11-14]', () async {
+      final root = Directory.systemTemp.createTempSync('summ_pipeline_');
+      addTearDown(() => root.deleteSync(recursive: true));
+      File(p.join(root.path, 'buildkit_master.yaml')).writeAsStringSync(
+        'buildkit:\n'
+        '  pipelines:\n'
+        '    twice:\n'
+        '      executable: true\n'
+        '      core:\n'
+        '        - commands:\n'
+        '            - shell echo one\n'
+        '            - print two\n',
+      );
+      // Pipelines are loaded from the working directory's master file.
+      final previous = Directory.current;
+      Directory.current = root;
+      addTearDown(() => Directory.current = previous);
+      final out = StringBuffer();
+      final result = await ToolRunner(
+        tool: const ToolDefinition(
+          name: 'buildkit',
+          description: 'Pipelines',
+          version: '1.0.0',
+          mode: ToolMode.multiCommand,
+          features: NavigationFeatures.all,
+        ),
+        output: out,
+        executors: const {},
+      ).run(['-R', root.path, 'twice']);
+      expect(result.success, isTrue, reason: out.toString());
+      final text = out.toString();
+      expect(text, contains('=== Pipeline twice: timing ==='));
+      expect(text, contains(RegExp(r'  shell echo one  \d+\.\ds')));
+      expect(text, contains(RegExp(r'  print two  \d+\.\ds')));
+      expect(text, contains(RegExp(r'  Total \d+\.\ds')));
+    });
+  });
+}
+
+class _Napper extends CommandExecutor {
+  @override
+  Future<ItemResult> execute(CommandContext context, CliArgs args) async {
+    await Future<void>.delayed(const Duration(milliseconds: 60));
+    return ItemResult.success(path: context.path, name: context.name);
+  }
 }

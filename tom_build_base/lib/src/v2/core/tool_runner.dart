@@ -109,7 +109,13 @@ class ToolResult {
   /// `--help`, or a single-shot command that does no traversal), so callers
   /// can print it unconditionally without adding a spurious footer. The
   /// returned string has no leading or trailing newline; the caller frames it.
-  String renderRunSummary() {
+  ///
+  /// When the items carry durations (ToolRunner times every project) a
+  /// **Timing** section comes before the footer: per command the projects
+  /// it ran on, their summed time and the three slowest; then the run's
+  /// total [elapsed] and how much of it was startup and traversal rather
+  /// than the commands' own work.
+  String renderRunSummary({Duration? elapsed}) {
     if (itemResults.isEmpty) return '';
 
     final failures = itemResults.where((i) => !i.success).toList();
@@ -132,6 +138,8 @@ class ToolResult {
       lines.add('');
     }
 
+    lines.addAll(_timingLines(elapsed));
+
     if (failures.isNotEmpty) {
       lines.add('=== Errors ===');
       for (final item in failures) {
@@ -145,6 +153,53 @@ class ToolResult {
 
     return lines.join('\n');
   }
+
+  /// The Timing section, or nothing when no item was timed.
+  List<String> _timingLines(Duration? elapsed) {
+    final timed = itemResults.where((i) => i.duration != null).toList();
+    if (timed.isEmpty) return const [];
+    final byCommand = <String, List<ItemResult>>{};
+    for (final item in timed) {
+      byCommand.putIfAbsent(item.commandName ?? '', () => []).add(item);
+    }
+    var work = Duration.zero;
+    final lines = ['=== Timing ==='];
+    for (final entry in byCommand.entries) {
+      final items = entry.value;
+      final sum = items.fold(Duration.zero, (t, i) => t + i.duration!);
+      work += sum;
+      final label = entry.key.isEmpty || entry.key == 'default'
+          ? 'run'
+          : ':${entry.key}';
+      final slowest = items.length < 2
+          ? ''
+          : '  (slowest: ${([...items]..sort((a, b) => b.duration!.compareTo(a.duration!))).take(3).map((i) => '${i.name} ${formatDuration(i.duration!)}').join(', ')})';
+      lines.add(
+        '  $label  ${items.length} project(s)  ${formatDuration(sum)}$slowest',
+      );
+    }
+    if (elapsed != null) {
+      final rest = elapsed - work;
+      lines.add(
+        '  Total ${formatDuration(elapsed)}, of which startup and traversal '
+        '${formatDuration(rest.isNegative ? Duration.zero : rest)}',
+      );
+    }
+    lines.add('');
+    return lines;
+  }
+}
+
+/// [d] as `0.3s`, `12.4s` or `2m 05.4s`: tenths of a second, minutes from
+/// one minute on.
+String formatDuration(Duration d) {
+  final tenths = (d.inMilliseconds / 100).round();
+  final seconds = tenths ~/ 10;
+  final tenth = tenths % 10;
+  if (seconds < 60) return '$seconds.${tenth}s';
+  final minutes = seconds ~/ 60;
+  final rest = (seconds % 60).toString().padLeft(2, '0');
+  return '${minutes}m $rest.${tenth}s';
 }
 
 /// Result for a single processed item (folder/project).
@@ -178,6 +233,10 @@ class ItemResult {
   /// [ToolResult.exitCode].
   final int? exitCode;
 
+  /// How long the item took; ToolRunner measures every project it runs a
+  /// command on. Null for an item nothing timed.
+  final Duration? duration;
+
   const ItemResult({
     required this.path,
     required this.name,
@@ -187,6 +246,7 @@ class ItemResult {
     this.message,
     this.error,
     this.exitCode,
+    this.duration,
   });
 
   const ItemResult.success({
@@ -194,6 +254,7 @@ class ItemResult {
     required this.name,
     this.commandName,
     this.message,
+    this.duration,
   }) : success = true,
        skipped = false,
        error = null,
@@ -208,6 +269,7 @@ class ItemResult {
     required this.name,
     this.commandName,
     this.message,
+    this.duration,
   }) : success = true,
        skipped = true,
        error = null,
@@ -219,9 +281,25 @@ class ItemResult {
     this.commandName,
     required this.error,
     this.exitCode,
+    this.duration,
   }) : success = false,
        skipped = false,
        message = null;
+
+  /// This result with [commandName] (when it has none) and [duration]
+  /// (when it has none): what ToolRunner knows of every item it runs.
+  ItemResult timed({String? commandName, required Duration duration}) =>
+      ItemResult(
+        path: path,
+        name: name,
+        commandName: this.commandName ?? commandName,
+        success: success,
+        skipped: skipped,
+        message: message,
+        error: error,
+        exitCode: exitCode,
+        duration: this.duration ?? duration,
+      );
 }
 
 class _RequirementCheckResult {
@@ -334,6 +412,7 @@ class ToolRunner {
     required Future<ItemResult> Function() action,
   }) async {
     final completer = Completer<ItemResult>();
+    final watch = Stopwatch()..start();
 
     runZonedGuarded(
       () async {
@@ -373,7 +452,8 @@ class ToolRunner {
       },
     );
 
-    return completer.future;
+    final result = await completer.future;
+    return result.timed(commandName: commandName, duration: watch.elapsed);
   }
 
   /// Calls [executor]'s [CommandExecutor.afterTraversal] with the results of
@@ -425,9 +505,10 @@ class ToolRunner {
   /// Returns the [ToolResult] so callers may inspect it further. A successful
   /// run leaves [exitCode] untouched (it does not reset it to `0`).
   Future<ToolResult> runToCompletion(List<String> args) async {
+    final watch = Stopwatch()..start();
     final result = await run(args);
 
-    final summary = result.renderRunSummary();
+    final summary = result.renderRunSummary(elapsed: watch.elapsed);
     if (summary.isNotEmpty) {
       output.writeln('\n$summary');
     }
@@ -862,6 +943,7 @@ class ToolRunner {
             message: result.message,
             error: result.error,
             exitCode: result.exitCode,
+            duration: result.duration,
           );
           results.add(tagged);
 

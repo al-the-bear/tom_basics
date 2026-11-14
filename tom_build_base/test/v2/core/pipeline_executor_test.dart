@@ -321,7 +321,12 @@ void main() {
 
       expect(ok, isTrue);
       final out = output.toString();
-      expect('hello once'.allMatches(out).length, equals(1));
+      // The message line once; the pipeline's timing block names the
+      // command (`print hello once`), which is not the message.
+      expect(
+        out.split('\n').where((l) => l.trim() == 'hello once').length,
+        equals(1),
+      );
 
       if (tempRoot.existsSync()) {
         await tempRoot.delete(recursive: true);

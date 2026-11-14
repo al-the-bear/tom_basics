@@ -1,3 +1,15 @@
+## 2.33.0
+
+### Added — the run summary shows where the time went
+
+ToolRunner times every project it runs a command on (`ItemResult.duration`)
+and `runToCompletion` the whole run; the end-of-run summary gets a
+**Timing** section before its footer: per command the projects it ran on,
+their summed time and the three slowest, then the total and how much of it
+was startup and traversal. A pipeline prints its own block,
+`=== Pipeline <name>: timing ===`, with each command's time and the total.
+`formatDuration` writes `0.3s`, `12.4s`, `2m 05.4s`. SUMM14–SUMM17.
+
 ## 2.32.0
 
 ### Added — top-level variables in the declaration scans, on request
