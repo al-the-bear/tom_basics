@@ -197,13 +197,14 @@ class ToolPipelineExecutor {
                 pipelineOptions: definition.globalOptions,
                 invocationOptions: invocationOptions,
               );
-              timings.add((command.raw.trim(), watch.elapsed, ok));
+              timings.add((_firstLine(command.raw), watch.elapsed, ok));
               if (!ok) return false; // fail-fast
             }
           }
         }
       } finally {
-        if (timings.isNotEmpty) {
+        // A dry run measures nothing; its steps are only previewed.
+        if (timings.isNotEmpty && !cliArgs.dryRun) {
           output.writeln('');
           output.writeln('=== Pipeline $pipelineName: timing ===');
           for (final (command, took, ok) in timings) {
@@ -620,4 +621,11 @@ class ToolPipelineExecutor {
     walk(root);
     return result;
   }
+}
+
+/// [command]'s first line, with ` …` when it has more: a multi-line step
+/// (`stdin` with its piped text) is named, not repeated.
+String _firstLine(String command) {
+  final lines = command.trim().split('\n');
+  return lines.length == 1 ? lines.first : '${lines.first.trimRight()} …';
 }

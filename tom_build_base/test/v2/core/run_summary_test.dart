@@ -6,7 +6,7 @@
 /// drive the pure renderer directly, so they run on any host without a
 /// provisioned workspace.
 ///
-/// Test IDs: SUMM01–SUMM19
+/// Test IDs: SUMM01–SUMM20
 @TestOn('!browser')
 @Timeout(Duration(seconds: 30))
 library;
@@ -205,6 +205,49 @@ void main() {
         text,
         contains('  Total 2m 06.0s, of which startup and traversal 0.6s'),
       );
+    });
+
+    test('SUMM20: a pipeline names a multi-line command by its first line, '
+        'and a dry run prints no timing [2026-11-14]', () async {
+      final root = Directory.systemTemp.createTempSync('summ_pipeline_ml_');
+      addTearDown(() => root.deleteSync(recursive: true));
+      File(p.join(root.path, 'buildkit_master.yaml')).writeAsStringSync(
+        'buildkit:\n'
+        '  pipelines:\n'
+        '    piped:\n'
+        '      executable: true\n'
+        '      core:\n'
+        '        - commands:\n'
+        '            - |\n'
+        '              stdin cat\n'
+        '              Hello piped world\n',
+      );
+      final previous = Directory.current;
+      Directory.current = root;
+      addTearDown(() => Directory.current = previous);
+      Future<String> run(List<String> args) async {
+        final out = StringBuffer();
+        await ToolRunner(
+          tool: const ToolDefinition(
+            name: 'buildkit',
+            description: 'Pipelines',
+            version: '1.0.0',
+            mode: ToolMode.multiCommand,
+            features: NavigationFeatures.all,
+          ),
+          output: out,
+          executors: const {},
+        ).run(['-R', root.path, ...args]);
+        return out.toString();
+      }
+
+      final text = await run(['piped']);
+      final timing = text.substring(text.indexOf('=== Pipeline piped: timing'));
+      expect(timing, contains(RegExp(r'  stdin cat …  \d+\.\ds')));
+      expect(timing, isNot(contains('Hello piped world')));
+
+      final dry = await run(['--dry-run', 'piped']);
+      expect(dry, isNot(contains('timing ===')));
     });
 
     test('SUMM18: projects that ran at once (more project time than the '

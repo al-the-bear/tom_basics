@@ -1,3 +1,12 @@
+## 2.34.2
+
+### Fixed — the pipeline timing block repeated step text
+
+A multi-line step (`stdin` with its piped text) is named by its first line
+and ` …`, not repeated whole; a dry run prints no timing block, since it
+measures nothing. Both had made the step's text appear as if it ran.
+SUMM20.
+
 ## 2.34.1
 
 ### Fixed — the Timing section of a run whose projects ran at once
