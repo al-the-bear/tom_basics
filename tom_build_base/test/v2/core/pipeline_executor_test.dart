@@ -146,6 +146,56 @@ void main() {
       },
     );
 
+    test('BB-PLX-9: a step\'s short-form -s / -R keeps its own value; the '
+        'run\'s is not appended, which would give the option twice '
+        '[2026-11-14]', () async {
+      final tempRoot = await Directory.systemTemp.createTemp('bb_plx_short_');
+      addTearDown(() => tempRoot.delete(recursive: true));
+      final master = File('${tempRoot.path}/testtool_master.yaml')
+        ..writeAsStringSync('required-environment:\n  pipelines: {}\n');
+      const tool = ToolDefinition(
+        name: 'testtool',
+        description: 'Test tool',
+        version: '1.0.0',
+        mode: ToolMode.multiCommand,
+      );
+      final config = ToolPipelineConfig(
+        sourcePath: master.path,
+        pipelines: {
+          'ci': PipelineDefinition(
+            executable: true,
+            core: const [
+              PipelineStepConfig(
+                commands: [
+                  PipelineCommandSpec(
+                    raw: 'testtool -s cmd-scan -R /cmd-root :simple',
+                    prefix: PipelineCommandPrefix.tool,
+                    body: '-s cmd-scan -R /cmd-root :simple',
+                  ),
+                ],
+              ),
+            ],
+          ),
+        },
+      );
+      final output = StringBuffer();
+      final ok = await ToolPipelineExecutor(tool: tool, output: output)
+          .executeInvocation(
+            pipelineName: 'ci',
+            config: config,
+            cliArgs: const CliArgs(
+              dryRun: true,
+              root: '/inv-root',
+              scan: 'inv-scan',
+            ),
+          );
+      expect(ok, isTrue);
+      final out = output.toString();
+      expect(out, contains('-s cmd-scan -R /cmd-root :simple'));
+      expect(out, isNot(contains('--scan=inv-scan')));
+      expect(out, isNot(contains('--root=/inv-root')));
+    });
+
     test('BB-PLX-6: shell dry-run preview carries a [DRY RUN] indicator '
         '[2026-07-05]', () async {
       final tempRoot = await Directory.systemTemp.createTemp('bb_plx_drysh_');

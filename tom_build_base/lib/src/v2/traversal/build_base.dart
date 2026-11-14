@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import 'package:path/path.dart' as p;
+
 import '../folder/fs_folder.dart';
 import '../folder/run_folder.dart';
 import '../folder/natures/dart_project_folder.dart';
@@ -369,11 +371,29 @@ abstract class BuildBase {
       verbose: verbose,
       ignoreSkipMarkers: info.ignoreSkipMarkers,
     );
-    return await scanner.scan(
-      info.scan,
-      recursive: info.recursive,
-      recursionExclude: info.recursionExclude,
-    );
+    return scanRoots(scanner, info);
+  }
+
+  /// The folders under every root of [info] (`--scan a,b`), each once, in
+  /// the order of the roots.
+  static Future<List<FsFolder>> scanRoots(
+    FolderScanner scanner,
+    ProjectTraversalInfo info,
+  ) async {
+    final seen = <String>{};
+    final folders = <FsFolder>[];
+    for (final root in info.scanRoots) {
+      for (final folder in await scanner.scan(
+        root,
+        recursive: info.recursive,
+        recursionExclude: info.recursionExclude,
+      )) {
+        if (seen.add(p.normalize(p.absolute(folder.path)))) {
+          folders.add(folder);
+        }
+      }
+    }
+    return folders;
   }
 
   /// Find all git repositories based on GitTraversalInfo.
@@ -404,11 +424,7 @@ abstract class BuildBase {
     final filter = FilterPipeline();
     final detector = NatureDetector();
 
-    final folders = await scanner.scan(
-      info.scan,
-      recursive: info.recursive,
-      recursionExclude: info.recursionExclude,
-    );
+    final folders = await scanRoots(scanner, info);
 
     final filtered = filter.applyProjectFilters(folders, info);
 

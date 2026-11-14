@@ -887,8 +887,8 @@ class ToolRunner {
     );
 
     // Security boundary: reject a --scan path outside the workspace.
-    final scanPathError = validateScanPathWithinRoot(
-      traversalInfo.scan,
+    final scanPathError = validateScanRootsWithinRoot(
+      traversalInfo.scanRoots,
       executionRoot,
     );
     if (scanPathError != null) {
@@ -1362,8 +1362,8 @@ class ToolRunner {
     // scanning happens. Only project traversal walks a --scan path; git
     // traversal uses the already-validated execution root.
     if (traversalInfo is ProjectTraversalInfo) {
-      final scanPathError = validateScanPathWithinRoot(
-        traversalInfo.scan,
+      final scanPathError = validateScanRootsWithinRoot(
+        traversalInfo.scanRoots,
         executionRoot,
       );
       if (scanPathError != null) {

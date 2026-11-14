@@ -1,3 +1,29 @@
+## 2.36.0
+
+### Changed — a one-value option given twice is refused
+
+The parser kept the last value of an option given twice without a word, so
+`testkit -s tom_ai/basics -s tom_ai/devops :report` reported `tom_ai/devops`
+alone and looked complete. Now any option that takes one value — `--scan`,
+`--root`, `--config`, `--completion`, `--jobs`, a tool's own one-value options
+and a command's — given twice in the same scope is an argument error that
+names the option and both values, and the run stops before anything runs.
+Options that take several values and flags may be repeated as before.
+
+### Added — several scan roots
+
+`--scan` takes several roots written once, comma-separated
+(`--scan tom_ai/basics,tom_ai/devops`): the traversal visits each, a project
+once, and every root must lie in the workspace.
+`ProjectTraversalInfo.scanRoots`, `BuildBase.scanRoots`,
+`validateScanRootsWithinRoot`. BB-REP-1..8.
+
+### Fixed — a pipeline step's short-form options
+
+A pipeline step that writes `-s` / `-R` (and `-v`, `-n`, `-r`, `-p`, `-x`)
+keeps its own value; the run's `--scan` / `--root` is no longer appended to
+it, which would now be the option given twice. BB-PLX-9.
+
 ## 2.35.2
 
 ### Fixed — `navigation: exclude` on Windows

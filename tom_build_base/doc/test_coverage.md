@@ -26,7 +26,7 @@ This document lists all testable features across `tom_build_base` and tracks tes
 | 11 | [ToolDefinition Serializer](#11-tooldefinition-serializer) | 19 | 19✅ | `v2/core/tool_definition_serializer_test.dart` | [→](#11-tooldefinition-serializer) |
 | 12 | [Wiring Loader](#12-wiring-loader) | 17 | 17✅ | `v2/core/wiring_loader_test.dart` | [→](#12-wiring-loader) |
 | 13 | [Pipeline Config](#13-pipeline-config) | 11 | 11✅ | `v2/core/pipeline_config_test.dart` | [→](#13-pipeline-config) |
-| 14 | [Pipeline Executor](#14-pipeline-executor) | 10 | 10✅ | `v2/core/pipeline_executor_test.dart` | [→](#14-pipeline-executor) |
+| 14 | [Pipeline Executor](#14-pipeline-executor) | 11 | 11✅ | `v2/core/pipeline_executor_test.dart` | [→](#14-pipeline-executor) |
 | 15 | [ToolRunner](#15-toolrunner) | 64 | 64✅ | `v2/core/tool_runner_test.dart` | [→](#15-toolrunner) |
 | 16 | [ToolRunner — Nested Tools](#16-toolrunner--nested-tools) | 20 | 20✅ | `v2/core/tool_runner_nested_test.dart` | [→](#16-toolrunner--nested-tools) |
 | 17 | [Nested Tool Executor](#17-nested-tool-executor) | 16 | 16✅ | `v2/core/nested_tool_executor_test.dart` | [→](#17-nested-tool-executor) |
@@ -68,7 +68,8 @@ This document lists all testable features across `tom_build_base` and tracks tes
 | 53 | [After the Traversal](#53-after-the-traversal) | 5 | 5✅ | `v2/core/after_traversal_test.dart` | [→](#53-after-the-traversal) |
 | 54 | [Projects at Once](#54-projects-at-once) | 5 | 5✅ | `v2/core/parallel_jobs_test.dart` | [→](#54-projects-at-once) |
 | 55 | [Windows Paths in the Filters](#55-windows-paths-in-the-filters) | 6 | 6✅ | `v2/traversal/windows_path_filter_test.dart` | [→](#55-windows-paths-in-the-filters) |
-| — | **Total** | **1074** | **1074✅** | | | | |
+| 56 | [Repeated Options](#56-repeated-options) | 8 | 8✅ | `v2/core/repeated_option_test.dart` | [→](#56-repeated-options) |
+| — | **Total** | **1083** | **1083✅** | | | | |
 
 > Every row links to a section, and the counts are measured from
 > `dart test --reporter json -j 1` rather than maintained by hand. Run it
@@ -387,6 +388,7 @@ Tests for the recently implemented features: modes, persistent defines, runtime 
 | BB_PPE_2 | Error handling | ✅ | Step failures propagate correctly. |
 | BB_PPE_3 | Dry-run behavior | ✅ | Preview without execution. |
 | BB_PPE_4 | Multi-step execution | ✅ | Sequential step processing. |
+| BB-PLX-9 | A step's short-form options | ✅ | A step written with `-s` / `-R` keeps its own value; the run's is not appended (it would be the option twice). |
 
 ---
 
@@ -1155,6 +1157,22 @@ it visited.
 | BB-WINX-3–4 | Relative path patterns on Windows paths | ✅ | `--exclude-projects` (also with the drive letter in another case) and `--project` match the relative Windows path. |
 | BB-WINX-5 | `--recursion-exclude` | ✅ | A Windows path matches as the POSIX one does. |
 | BB-WINX-6 | POSIX parity | ✅ | The same patterns give the same result on POSIX paths. |
+
+---
+
+## 56. Repeated Options
+
+**Test file:** `test/v2/core/repeated_option_test.dart`
+
+| ID | Feature | Status | Description |
+|----|---------|--------|-------------|
+| BB-REP-1 | `-s a -s b` refused | ✅ | In every written form; the error names `--scan`, both values and the comma form `--scan a,b`. |
+| BB-REP-2 | Other one-value options | ✅ | `--root`, `--config`, a tool option, a command option and `--jobs` given twice are refused, also with the same value. |
+| BB-REP-3 | What may repeat | ✅ | `--project`, `--exclude`, flags, a declared multi option; one value per command. |
+| BB-REP-4 | `scanRoots` | ✅ | `--scan a,b` gives two roots and no error; no `--scan` gives `.`. |
+| BB-REP-5 | The run stops | ✅ | A repeated option fails the run before any project. |
+| BB-REP-6–7 | Several roots | ✅ | `--scan a,b` visits the projects of both; overlapping roots visit a project once. |
+| BB-REP-8 | Roots in the workspace | ✅ | A root outside the workspace refuses the run. |
 
 ---
 

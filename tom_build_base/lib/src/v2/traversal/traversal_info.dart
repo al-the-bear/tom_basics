@@ -48,6 +48,17 @@ class ProjectTraversalInfo extends BaseTraversalInfo {
   /// Starting path for scan (default: '.').
   final String scan;
 
+  /// The roots [scan] names: several written comma-separated
+  /// (`--scan tom_ai/basics,tom_ai/devops`), `.` when it names none. The
+  /// traversal visits each root and a project once.
+  List<String> get scanRoots {
+    final roots = [
+      for (final root in scan.split(','))
+        if (root.trim().isNotEmpty) root.trim(),
+    ];
+    return roots.isEmpty ? const ['.'] : roots;
+  }
+
   /// Whether to descend into **project** directories (those with a
   /// `pubspec.yaml`) to find projects nested inside them, e.g. a project's
   /// `test/` or `example/` fixtures. Folders without a `pubspec.yaml`

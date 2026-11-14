@@ -110,7 +110,7 @@ astgen -i                    # Inner-first git mode
 
 | Option | Abbr | Description |
 |--------|------|-------------|
-| `--scan=<path>` | `-s` | Scan directory for projects |
+| `--scan=<path>` | `-s` | Scan directory for projects; several roots comma-separated (`-s tom_ai/basics,tom_ai/devops`), each visited, a project once |
 | `--recursive` | `-r` | Also scan inside projects for nested projects (e.g. `test/` fixtures); folders without a `pubspec.yaml` are always scanned |
 | `--build-order` | `-b` | Sort projects in dependency build order (`dependencies` only by default) |
 | `--include-dev` | | Also order by `dev_dependencies` |
@@ -288,6 +288,8 @@ option even where a navigation option has the same letter.
 The navigation and framework options of a run apply to all of its commands, wherever they stand: `buildkit -n :versioner :compiler` and `buildkit :versioner :compiler -n` are the same run, and the commands share one traversal. Only `--project` / `--exclude` written after a command narrow that one command's projects; options a command declares itself go to that command. An option written after a pipeline name counts like one before it (`buildkit test-simple --dry-run` is a dry run).
 
 There is no way to take an option away from one command. `-X-` (one letter, e.g. `-s-`, `-v-`) and `--name-` (e.g. `--scan-`) are refused with an error before anything runs, rather than read as an option with the value `-`; run that command on its own without the option instead. A value ending in a dash is still a value: `-sdir-` scans `dir-`. `CliArgs.argumentErrors` holds the refusals for a caller that parses arguments itself.
+
+An option that takes one value is given once. Given twice — `-s a -s b`, `-R x -R y`, `--config` twice, a command's own one-value option twice in that command — the run is refused before anything runs, with an error naming the option and both values (`` `--scan` given twice (`a`, then `b`) ``), even when both values are the same. Several scan roots are written once, comma-separated: `--scan a,b`. Options that take several values (`--project`, `--exclude`, `--exclude-projects`, `--recursion-exclude`, `--group`, `--modes`, a declared multi option) may be repeated, and so may flags; the same one-value option in two different commands of a run (`:a --out x :b --out y`) is one value each.
 
 ## Implementation Guide
 

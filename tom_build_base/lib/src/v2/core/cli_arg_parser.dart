@@ -741,12 +741,11 @@ class CliArgParser {
       // version via the global handling below.
       if (value != null &&
           _commandDeclaresValueOption(state.currentCommand!, name)) {
-        _store(
-          cmdState.options,
-          name,
-          value,
-          multi: _declaresMultiOption(name, state.currentCommand),
-        );
+        final multi = _declaresMultiOption(name, state.currentCommand);
+        if (!multi) {
+          _noteSingleValue(state, state.currentCommand!, name, value);
+        }
+        _store(cmdState.options, name, value, multi: multi);
         return;
       }
       // Global navigation/feature flags remain global even when placed after
@@ -756,6 +755,9 @@ class CliArgParser {
         if (value != null && _declaresMultiOption(name, state.currentCommand)) {
           _store(cmdState.options, name, value, multi: true);
         } else {
+          if (value != null) {
+            _noteSingleValue(state, state.currentCommand!, name, value);
+          }
           cmdState.options[name] = value ?? true;
         }
         return;
@@ -767,6 +769,7 @@ class CliArgParser {
     switch (name) {
       case 'scan':
       case 's':
+        if (value != null) _noteSingleValue(state, '', 'scan', value);
         state.scan = value;
         state.scanExplicitlySet = true;
         break;
@@ -781,6 +784,7 @@ class CliArgParser {
         break;
       case 'root':
       case 'R':
+        if (value != null) _noteSingleValue(state, '', 'root', value);
         state.root = value;
         if (value == null) state.bareRoot = true;
         break;
@@ -862,6 +866,7 @@ class CliArgParser {
         state.dumpConfig = true;
         break;
       case 'config':
+        if (value != null) _noteSingleValue(state, '', 'config', value);
         state.configPath = value;
         break;
       case 'help':
@@ -883,6 +888,7 @@ class CliArgParser {
         state.dumpDefinitions = true;
         break;
       case 'completion':
+        if (value != null) _noteSingleValue(state, '', 'completion', value);
         state.completion = value;
         break;
       case 'include-test-projects':
@@ -898,9 +904,37 @@ class CliArgParser {
         } else if (value != null && _declaresMultiOption(name, null)) {
           _store(state.extraOptions, name, value, multi: true);
         } else {
+          if (value != null) _noteSingleValue(state, '', name, value);
           state.extraOptions[name] = value ?? true;
         }
     }
+  }
+
+  /// Records [value] of the single-value option [name] in [scope] (a command,
+  /// or '' for the run's options). Given a second time, the option is an
+  /// argument error: the parser used to keep the last value without a word,
+  /// so `-s a -s b` scanned `b` alone and the run looked complete
+  /// (build_completion30).
+  static void _noteSingleValue(
+    _ParseState state,
+    String scope,
+    String name,
+    String value,
+  ) {
+    final key = '$scope\u0000$name';
+    final first = state.singleValues[key];
+    if (first == null) {
+      state.singleValues[key] = value;
+      return;
+    }
+    state.argumentErrors.add(
+      name == 'scan'
+          ? '`--scan` given twice (`$first`, then `$value`). It takes one '
+                'value, written once; several scan roots are written '
+                'comma-separated: `--scan $first,$value`.'
+          : '`--$name` given twice (`$first`, then `$value`). It takes one '
+                'value: give it once.',
+    );
   }
 
   /// Stores [value] under [name]; a [multi] option given again keeps every
@@ -1251,6 +1285,10 @@ class CliArgParser {
 // Internal parse state
 class _ParseState {
   final List<String> argumentErrors = [];
+
+  /// The first value of each single-value option, by `<scope>\u0000<name>`
+  /// (scope: the command, or '' for the run's options).
+  final Map<String, String> singleValues = {};
   String? scan;
   bool scanExplicitlySet = false;
   bool recursive = false;

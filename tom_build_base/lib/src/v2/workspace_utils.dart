@@ -192,6 +192,16 @@ String? validateScanPathWithinRoot(String scan, String executionRoot) {
       '--scan paths must be within the workspace.';
 }
 
+/// [validateScanPathWithinRoot] for every root of a `--scan a,b` list:
+/// the first root outside the workspace, or `null` when all are inside.
+String? validateScanRootsWithinRoot(List<String> roots, String executionRoot) {
+  for (final root in roots) {
+    final error = validateScanPathWithinRoot(root, executionRoot);
+    if (error != null) return error;
+  }
+  return null;
+}
+
 /// Resolve [path] to a normalised absolute path, following symlinks when the
 /// path exists. Falls back to a plain normalised-absolute path when the target
 /// does not exist (e.g. a mistyped scan path), so the function never throws.

@@ -133,7 +133,9 @@ const List<OptionDefinition> projectTraversalOptions = [
   OptionDefinition.option(
     name: 'scan',
     abbr: 's',
-    description: 'Starting path for scan',
+    description:
+        'Starting path for scan; several roots comma-separated (a,b), '
+        'each visited, a project once',
     valueName: 'path',
   ),
   OptionDefinition.flag(

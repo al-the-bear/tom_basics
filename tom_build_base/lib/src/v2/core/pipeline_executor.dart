@@ -504,14 +504,31 @@ class ToolPipelineExecutor {
     return map;
   }
 
+  /// The short forms of the options [_invocationOptions] forwards.
+  static const _shortKeys = {
+    'v': 'verbose',
+    'n': 'dry-run',
+    'R': 'root',
+    's': 'scan',
+    'r': 'recursive',
+    'p': 'project',
+    'x': 'exclude',
+  };
+
   List<String> _optionsToArgs(
     Map<String, String> options, {
     required List<String> existingTokens,
   }) {
-    final existingKeys = existingTokens
-        .where((t) => t.startsWith('--'))
-        .map((t) => t.substring(2).split('=').first)
-        .toSet();
+    // A step's own option wins over the run's, in its long or short form
+    // (`--scan` / `-s`): appending the run's would give it twice, which the
+    // parser refuses (build_completion30).
+    final existingKeys = {
+      for (final t in existingTokens)
+        if (t.startsWith('--'))
+          t.substring(2).split('=').first
+        else if (t.length >= 2 && t.startsWith('-') && _shortKeys[t[1]] != null)
+          _shortKeys[t[1]]!,
+    };
 
     final keys = options.keys.toList()..sort();
     final args = <String>[];
