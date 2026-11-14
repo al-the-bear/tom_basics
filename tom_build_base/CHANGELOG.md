@@ -1,3 +1,11 @@
+## 2.35.1
+
+### Fixed — help of a tool with commands without the colon
+
+The tool help, the command help and the usage summary of a
+`prefixlessCommands` tool name its commands as they are typed
+(`tsm get`), not `:get`. BB-HLP-34.
+
 ## 2.35.0
 
 ### Added — commands without the colon, `--`, a command's own short flags

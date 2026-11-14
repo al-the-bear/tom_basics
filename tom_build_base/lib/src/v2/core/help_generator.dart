@@ -8,6 +8,11 @@ import 'tool_definition.dart';
 /// Produces markdown-styled help output that can be rendered
 /// by console_markdown for ANSI-colored terminal output.
 class HelpGenerator {
+  /// How a command is written on [tool]'s command line:  before it,
+  /// nothing for a tool with [ToolDefinition.prefixlessCommands].
+  static String _prefix(ToolDefinition? tool) =>
+      tool?.prefixlessCommands ?? false ? '' : ':';
+
   /// Generate tool-level help text.
   ///
   /// Shows tool description, usage, global options, and available commands.
@@ -28,7 +33,9 @@ class HelpGenerator {
     // Usage
     buf.writeln('<cyan>**Usage**</cyan>');
     if (tool.mode == ToolMode.multiCommand) {
-      buf.writeln('  ${tool.name} [global-options] :command [command-options]');
+      buf.writeln(
+        '  ${tool.name} [global-options] ${_prefix(tool)}command [command-options]',
+      );
     } else {
       buf.writeln('  ${tool.name} [options]');
     }
@@ -59,7 +66,7 @@ class HelpGenerator {
         final aliasStr = cmd.aliases.isNotEmpty
             ? ' (${cmd.aliases.join(', ')})'
             : '';
-        buf.writeln('  :${cmd.name}$aliasStr');
+        buf.writeln('  ${_prefix(tool)}${cmd.name}$aliasStr');
         buf.writeln('      ${cmd.description}');
       }
       buf.writeln();
@@ -69,7 +76,7 @@ class HelpGenerator {
     if (nestedCommands.isNotEmpty) {
       buf.writeln('<green>**Nested Commands**</green>');
       for (final cmd in nestedCommands) {
-        buf.writeln('  :${cmd.name}');
+        buf.writeln('  ${_prefix(tool)}${cmd.name}');
         buf.writeln('      ${cmd.description}');
       }
       buf.writeln();
@@ -77,7 +84,8 @@ class HelpGenerator {
 
     if (nativeCommands.isNotEmpty || nestedCommands.isNotEmpty) {
       buf.writeln(
-        '  Use `${tool.name} :command --help` for command-specific help.',
+        '  Use `${tool.name} ${_prefix(tool)}command --help` for '
+        'command-specific help.',
       );
       buf.writeln();
     }
@@ -115,9 +123,12 @@ class HelpGenerator {
     final toolName = tool?.name ?? 'tool';
 
     // Header
-    buf.writeln('**:${command.name}**');
+    final prefix = _prefix(tool);
+    buf.writeln('**$prefix${command.name}**');
     if (command.aliases.isNotEmpty) {
-      buf.writeln('Aliases: ${command.aliases.map((a) => ':$a').join(', ')}');
+      buf.writeln(
+        'Aliases: ${command.aliases.map((a) => '$prefix$a').join(', ')}',
+      );
     }
     buf.writeln();
     buf.writeln(command.description);
@@ -125,7 +136,9 @@ class HelpGenerator {
 
     // Usage
     buf.writeln('<cyan>**Usage**</cyan>');
-    buf.writeln('  $toolName [global-options] :${command.name} [options]');
+    buf.writeln(
+      '  $toolName [global-options] $prefix${command.name} [options]',
+    );
     buf.writeln();
 
     // Command options
@@ -205,7 +218,7 @@ class HelpGenerator {
     if (tool.mode == ToolMode.multiCommand && tool.commands.isNotEmpty) {
       final cmdNames = tool.visibleCommands
           .take(5)
-          .map((c) => ':${c.name}')
+          .map((c) => '${_prefix(tool)}${c.name}')
           .join(', ');
       buf.writeln(
         'Commands: $cmdNames${tool.visibleCommands.length > 5 ? '...' : ''}',

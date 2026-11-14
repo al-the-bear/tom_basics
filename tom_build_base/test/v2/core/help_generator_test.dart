@@ -2,6 +2,44 @@ import 'package:test/test.dart';
 import 'package:tom_build_base/tom_build_base_v2.dart';
 
 void main() {
+  group('a tool with prefixlessCommands', () {
+    const tool = ToolDefinition(
+      name: 'tsm',
+      description: 'demo',
+      prefixlessCommands: true,
+      commands: [
+        CommandDefinition(name: 'get', description: 'Get', aliases: ['g']),
+      ],
+    );
+
+    test('BB-HLP-34: tool help, command help and the usage summary name '
+        'the commands without the colon [2026-11-14]', () {
+      final help = HelpGenerator.generateToolHelp(tool);
+      expect(help, contains('tsm [global-options] command [command-options]'));
+      expect(help, contains('  get (g)'));
+      expect(help, isNot(contains(':get')));
+      expect(help, contains('tsm command --help'));
+      final command = HelpGenerator.generateCommandHelp(
+        tool.commands.single,
+        tool: tool,
+      );
+      expect(command, contains('**get**'));
+      expect(command, contains('Aliases: g'));
+      expect(command, contains('tsm [global-options] get [options]'));
+      expect(
+        HelpGenerator.generateUsageSummary(tool),
+        contains('Commands: get'),
+      );
+      expect(
+        HelpGenerator.generateToolHelp(
+          tool.copyWith(prefixlessCommands: false),
+        ),
+        contains('  :get (g)'),
+        reason: 'the colon stays for every other tool',
+      );
+    });
+  });
+
   group('HelpGenerator', () {
     group('generateToolHelp', () {
       test('BB-HLP-1: Includes tool name and version [2026-02-12]', () {
