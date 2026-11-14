@@ -53,6 +53,12 @@ const bumpversionOptions = <OptionDefinition>[
     name: 'versioner',
     description: 'Run versioner after bumping to regenerate version files',
   ),
+  OptionDefinition.flag(
+    name: 'changelog',
+    description:
+        'Draft the new version\'s CHANGELOG.md section from the commits '
+        'since the version last changed (an existing section is kept)',
+  ),
 ];
 
 /// Options for bumppubspec command.
@@ -622,7 +628,11 @@ const bumpversionCommand = CommandDefinition(
   supportsGitTraversal: false,
   requiresTraversal: false,
   canRunStandalone: true,
-  examples: ['buildkit :bumpversion --type=minor', 'bumpversion --set=2.0.0'],
+  examples: [
+    'buildkit :bumpversion --type=minor',
+    'bumpversion --set=2.0.0',
+    'buildkit -p tom_build_kit :bumpversion --minor tom_build_kit --changelog',
+  ],
 );
 
 const bumppubspecCommand = CommandDefinition(

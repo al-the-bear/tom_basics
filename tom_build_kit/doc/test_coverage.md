@@ -517,6 +517,19 @@ Unit tests for argument parsing and command shorthand resolution.
 | BK-DOCSITE-4 | The command | ✅ | Two packages with API docs and one without: `build/doc_site/index.html` links both, names the third. |
 | BK-DOCSITE-5 | `--output` in `doc/`; `--dry-run` | ✅ | Refused; the dry run writes nothing. |
 
+### Changelog draft
+
+**Test file:** `test/changelog_draft_test.dart` (each test builds a git repository under `.dart_tool`; 5..6 run `bin/buildkit.dart` there)
+
+| ID | Feature | Status | How to Test |
+|----|---------|--------|-------------|
+| BK-CLOG-1 | With earlier versions | ✅ | Commits since the 1.1.0 release that touched the package, newest first; another folder's commit left out. |
+| BK-CLOG-2 | Without an earlier version change | ✅ | Everything since the package was created; uncommitted changes detected. |
+| BK-CLOG-3 | The draft section | ✅ | Version, origin comment, subjects, the uncommitted line; no git history named. |
+| BK-CLOG-4 | Inserting | ✅ | Above the newest section, under a title; a section of the version (`## 1.1.1`, `## [1.1.1] - date`, `## 1.1.1 - date`) kept; `1.1.10` is not `1.1.1`; no CHANGELOG created. |
+| BK-CLOG-5 | `:bumpversion --changelog` | ✅ | `--dry-run` prints the draft and writes nothing; the run inserts it and bumps the version. |
+| BK-CLOG-6 | Existing section kept | ✅ | The hand-written 1.0.1 section unchanged, the version bumped; without `--changelog` nothing drafted. |
+
 ### Bootstrap — Shell Setup
 
 **Test file:** `test/bootstrap_binaries_test.dart` (sources `bootstrap_binaries.sh`'s functions in a temporary `HOME`; nothing is built)

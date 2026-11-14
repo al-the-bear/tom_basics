@@ -13,6 +13,7 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 import 'package:tom_build_base/tom_build_base_v2.dart';
 
+import '../../changelog/changelog_draft.dart';
 import 'versioner_executor.dart';
 
 // =============================================================================
@@ -70,6 +71,7 @@ class BumpVersionExecutor extends CommandExecutor {
     /// without a second run to find out what the right one would have been.
     final processedProjects = <String>{};
     final runVersioner = cmdOpts['versioner'] == true;
+    final draftChangelogs = cmdOpts['changelog'] == true;
 
     final executionRoot = args.root ?? Directory.current.path;
 
@@ -137,6 +139,7 @@ class BumpVersionExecutor extends CommandExecutor {
           executionRoot,
           verbose: args.verbose,
           dryRun: args.dryRun,
+          changelog: draftChangelogs,
         );
 
         if (success) {
@@ -300,6 +303,7 @@ class BumpVersionExecutor extends CommandExecutor {
     String basePath, {
     required bool verbose,
     required bool dryRun,
+    bool changelog = false,
   }) {
     final versionFile = ProjectVersionFile.of(projectPath);
     if (versionFile == null) {
@@ -324,9 +328,17 @@ class BumpVersionExecutor extends CommandExecutor {
       if (dryRun) {
         print('  [DRY RUN] ${p.basename(projectPath)}: '
             '$currentVersion -> $newVersion ($bumpType, ${versionFile.fileName})');
+        if (changelog) {
+          _draftChangelog(projectPath, versionFile, newVersion, dryRun: true);
+        }
         return true;
       }
 
+      // Drafted before the version is written: the history is read from git,
+      // and the draft names the version the bump gives.
+      if (changelog) {
+        _draftChangelog(projectPath, versionFile, newVersion, dryRun: false);
+      }
       file.writeAsStringSync(versionFile.write(content, newVersion));
 
       // The build number is not reset: it lives in the committed versioner
@@ -338,6 +350,41 @@ class BumpVersionExecutor extends CommandExecutor {
     } catch (e) {
       print('  Error bumping ${p.basename(projectPath)}: $e');
       return false;
+    }
+  }
+
+  /// Drafts the CHANGELOG section of [newVersion] (`--changelog`) and says
+  /// what happened; under [dryRun] prints the section instead.
+  void _draftChangelog(
+    String projectPath,
+    ProjectVersionFile versionFile,
+    String newVersion, {
+    required bool dryRun,
+  }) {
+    final name = p.basename(projectPath);
+    final result = draftChangelog(
+      projectPath,
+      versionFile,
+      newVersion,
+      dryRun: dryRun,
+    );
+    // Straight to stdout: print() runs through the console-markdown zone,
+    // which would read the section's Markdown as console styling.
+    if (result.outcome == ChangelogDraftOutcome.kept) {
+      stdout.writeln(
+        '  $name: CHANGELOG.md has a $newVersion section; kept, no draft',
+      );
+    } else if (dryRun) {
+      stdout.writeln('  [DRY RUN] $name: CHANGELOG.md draft:');
+      for (final line in result.section.trimRight().split('\n')) {
+        stdout.writeln('    $line');
+      }
+    } else {
+      stdout.writeln(
+        '  $name: CHANGELOG.md draft for $newVersion '
+        '${result.outcome == ChangelogDraftOutcome.created ? 'created' : 'inserted'}; '
+        'rewrite it before publishing',
+      );
     }
   }
 

@@ -1,3 +1,16 @@
+## 1.27.0
+
+### Added — `:bumpversion --changelog` drafts the CHANGELOG entry
+
+With `--changelog`, each bumped project gets a draft `## <new version>`
+section at the top of its CHANGELOG.md (created when missing): the subjects
+of the commits that touched the project folder since its version last
+changed (the newest commit whose version file states another version than
+its parent's, or adds it), newest first, without merges, plus a line when
+the folder has uncommitted changes; a comment names where it was drawn from.
+A section of the new version that exists is kept and nothing is added.
+`--dry-run` prints the draft. BK-CLOG-1..6; user guide, bumpversion.
+
 ## 1.26.0
 
 ### Added — `:docsite`, the API docs of the selected packages in one site

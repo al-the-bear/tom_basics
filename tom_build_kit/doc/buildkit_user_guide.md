@@ -436,7 +436,7 @@ Built-in commands run the respective tools directly via their Dart implementatio
 | `test` | Run each project's tests with its language's tool |
 | `clean` | Remove each project's build outputs with its language's tool |
 | `versioner` | Generate `version.versioner.dart` files with build metadata |
-| `bumpversion` | Bump versions across projects (`pubspec.yaml`, `package.json`, `pyproject.toml`, `Cargo.toml`, `pom.xml`) |
+| `bumpversion` | Bump versions across projects (`pubspec.yaml`, `package.json`, `pyproject.toml`, `Cargo.toml`, `pom.xml`); `--changelog` drafts the CHANGELOG section from the commits since the last version change |
 | `compiler` | Cross-platform Dart compilation |
 | `runner` | `build_runner` wrapper with builder filtering |
 | `cleanup` | Delete the globs a project's `buildkit.yaml` `cleanup:` lists (alias `cl`) |
@@ -530,6 +530,25 @@ toolchain is not on `PATH`.
 `<version>`). Go modules and C / C++ projects state no version and are
 skipped. A bump does not reset the build number: it lives in the
 project's `version.versioner.dart` and only grows.
+
+**Drafting the CHANGELOG entry** — `--changelog` drafts the new version's section in each bumped project's
+`CHANGELOG.md` from git:
+
+```bash
+buildkit -p tom_build_kit :bumpversion --minor tom_build_kit --changelog
+buildkit -p tom_build_kit --dry-run :bumpversion --changelog     # print the draft, write nothing
+```
+
+- **Since when:** the newest commit whose version file states another version than its parent's (or adds the file) —
+  the last release, or the package's first version when it was never bumped.
+- **What:** the subjects of the commits after it that touched the project folder, newest first, merges left out, and
+  a line when the folder has uncommitted changes (which no subject describes yet). The workspace does not use
+  conventional commits, so this is raw material: rewrite it for the reader before publishing.
+- **Where:** a `## <new version>` section above the newest existing section (under the `# ` title if there is one),
+  with a comment naming where the draft was drawn from; a missing `CHANGELOG.md` is created.
+- **Never overwritten:** when `CHANGELOG.md` already has a section of the new version (`## 1.2.3`, `## [1.2.3]`,
+  `## 1.2.3 - <date>`), it is kept as written and no draft is added; the version is still bumped.
+- `--dry-run` prints the draft under the bump line.
 
 Other per-language steps (run, watch, publish) are pipelines in
 `buildkit_master.yaml`, selected with `--project` or `--group`.
