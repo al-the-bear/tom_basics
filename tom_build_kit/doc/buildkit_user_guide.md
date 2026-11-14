@@ -853,7 +853,7 @@ Pandoc, no TeX), both into the gitignored `build/api_reference/` of the package;
 **Syntax:**
 
 ```bash
-bk :apireference [--output <dir>] [--md2pdf <executable>]
+bk :apireference [--output <dir>] [--md2pdf <executable>] [--timeout <seconds>]
 bk -p tom_core_message_bus :apireference
 bk -s tom_ai/core -r :apireference     # every package under the folder
 ```
@@ -882,7 +882,8 @@ has page numbers; tom_md2pdf makes no table of contents and no forced page break
   and the package fails (buildkit exits 1). The other packages are still rendered.
 - **no guide for ...**: the modules without a guide, left out of Part III; not a failure.
 - **NOT DOCUMENTED**: the package has no `doc/api/`; listed under *Skipped*.
-- md2pdf failing, or not found, fails the package.
+- md2pdf failing, not found, or not finishing within `--timeout` (default 600 s; it can hang on a document it cannot
+  lay out) fails the package; a stopped md2pdf leaves no PDF.
 
 `--dry-run` names the inputs and the `md2pdf` call and writes nothing.
 
@@ -892,6 +893,7 @@ has page numbers; tom_md2pdf makes no table of contents and no forced page break
 |--------|-------------|
 | `--output=<dir>` | Folder for the reference, relative to each package (default `build/api_reference`; never inside `doc/`) |
 | `--md2pdf=<path>` | The tom_md2pdf executable (default `md2pdf` of the binaries layer, on `PATH`) |
+| `--timeout=<seconds>` | How long md2pdf may take per package before it is stopped (default 600) |
 
 Run it by hand from the repository, or as a pipeline step (`buildkit :apireference`); it is never scheduled.
 

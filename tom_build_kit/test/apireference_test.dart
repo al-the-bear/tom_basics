@@ -1,7 +1,7 @@
 // BK-APIREF: `buildkit :apireference` — a package's combined API reference
 // (index, module summaries, guides) rendered to PDF by tom_md2pdf, into a
-// gitignored folder. BK-APIREF-1..3 collect and assemble; 4..7 run the real
-// executable with a stand-in md2pdf; 8 renders with the real tom_md2pdf when
+// gitignored folder. BK-APIREF-1..3 collect and assemble; 4..7 and 9 run the
+// real executable with a stand-in md2pdf; 8 renders with the real tom_md2pdf when
 // its source is in the workspace. Fixtures live under .dart_tool and the run
 // is rooted there (-R), so the workspace is never read.
 @TestOn('vm')
@@ -163,7 +163,7 @@ void main() {
 
     setUpAll(() async {
       // A stand-in md2pdf: writes `%PDF-fake` as <output>/<input name>.pdf,
-      // and exits 3 when the input holds FAIL.
+      // exits 3 when the input holds FAIL, and hangs when it holds SLOW.
       final dir = Directory.systemTemp.createTempSync('fake_md2pdf_');
       final source = File(p.join(dir.path, 'fake.dart'))
         ..writeAsStringSync(r'''
@@ -171,7 +171,9 @@ import 'dart:io';
 void main(List<String> args) {
   final input = args.first;
   final out = args.firstWhere((a) => a.startsWith('--output=')).substring(9);
-  if (File(input).readAsStringSync().contains('FAIL')) exit(3);
+  final text = File(input).readAsStringSync();
+  if (text.contains('FAIL')) exit(3);
+  if (text.contains('SLOW')) sleep(const Duration(seconds: 60));
   final name = input.split(Platform.pathSeparator).last.replaceAll('.md', '');
   File('$out${Platform.pathSeparator}$name.pdf').writeAsStringSync('%PDF-fake');
 }
@@ -274,6 +276,22 @@ void main(List<String> args) {
       ]);
       expect(r.exitCode, isNot(0), reason: out(r));
       expect(out(r), contains('could not be run'));
+    });
+
+    test('BK-APIREF-9: an md2pdf that does not finish within --timeout is '
+        'stopped and fails the package [2026-11-14]', () async {
+      shop(extra: {'doc/cart/cart.md': '# Cart Guide\n\nSLOW\n'});
+      final watch = Stopwatch()..start();
+      final r = await buildkit([
+        ':apireference',
+        '--md2pdf',
+        fakeMd2pdf,
+        '--timeout',
+        '3',
+      ]);
+      expect(r.exitCode, isNot(0), reason: out(r));
+      expect(out(r), contains('did not finish within 3 s'));
+      expect(watch.elapsed, lessThan(const Duration(seconds: 50)));
     });
 
     test('BK-APIREF-7: --output inside doc/ is refused; --dry-run writes '

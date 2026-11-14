@@ -476,7 +476,7 @@ Unit tests for argument parsing and command shorthand resolution.
 
 ### Apireference
 
-**Test file:** `test/apireference_test.dart` (BK-APIREF-1..3 collect and assemble; 4..7 run `bin/buildkit.dart` with a stand-in md2pdf; 8 with the real tom_md2pdf, compiled from the workspace when its source is there)
+**Test file:** `test/apireference_test.dart` (BK-APIREF-1..3 collect and assemble; 4..7 and 9 run `bin/buildkit.dart` with a stand-in md2pdf; 8 with the real tom_md2pdf, compiled from the workspace when its source is there)
 
 | ID | Feature | Status | How to Test |
 |----|---------|--------|-------------|
@@ -488,6 +488,7 @@ Unit tests for argument parsing and command shorthand resolution.
 | BK-APIREF-6 | md2pdf failing or absent | ✅ | Exit 3 from md2pdf, and an executable that is not there, fail the package. |
 | BK-APIREF-7 | `--output` in `doc/`; `--dry-run` | ✅ | Refused; the dry run writes nothing. |
 | BK-APIREF-8 | Real tom_md2pdf | ✅ | The output starts with `%PDF-`. |
+| BK-APIREF-9 | `--timeout` | ✅ | A stand-in md2pdf that hangs is stopped after 3 s; the package fails, naming the limit. |
 
 ### Bootstrap — Shell Setup
 

@@ -2,6 +2,7 @@
 /// API reference ([assembleApiReference]) rendered to PDF by tom_md2pdf.
 library;
 
+import 'dart:async';
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
@@ -18,6 +19,10 @@ const kApiReferenceDefaultOutput = 'build/api_reference';
 /// The tom_md2pdf executable run when `--md2pdf` is not given: the `md2pdf`
 /// of the binaries layer, found on `PATH`.
 const kMd2pdfDefault = 'md2pdf';
+
+/// Seconds md2pdf may take per package when `--timeout` is not given; it can
+/// hang on a document it cannot lay out, and a run must still end.
+const kMd2pdfTimeoutDefault = 600;
 
 /// Collects one package's summaries and guides, assembles them and renders
 /// the PDF.
@@ -40,6 +45,10 @@ class ApireferenceExecutor extends CommandExecutor {
     final packageDir = p.normalize(p.absolute(context.path));
     final output = options['output'] as String? ?? kApiReferenceDefaultOutput;
     final md2pdf = options['md2pdf'] as String? ?? kMd2pdfDefault;
+    final timeoutOption = options['timeout'] as String?;
+    final timeout = timeoutOption == null
+        ? kMd2pdfTimeoutDefault
+        : int.tryParse(timeoutOption);
 
     ItemResult fail(String why) {
       stdout.writeln('  $rel: $why');
@@ -50,6 +59,9 @@ class ApireferenceExecutor extends CommandExecutor {
       );
     }
 
+    if (timeout == null || timeout < 1) {
+      return fail('--timeout $timeoutOption: give a number of seconds');
+    }
     final refused = refuseGeneratedOutput(
       output,
       defaultDir: kApiReferenceDefaultOutput,
@@ -115,9 +127,9 @@ class ApireferenceExecutor extends CommandExecutor {
     final previous = File(pdf);
     if (previous.existsSync()) previous.deleteSync();
 
-    final ProcessResult run;
+    final Process process;
     try {
-      run = await Process.run(
+      process = await Process.start(
         md2pdf,
         md2pdfArgs,
         workingDirectory: packageDir,
@@ -130,17 +142,34 @@ class ApireferenceExecutor extends CommandExecutor {
         '--md2pdf <executable>',
       );
     }
-    if (args.verbose) {
-      stdout.write(run.stdout);
-      stderr.write(run.stderr);
+    final transcript = StringBuffer();
+    final collected = [
+      process.stdout
+          .transform(systemEncoding.decoder)
+          .forEach(transcript.write),
+      process.stderr
+          .transform(systemEncoding.decoder)
+          .forEach(transcript.write),
+    ];
+    int? exitCode;
+    try {
+      exitCode = await process.exitCode.timeout(Duration(seconds: timeout));
+    } on TimeoutException {
+      process.kill(ProcessSignal.sigkill);
+      await process.exitCode;
     }
-    if (run.exitCode != 0 || !File(pdf).existsSync()) {
-      if (!args.verbose) {
-        stdout.write(run.stdout);
-        stderr.write(run.stderr);
-      }
+    await Future.wait(collected);
+    if (args.verbose || exitCode != 0) stdout.write(transcript);
+    if (exitCode == null) {
+      if (File(pdf).existsSync()) File(pdf).deleteSync();
       return fail(
-        '$md2pdf failed (exit ${run.exitCode})'
+        '$md2pdf did not finish within $timeout s and was stopped '
+        '(--timeout raises the limit)',
+      );
+    }
+    if (exitCode != 0 || !File(pdf).existsSync()) {
+      return fail(
+        '$md2pdf failed (exit $exitCode)'
         '${File(pdf).existsSync() ? '' : ', no PDF written'}',
       );
     }

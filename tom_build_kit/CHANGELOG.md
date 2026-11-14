@@ -1,3 +1,12 @@
+## 1.24.1
+
+### Fixed — a hung md2pdf no longer stops `:apireference` for good
+
+tom_md2pdf can hang on a document it cannot lay out (tom_core_kernel's
+logging and reflection summaries). `:apireference` stops md2pdf after
+`--timeout` seconds (default 600) and fails the package with a message;
+the other packages go on. BK-APIREF-9.
+
 ## 1.24.0
 
 ### Added — `:apireference`, a package's combined API reference PDF

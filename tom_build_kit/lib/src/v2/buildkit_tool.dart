@@ -236,6 +236,13 @@ const apireferenceOptions = <OptionDefinition>[
         'on PATH)',
     valueName: 'path',
   ),
+  OptionDefinition.option(
+    name: 'timeout',
+    description:
+        'Seconds md2pdf may take per package before it is stopped '
+        '(default 600)',
+    valueName: 'seconds',
+  ),
 ];
 
 /// Options for the projects command.
