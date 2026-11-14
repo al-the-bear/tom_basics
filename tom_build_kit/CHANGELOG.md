@@ -1,3 +1,13 @@
+## 1.30.1
+
+### Fixed — `navigation: exclude` on Windows
+
+On tom_build_base 2.35.2: buildkit on Windows walked the projects
+`buildkit_master.yaml` excludes (43 in the workspace, the forks under
+`xternal/` among them), because the path filters compared Windows paths with
+`/` patterns. The Windows dry run of `:versioner` now walks the same 180
+projects as macOS.
+
 ## 1.30.0
 
 ### Added — the build cache of `:compiler`
