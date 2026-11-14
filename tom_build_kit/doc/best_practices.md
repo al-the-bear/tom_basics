@@ -3,7 +3,8 @@
 How the workspace works with buildkit and testkit day to day: where a change goes, how it is released and reaches the
 packages that use it, how builds and test runs are started. The [buildkit user guide](buildkit_user_guide.md), the
 [tools user guide](tools_user_guide.md) and testkit's [test tracking guide](../../../devops/tom_test_kit/doc/test_tracking.md)
-describe every command and option; this document says which of them to use when. Each practice names the command it
+describe every command and option; this document says which of them to use when. Known failures and their fixes are
+in [troubleshooting](troubleshooting.md). Each practice names the command it
 uses. Paths such as `_bin/...` are relative to the workspace root (the folder with `buildkit_master.yaml`).
 
 Builds, tests and checks are started by a person, from the cloned repository. Nothing schedules them.
