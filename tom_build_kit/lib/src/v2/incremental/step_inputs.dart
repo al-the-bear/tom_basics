@@ -136,7 +136,7 @@ class IncrementalStep extends CommandExecutor {
       for (final output in outputs) {
         writeOutputRecord(
           binary: output,
-          project: context.name,
+          project: _projectLabel(context.path),
           buildkitVersion: BuildkitVersionInfo.version,
           fingerprint: fingerprint,
         );
@@ -146,6 +146,15 @@ class IncrementalStep extends CommandExecutor {
       state.remove(step);
     }
     return result;
+  }
+
+  /// The project as a record names it: its path from the workspace root
+  /// (the run's context name is `.` for the project the run started in).
+  static String _projectLabel(String projectPath) {
+    final root = findWorkspaceRootOrNull(projectPath);
+    return root == null || !p.isWithin(root, projectPath)
+        ? p.basename(projectPath)
+        : p.relative(projectPath, from: root).replaceAll(r'\', '/');
   }
 
   Future<String> _fingerprint(CommandContext context, CliArgs args) async =>

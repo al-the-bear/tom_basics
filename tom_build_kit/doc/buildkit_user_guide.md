@@ -230,11 +230,11 @@ while nothing changes.
 - `--dry-run` skips an up-to-date project too, and records nothing.
 - The binaries `:compiler` writes outside the project (the outputs of its `dart compile ... -o <path>` commands,
   e.g. under `TOM_BINARY_PATH`) are kept with the step's entry, and each gets a record beside it,
-  `<binary>.buildkit.json`: the project, the buildkit version, the step's fingerprint, the time, and the binary's
-  size and sha256. The record is committed with the binary (in the binaries layer it says which build wrote it). A
-  project whose inputs did not change is compiled again when one of its binaries is missing, has no record, is
-  recorded by another build (another fingerprint: other inputs, another project, another machine), or was replaced
-  after its record was written:
+  `<binary>.buildkit.json`: the project (its path from the workspace root), the buildkit version, the step's
+  fingerprint, the time, and the binary's size and sha256. The record is committed with the binary (in the binaries
+  layer it says which build wrote it). A project whose inputs did not change is compiled again when one of its
+  binaries is missing, has no record, is recorded by another build (another fingerprint: other inputs, another
+  project, another machine), or was replaced after its record was written:
 
   ```text
   $ buildkit :compiler

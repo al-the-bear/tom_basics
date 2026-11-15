@@ -3,8 +3,9 @@
 /// the record describes.
 ///
 /// **What a record holds**: the format and its version, the project that
-/// built the binary, the buildkit version, the step fingerprint of the run
-/// that wrote it ([stepFingerprint]), when, and the binary's size and sha256.
+/// built the binary (its path from the workspace root), the buildkit
+/// version, the step fingerprint of the run that wrote it
+/// ([stepFingerprint]), when, and the binary's size and sha256.
 /// It is committed with the binary (the binaries layer commits what is in
 /// it), so it says where a published binary came from.
 ///

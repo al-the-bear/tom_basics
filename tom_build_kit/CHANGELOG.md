@@ -1,3 +1,11 @@
+## 1.30.8
+
+### Fixed — a binary's record names its project by its workspace path
+
+`<binary>.buildkit.json` named the project by the run's context name, which is
+`.` for the project a run starts in. It now holds the project's path from the
+workspace root (e.g. `tom_ai/devops/tom_test_kit`).
+
 ## 1.30.7
 
 ### Added — `:compiler` records the binaries it writes
