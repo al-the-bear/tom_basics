@@ -14,7 +14,7 @@ This document lists all testable features across buildkit tools and tracks test 
 | # | Feature Area | Tests | Status | Test File | Details |
 |---|-------------|-------|--------|-----------|---------|
 | 1 | [ToolBase — Shared Infrastructure](#1-toolbase--shared-infrastructure) | 14 | 14✅ | `toolbase_test.dart` | [→](#1-toolbase--shared-infrastructure) |
-| 2 | [Versioner — Version File Generation](#2-versioner--version-file-generation) | 7 | 7✅ | `versioner_test.dart` | [→](#2-versioner--version-file-generation) |
+| 2 | [Versioner — Version File Generation](#2-versioner--version-file-generation) | 13 | 13✅ | `versioner_test.dart`, `versioner_build_number_test.dart`, `versioner_dart_sdk_test.dart` | [→](#2-versioner--version-file-generation) |
 | 3 | [Cleanup — File Deletion](#3-cleanup--file-deletion) | 9 | 9✅ | `cleanup_test.dart` | [→](#3-cleanup--file-deletion) |
 | 4 | [Compiler — Cross-Platform Compilation](#4-compiler--cross-platform-compilation) | 6 | 6✅ | `compiler_test.dart` | [→](#4-compiler--cross-platform-compilation) |
 | 5 | [Runner — Build Runner Wrapper](#5-runner--build-runner-wrapper) | 5 | 5✅ | `runner_test.dart` | [→](#5-runner--build-runner-wrapper) |
@@ -31,7 +31,7 @@ This document lists all testable features across buildkit tools and tracks test 
 | 16 | [Build, Test, Clean — Per Nature](#16-build-test-clean--per-nature) | 7 | 7✅ | `project_action_test.dart` | [→](#16-build-test-clean--per-nature) |
 | 17 | [Projects — The Project Listing](#17-projects--the-project-listing) | 5 | 5✅ | `projects_command_test.dart` | [→](#17-projects--the-project-listing) |
 | 18 | [Versioner — Build Number](#2-versioner--version-file-generation) | 5 | 5✅ | `versioner_build_number_test.dart` | [→](#2-versioner--version-file-generation) |
-| — | **Total** | **173** | **173✅** | | |
+| — | **Total** | **179** | **179✅** | | |
 
 ---
 
@@ -78,6 +78,9 @@ Target project: `_build` (main repo, has `variable-prefix: tomTools` in its `bui
 | VBN-1 | No versioner file: build 1 | ✅ | Run on a project without a stamp. Verify `buildNumber = 1`. |
 | VBN-2 | Counts on from the versioner file | ✅ | Stamp with build 41 (older version). Run twice. Verify 42, then 43; the version is the pubspec's. |
 | VBN-3 | A stamp without a build number is a named error | ✅ | Stamp without `buildNumber`. Verify the run fails, `VersionerFileException` names the file, the file is untouched. |
+| VSDK-1 | No Dart SDK version: the project fails | ✅ | `test/versioner_dart_sdk_test.dart`: the executor with an SDK reader returning null, real and dry run. Verify failure naming `dart --version` and PATH, no file written. |
+| VSDK-2 | An existing stamp stays | ✅ | Stamp with SDK `3.13.7`, run again without an SDK. Verify failure and the file unchanged. |
+| VSDK-3 | buildkit with a PATH that has no `dart` | ✅ | Run `bin/buildkit.dart :versioner` with `PATH=/usr/bin:/bin`. Verify a non-zero exit, `dart --version failed (is dart on PATH?)`, no "version file generated", no file. |
 | VBN-4 | `tom_build_state.json` is neither read nor written | ✅ | A state file with 500 beside no stamp. Verify build 1 and the state file unchanged; without it, none is created. |
 | VBN-5 | `nextBuildNumber` reads the configured output file | ✅ | Another path with build 9 gives 10; a missing path gives 1. |
 

@@ -1,3 +1,13 @@
+## 1.30.6
+
+### Fixed — `:versioner` no longer stamps an empty Dart SDK version
+
+Without a readable `dart --version` (no `dart` on PATH, e.g. a host reached
+over SSH), `:versioner` wrote `dartSdkVersion = ''` and reported "version file
+generated"; the merge driver then carried that file across the fleet. The run
+now fails for that project, naming `dart --version` and PATH, and writes
+nothing; an existing version file stays as it was.
+
 ## 1.30.5
 
 ### Fixed — `buildkit help <command>` for a wired nested command

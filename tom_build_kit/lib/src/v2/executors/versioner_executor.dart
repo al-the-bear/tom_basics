@@ -122,6 +122,18 @@ class VersionerFileException implements Exception {
 /// [execute] per folder. Each folder is checked for versioner config before
 /// generating the version file.
 class VersionerExecutor extends CommandExecutor with DeclaresStepInputs {
+  /// [sdkVersion] reads the Dart SDK version the file is stamped with;
+  /// default `dart --version` on PATH.
+  VersionerExecutor({Future<String?> Function()? sdkVersion})
+    : _sdkVersion = sdkVersion ?? dartSdkVersion;
+
+  final Future<String?> Function() _sdkVersion;
+
+  /// Why a project failed when the SDK version cannot be read.
+  static const noDartSdkError =
+      'cannot read the Dart SDK version: `dart --version` failed (is `dart` '
+      'on PATH?); no version file written';
+
   @override
   String get stepName => 'versioner';
 
@@ -192,7 +204,7 @@ class VersionerExecutor extends CommandExecutor with DeclaresStepInputs {
     }
 
     // Generate version file
-    final success = await _generateVersionFile(
+    final error = await _generateVersionFile(
       projectPath: projectPath,
       cliConfig: cliConfig,
       wsConfig: _wsConfig!,
@@ -204,7 +216,7 @@ class VersionerExecutor extends CommandExecutor with DeclaresStepInputs {
     // writes nothing, and reporting 'version file generated' for it is the
     // same failure as the one this todo is about, one step smaller: a reader
     // who trusts the summary believes a stamp was refreshed when it was not.
-    return success
+    return error == null
         ? ItemResult.success(
             path: projectPath,
             name: projectName,
@@ -215,7 +227,7 @@ class VersionerExecutor extends CommandExecutor with DeclaresStepInputs {
         : ItemResult.failure(
             path: projectPath,
             name: projectName,
-            error: 'failed to generate version file',
+            error: error,
           );
   }
 
@@ -266,7 +278,9 @@ class VersionerExecutor extends CommandExecutor with DeclaresStepInputs {
   /// Generate version.versioner.dart for a single project.
   ///
   /// Config merge order: CLI > project > workspace.
-  Future<bool> _generateVersionFile({
+  /// Null when the file was written (or, in a dry run, would be); else why
+  /// not.
+  Future<String?> _generateVersionFile({
     required String projectPath,
     required VersionerConfig cliConfig,
     required VersionerConfig wsConfig,
@@ -288,7 +302,7 @@ class VersionerExecutor extends CommandExecutor with DeclaresStepInputs {
     final pubspecFile = File('$projectPath/pubspec.yaml');
     if (!pubspecFile.existsSync()) {
       print('  Error: No pubspec.yaml found in $projectPath');
-      return false;
+      return 'no pubspec.yaml';
     }
 
     try {
@@ -308,8 +322,14 @@ class VersionerExecutor extends CommandExecutor with DeclaresStepInputs {
       final outputPath = '$projectPath/${config.output}';
       final buildNumber = nextBuildNumber(File(outputPath));
 
-      // Get Dart SDK version
-      final sdkVersion = await dartSdkVersion();
+      // The SDK the binary is built with. Without it the file is not
+      // stamped: an empty value would travel the fleet (the merge driver
+      // keeps the newer build), and a build fails without a `dart` anyway.
+      final sdkVersion = await _sdkVersion();
+      if (sdkVersion == null || sdkVersion.isEmpty) {
+        print('  Error: $noDartSdkError');
+        return noDartSdkError;
+      }
 
       // Build timestamp
       final buildTime = DateTime.now().toUtc().toIso8601String();
@@ -332,7 +352,7 @@ class VersionerExecutor extends CommandExecutor with DeclaresStepInputs {
         print('    Build: $buildNumber');
         if (gitCommit != null) print('    Git: $gitCommit');
         print('    Class: ${config.className}');
-        return true;
+        return null;
       }
 
       final outputFile = File(outputPath);
@@ -358,7 +378,7 @@ class VersionerExecutor extends CommandExecutor with DeclaresStepInputs {
           '  Error: wrote ${config.output} but it does not carry version '
           '$version. The stamp on disk is not what was generated.',
         );
-        return false;
+        return 'the written file does not carry version $version';
       }
 
       if (verbose) {
@@ -368,13 +388,13 @@ class VersionerExecutor extends CommandExecutor with DeclaresStepInputs {
         if (gitCommit != null) print('    Git: $gitCommit');
       }
 
-      return true;
+      return null;
     } on VersionerFileException catch (e) {
       print('  Error: $e');
-      return false;
+      return 'failed to generate version file: $e';
     } catch (e) {
       print('  Error generating version file: $e');
-      return false;
+      return 'failed to generate version file: $e';
     }
   }
 
