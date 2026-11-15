@@ -893,8 +893,10 @@ void main() {
   // ==========================================================================
   group('External Process Traversal', () {
     late String toolPath;
+    late Directory kernelDir;
+    late String kernelPath;
 
-    setUpAll(() {
+    setUpAll(() async {
       // Path to the traversal tool script
       final buildBaseRoot = p.normalize(p.join(Directory.current.path));
       toolPath = p.join(
@@ -911,13 +913,36 @@ void main() {
         isTrue,
         reason: 'traversal_tool.dart should exist at $toolPath',
       );
+
+      // Compile the fixture once: `dart run` would compile it again for each
+      // test, which on a loaded machine took longer than a test may run.
+      kernelDir = Directory.systemTemp.createTempSync('trv_ext_');
+      kernelPath = p.join(kernelDir.path, 'traversal_tool.dill');
+      final compile = await Process.run('dart', [
+        'compile',
+        'kernel',
+        toolPath,
+        '-o',
+        kernelPath,
+      ]);
+      expect(
+        compile.exitCode,
+        0,
+        reason:
+            'dart compile kernel failed:\n'
+            '${compile.stdout}${compile.stderr}',
+      );
+    });
+
+    tearDownAll(() {
+      if (kernelDir.existsSync()) kernelDir.deleteSync(recursive: true);
     });
 
     /// Run the traversal tool with given args and return parsed JSON output.
     Future<Map<String, dynamic>> runTool(List<String> args) async {
       final result = await Process.run(
         'dart',
-        ['run', toolPath, ...args],
+        [kernelPath, ...args],
         environment: {'HOME': Platform.environment['HOME'] ?? '/tmp'},
       );
 
@@ -1155,8 +1180,8 @@ void main() {
       },
     );
   },
-      // Each test starts `dart run` on the fixture, which compiles it first:
-      // on a loaded machine that alone outlasts the default 30 seconds.
+      // Each test starts a Dart process (and setUpAll compiles the fixture):
+      // on a loaded machine that outlasts the default 30 seconds.
       timeout: const Timeout(Duration(minutes: 2)));
 
   // ==========================================================================
