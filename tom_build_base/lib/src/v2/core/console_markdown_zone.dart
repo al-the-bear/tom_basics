@@ -1,8 +1,10 @@
 /// Zone-based console_markdown integration for CLI tools.
 ///
 /// Wraps tool execution in a Dart zone that intercepts `print()` calls and
-/// applies console_markdown rendering.  This converts markdown syntax
-/// (e.g. `**bold**`, `<cyan>text</cyan>`) to ANSI escape codes automatically.
+/// applies console_markdown rendering. Markdown syntax (e.g. `**bold**`,
+/// `<cyan>text</cyan>`) becomes ANSI escape codes on a terminal; piped or
+/// redirected output, and every output under `NO_COLOR`, gets the text with
+/// the markers removed and no escape code ([consoleStylingEnabled]).
 ///
 /// Tools that already run inside a console_markdown zone (e.g. tom_d4rt_dcli)
 /// are detected via the [kConsoleMarkdownZoneKey] zone value.  When nested,
@@ -39,30 +41,76 @@ bool get isConsoleMarkdownActive =>
     Zone.current[kConsoleMarkdownZoneKey] == true;
 
 // ---------------------------------------------------------------------------
+// Styling decision and rendering
+// ---------------------------------------------------------------------------
+
+/// Whether console markdown becomes ANSI styling on a stream: `NO_COLOR` set
+/// to a non-empty value turns it off (no-color.org), also over `FORCE_COLOR`;
+/// `FORCE_COLOR` set to anything but `0` / `false` turns it on through a pipe;
+/// otherwise the stream must be a terminal ([hasTerminal]). Logs, `| grep`,
+/// files written with `>` and tests that capture stdout get no escape codes.
+bool consoleStylingEnabled({
+  required bool hasTerminal,
+  Map<String, String>? environment,
+}) {
+  final env = environment ?? Platform.environment;
+  if ((env['NO_COLOR'] ?? '').isNotEmpty) return false;
+  final force = (env['FORCE_COLOR'] ?? '').trim().toLowerCase();
+  if (force.isNotEmpty) return force != '0' && force != 'false';
+  return hasTerminal;
+}
+
+/// [consoleStylingEnabled] for [stream] (stdout or stderr) in this process.
+/// A terminal is what [stdioType] reports: `Stdout.hasTerminal` is false in
+/// some pseudo-terminals (e.g. under `script`) where the stream is one.
+bool streamStylingEnabled(Stdout stream) => consoleStylingEnabled(
+  hasTerminal: stdioType(stream) == StdioType.terminal || stream.hasTerminal,
+);
+
+/// SGR escape sequences (`ESC [ ... m`): what console_markdown writes, and
+/// what a tool's own colored output carries.
+final RegExp _sgr = RegExp(r'\x1B\[[0-9;]*m');
+
+/// [text] with its console markdown rendered: as ANSI styling when [styled],
+/// else as plain text, the markers removed and any escape code dropped.
+String renderConsoleMarkdown(String text, {required bool styled}) {
+  final rendered = text.toConsole();
+  return styled ? rendered : rendered.replaceAll(_sgr, '');
+}
+
+// ---------------------------------------------------------------------------
 // Rendering StringSink wrapper
 // ---------------------------------------------------------------------------
 
-/// A [StringSink] that applies `.toConsole()` to every line written.
+/// A [StringSink] that renders console markdown in every string written
+/// ([renderConsoleMarkdown]).
 ///
-/// Wraps an underlying sink (typically [stdout] or [stderr]) and transparently
-/// renders console_markdown syntax into ANSI escape codes.
+/// [styled] says whether it becomes ANSI styling; by default it is decided for
+/// the stream the sink wraps ([streamStylingEnabled]: a terminal, no
+/// `NO_COLOR`), and for any other sink as for [stdout].
 class ConsoleMarkdownSink implements StringSink {
   /// The underlying output sink.
   final StringSink _delegate;
 
-  ConsoleMarkdownSink(this._delegate);
+  /// Whether markdown becomes ANSI styling (else plain text).
+  final bool styled;
+
+  ConsoleMarkdownSink(this._delegate, {bool? styled})
+    : styled =
+          styled ??
+          streamStylingEnabled(_delegate is Stdout ? _delegate : stdout);
+
+  String _render(Object? object) =>
+      renderConsoleMarkdown(object.toString(), styled: styled);
 
   @override
   void write(Object? object) {
-    _delegate.write(object.toString().toConsole());
+    _delegate.write(_render(object));
   }
 
   @override
   void writeAll(Iterable objects, [String separator = '']) {
-    final rendered = objects
-        .map((o) => o.toString().toConsole())
-        .join(separator);
-    _delegate.write(rendered);
+    _delegate.write(objects.map(_render).join(separator));
   }
 
   @override
@@ -72,7 +120,7 @@ class ConsoleMarkdownSink implements StringSink {
 
   @override
   void writeln([Object? object = '']) {
-    _delegate.writeln(object.toString().toConsole());
+    _delegate.writeln(_render(object));
   }
 }
 
@@ -106,10 +154,13 @@ void _exitQuietlyOnBrokenPipe() {
   if (_brokenPipeHandled) return;
   _brokenPipeHandled = true;
   for (final sink in [stdout, stderr]) {
-    sink.done.then<void>((_) {}, onError: (Object error, StackTrace stack) {
-      if (isBrokenPipe(error)) exit(exitCode);
-      Zone.root.handleUncaughtError(error, stack);
-    });
+    sink.done.then<void>(
+      (_) {},
+      onError: (Object error, StackTrace stack) {
+        if (isBrokenPipe(error)) exit(exitCode);
+        Zone.root.handleUncaughtError(error, stack);
+      },
+    );
   }
 }
 
@@ -146,6 +197,8 @@ Future<T> runWithConsoleMarkdown<T>(
   }
 
   final completer = Completer<T>();
+  // print() writes to stdout; decided once for the run.
+  final styled = streamStylingEnabled(stdout);
 
   runZonedGuarded(
     () async {
@@ -164,7 +217,12 @@ Future<T> runWithConsoleMarkdown<T>(
       if (onError != null) {
         onError(error, stack);
       } else {
-        stderr.writeln('<red>**Uncaught error:**</red> $error'.toConsole());
+        stderr.writeln(
+          renderConsoleMarkdown(
+            '<red>**Uncaught error:**</red> $error',
+            styled: streamStylingEnabled(stderr),
+          ),
+        );
         stderr.writeln(stack.toString());
         exit(1);
       }
@@ -174,7 +232,7 @@ Future<T> runWithConsoleMarkdown<T>(
     },
     zoneSpecification: ZoneSpecification(
       print: (Zone self, ZoneDelegate parent, Zone zone, String line) {
-        parent.print(zone, line.toConsole());
+        parent.print(zone, renderConsoleMarkdown(line, styled: styled));
       },
     ),
     zoneValues: {kConsoleMarkdownZoneKey: true},
@@ -192,12 +250,13 @@ T runWithConsoleMarkdownSync<T>(
   if (isConsoleMarkdownActive) {
     return body();
   }
+  final styled = streamStylingEnabled(stdout);
 
   return runZoned(
     body,
     zoneSpecification: ZoneSpecification(
       print: (Zone self, ZoneDelegate parent, Zone zone, String line) {
-        parent.print(zone, line.toConsole());
+        parent.print(zone, renderConsoleMarkdown(line, styled: styled));
       },
     ),
     zoneValues: {kConsoleMarkdownZoneKey: true},

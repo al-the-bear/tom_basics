@@ -69,7 +69,8 @@ This document lists all testable features across `tom_build_base` and tracks tes
 | 54 | [Projects at Once](#54-projects-at-once) | 5 | 5✅ | `v2/core/parallel_jobs_test.dart` | [→](#54-projects-at-once) |
 | 55 | [Windows Paths in the Filters](#55-windows-paths-in-the-filters) | 6 | 6✅ | `v2/traversal/windows_path_filter_test.dart` | [→](#55-windows-paths-in-the-filters) |
 | 56 | [Repeated Options](#56-repeated-options) | 8 | 8✅ | `v2/core/repeated_option_test.dart` | [→](#56-repeated-options) |
-| — | **Total** | **1083** | **1083✅** | | | | |
+| 57 | [Console Styling](#57-console-styling) | 6 | 6✅ | `v2/core/console_styling_test.dart` | [→](#57-console-styling) |
+| — | **Total** | **1089** | **1089✅** | | | | |
 
 > Every row links to a section, and the counts are measured from
 > `dart test --reporter json -j 1` rather than maintained by hand. Run it
@@ -1173,6 +1174,21 @@ it visited.
 | BB-REP-5 | The run stops | ✅ | A repeated option fails the run before any project. |
 | BB-REP-6–7 | Several roots | ✅ | `--scan a,b` visits the projects of both; overlapping roots visit a project once. |
 | BB-REP-8 | Roots in the workspace | ✅ | A root outside the workspace refuses the run. |
+
+---
+
+## 57. Console Styling
+
+**Test file:** `test/v2/core/console_styling_test.dart` (BB-STYLE-1–4 run the fixture tool `test/fixtures/console_styling/styled_tool.dart` as a process)
+
+| ID | Feature | Status | Description |
+|----|---------|--------|-------------|
+| BB-STYLE-1 | Piped output | ✅ | `--help` and an `Error:` line through a pipe carry no escape code; the markers are removed. |
+| BB-STYLE-2 | `NO_COLOR` | ✅ | No escape code, also with `FORCE_COLOR` set. |
+| BB-STYLE-3 | `FORCE_COLOR` | ✅ | Styles a pipe; `FORCE_COLOR=0` does not. |
+| BB-STYLE-4 | A terminal | ✅ | Under `script` (a pseudo-terminal) the help is styled. |
+| BB-STYLE-5 | The decision | ✅ | Terminal on, no terminal off, `NO_COLOR` off (empty means unset), `FORCE_COLOR` on unless `0` / `false`. |
+| BB-STYLE-6 | Rendering | ✅ | Styled output has escape codes; plain output keeps the text, drops markers and a tool's own codes; `ConsoleMarkdownSink(styled: false)`. |
 
 ---
 

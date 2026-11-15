@@ -497,6 +497,8 @@ void main(List<String> args) async {
 
 This enables ANSI-colored formatting for headers (`## Title`), bold (`**text**`), inline code (`` `code` ``), and other markdown elements in all `print()` and `StringSink.writeln()` output within the zone.
 
+The styling goes to a terminal only. Piped or redirected output (`| grep`, `> file`, a log, a test capturing stdout) and all output under `NO_COLOR` (set to any non-empty value, no-color.org) get the plain text: the markers removed, no escape code. `FORCE_COLOR` (anything but `0` / `false`) forces the styling through a pipe; `NO_COLOR` wins when both are set. `consoleStylingEnabled()` makes the decision, `renderConsoleMarkdown(text, styled:)` renders one string, and `ConsoleMarkdownSink(sink, styled:)` lets a caller choose.
+
 ---
 
 ## Utility Classes

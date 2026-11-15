@@ -1,3 +1,18 @@
+## 2.37.0
+
+### Changed — no ANSI styling in pipes, files or under NO_COLOR
+
+Console markdown (`**bold**`, backticks, `<cyan>`) became ANSI escape codes
+whether or not stdout was a terminal, so `buildkit --help | cat -v`, logs,
+files written with `>` and tests capturing stdout got `^[[1m...` codes. The
+zone's `print()`, `ConsoleMarkdownSink` and the uncaught-error line now style
+only a terminal (`stdioType`); piped or redirected output, and any output under
+`NO_COLOR`, gets the plain text, markers removed and escape codes dropped.
+`FORCE_COLOR` forces the styling through a pipe; `NO_COLOR` wins over it.
+New: `consoleStylingEnabled()`, `streamStylingEnabled()`,
+`renderConsoleMarkdown(text, styled:)`, `ConsoleMarkdownSink(sink, styled:)`.
+BB-STYLE-1..6.
+
 ## 2.36.0
 
 ### Changed — a one-value option given twice is refused
