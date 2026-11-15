@@ -162,6 +162,16 @@ void main() {
       expect(tomNewlineOf('a\r\nb\r\nc\n'), '\r\n');
     });
 
+    test('UTIL-Y3b: a boolean and a number are written plain, so they read '
+        'back as a boolean and a number; the strings "true" and "2" stay '
+        'quoted', () {
+      expect(tomYamlEntry('user_action', true, 4, '\n'), '    user_action: true\n');
+      expect(tomYamlEntry('repeat_count', 2, 0, '\n'), 'repeat_count: 2\n');
+      expect(tomYamlEntry('flag', 'true', 0, '\n'), 'flag: "true"\n');
+      expect(tomYamlEntry('n', '2', 0, '\n'), 'n: "2"\n');
+      expect(tomYamlListItem(false, 2, '\n'), '  - false\n');
+    });
+
     test('UTIL-Y4: ordering primitives — known keys first, the rest sorted, '
         'items by id stably', () {
       expect(

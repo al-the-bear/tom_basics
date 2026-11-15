@@ -1,3 +1,10 @@
+## 3.3.1
+
+- **Fixed: `tomYamlEntry` / `tomYamlListItem` write a boolean or a number
+  plain** (`user_action: true`, `repeat_count: 2`). They were quoted like the
+  strings `"true"` and `"2"`, so a todo file written with a boolean or a whole
+  number did not read back as one.
+
 ## 3.3.0
 
 - **Added: `package:tom_basics/utilities.dart`**, small utilities that
