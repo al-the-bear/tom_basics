@@ -276,14 +276,12 @@ void main() {
 
       final stdout = result.stdout as String;
       expect(result.exitCode, isNot(equals(0)), reason: '-s- must fail');
-      // The console renders the message's `-s-` as a dim span, so the
-      // words are checked rather than the backticks.
-      expect(stdout, contains('Error: '));
-      expect(stdout, contains('-s-'));
+      // Piped output is plain: the markers removed, no escape code.
       expect(
         stdout,
-        contains('per-command option suppression is not supported'),
+        contains('Error: -s-: per-command option suppression is not supported'),
       );
+      expect(stdout, isNot(contains('\x1B[')), reason: 'piped output');
       expect(
         stdout,
         isNot(contains('scanned')),

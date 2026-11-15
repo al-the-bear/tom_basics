@@ -1,3 +1,12 @@
+## 1.30.3
+
+### Changed — no escape codes in piped output
+
+On tom_build_base 2.37.0: buildkit and findproject style their output only on a
+terminal. Piped or redirected output, and any output under `NO_COLOR`, is plain
+text with the markdown markers removed (`buildkit --help | cat -v` shows no
+escape code); `FORCE_COLOR=1` styles a pipe.
+
 ## 1.30.2
 
 ### Changed — a one-value option given twice is refused
