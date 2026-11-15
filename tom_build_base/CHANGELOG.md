@@ -1,3 +1,12 @@
+## 2.38.1
+
+### Fixed — `help <command>` for a wired nested command
+
+A bare `help` did not count as help mode for the lazy wiring, so `buildkit help
+d4rtgen` wired no nested tool and answered `Unknown help topic`. It now wires
+the nested tools as `--help` does (a missing binary is reported, not an error),
+and the help of a wired command comes from its nested tool.
+
 ## 2.38.0
 
 ### Fixed — `<tool> help <command>` prints the command's help

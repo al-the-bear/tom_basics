@@ -1,3 +1,6 @@
+import 'dart:io';
+
+import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 import 'package:tom_build_base/tom_build_base_v2.dart';
 
@@ -6,9 +9,10 @@ import 'package:tom_build_base/tom_build_base_v2.dart';
 /// and by an unambiguous prefix. Help topics keep their place (a topic is
 /// looked up before a command), and a name that is neither stays an unknown
 /// help topic. A nested tool asked `--nested help <command>` (how a host
-/// delegates the help of a wired command) answers with that command's help.
+/// delegates the help of a wired command) answers with that command's help,
+/// and a host asked `help <wired command>` takes the help from the nested tool.
 ///
-/// Test IDs: BB-HELPCMD-1..7.
+/// Test IDs: BB-HELPCMD-1..8.
 
 const _tool = ToolDefinition(
   name: 'helptool',
@@ -144,4 +148,57 @@ void main() {
     expect(unknown.success, isFalse);
     expect(unknownOut, contains('Unknown help topic: nosuch'));
   });
+
+  test(
+    'BB-HELPCMD-8: `help <wired command>` takes the help from the nested '
+    'tool; a missing nested binary is reported, the own commands\' help '
+    'stays '
+    '[2026-11-15]',
+    () async {
+      final dir = Directory.systemTemp.createTempSync('bb_helpcmd_');
+      addTearDown(() => dir.deleteSync(recursive: true));
+      final root = Directory.current.path;
+      final fixtures = p.join(root, 'test', 'fixtures', 'help_command');
+      final packages = p.join(root, '.dart_tool', 'package_config.json');
+      final fakegen = File(p.join(dir.path, 'fakegen'))
+        ..writeAsStringSync(
+          '#!/bin/sh\nexec dart --packages=$packages '
+          '${p.join(fixtures, 'nested_tool.dart')} "\$@"\n',
+        );
+      Process.runSync('chmod', ['+x', fakegen.path]);
+
+      Future<ProcessResult> host(List<String> args, {bool onPath = true}) =>
+          Process.run(
+            'dart',
+            [
+              '--packages=$packages',
+              p.join(fixtures, 'host_tool.dart'),
+              ...args,
+            ],
+            workingDirectory: dir.path,
+            environment: {
+              'PATH': onPath
+                  ? '${dir.path}:${Platform.environment['PATH']}'
+                  : Platform.environment['PATH']!,
+            },
+          );
+
+      for (final name in ['fakegen', ':fakegen']) {
+        final r = await host(['help', name]);
+        expect(r.exitCode, 0, reason: '$name: ${r.stdout}${r.stderr}');
+        expect(r.stdout, contains('Generates the fake artefacts'));
+        expect(r.stdout, contains('--depth'));
+      }
+
+      final own = await host(['help', 'own'], onPath: false);
+      expect(own.exitCode, 0, reason: '${own.stdout}${own.stderr}');
+      expect(own.stdout, contains('The own command'));
+      // As `:fakegen --help` and the overview do: the command is named,
+      // its binary reported missing.
+      final missing = await host(['help', 'fakegen'], onPath: false);
+      expect(missing.stdout, contains('[binary fakegen not found]'));
+    },
+    skip: Platform.isWindows ? 'the fake nested binary is a sh script' : false,
+    timeout: const Timeout(Duration(minutes: 3)),
+  );
 }

@@ -1154,7 +1154,10 @@ void main() {
         );
       },
     );
-  });
+  },
+      // Each test starts `dart run` on the fixture, which compiles it first:
+      // on a loaded machine that alone outlasts the default 30 seconds.
+      timeout: const Timeout(Duration(minutes: 2)));
 
   // ==========================================================================
   // Group 8: ProcessingResult Tracking

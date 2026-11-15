@@ -70,8 +70,8 @@ This document lists all testable features across `tom_build_base` and tracks tes
 | 55 | [Windows Paths in the Filters](#55-windows-paths-in-the-filters) | 6 | 6✅ | `v2/traversal/windows_path_filter_test.dart` | [→](#55-windows-paths-in-the-filters) |
 | 56 | [Repeated Options](#56-repeated-options) | 8 | 8✅ | `v2/core/repeated_option_test.dart` | [→](#56-repeated-options) |
 | 57 | [Console Styling](#57-console-styling) | 6 | 6✅ | `v2/core/console_styling_test.dart` | [→](#57-console-styling) |
-| 58 | [Help Command](#58-help-command) | 7 | 7✅ | `v2/core/help_command_test.dart` | [→](#58-help-command) |
-| — | **Total** | **1096** | **1096✅** | | | | |
+| 58 | [Help Command](#58-help-command) | 8 | 8✅ | `v2/core/help_command_test.dart` | [→](#58-help-command) |
+| — | **Total** | **1097** | **1097✅** | | | | |
 
 > Every row links to a section, and the counts are measured from
 > `dart test --reporter json -j 1` rather than maintained by hand. Run it
@@ -1194,7 +1194,7 @@ it visited.
 
 ## 58. Help Command
 
-**Test file:** `test/v2/core/help_command_test.dart`
+**Test file:** `test/v2/core/help_command_test.dart` (BB-HELPCMD-8 runs the fixture tools `test/fixtures/help_command/host_tool.dart` and `nested_tool.dart` as processes)
 
 | ID | Feature | Status | Description |
 |----|---------|--------|-------------|
@@ -1205,6 +1205,7 @@ it visited.
 | BB-HELPCMD-5 | Unknown, ambiguous | ✅ | A name that is no topic and no command (with or without colon) is an unknown help topic; an ambiguous prefix lists its commands. |
 | BB-HELPCMD-6 | `help` alone | ✅ | Prints the tool overview. |
 | BB-HELPCMD-7 | `--nested help <command>` | ✅ | A nested tool answers with the command's help (how a host delegates a wired command's help) and runs nothing. |
+| BB-HELPCMD-8 | `help <wired command>` | ✅ | A host takes the help of a wired command from its nested tool (`help fakegen`, `help :fakegen`); with the binary missing it names the command and reports the binary missing, and its own commands' help still works. |
 
 ---
 

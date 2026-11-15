@@ -341,8 +341,14 @@ class CliArgs {
   /// Whether help or version was requested.
   bool get isHelpOrVersion => help || version;
 
-  /// Whether this is a help-related mode (help, version, list, guide).
-  bool get isHelpMode => help || version || listOnly || guide;
+  /// Whether this is a help-related mode (help, version, list, guide, or the
+  /// bare `help` word: `tool help <command>`).
+  bool get isHelpMode =>
+      help ||
+      version ||
+      listOnly ||
+      guide ||
+      positionalArgs.firstOrNull == 'help';
 
   /// The options that apply to [commandName], written in EITHER position.
   ///
