@@ -3,7 +3,7 @@
 /// Uses a dedicated 'pipeline' fixture with test-simple, test-multi,
 /// test-shell, and test-internal pipeline definitions.
 ///
-/// Test IDs: BKT_LST01, BKT_HLP01, BKT_HLP02, BKT_CMD01, BKT_PIP01, BKT_DRY01,
+/// Test IDs: BKT_LST01, BKT_HLP01, BKT_HLP02, BKT_HLP03, BKT_CMD01, BKT_PIP01, BKT_DRY01,
 ///           BKT_DRY02, BKT_OPT01, BKT_SHL01, BKT_XPJ01, BKT_XPJ02,
 ///           BKT_ERR01, BKT_ERR02, BKT_MAC01, BKT_MAC02, BKT_MAC03,
 ///           BKT_STD01, BKT_STD02,
@@ -468,6 +468,33 @@ void main() {
         'shows pipeline config',
         stdout.contains('Pipeline Configuration'),
       );
+    });
+  });
+
+  group('help <command>', () {
+    test('help <command> prints the command help for a name, an alias and '
+        ':name [2026-11-15]', () async {
+      log.start('BKT_HLP03', 'help <command> prints the command help');
+      final compiler = await ws.runPipeline(':compiler', ['--help']);
+      final expected = compiler.stdout as String;
+      expect(expected, contains('Cross-platform Dart compilation'));
+      for (final (args, name) in [
+        (['compiler'], 'compiler'),
+        ([':compiler'], ':compiler'),
+        (['comp'], 'comp'),
+      ]) {
+        final result = await ws.runPipeline('help', args);
+        log.capture('buildkit help $name', result);
+        expect(result.exitCode, equals(0), reason: name);
+        expect(result.stdout, equals(expected), reason: name);
+      }
+      final bump = await ws.runPipeline('help', ['bump']);
+      expect(bump.exitCode, equals(0));
+      expect(bump.stdout, contains('Bump project versions'));
+      final unknown = await ws.runPipeline('help', ['nosuchthing']);
+      expect(unknown.exitCode, isNot(equals(0)));
+      expect(unknown.stdout, contains('Unknown help topic: nosuchthing'));
+      log.expectation('help compiler == :compiler --help', true);
     });
   });
 

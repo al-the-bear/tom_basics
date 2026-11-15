@@ -20,7 +20,7 @@ This document lists all testable features across buildkit tools and tracks test 
 | 5 | [Runner — Build Runner Wrapper](#5-runner--build-runner-wrapper) | 5 | 5✅ | `runner_test.dart` | [→](#5-runner--build-runner-wrapper) |
 | 6 | [Dependencies — Dependency Tree](#6-dependencies--dependency-tree) | 7 | 7✅ | `dependencies_test.dart` | [→](#6-dependencies--dependency-tree) |
 | 7 | [VersionBump — Version Bumping](#7-versionbump--version-bumping) | 6 | 6✅ | `versionbump_test.dart` | [→](#7-versionbump--version-bumping) |
-| 8 | [BuildKit — Pipeline Orchestrator](#8-buildkit--pipeline-orchestrator) | 12 | 12✅ | `buildkit_test.dart` | [→](#8-buildkit--pipeline-orchestrator) |
+| 8 | [BuildKit — Pipeline Orchestrator](#8-buildkit--pipeline-orchestrator) | 13 | 13✅ | `buildkit_test.dart` | [→](#8-buildkit--pipeline-orchestrator) |
 | 9 | [Config Merge — Merge Precedence](#9-config-merge--merge-precedence) | 4 | 4✅ | `config_merge_test.dart` | [→](#9-config-merge--merge-precedence) |
 | 10 | [Security — Path & Command Validation](#10-security--path--command-validation) | 4 | 4✅ | `security_test.dart` | [→](#10-security--path--command-validation) |
 | 11 | [Exclusion — Cross-Tool Filtering](#11-exclusion--cross-tool-filtering) | 27 | 27✅ | `exclusion_test.dart` | [→](#11-exclusion--cross-tool-filtering) |
@@ -31,7 +31,7 @@ This document lists all testable features across buildkit tools and tracks test 
 | 16 | [Build, Test, Clean — Per Nature](#16-build-test-clean--per-nature) | 7 | 7✅ | `project_action_test.dart` | [→](#16-build-test-clean--per-nature) |
 | 17 | [Projects — The Project Listing](#17-projects--the-project-listing) | 5 | 5✅ | `projects_command_test.dart` | [→](#17-projects--the-project-listing) |
 | 18 | [Versioner — Build Number](#2-versioner--version-file-generation) | 5 | 5✅ | `versioner_build_number_test.dart` | [→](#2-versioner--version-file-generation) |
-| — | **Total** | **172** | **172✅** | | |
+| — | **Total** | **173** | **173✅** | | |
 
 ---
 
@@ -196,6 +196,7 @@ Uses workspace-level pipeline configuration from `buildkit_master.yaml`.
 |----|---------|--------|-------------|
 | BKT_LST01 | `--list` shows available pipelines | ✅ | Run `buildkit --list`. Verify pipeline names from `buildkit_master.yaml` are listed. |
 | BKT_HLP01 | `--help` shows usage | ✅ | Run `buildkit --help`. Verify usage text displayed. |
+| BKT_HLP03 | `help <command>` | ✅ | `buildkit help compiler`, `help :compiler` and `help comp` print what `buildkit :compiler --help` prints; `help bump` the :bumpversion help; an unknown name fails with `Unknown help topic`. |
 | BKT_CMD01 | Direct command execution (`:versioner`) | ✅ | Run `buildkit :versioner --project _build`. Verify versioner executes. |
 | BKT_PIP01 | Pipeline execution (`build`, `clean`) | ✅ | Run `buildkit clean --project _build`. Verify pipeline steps execute in order. |
 | BKT_DRY01 | `--dry-run` after the pipeline name | ✅ | `buildkit test-simple --project tom_ai/basics/tom_build_kit --dry-run`: an option after a pipeline name counts like one before it (bug #15 fixed); [DRY RUN] markers, no step executed. |

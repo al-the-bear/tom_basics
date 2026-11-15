@@ -1,3 +1,11 @@
+## 1.30.4
+
+### Fixed — `buildkit help <command>` prints the command's help
+
+On tom_build_base 2.38.0: `buildkit help <command>` (also `help :<command>`, an
+alias or an unambiguous prefix) prints the same help as
+`buildkit :<command> --help` instead of `Unknown help topic`.
+
 ## 1.30.3
 
 ### Changed — no escape codes in piped output
