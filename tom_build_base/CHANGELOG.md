@@ -1,3 +1,14 @@
+## 2.38.2
+
+### Fixed — no `:default` in the output of a single-command tool
+
+`--list` of a single-command tool (astgen, d4rtgen, ...) printed
+`probe  :default  not run (--list)` and `:default runs once, ...`: `default` is
+the executor's key, which the user never types. The line now names the tool
+(`probe  astgen  not run (--list)`); a multi-command tool keeps `:<command>`.
+The run summary lists a failed or skipped project of such a tool without
+`:default` too.
+
 ## 2.38.1
 
 ### Fixed — `help <command>` for a wired nested command

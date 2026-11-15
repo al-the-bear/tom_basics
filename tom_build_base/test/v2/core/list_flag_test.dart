@@ -8,7 +8,7 @@ import 'package:tom_build_base/tom_build_base_v2.dart';
 /// with a command it lists the projects that command would visit; with a
 /// pipeline it lists the pipeline's steps.
 ///
-/// Test IDs: BB-LIST-1..7.
+/// Test IDs: BB-LIST-1..9.
 
 const _tool = ToolDefinition(
   name: 'listtool',
@@ -139,6 +139,55 @@ void main() {
     expect(listed, [true, true], reason: 'write lists itself, per project');
     expect(stamp.calls, isEmpty);
     expect(out.toString(), contains(':stamp  not run (--list)'));
+  });
+
+  test('BB-LIST-8: a single-command tool\'s --list lines name the tool, '
+      'never the executor key `:default` [2026-11-15]', () async {
+    for (final (features, args, line) in [
+      (
+        NavigationFeatures.projectTool,
+        nav(),
+        RegExp(r'alpha  singletool  not run \(--list\)'),
+      ),
+      (
+        NavigationFeatures.minimal,
+        <String>[],
+        RegExp(
+          r'^singletool runs once, without visiting projects: not run',
+          multiLine: true,
+        ),
+      ),
+    ]) {
+      out = StringBuffer();
+      final single = _RecordingExecutor();
+      final result = await ToolRunner(
+        tool: ToolDefinition(
+          name: 'singletool',
+          description: 'A single-command tool',
+          version: '1.0.0',
+          mode: ToolMode.singleCommand,
+          features: features,
+          worksWithNatures: const {DartProjectFolder},
+        ),
+        output: out,
+        executors: {'default': single},
+      ).run([...args, '--list']);
+      expect(result.success, isTrue, reason: out.toString());
+      expect(single.calls, isEmpty);
+      expect(out.toString(), matches(line));
+      expect(out.toString(), isNot(contains(':default')));
+    }
+  });
+
+  test('BB-LIST-9: a multi-command tool\'s --list lines keep `:<command>` '
+      '[2026-11-15]', () async {
+    await runner().run([...nav(), '--list', ':write']);
+    await runner().run([...nav(), '--list', ':once']);
+    expect(out.toString(), contains('alpha  :write  not run (--list)'));
+    expect(
+      out.toString(),
+      contains(':once runs once, without visiting projects: not run'),
+    );
   });
 
   group('in the workspace directory', () {

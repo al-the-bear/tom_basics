@@ -6,7 +6,7 @@
 /// drive the pure renderer directly, so they run on any host without a
 /// provisioned workspace.
 ///
-/// Test IDs: SUMM01–SUMM20
+/// Test IDs: SUMM01–SUMM21
 @TestOn('!browser')
 @Timeout(Duration(seconds: 30))
 library;
@@ -141,6 +141,17 @@ void main() {
       ]).renderRunSummary();
       expect(summary, contains('  b — boom'));
       expect(summary, isNot(contains('b :')));
+    });
+
+    test('SUMM21: the `default` executor of a single-command tool is not '
+        'named as `:default` [2026-11-15]', () {
+      final summary = ToolResult.fromItems([
+        _fail('b', cmd: 'default', error: 'boom'),
+        _skip('c', cmd: 'default', message: 'no pubspec'),
+      ]).renderRunSummary();
+      expect(summary, contains('  b — boom'));
+      expect(summary, contains('  c — no pubspec'));
+      expect(summary, isNot(contains(':default')));
     });
 
     test('SUMM13: the rendered block has no leading or trailing newline', () {

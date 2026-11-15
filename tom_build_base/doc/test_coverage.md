@@ -41,7 +41,7 @@ This document lists all testable features across `tom_build_base` and tracks tes
 | 26 | [Pub Cache Integrity](#26-pub-cache-integrity) | 8 | 8✅ | `v2/core/pub_cache_integrity_test.dart` | [→](#26-pub-cache-integrity) |
 | 27 | [Console Encoding](#27-console-encoding) | 9 | 9✅ | `console_encoding_test.dart` | [→](#27-console-encoding) |
 | 28 | [Output Format](#28-output-format) | 10 | 10✅ | `v2/core/output_format_test.dart` | [→](#28-output-format) |
-| 29 | [Run Summary](#29-run-summary) | 20 | 20✅ | `v2/core/run_summary_test.dart` | [→](#29-run-summary) |
+| 29 | [Run Summary](#29-run-summary) | 21 | 21✅ | `v2/core/run_summary_test.dart` | [→](#29-run-summary) |
 | 30 | [Mklink Executor](#30-mklink-executor) | 3 | 3✅ | `v2/core/mklink_executor_test.dart` | [→](#30-mklink-executor) |
 | 31 | [Repository Id Lookup](#31-repository-id-lookup) | 4 | 4✅ | `v2/traversal/repository_id_lookup_test.dart` | [→](#31-repository-id-lookup) |
 | 32 | [Workspace Utils](#32-workspace-utils) | 26 | 26✅ | `v2/workspace_utils_test.dart` | [→](#32-workspace-utils) |
@@ -63,7 +63,7 @@ This document lists all testable features across `tom_build_base` and tracks tes
 | 48 | [Project Listing](#48-project-listing) | 7 | 7✅ | `v2/traversal/project_listing_test.dart` | [→](#48-project-listing) |
 | 49 | [Broken Pipe](#49-broken-pipe) | 3 | 3✅ | `v2/core/broken_pipe_test.dart` | [→](#49-broken-pipe) |
 | 50 | [Option Suppression Refused](#50-option-suppression-refused) | 4 | 4✅ | `v2/core/option_suppression_test.dart` | [→](#50-option-suppression-refused) |
-| 51 | [--list Runs Nothing](#51---list-runs-nothing) | 7 | 7✅ | `v2/core/list_flag_test.dart` | [→](#51---list-runs-nothing) |
+| 51 | [--list Runs Nothing](#51---list-runs-nothing) | 9 | 9✅ | `v2/core/list_flag_test.dart` | [→](#51---list-runs-nothing) |
 | 52 | [Standalone Tools](#52-standalone-tools) | 5 | 5✅ | `v2/core/standalone_tool_test.dart` | [→](#52-standalone-tools) |
 | 53 | [After the Traversal](#53-after-the-traversal) | 5 | 5✅ | `v2/core/after_traversal_test.dart` | [→](#53-after-the-traversal) |
 | 54 | [Projects at Once](#54-projects-at-once) | 5 | 5✅ | `v2/core/parallel_jobs_test.dart` | [→](#54-projects-at-once) |
@@ -71,7 +71,7 @@ This document lists all testable features across `tom_build_base` and tracks tes
 | 56 | [Repeated Options](#56-repeated-options) | 8 | 8✅ | `v2/core/repeated_option_test.dart` | [→](#56-repeated-options) |
 | 57 | [Console Styling](#57-console-styling) | 6 | 6✅ | `v2/core/console_styling_test.dart` | [→](#57-console-styling) |
 | 58 | [Help Command](#58-help-command) | 8 | 8✅ | `v2/core/help_command_test.dart` | [→](#58-help-command) |
-| — | **Total** | **1097** | **1097✅** | | | | |
+| — | **Total** | **1100** | **1100✅** | | | | |
 
 > Every row links to a section, and the counts are measured from
 > `dart test --reporter json -j 1` rather than maintained by hand. Run it
@@ -657,6 +657,7 @@ exit code, and it must not be silently indistinguishable from work that ran.
 | SUMM18 | Projects at once | ✅ | More project time than the run took is reported as projects running at once, not as startup. |
 | SUMM19 | No empty slowest list | ✅ | No slowest list when every project took next to no time. |
 | SUMM20 | Pipeline timing text | ✅ | A multi-line command named by its first line; a dry run prints no timing. |
+| SUMM21 | The `default` executor | ✅ | A failed or skipped item of a single-command tool's `default` executor is listed without `:default`. |
 
 ---
 
@@ -1096,6 +1097,8 @@ command the projects it would run on, with a pipeline its steps.
 | BB-LIST-5 | `--list :define` | ✅ | The master file is unchanged. |
 | BB-LIST-6 | `--list <pipeline>` | ✅ | Its steps are listed; its shell step does not run. |
 | BB-LIST-7 | `handlesListMode` | ✅ | An executor with its own list mode is called with `listOnly` set; the others are not. |
+| BB-LIST-8 | A single-command tool | ✅ | Its `--list` lines name the tool (`alpha  singletool  not run (--list)`, `singletool runs once, ...`), never the executor key `:default`. |
+| BB-LIST-9 | A multi-command tool | ✅ | Its `--list` lines keep `:<command>`. |
 
 ---
 

@@ -122,7 +122,10 @@ class ToolResult {
     final skips = itemResults.where((i) => i.success && i.skipped).toList();
 
     String describe(ItemResult item, String detail) {
-      final cmd = item.commandName != null ? ' :${item.commandName}' : '';
+      // `default` is a single-command tool's executor key, not a command
+      // the user typed (the timing table leaves it out the same way).
+      final name = item.commandName;
+      final cmd = name != null && name != 'default' ? ' :$name' : '';
       return '  ${item.name}$cmd — $detail';
     }
 
@@ -1735,7 +1738,18 @@ class ToolRunner {
     if (executor == null || !_listOnly || executor.handlesListMode) {
       return executor;
     }
-    return _ListingExecutor(commandName, output);
+    return _ListingExecutor(_listingLabel(commandName), output);
+  }
+
+  /// How a `--list` line names what would run: `:<command>` for a command;
+  /// the tool's name for a single-command tool's `default` executor, a key
+  /// the user never types.
+  String _listingLabel(String commandName) {
+    final isDefaultExecutor =
+        commandName == 'default' &&
+        (_effectiveTool.mode == ToolMode.singleCommand ||
+            _effectiveTool.findCommand('default')?.name != 'default');
+    return isDefaultExecutor ? _effectiveTool.name : ':$commandName';
   }
 
   /// `--list` without a command: the commands and the pipelines.
@@ -2806,16 +2820,17 @@ Options:
 }
 
 /// Stands in for every executor under `--list`: names the project (or, for a
-/// command without traversal, the command) and runs nothing.
+/// command without traversal, the command) and runs nothing. [label] is what
+/// would run: `:<command>`, or a single-command tool's name.
 class _ListingExecutor extends CommandExecutor {
-  final String commandName;
+  final String label;
   final StringSink output;
 
-  _ListingExecutor(this.commandName, this.output);
+  _ListingExecutor(this.label, this.output);
 
   @override
   Future<ItemResult> execute(CommandContext context, CliArgs args) async {
-    output.writeln('${context.relativePath}  :$commandName  not run (--list)');
+    output.writeln('${context.relativePath}  $label  not run (--list)');
     return ItemResult.success(
       path: context.path,
       name: context.name,
@@ -2826,7 +2841,7 @@ class _ListingExecutor extends CommandExecutor {
   @override
   Future<ToolResult> executeWithoutTraversal(CliArgs args) async {
     output.writeln(
-      ':$commandName runs once, without visiting projects: not run (--list)',
+      '$label runs once, without visiting projects: not run (--list)',
     );
     return const ToolResult.success();
   }
