@@ -70,7 +70,8 @@ This document lists all testable features across `tom_build_base` and tracks tes
 | 55 | [Windows Paths in the Filters](#55-windows-paths-in-the-filters) | 6 | 6✅ | `v2/traversal/windows_path_filter_test.dart` | [→](#55-windows-paths-in-the-filters) |
 | 56 | [Repeated Options](#56-repeated-options) | 8 | 8✅ | `v2/core/repeated_option_test.dart` | [→](#56-repeated-options) |
 | 57 | [Console Styling](#57-console-styling) | 6 | 6✅ | `v2/core/console_styling_test.dart` | [→](#57-console-styling) |
-| — | **Total** | **1089** | **1089✅** | | | | |
+| 58 | [Help Command](#58-help-command) | 7 | 7✅ | `v2/core/help_command_test.dart` | [→](#58-help-command) |
+| — | **Total** | **1096** | **1096✅** | | | | |
 
 > Every row links to a section, and the counts are measured from
 > `dart test --reporter json -j 1` rather than maintained by hand. Run it
@@ -1189,6 +1190,21 @@ it visited.
 | BB-STYLE-4 | A terminal | ✅ | Under `script` (a pseudo-terminal) the help is styled. |
 | BB-STYLE-5 | The decision | ✅ | Terminal on, no terminal off, `NO_COLOR` off (empty means unset), `FORCE_COLOR` on unless `0` / `false`. |
 | BB-STYLE-6 | Rendering | ✅ | Styled output has escape codes; plain output keeps the text, drops markers and a tool's own codes; `ConsoleMarkdownSink(styled: false)`. |
+
+
+## 58. Help Command
+
+**Test file:** `test/v2/core/help_command_test.dart`
+
+| ID | Feature | Status | Description |
+|----|---------|--------|-------------|
+| BB-HELPCMD-1 | `help <command>` | ✅ | Prints what `:<command> --help` prints. |
+| BB-HELPCMD-2 | Alias, prefix | ✅ | An alias and an unambiguous prefix name the command. |
+| BB-HELPCMD-3 | `help :<command>` | ✅ | The command's help, not the tool overview. |
+| BB-HELPCMD-4 | Topics, built-ins | ✅ | A help topic is found as before; `help macro` / `help :macro` print the built-in macro help. |
+| BB-HELPCMD-5 | Unknown, ambiguous | ✅ | A name that is no topic and no command (with or without colon) is an unknown help topic; an ambiguous prefix lists its commands. |
+| BB-HELPCMD-6 | `help` alone | ✅ | Prints the tool overview. |
+| BB-HELPCMD-7 | `--nested help <command>` | ✅ | A nested tool answers with the command's help (how a host delegates a wired command's help) and runs nothing. |
 
 ---
 

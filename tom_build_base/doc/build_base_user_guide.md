@@ -20,7 +20,7 @@ This guide explains how to use `tom_build_base` to create CLI tools that integra
 The declarative tool framework based on `ToolDefinition`, `CommandDefinition`, `OptionDefinition`, and `ToolRunner`. Features:
 
 - **Declarative tool definition** — Define tools, commands, and options as immutable data structures
-- **Automatic help generation** — `--help`, `help <command>`, `help <topic>` with consistent formatting
+- **Automatic help generation** — `--help`, `help <command>` (also `help :<command>`, an alias or an unambiguous prefix; the same text as `:<command> --help`), `help <topic>` with consistent formatting
 - **Built-in traversal** — Project and git traversal handled by the framework
 - **Pipelines, macros, defines** — Multi-command tools get pipelines, runtime macros, and persistent defines automatically
 - **Nested tool wiring** — Declarative integration of external tool binaries

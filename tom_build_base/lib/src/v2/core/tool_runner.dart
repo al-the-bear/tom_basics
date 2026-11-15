@@ -718,22 +718,28 @@ class ToolRunner {
       return _handleHelp(cliArgs);
     }
 
-    // Handle bare 'help' positional (e.g., 'buildkit help pipelines')
+    // Handle bare 'help' positional: 'buildkit help pipelines' (a topic),
+    // 'buildkit help compiler' / 'help :compiler' (a command).
     if (cliArgs.positionalArgs.firstOrNull == 'help') {
-      final topic = cliArgs.positionalArgs.skip(1).firstOrNull;
+      final topic = _bareHelpName(cliArgs);
       if (topic != null) {
-        final builtInHelp = _tryHandleBuiltInMacroDefineHelp(topic);
+        final name = topic.startsWith(':') ? topic.substring(1) : topic;
+        final builtInHelp = _tryHandleBuiltInMacroDefineHelp(name);
         if (builtInHelp != null) {
           output.writeln(builtInHelp);
           return const ToolResult.success();
         }
-        final topicDef = _effectiveTool.findHelpTopic(topic);
-        if (topicDef != null) {
-          output.writeln(
-            HelpGenerator.generateTopicHelp(topicDef, tool: _effectiveTool),
-          );
-          return const ToolResult.success();
+        if (!topic.startsWith(':')) {
+          final topicDef = _effectiveTool.findHelpTopic(name);
+          if (topicDef != null) {
+            output.writeln(
+              HelpGenerator.generateTopicHelp(topicDef, tool: _effectiveTool),
+            );
+            return const ToolResult.success();
+          }
         }
+        final commandHelp = await _commandHelp(name, cliArgs);
+        if (commandHelp != null) return commandHelp;
         output.writeln('Unknown help topic: $topic');
         return const ToolResult.failure('Unknown help topic');
       }
@@ -1528,6 +1534,29 @@ class ToolRunner {
   /// runs its command directly in the current working directory without
   /// any project traversal or nested tool wiring.
   Future<ToolResult> _runNestedMode(CliArgs cliArgs) async {
+    // `--nested help <command>`: how a host asks a nested tool for the help
+    // of a wired command (see _delegateNestedHelp).
+    if (cliArgs.positionalArgs.firstOrNull == 'help') {
+      final topic = _bareHelpName(cliArgs);
+      if (topic == null) {
+        output.writeln(HelpGenerator.generateToolHelp(tool));
+        return const ToolResult.success();
+      }
+      final name = topic.startsWith(':') ? topic.substring(1) : topic;
+      final cmd = name.isEmpty ? null : tool.findCommand(name);
+      if (cmd != null) {
+        output.writeln(HelpGenerator.generateCommandHelp(cmd, tool: tool));
+        return const ToolResult.success();
+      }
+      final topicDef = topic.startsWith(':') ? null : tool.findHelpTopic(name);
+      if (topicDef != null) {
+        output.writeln(HelpGenerator.generateTopicHelp(topicDef, tool: tool));
+        return const ToolResult.success();
+      }
+      output.writeln('Unknown help topic: $topic');
+      return const ToolResult.failure('Unknown help topic');
+    }
+
     // Handle help in nested mode
     if (cliArgs.help) {
       if (cliArgs.commands.isNotEmpty) {
@@ -1760,6 +1789,44 @@ class ToolRunner {
   }
 
   /// Handle help display with wired commands included.
+  /// The name a bare `help` asks about: the word after it (`help compiler`,
+  /// `help pipelines`), or the command the parser took from `help :compiler`
+  /// (returned with its colon). Null for `help` alone.
+  static String? _bareHelpName(CliArgs cliArgs) {
+    final word = cliArgs.positionalArgs.skip(1).firstOrNull;
+    if (word != null) return word;
+    final command = cliArgs.commands.firstOrNull;
+    return command == null ? null : ':$command';
+  }
+
+  /// The help of the tool's command [name] (its name, an alias or an
+  /// unambiguous prefix), as `:<command> --help` prints it; a wired command's
+  /// help comes from its nested tool. An ambiguous prefix lists the commands
+  /// it matches. Null when [name] names no command.
+  Future<ToolResult?> _commandHelp(String name, CliArgs cliArgs) async {
+    if (name.isEmpty) return null;
+    final cmd = _effectiveTool.findCommand(name);
+    if (cmd != null) {
+      final wiredExec = _wiredExecutors[cmd.name];
+      if (wiredExec is NestedToolExecutor) {
+        return _delegateNestedHelp(wiredExec, cliArgs);
+      }
+      output.writeln(
+        HelpGenerator.generateCommandHelp(cmd, tool: _effectiveTool),
+      );
+      return const ToolResult.success();
+    }
+    final matches = _effectiveTool.findCommandsWithPrefix(name);
+    if (matches.length > 1) {
+      output.writeln('Ambiguous command prefix ":$name" matches:');
+      for (final match in matches) {
+        output.writeln('  :${match.name}');
+      }
+      return const ToolResult.failure('Ambiguous command prefix');
+    }
+    return null;
+  }
+
   Future<ToolResult> _handleHelp(CliArgs cliArgs) async {
     if (cliArgs.commands.isNotEmpty) {
       final cmdName = cliArgs.commands.first;
@@ -1768,28 +1835,8 @@ class ToolRunner {
         output.writeln(builtInHelp);
         return const ToolResult.success();
       }
-
-      final cmd = _effectiveTool.findCommand(cmdName);
-      if (cmd != null) {
-        // Check if this is a wired command — delegate help to nested tool
-        final wiredExec = _wiredExecutors[cmd.name];
-        if (wiredExec is NestedToolExecutor) {
-          return _delegateNestedHelp(wiredExec, cliArgs);
-        }
-        output.writeln(
-          HelpGenerator.generateCommandHelp(cmd, tool: _effectiveTool),
-        );
-        return const ToolResult.success();
-      }
-      // Check if it's an ambiguous prefix
-      final matches = _effectiveTool.findCommandsWithPrefix(cmdName);
-      if (matches.length > 1) {
-        output.writeln('Ambiguous command prefix ":$cmdName" matches:');
-        for (final match in matches) {
-          output.writeln('  :${match.name}');
-        }
-        return const ToolResult.failure('Ambiguous command prefix');
-      }
+      final commandHelp = await _commandHelp(cmdName, cliArgs);
+      if (commandHelp != null) return commandHelp;
       // Check help topics before giving up
       final topic = _effectiveTool.findHelpTopic(cmdName);
       if (topic != null) {

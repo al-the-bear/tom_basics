@@ -1,3 +1,17 @@
+## 2.38.0
+
+### Fixed — `<tool> help <command>` prints the command's help
+
+`buildkit help compiler` answered `Unknown help topic: compiler`, and
+`buildkit help :compiler` printed the tool overview: the bare `help` looked only
+at help topics and the built-in macro help. It now prints the command's help,
+the same text as `:<command> --help`, for a command's name, an alias, an
+unambiguous prefix and the `:name` form; an ambiguous prefix lists its
+commands. A help topic is still looked up first, and a name that is neither
+stays an unknown help topic. A wired nested command's help is taken from its
+tool, and a nested tool now answers `--nested help <command>` (the way a host
+asks for it) with that command's help instead of running its default command.
+
 ## 2.37.0
 
 ### Changed — no ANSI styling in pipes, files or under NO_COLOR
