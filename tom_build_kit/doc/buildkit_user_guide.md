@@ -228,8 +228,20 @@ while nothing changes.
 - `--force` (`-f`) runs the step in every project anyway and records the new state. It is also `:cleanup`'s flag;
   given anywhere on the command line it applies to all of them.
 - `--dry-run` skips an up-to-date project too, and records nothing.
-- What a step writes outside the project is not an input: a binary `:compiler` wrote and someone deleted is not
-  noticed. Run `buildkit :compiler --force` to write it again (from the build cache, below).
+- The binaries `:compiler` writes outside the project (the outputs of its `dart compile ... -o <path>` commands,
+  e.g. under `TOM_BINARY_PATH`) are kept with the step's entry, and each gets a record beside it,
+  `<binary>.buildkit.json`: the project, the buildkit version, the step's fingerprint, the time, and the binary's
+  size and sha256. The record is committed with the binary (in the binaries layer it says which build wrote it). A
+  project whose inputs did not change is compiled again when one of its binaries is missing, has no record, is
+  recorded by another build (another fingerprint: other inputs, another project, another machine), or was replaced
+  after its record was written:
+
+  ```text
+  $ buildkit :compiler
+    tom_build_kit: :compiler runs again, inputs unchanged but buildkit is missing
+  ```
+
+  A binary written inside the project is one of its inputs already and gets no record.
 - Every other command runs in every project each time.
 
 ### Build cache

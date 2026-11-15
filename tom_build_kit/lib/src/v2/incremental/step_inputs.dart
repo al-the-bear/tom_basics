@@ -16,7 +16,14 @@
 /// **The state** is `<project>/.dart_tool/buildkit/steps.json`: per step the
 /// hash of the fingerprint taken right after its last successful run, so the
 /// files the step itself wrote count as its inputs and the next run finds
-/// them unchanged. A failed run removes the entry. `.dart_tool` is gitignored,
+/// them unchanged. A failed run removes the entry.
+///
+/// **Outputs.** A step that writes files outside the project names them
+/// ([DeclaresStepInputs.stepOutputs]; `:compiler` its binaries). They are
+/// kept in the state with the fingerprint, and each gets a record beside it
+/// (`<output>.buildkit.json`, output_records.dart). An up-to-date project
+/// still runs when one of them is missing or is not the one its record and
+/// the fingerprint describe ([staleOutputReason]). `.dart_tool` is gitignored,
 /// and deleting it (`dart pub get` does not, `flutter clean` does) makes every
 /// step run again.
 ///
@@ -35,6 +42,7 @@ import 'package:yaml/yaml.dart';
 
 import '../../version.versioner.dart';
 import '../dart_sdk_version.dart';
+import 'output_records.dart';
 
 /// A step executor that declares what its result depends on.
 mixin DeclaresStepInputs on CommandExecutor {
@@ -51,6 +59,10 @@ mixin DeclaresStepInputs on CommandExecutor {
   /// text: its options, the configuration it reads. Equal text means equal
   /// configuration.
   String stepConfiguration(CommandContext context, CliArgs args);
+
+  /// The files outside [context]'s project the step's last [execute] there
+  /// wrote (absolute paths); none by default.
+  List<String> stepOutputs(CommandContext context) => const [];
 }
 
 /// The message of a project skipped because its inputs did not change.
@@ -87,22 +99,49 @@ class IncrementalStep extends CommandExecutor {
     final force = args.force || args.optionsFor(step)['force'] == true;
     if (!force) {
       final recorded = state.read(step);
-      if (recorded != null && recorded == await _fingerprint(context, args)) {
+      if (recorded != null &&
+          recorded.fingerprint == await _fingerprint(context, args)) {
+        final stale = [
+          for (final output in recorded.outputs)
+            ?staleOutputReason(output, recorded.fingerprint),
+        ];
+        if (stale.isEmpty) {
+          print(
+            '  ${context.name}: :$step $upToDateMessage (inputs unchanged; '
+            '--force runs it)',
+          );
+          return ItemResult.skipped(
+            path: context.path,
+            name: context.name,
+            message: upToDateMessage,
+          );
+        }
         print(
-          '  ${context.name}: :$step $upToDateMessage (inputs unchanged; '
-          '--force runs it)',
-        );
-        return ItemResult.skipped(
-          path: context.path,
-          name: context.name,
-          message: upToDateMessage,
+          '  ${context.name}: :$step runs again, inputs unchanged but '
+          '${stale.join('; ')}',
         );
       }
     }
     final result = await inner.execute(context, args);
     if (args.dryRun) return result;
     if (result.success && !result.skipped) {
-      state.write(step, await _fingerprint(context, args));
+      final fingerprint = await _fingerprint(context, args);
+      // An output inside the project is one of its inputs already (hashed
+      // into the fingerprint); a record there would change the next one.
+      final outputs = [
+        for (final output in inner.stepOutputs(context))
+          if (!p.isWithin(context.path, output) && File(output).existsSync())
+            output,
+      ];
+      for (final output in outputs) {
+        writeOutputRecord(
+          binary: output,
+          project: context.name,
+          buildkitVersion: BuildkitVersionInfo.version,
+          fingerprint: fingerprint,
+        );
+      }
+      state.write(step, fingerprint, outputs: outputs);
     } else if (!result.success) {
       state.remove(step);
     }
@@ -286,15 +325,37 @@ class StepState {
     }
   }
 
-  /// The fingerprint recorded for [step], or null.
-  String? read(String step) {
+  /// What is recorded for [step]: the fingerprint and the outputs it wrote,
+  /// or null.
+  ({String fingerprint, List<String> outputs})? read(String step) {
     final value = _load()[step];
-    return value is String ? value : null;
+    if (value is String) return (fingerprint: value, outputs: const []);
+    if (value is Map && value['fingerprint'] is String) {
+      final outputs = value['outputs'];
+      return (
+        fingerprint: value['fingerprint'] as String,
+        outputs: [
+          if (outputs is List)
+            for (final o in outputs)
+              if (o is String) o,
+        ],
+      );
+    }
+    return null;
   }
 
-  /// Records [fingerprint] for [step].
-  void write(String step, String fingerprint) =>
-      _save(_load()..[step] = fingerprint);
+  /// Records [fingerprint] for [step], and the files outside the project
+  /// the run wrote ([outputs]).
+  void write(
+    String step,
+    String fingerprint, {
+    List<String> outputs = const [],
+  }) => _save(
+    _load()
+      ..[step] = outputs.isEmpty
+          ? fingerprint
+          : {'fingerprint': fingerprint, 'outputs': outputs},
+  );
 
   /// Forgets [step].
   void remove(String step) {

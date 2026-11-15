@@ -557,6 +557,9 @@ Unit tests for argument parsing and command shorthand resolution.
 | BK-INC-8 | A later step rewrites an input | ✅ | `:compiler :versioner`: the second run compiles again (the version file changed) and skips the versioner; the third skips both. |
 | BK-INC-6 | The project's files | ✅ | In git: tracked and untracked files, not ignored ones or `.dart_tool`; outside git: every file outside `.dart_tool`, `build` and hidden folders. |
 | BK-INC-7 | Path dependencies | ✅ | The `source: path` packages of a lock, with absolute paths. |
+| BK-INC-9 | Binaries outside the project | ✅ | A `dart compile kernel ... -o ../out/alpha.dill` step: the record `alpha.dill.buildkit.json` and the step's outputs in `steps.json`; up to date while the binary matches; a deleted binary, a replaced binary, a record with another fingerprint and a deleted record each compile `alpha` again (naming why), `beta` stays up to date. |
+| BK-OUT-1 | Output paths of compile commands | ✅ | `test/output_records_test.dart`: `-o`, `--output=`, a quoted path; `mkdir`, `cp` and `echo` name none. |
+| BK-OUT-2 | The record and the check | ✅ | A written record holds format, version, project, buildkit, fingerprint, time, size; the check names another fingerprint, a replaced binary, an unreadable or missing record and a missing binary. |
 
 ### Build cache
 

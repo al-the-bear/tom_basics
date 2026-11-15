@@ -1,3 +1,16 @@
+## 1.30.7
+
+### Added — `:compiler` records the binaries it writes
+
+`:compiler` reads the outputs of its `dart compile ... -o <path>` commands and
+writes a record beside each binary outside the project, `<binary>.buildkit.json`
+(format `buildkit-output`: project, buildkit version, the step's fingerprint,
+time, size, sha256), and keeps the outputs with the step's entry in
+`.dart_tool/buildkit/steps.json`. A project whose inputs did not change is
+compiled again when one of its binaries is missing, has no record, is recorded
+by another build, or was replaced after its record was written. Before, a
+deleted or overwritten binary left the project 'up to date' until `--force`.
+
 ## 1.30.6
 
 ### Fixed — `:versioner` no longer stamps an empty Dart SDK version

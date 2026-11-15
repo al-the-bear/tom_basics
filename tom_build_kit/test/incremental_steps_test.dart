@@ -8,6 +8,7 @@
 @Timeout(Duration(minutes: 10))
 library;
 
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
@@ -205,6 +206,74 @@ void main() {
     expect(out, contains('alpha: :versioner up to date'));
     out = await both();
     expect(runs(), hasLength(2), reason: out);
+    expect(out, contains('alpha: :compiler up to date'));
+  });
+
+  test('BK-INC-9: a compiled binary outside the project that is missing, '
+      'replaced, or recorded by another build makes the project compile '
+      'again [2026-11-15]', () async {
+    write(
+      'alpha/buildkit.yaml',
+      'compiler:\n  compiles:\n    - commandline:\n'
+          '        - shell echo alpha >> ../runs.log\n'
+          '        - shell mkdir -p ../out\n'
+          '        - shell dart compile kernel %{file} -o ../out/alpha.dill\n'
+          '      files:\n        - bin/main.dart\n',
+    );
+    _git(root.path, ['add', '-A']);
+    _git(root.path, ['commit', '-q', '-m', 'a real compile']);
+    final binary = File(path('out/alpha.dill'));
+    final record = File(path('out/alpha.dill.buildkit.json'));
+
+    await compile();
+    expect(runs()..sort(), ['alpha', 'beta']);
+    expect(binary.existsSync(), isTrue);
+    final written = jsonDecode(record.readAsStringSync()) as Map;
+    expect(written['format'], 'buildkit-output');
+    expect(written['formatVersion'], 1);
+    expect(written['project'], 'alpha');
+    expect(written['size'], binary.lengthSync());
+    expect(written['sha256'], isA<String>());
+    expect(
+      jsonDecode(
+        File(path('alpha/.dart_tool/buildkit/steps.json')).readAsStringSync(),
+      )['compiler'],
+      {
+        'fingerprint': written['fingerprint'],
+        'outputs': [binary.path],
+      },
+    );
+
+    var out = await compile();
+    expect(runs(), hasLength(2), reason: out);
+    expect(out, contains('alpha: :compiler up to date'));
+
+    binary.deleteSync();
+    out = await compile();
+    expect(runs().skip(2), ['alpha'], reason: out);
+    expect(out, contains('alpha.dill is missing'));
+    expect(binary.existsSync(), isTrue);
+    expect(out, contains('beta: :compiler up to date'));
+
+    binary.writeAsStringSync('not the compiled program');
+    out = await compile();
+    expect(runs().skip(3), ['alpha'], reason: out);
+    expect(out, contains('alpha.dill was replaced after its record'));
+
+    final other = jsonDecode(record.readAsStringSync()) as Map
+      ..['fingerprint'] = 'another build';
+    record.writeAsStringSync(jsonEncode(other));
+    out = await compile();
+    expect(runs().skip(4), ['alpha'], reason: out);
+    expect(out, contains('alpha.dill was written by another build'));
+
+    record.deleteSync();
+    out = await compile();
+    expect(runs().skip(5), ['alpha'], reason: out);
+    expect(out, contains('alpha.dill has no alpha.dill.buildkit.json'));
+
+    out = await compile();
+    expect(runs(), hasLength(6), reason: out);
     expect(out, contains('alpha: :compiler up to date'));
   });
 

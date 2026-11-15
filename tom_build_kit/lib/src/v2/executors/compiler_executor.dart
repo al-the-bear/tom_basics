@@ -21,6 +21,7 @@ import '../../platform_utils.dart';
 import '../../script_utils.dart' as script_utils;
 import '../dart_sdk_version.dart';
 import '../incremental/compile_cache.dart';
+import '../incremental/output_records.dart';
 import '../incremental/step_inputs.dart';
 
 // =============================================================================
@@ -140,9 +141,18 @@ class CompilerExecutor extends CommandExecutor with DeclaresStepInputs {
   @override
   bool get handlesListMode => true;
 
+  /// Per project, the binaries its last run here compiled (absolute paths).
+  final Map<String, List<String>> _written = {};
+
+  /// The binaries the last run in [context]'s project compiled.
+  @override
+  List<String> stepOutputs(CommandContext context) =>
+      _written[context.path] ?? const [];
+
   @override
   Future<ItemResult> execute(CommandContext context, CliArgs args) async {
     final projectPath = context.path;
+    final written = _written[projectPath] = <String>[];
 
     // Check if project has compiler config
     if (!_hasCompilerConfig(projectPath)) {
@@ -395,6 +405,7 @@ class CompilerExecutor extends CommandExecutor with DeclaresStepInputs {
               cache: cache,
               inputsHash: inputsHash,
               projectName: context.name,
+              written: written,
             );
             if (success) {
               compilationCount++;
@@ -576,6 +587,7 @@ class CompilerExecutor extends CommandExecutor with DeclaresStepInputs {
     CompileCache? cache,
     String Function()? inputsHash,
     String projectName = '',
+    List<String>? written,
   }) async {
     final normalizedFilePath = p.normalize(file);
     final filePath = Platform.isWindows
@@ -638,6 +650,7 @@ class CompilerExecutor extends CommandExecutor with DeclaresStepInputs {
       ];
       if (cache!.restore(key, outputs)) {
         print('  $fileBasename ($targetPlatform): from the build cache');
+        written?.addAll(_compileOutputs(commands));
         return true;
       }
     }
@@ -671,8 +684,23 @@ class CompilerExecutor extends CommandExecutor with DeclaresStepInputs {
         print('  Warning: build cache not written: ${e.message} (${e.path})');
       }
     }
+    if (!args.dryRun) written?.addAll(_compileOutputs(commands));
     return true;
   }
+
+  /// The binaries the resolved pipeline [commands] compile, as absolute
+  /// paths (the commands run in the project directory).
+  List<String> _compileOutputs(List<String> commands) => [
+    for (final command in commands)
+      if (PipelineCommandPrefixParser.parse(command, toolPrefix: 'buildkit')
+          case final parsed? when parsed.prefix == PipelineCommandPrefix.shell)
+        for (final out in compileOutputPaths([
+          Platform.isWindows
+              ? appendExeToCompileOutput(parsed.body.trim())
+              : parsed.body.trim(),
+        ]))
+          p.normalize(p.join(Directory.current.path, out)),
+  ];
 
   /// The cache plan of the resolved pipeline [commands], or null when one
   /// of them is not a shell command the cache can stand in for.
