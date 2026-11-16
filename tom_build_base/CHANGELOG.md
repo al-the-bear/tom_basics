@@ -1,3 +1,14 @@
+## 2.39.3
+
+### Added — commands that need no build environment
+
+`CommandDefinition.needsEnvironment` (default true). A run made only of
+commands that declare it false (a listing that reads the tree and runs no
+tool) is not stopped by the `required-environment` check, which since 2.39.0
+runs before every command: the VS Code extension runs `buildkit :projects
+--all --json` from a process without `TOM_BINARY_PATH` or dart on its PATH,
+and the listing was refused.
+
 ## 2.39.2
 
 ### Fixed — a single-command tool without traversal that implements only `execute`

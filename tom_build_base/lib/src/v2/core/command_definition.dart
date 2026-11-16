@@ -77,6 +77,12 @@ class CommandDefinition {
   /// of them at once, each project's printed output kept together.
   final bool parallel;
 
+  /// Whether the command needs the tool's `required-environment` (the
+  /// binaries, variables and folders it runs). False for a command that only
+  /// reads the tree, such as a listing: a run made of such commands only is
+  /// not stopped by a missing build environment.
+  final bool needsEnvironment;
+
   const CommandDefinition({
     required this.name,
     required this.description,
@@ -94,6 +100,7 @@ class CommandDefinition {
     this.canRunStandalone = false,
     this.hidden = false,
     this.parallel = false,
+    this.needsEnvironment = true,
   });
 
   /// Get all options including traversal options if supported.

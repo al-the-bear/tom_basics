@@ -71,10 +71,10 @@ This document lists all testable features across `tom_build_base` and tracks tes
 | 56 | [Repeated Options](#56-repeated-options) | 8 | 8✅ | `v2/core/repeated_option_test.dart` | [→](#56-repeated-options) |
 | 57 | [Console Styling](#57-console-styling) | 6 | 6✅ | `v2/core/console_styling_test.dart` | [→](#57-console-styling) |
 | 58 | [Help Command](#58-help-command) | 8 | 8✅ | `v2/core/help_command_test.dart` | [→](#58-help-command) |
-| 59 | [Required Environment](#59-required-environment) | 7 | 7✅ | `v2/core/required_environment_test.dart` | [→](#59-required-environment) |
+| 59 | [Required Environment](#59-required-environment) | 8 | 8✅ | `v2/core/required_environment_test.dart` | [→](#59-required-environment) |
 | 60 | [Tool Sections Without Defines](#60-tool-sections-without-defines) | 4 | 4✅ | `tool_section_test.dart` | [→](#60-tool-sections-without-defines) |
 | 61 | [Master File Edits](#61-master-file-edits) | 3 | 3✅ | `v2/core/master_yaml_edit_test.dart` | [→](#61-master-file-edits) |
-| — | **Total** | **1117** | **1117✅** | | | | |
+| — | **Total** | **1118** | **1118✅** | | | | |
 
 > Every row links to a section, and the counts are measured from
 > `dart test --reporter json -j 1` rather than maintained by hand. Run it
@@ -1231,6 +1231,7 @@ it visited.
 | BB-ENV-5 | `%{version-constraint}` | ✅ | A missing binary's `error` gets the constraint substituted. |
 | BB-ENV-6 | `doctor` | ✅ | Reports the errors and how to fix them, runs no command. |
 | BB-ENV-7 | Working directory gone | ✅ | The checks find no workspace and do not throw. |
+| BB-ENV-8 | Commands that need no environment | ✅ | A run of `needsEnvironment: false` commands only (by name or alias) is not stopped; next to a command that needs it, the run is checked. |
 
 ---
 

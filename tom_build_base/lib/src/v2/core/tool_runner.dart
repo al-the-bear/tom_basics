@@ -666,6 +666,7 @@ class ToolRunner {
         !doctorRequested &&
         (cliArgs.isHelpMode ||
             cliArgs.nested ||
+            _onlyCommandsWithoutEnvironment(cliArgs) ||
             _isRequiredEnvironmentCheckBypassed());
 
     if (cliArgs.verbose) {
@@ -2606,7 +2607,18 @@ Options:
     return false;
   }
 
-  bool _isRequiredEnvironmentCheckBypassed() {
+  /// Whether the run names commands, and every one of them declares
+  /// `needsEnvironment: false` (it only reads the tree).
+  bool _onlyCommandsWithoutEnvironment(CliArgs cliArgs) {
+    if (cliArgs.commands.isEmpty) return false;
+    for (final name in cliArgs.commands) {
+      final command = tool.findCommand(name);
+      if (command == null || command.needsEnvironment) return false;
+    }
+    return true;
+  }
+
+    bool _isRequiredEnvironmentCheckBypassed() {
     final raw = Platform.environment['TOM_BOOTSTRAP_ALLOW_MISSING_SETUP'];
     if (raw == null) return false;
     final normalized = raw.trim().toLowerCase();

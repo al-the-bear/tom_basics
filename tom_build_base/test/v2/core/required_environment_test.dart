@@ -17,7 +17,10 @@ import 'package:tom_build_base/tom_build_base_v2.dart';
 ///
 /// A run whose working directory no longer exists has no workspace to check.
 ///
-/// Test IDs: BB-ENV-1..7.
+/// A command that declares `needsEnvironment: false` (a listing that runs no
+/// tool) is not checked when the run holds only such commands.
+///
+/// Test IDs: BB-ENV-1..8.
 
 const _tool = ToolDefinition(
   name: 'envtool',
@@ -30,6 +33,13 @@ const _tool = ToolDefinition(
       name: 'work',
       description: 'Runs once',
       requiresTraversal: false,
+    ),
+    CommandDefinition(
+      name: 'look',
+      description: 'Reads the tree only',
+      aliases: ['lk'],
+      requiresTraversal: false,
+      needsEnvironment: false,
     ),
   ],
 );
@@ -196,6 +206,27 @@ required-environment:
     }
     expect(result.success, isTrue, reason: out.toString());
     expect(out.toString(), contains('Doctor check passed.'));
+  });
+
+  test('BB-ENV-8: a command that needs no environment (a listing) runs '
+      'despite an error; next to one that does, the run is checked '
+      '[2026-11-17]', () async {
+    master(failing);
+    final look = _Recorder();
+    Future<ToolResult> runWith(List<String> args) => ToolRunner(
+      tool: _tool,
+      output: out,
+      executors: {'work': work, 'look': look},
+    ).run(args);
+
+    expect((await runWith([':look'])).success, isTrue, reason: '$out');
+    expect((await runWith([':lk'])).success, isTrue, reason: '$out');
+    expect(look.runs, 2);
+    expect('$out', isNot(contains('Installation requirements not met')));
+
+    expect((await runWith([':look', ':work'])).success, isFalse);
+    expect(work.runs, 0);
+    expect('$out', contains('Installation requirements not met'));
   });
 
   test('BB-ENV-6: doctor reports errors and warnings and how to fix them '
