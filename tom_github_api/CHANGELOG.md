@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.5.0
+
+- `actionsEnabled`: whether GitHub Actions is on for a repository (its Actions
+  permission), so a caller can refuse before dispatching a workflow that would
+  never run.
+- `latestWorkflowRun` and `getWorkflowRun`, with `GitHubWorkflowRun` (id,
+  status, conclusion, creation time, URL, event): find the run a dispatch
+  started and poll it until it completed.
+
 ## 1.4.0
 
 - `GitHubGitIdentity` and `createCommit`'s `author` and `committer`: a commit

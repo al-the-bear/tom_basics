@@ -10,6 +10,7 @@ import 'http/github_retry_policy.dart';
 import 'models/github_conditional.dart';
 import 'models/github_credential.dart';
 import 'models/github_webhook.dart';
+import 'models/github_workflow_run.dart';
 import 'models/github_comment.dart';
 import 'models/github_issue.dart';
 import 'models/github_graphql.dart';
@@ -840,5 +841,49 @@ class GitHubApiClient {
         if (inputs != null) 'inputs': inputs,
       },
     );
+  }
+
+  /// Whether GitHub Actions is enabled on the repository (its Actions
+  /// permission). A workflow dispatched on a repository with Actions off
+  /// never runs.
+  Future<bool> actionsEnabled({
+    String? repoSlug,
+    String? owner,
+    String? repo,
+  }) async {
+    final (o, r) = _parseSlug(repoSlug, owner, repo);
+    final json = await _http.get('/repos/$o/$r/actions/permissions');
+    return json['enabled'] == true;
+  }
+
+  /// The newest run of [workflowId] (started by [event] when given), or
+  /// null when it has none.
+  Future<GitHubWorkflowRun?> latestWorkflowRun({
+    String? repoSlug,
+    String? owner,
+    String? repo,
+    required String workflowId,
+    String? event,
+  }) async {
+    final (o, r) = _parseSlug(repoSlug, owner, repo);
+    final json = await _http.get(
+      '/repos/$o/$r/actions/workflows/$workflowId/runs',
+      queryParams: {'per_page': '1', if (event != null) 'event': event},
+    );
+    final runs = json['workflow_runs'] as List<dynamic>? ?? const [];
+    if (runs.isEmpty) return null;
+    return GitHubWorkflowRun.fromJson(runs.first as Map<String, dynamic>);
+  }
+
+  /// The workflow run [runId].
+  Future<GitHubWorkflowRun> getWorkflowRun({
+    String? repoSlug,
+    String? owner,
+    String? repo,
+    required int runId,
+  }) async {
+    final (o, r) = _parseSlug(repoSlug, owner, repo);
+    final json = await _http.get('/repos/$o/$r/actions/runs/$runId');
+    return GitHubWorkflowRun.fromJson(json);
   }
 }
