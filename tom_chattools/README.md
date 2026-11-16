@@ -12,7 +12,7 @@ messaging platforms.
 
 `tom_chattools` gives you **one API** to send and receive chat messages,
 regardless of the platform behind it. You describe a connection with
-[`ChatSettings`](#chatsettings), call `ChatApi.connect(...)`, and from then on
+[`ChatSettings`](doc/chattools.md#22-settings), call `ChatApi.connect(...)`, and from then on
 the same `sendMessage` / `getMessages` / `onMessage` surface works no matter
 which messenger you target.
 
@@ -238,7 +238,7 @@ export TELEGRAM_CHAT_ID="987654321"
 
 `getMessages` is the block-and-wait path. It polls the platform until either
 `maxWait` elapses or messages arrive after `minWait`, then returns a
-[`ChatResponse`](#chatresponse).
+`ChatResponse`.
 
 ```dart
 final api = await ChatApi.connect(ChatSettings.telegram(token, usePolling: true));
@@ -413,6 +413,9 @@ other messengers as their implementations land.
 
 ## Further documentation
 
+- [doc/chattools.md](doc/chattools.md) — the user guide: connecting, the poll
+  and `getMessages` matching, what a received message holds, sending and
+  attachments, errors and limits.
 - [LICENSE](LICENSE) — BSD-3-Clause licence text.
 - [Telegram Bot API](https://core.telegram.org/bots/api) — the underlying API.
 - [BotFather commands](https://core.telegram.org/bots#6-botfather) — bot administration.

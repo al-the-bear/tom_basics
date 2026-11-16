@@ -56,7 +56,7 @@ pubspec.lock ──▶ DependencyResolver ──▶ which deps are cacheable?
 ```
 
 The `<tool-cache>` root is the **shared Tom tool-cache directory** resolved by
-`ToolCacheLocator` (see [The shared tool cache](#the-shared-tool-cache)), so the
+`ToolCacheLocator` (see [The shared tool cache](#the-workspace-tool-cache)), so the
 same hosted-package summary is generated once and reused across every project
 and tool on the machine.
 
@@ -89,7 +89,7 @@ Bundles of closures no project uses any more are reclaimed by
 
 ```yaml
 dependencies:
-  tom_analyzer_shared: ^0.3.0
+  tom_analyzer_shared: ^0.13.1
 ```
 
 Or from the command line:
@@ -151,7 +151,7 @@ Future<void> analyse(String projectRoot) async {
 
 `runSummaryCacheStage` resolves dependencies from `pubspec.lock`, builds any
 summaries not already in the shared tool cache's `analyzer-cache/` sub-directory
-(see [The shared tool cache](#the-shared-tool-cache)), and returns a
+(see [The shared tool cache](#the-workspace-tool-cache)), and returns a
 `SummaryCacheResult`. On the first run it generates the cache; on later runs it
 finds everything present and returns immediately. It returns `null` when no
 dependencies could be resolved or no summaries are available, so the
@@ -161,9 +161,17 @@ null-aware `result?.…` is the intended usage.
 
 ## Example projects
 
-This package is consumed *inside* code-generator CLIs rather than run
-standalone, so it ships no `example/` program. The worked sample lives in the
-samples folder:
+[`example/tom_analyzer_shared_example.dart`](example/tom_analyzer_shared_example.dart)
+is a runnable program. It creates a small project in a temporary directory and
+shows dependency resolution, the cache partition and file names, closure
+fingerprints, a grouped bundle build and summary stamps, writing nothing
+outside the temporary directory:
+
+```sh
+dart run example/tom_analyzer_shared_example.dart
+```
+
+A larger worked sample lives in the samples folder:
 
 | Sample | Demonstrates |
 | ------ | ------------ |
@@ -448,6 +456,10 @@ Sibling foundation packages:
 
 ## Further documentation
 
+- [User guide](doc/analyzer_shared.md) — concepts, the cache layout, every
+  stage of the pipeline, cleanup, errors and limits.
+- [Example](example/tom_analyzer_shared_example.dart) — a runnable walk
+  through the API on a temporary project.
 - [`../README.md`](../README.md) — the `tom_ai/basics` package map.
 - The `analyzer` package's `AnalysisContextCollectionImpl` is the consumer of
   this package's output; its `sdkSummaryPath` / `librarySummaryPaths` parameters
@@ -457,7 +469,7 @@ Sibling foundation packages:
 
 ## Status
 
-- **Version:** 0.3.0
+- **Version:** 0.13.1
 - **Tests:** a `test/summary/` suite covering dependency resolution, the cache
   manager, summary generation, and an end-to-end integration test
   (`dart test` / `testkit :test`).

@@ -475,6 +475,9 @@ its outbound calls, and `ServerDiscovery` to locate its peers.
 
 ## Further documentation
 
+- [`doc/basics_network.md`](doc/basics_network.md) — the user guide: how the
+  retry loop decides, what discovery probes and in which order, options,
+  results, errors and limits.
 - [`example/tom_basics_network_example.dart`](example/tom_basics_network_example.dart)
   — runnable demonstration of the retry schedule.
 - [`test/tom_basics_network_test.dart`](test/tom_basics_network_test.dart) —

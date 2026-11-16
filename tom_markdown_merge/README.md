@@ -21,7 +21,7 @@ hand-written prose; never regenerating leaves the file stale.
 the content it owns in an *insert marker* (an HTML comment, invisible in any
 Markdown preview); on the next run it refreshes only those regions and preserves
 everything else verbatim — in document order. A single class,
-[`MarkdownMerge`](#markdownmerge), gives you:
+[`MarkdownMerge`](doc/markdown_merge.md#api), gives you:
 
 - **`merge`** — refresh the regions a generator currently owns, leaving author
   text, override regions, and foreign markers untouched.
@@ -37,7 +37,7 @@ The four content categories the merge distinguishes:
 | **Managed** | `<!--$insert:tom.managed.<key>-->` | Refreshed when the generator owns `<key>` |
 | **Override** | `<!--$insert:tom.override.<key>-->` | Never touched; **wins** over a managed region of the same key |
 | **Foreign** | `<!--$insert:<other>-->` | Left untouched (belongs to a different tool) |
-| **Free text** | _(no marker)_ | Preserved verbatim, in order |
+| **Free text** | *(no marker)* | Preserved verbatim, in order |
 
 The merge is built on `tom_doc_specs`' `InsertMarkerParser`/`InsertMarkerProcessor`
 rather than a hand-written Markdown parser, so marker grammar and edge cases
@@ -50,7 +50,7 @@ rather than a hand-written Markdown parser, so marker grammar and edge cases
 > is the reconciled form of the `@tom:managed` / `@tom:override` concept from
 > the website spec §6.2: the shared engine could not parse the `@tom:` spelling,
 > so the variable prefix carries the same intent.
-
+>
 > **Region-aware, not headline-aware.** This package merges *marked regions*. If
 > you need to shift Markdown *headline levels* when concatenating documents,
 > that is a separate concern — see [Related tooling](#related-tooling).
@@ -139,11 +139,8 @@ reader, [`flatten`](#flatten--display-form) strips them.
 | [flatten — display form](#flatten--display-form) | Strip markers for rendering |
 | [Override wins](#override-wins) | Author content supersedes generated |
 | [Inspecting & building regions](#inspecting--building-regions) | Keys + block builders |
+| [`example/tom_markdown_merge_example.dart`](example/tom_markdown_merge_example.dart) | One runnable program: build regions, merge, override wins, display form, a malformed document refused. Run it with `dart run example/tom_markdown_merge_example.dart`. |
 | [`test/markdown_merge_test.dart`](test/markdown_merge_test.dart) | 19 worked cases covering every rule |
-
-> This package has no standalone `example/` program — it is a library consumed
-> by generators. The runnable test suite is the executable reference for every
-> rule below.
 
 ---
 
@@ -260,12 +257,13 @@ on every later run.
 ```text
 package:tom_markdown_merge/tom_markdown_merge.dart
 │
-└── MarkdownMerge                         (the entire public surface)
+├── managedPrefix / overridePrefix        top-level constants:
+│                                         'tom.managed.' / 'tom.override.'
+└── MarkdownMerge                         (the class)
     ├── merge(current, generated)         refresh owned managed regions
     ├── flatten(markdown)                 strip markers → display form
     ├── managedKeys / overrideKeys        region inspection
-    ├── managedBlock / overrideBlock      emit fresh marker blocks
-    └── managedPrefix / overridePrefix    'tom.managed.' / 'tom.override.'
+    └── managedBlock / overrideBlock      emit fresh marker blocks
             │
             └── delegates marker parsing/processing to
                 package:tom_doc_specs
@@ -281,7 +279,7 @@ package:tom_markdown_merge/tom_markdown_merge.dart
 | `flatten` | Marker-stripping display projection |
 | `managedKeys` / `overrideKeys` | Report a document's declared region keys |
 | `managedBlock` / `overrideBlock` | Construct fresh marker blocks |
-| `managedPrefix` / `overridePrefix` | The `tom.managed.` / `tom.override.` variable prefixes |
+| `managedPrefix` / `overridePrefix` (top-level constants) | The `tom.managed.` / `tom.override.` variable prefixes |
 
 `MarkdownMerge` holds no state and does no I/O: you pass strings and get strings
 back. Reading and writing the files is the caller's concern.
@@ -315,6 +313,10 @@ regions of the READMEs and doc pages they produce.
 
 ## Further documentation
 
+- [`doc/markdown_merge.md`](doc/markdown_merge.md) — the user guide: concepts,
+  the API with examples, behaviour in detail and limits.
+- [`example/tom_markdown_merge_example.dart`](example/tom_markdown_merge_example.dart)
+  — a runnable program covering every operation.
 - [LICENSE](LICENSE) — BSD-3-Clause licence text.
 - [`test/markdown_merge_test.dart`](test/markdown_merge_test.dart) — 19 worked
   cases that double as the executable specification.

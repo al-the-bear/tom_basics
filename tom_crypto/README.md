@@ -186,6 +186,7 @@ needs nothing but the values you already stored.
 
 | Example | What it shows |
 | ------- | ------------- |
+| [`example/tom_crypto_example.dart`](example/tom_crypto_example.dart) | One offline program over the whole surface: hash and verify a password, generate RSA keys, encrypt, sign and verify, issue and read a JWT with an encrypted claim, hold a secret as a protected value. Run it with `dart run example/tom_crypto_example.dart`. |
 | [`tom_crypto_sample`](../tom_basics_samples/tom_crypto_sample/) | The full article-grade walkthrough — password hashing, JWT issue/verify/encrypt, and RSA encryption/signing/keygen — as seven runnable, offline examples with inline expected output. |
 | [Quick start](#quick-start) | Hash and verify a password |
 | [Password hashing](#password-hashing) | Storage format and cost tuning |
@@ -455,6 +456,8 @@ BSD-3-Clause as in [LICENSE](LICENSE).
 
 ## Further documentation
 
+- [`doc/crypto.md`](doc/crypto.md) — the module guide, with examples for each area.
+- [`example/tom_crypto_example.dart`](example/tom_crypto_example.dart) — a runnable, offline tour of the package.
 - [LICENSE](LICENSE) — BSD-3-Clause licence text.
 - Source library docs — every public type and function in `lib/src/` carries
   dartdoc comments with usage examples.
@@ -467,7 +470,7 @@ BSD-3-Clause as in [LICENSE](LICENSE).
 
 ## Status
 
-Stable (`1.1.0`). Public API covers password hashing, JWT issuance/parsing, RSA
+Stable (`1.5.0`). Public API covers password hashing, JWT issuance/parsing, RSA
 encryption/signatures, RSA key management, and secure random bytes.
 `dart analyze` is clean. A
 runnable, article-grade project lives in the

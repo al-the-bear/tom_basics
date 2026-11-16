@@ -1,14 +1,60 @@
-# tom_git
+# Tom Git
 
-Published on pub.dev as [`tom_git` 0.1.0](https://pub.dev/packages/tom_git).
+Published on pub.dev as [`tom_git` 0.2.0](https://pub.dev/packages/tom_git).
+
+> Tom Git is part of the **Tom framework** by al-the-bear.
+> Distributed under the terms in this package's license — see
+> [LICENSE](LICENSE).
 
 Git in pure Dart: objects, packs and the smart HTTP protocol, enough to clone,
 commit and push with **no git binary** — for applications that ship to
 machines without one, and for the web.
 
-License: BSD-3-Clause.
+---
 
-## What it does
+## Overview
+
+`tom_git` implements the part of git an application needs to keep data in a
+git repository without shelling out to `git`: the object model, loose objects
+and packfiles, editing a tree and committing without an index or a working
+tree, and fetching and pushing over smart HTTP. The default entry point uses
+no `dart:io`, so the same code runs on the desktop, on a server, on mobile and
+in a web page; a second entry point adds repositories on disk in git's own
+layout, which git reads and which read what git wrote.
+
+What it deliberately does not do: check anything out. There is no working tree
+and no index — a change is a set of paths to write or delete, turned into a new
+tree and a commit.
+
+---
+
+## Installation
+
+```yaml
+dependencies:
+  tom_git: ^0.2.0
+```
+
+or
+
+```bash
+dart pub add tom_git
+```
+
+**SDK requirement:** Dart `^3.10.0`. No native code and no git executable are
+needed; the runtime dependencies are pure Dart packages (see
+[Dependencies](#dependencies)).
+
+```dart
+import 'package:tom_git/tom_git.dart'; // everything, all platforms
+import 'package:tom_git/io.dart';      // repositories on disk (dart:io)
+```
+
+---
+
+## Features
+
+### What it does
 
 - **Objects.** Blobs, trees and commits, encoded and decoded byte-for-byte as
   git writes them; ids are SHA-1 over git's framing (`GitObjectId.hash`).
@@ -39,8 +85,11 @@ License: BSD-3-Clause.
   and says which branches a working tree has checked out, because this
   library never updates a working tree or the index: a commit moved onto a
   checked-out branch would leave that tree describing the commit before.
+- **A git server in memory for tests.** `GitMemoryServer`
+  (`testing.dart`) serves a repository over the smart HTTP protocol through an
+  `http.Client`, so a suite exercises fetch and push without a network.
 
-## Supported subset
+### Supported subset
 
 | Area | Supported | Not supported |
 | --- | --- | --- |
@@ -49,9 +98,9 @@ License: BSD-3-Clause.
 | Push | branch create, update and delete; whole-object packs | delta compression on push, atomic multi-ref push, push options |
 | Objects | blob, tree, commit; SHA-1 | annotated tags (stored, never interpreted), SHA-256 repositories, signed commits (kept verbatim, never made) |
 | Storage | loose objects, packs + v2 index, loose and packed refs | the index file, a working tree, reflogs, `gc`/repacking, alternates, commit-graph |
-| Large files | — | Git-LFS (a pointer is an ordinary blob here; `tom_core_storage` refuses it by name) |
+| Large files | — | Git-LFS (a pointer is an ordinary blob here) |
 
-## Entry points
+### Entry points
 
 | Import | Holds | Platforms |
 | --- | --- | --- |
@@ -59,14 +108,61 @@ License: BSD-3-Clause.
 | `package:tom_git/io.dart` | `gitOpenDirectory`, `GitLocalRepository`, `GitDirectoryObjectStore`, `GitDirectoryRefStore` | desktop, server, mobile |
 | `package:tom_git/testing.dart` | `GitMemoryServer`: a smart HTTP server in memory, reached through an `http.Client` — for suites that must not touch a network | all |
 
-## Example
+---
 
-`example/tom_git_example.dart` fetches from a server in memory, commits a
-file and pushes it:
+## Quick start
 
-```bash
-dart run example/tom_git_example.dart
+A repository in memory: write two files, commit them, point a branch at the
+commit and read the files back.
+
+```dart
+import 'dart:convert';
+
+import 'package:tom_git/tom_git.dart';
+
+Future<void> main() async {
+  final repo = GitRepository.memory();
+
+  // A tree with two files, and a commit of it — no index, no working tree.
+  final tree = await repo.editTree(
+    null,
+    writes: {
+      'README.md': utf8.encode('# Notes\n'),
+      'notes/today.md': utf8.encode('- try tom_git\n'),
+    },
+  );
+  final commit = await repo.commit(
+    tree: tree,
+    parents: [],
+    message: 'First notes',
+    author: GitPerson(name: 'Ada', email: 'ada@example.com', seconds: 0),
+  );
+  await repo.refs.write('refs/heads/main', commit);
+
+  // Read it back through the branch.
+  final tip = (await repo.refs.read('refs/heads/main'))!;
+  final root = (await repo.readCommit(tip)).tree;
+  for (final file in await repo.listFiles(root, '')) {
+    print(file.path); // README.md, then notes/today.md
+  }
+  final entry = await repo.entryAt(root, 'notes/today.md');
+  print(utf8.decode(await repo.readBlob(entry!.id))); // - try tom_git
+  print(tip.hex); // 268f93b03724e800fcfee28db7d61b2feb982a42
+}
 ```
+
+The commit id is the one git computes for the same tree, author and message.
+
+---
+
+## Example projects
+
+| Location | What it shows |
+| --- | --- |
+| [`example/tom_git_example.dart`](example/tom_git_example.dart) | Fetches from a server in memory, commits a file and pushes it (`dart run example/tom_git_example.dart`). |
+| [`test/`](test/) | The offline suite: objects, packs against fixtures made by real git, the directory layout, both protocol versions, a dart2js compile. |
+
+---
 
 ## Testing
 
@@ -86,6 +182,8 @@ scratch repository, `test/live_gitea_test.dart` against a Gitea it starts in
 Docker. Each lists, clones, commits, pushes, loses a race and deletes, on a
 branch of its own that is removed at the end.
 
+---
+
 ## Dependencies
 
 | Dependency | Kind | For |
@@ -97,7 +195,25 @@ branch of its own that is removed at the end.
 | `path` | runtime | paths on disk (`io.dart`) |
 | `test`, `lints`, `tom_test_support` | dev | the suite, the live contract and the Gitea fixture |
 
+---
+
+## Further documentation
+
+| Document | What it covers |
+| --- | --- |
+| [`doc/git.md`](doc/git.md) | The user guide: objects and ids, editing trees and committing, refs, fetch and push, repositories on disk, the test server, errors and limits. |
+| [`example/`](example/) | The runnable example. |
+| [`CHANGELOG.md`](CHANGELOG.md) | What changed in each version. |
+
+---
+
 ## Status
 
-Version **0.1.0**. The offline suite and both live suites pass with no git
-binary on PATH.
+Version **0.2.0**, published on pub.dev. The offline suite and both live
+suites pass with no git binary on PATH.
+
+---
+
+## License
+
+BSD-3-Clause — see [LICENSE](LICENSE).

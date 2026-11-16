@@ -6,3 +6,13 @@ name: tools
 description: >-
   General tools library.
 license: BSD-3-Clause
+
+doccheck:
+  exclude:
+    example: >-
+      A command-line tool with no library API: lib/key_generator.dart is a
+      script run with `dart run`, and the README's Quick start and Usage are
+      its examples.
+    doc: >-
+      One script; the README (Overview, Usage, Handling the output) is its
+      whole documentation, and RsaKeyHelper is documented in tom_crypto.

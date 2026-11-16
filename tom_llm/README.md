@@ -150,6 +150,19 @@ Future<void> main() async {
 }
 ```
 
+## Example
+
+[`example/tom_llm_example.dart`](example/tom_llm_example.dart) writes an
+in-process provider that echoes its prompt and walks the contract with it: a
+run as a stream of events, the same run as its answer text and as its call
+report, an event's round trip through a map, the session trail the provider
+keeps and its fold into trail entries, a failed run surfacing as an
+`LlmTransportException`, and `LlmUnavailableProvider`. No model is called.
+
+```sh
+dart run example/tom_llm_example.dart
+```
+
 ## Limits
 
 - **No transport.** A provider brings its own: an HTTP client, a VS Code
@@ -159,6 +172,14 @@ Future<void> main() async {
 - **No anchor of its own.** `WirePrompt.anchorHash` carries whatever anchor
   the producer wrapped the prompt in; an application without one passes an
   empty hash.
+
+## Documentation
+
+- [`doc/contract.md`](doc/contract.md) — the provider contract in detail: the
+  rules every provider keeps, the request, the run, accounting, sessions and
+  trails, and the Node search.
+- [`example/`](example/) — the runnable example described above.
+- [`CHANGELOG.md`](CHANGELOG.md) — what each version changed.
 
 ## Dependencies
 

@@ -1,15 +1,25 @@
-# tom_test_support
+# Tom Test Support
 
-Published on pub.dev as [`tom_test_support` 0.6.2](https://pub.dev/packages/tom_test_support).
+Published on pub.dev as [`tom_test_support` 0.8.1](https://pub.dev/packages/tom_test_support).
+
+> Tom Test Support is part of the **Tom framework** by al-the-bear.
+> Distributed under the terms in this package's license — see
+> [LICENSE](LICENSE).
+
+Test support for Tom suites: roots by landmark, a workspace clone for build-tool
+tests, the Dart CLI, live-GitHub gating, a Docker Gitea and a licence audit.
+
+---
+
+## Overview
 
 Test support any Tom package's suite can use: the repository and workspace
 roots found by landmark, the workspace clone the build tools' suites run on,
-the Dart CLI a test may spawn, a wait for a
-network-backed action, the live-GitHub credential contract, a disposable
-Gitea in Docker for live git suites, and the driver that runs a Flutter
-package's browser-only tests on Chrome from its ordinary suite.
-
-License: BSD-3-Clause.
+the Dart CLI a test may spawn, waits for a frame-driven or network-backed
+condition, the live-GitHub credential contract, a disposable Gitea in Docker
+for live git suites, a CORS proxy for browser suites, the driver that runs a
+Flutter package's browser-only tests on Chrome from its ordinary suite, process
+trees for scoped cleanup, and a licence audit of what an application links.
 
 A package's `test/` directory cannot be imported from another package, so a
 helper two packages' suites need is in a `lib/` that each of them names as a
@@ -21,7 +31,46 @@ from resolving it. The Flutter half — `tester.pumpUntil(finder)` — is
 `WidgetTester`. The default entry point uses `dart:io`, so it does not compile
 for the web; nothing here runs in a browser.
 
-## What is here
+No token is held in a printable form: a `TomGitHubLiveConfig` prints its
+repositories and `<withheld>`, and every sentence the contract writes names a
+variable, never its value.
+
+---
+
+## Installation
+
+As a dev dependency of the package whose suite uses it:
+
+```yaml
+dev_dependencies:
+  tom_test_support: ^0.8.1
+```
+
+or
+
+```bash
+dart pub add --dev tom_test_support
+```
+
+A package inside this workspace may name it by path instead, e.g. from a
+package two folder levels below the workspace root:
+
+```yaml
+dev_dependencies:
+  tom_test_support:
+    path: ../../tom_ai/basics/tom_test_support
+```
+
+**SDK requirement:** Dart `^3.10.0`. **Runtime dependencies:** `http` (the
+Gitea server), `path`, `tom_github_api` (the credential reading of the live
+contract) and `yaml` (the licence audit).
+
+Each library is its own entry point, so a suite imports only what it uses;
+`package:tom_test_support/tom_test_support.dart` exports all of them.
+
+---
+
+## Features
 
 | Library | What it is |
 | --- | --- |
@@ -34,20 +83,38 @@ for the web; nothing here runs in a browser.
 | `browser_suite.dart` | `TomBrowserSuite`: a package's `@TestOn('browser')` files in `test/browser/` are skipped silently by an ordinary `flutter test`, so one VM test drives them with `flutter test --platform chrome` on the SDK it runs under (`FLUTTER_ROOT`). `skipReason` names what would make it run (`TOM_SKIP_BROWSER_TESTS=1`, no SDK, no directory); `failureOf` reports a failing exit, and a run that exited 0 without `All tests passed`, which is what a fully-skipped directory looks like. `run(defines:)` hands values the VM test knows only at run time — the address and token of a server it started — to the page as `--dart-define`s; `directory` names another folder, such as a live browser suite kept apart from the ordinary one. |
 | `cors_proxy.dart` | `TomCorsProxy`: a reverse proxy on a loopback port that adds the CORS headers a web page needs and answers its preflight, for a browser suite against a server that sends none. Gitea's own `[cors]` setting covers its `/api` routes and not git's smart-HTTP endpoints, so a git server a page can reach is one behind such a proxy. |
 | `process_tree.dart` | `processTreeOf` (a process and every descendant, walked with `pgrep -P`) and `aliveAmong`: what a test or a test runner spawned, so its cleanup reaps that tree and nothing else. A process is never matched by its name — reaping every `flutter_tester` that appeared during a run kills the hosts of whatever runs beside it. POSIX only; `processTreeOf` throws on Windows rather than answer with an empty set. |
-| `workspace_clone.dart` | `TomWorkspaceClone`: the one clone of the workspace per machine (`<parent>/<name>_testclone`, or `TOM_TEST_WORKSPACE`) that the build tools' suites run on instead of the live tree. `acquire()` takes the machine's lock (a second run waits, then names the holder), creates the clone on first use, resets it and brings every repository — superproject and submodules, recursively, laid out as the live ones with `.git` files into `.git/modules` — to the commit and branch its LIVE repository has checked out, fetched from that repository on this machine (unpushed commits included, uncommitted edits not); `release()` resets it again: the recorded commit, `git reset --hard`, `git clean -fd`, ignored files such as `.dart_tool/` kept. `origin` carries the live URL, pushing is disabled. `findLiveRoot` is `tomFindWorkspaceRoot`; `tomRequireWorkspaceClone` lets a helper refuse to change anything but a clone. |
+| `workspace_clone.dart` | `TomWorkspaceClone`: the one clone of the workspace per machine (`<parent>/<name>_testclone`, or `TOM_TEST_WORKSPACE`) that the build tools' suites run on instead of the live tree. `acquire()` takes the machine's lock (a second run waits, then names the holder), creates the clone on first use, resets it and brings every repository — superproject and submodules, recursively, laid out as the live ones with `.git` files into `.git/modules` — to the commit and branch its live repository has checked out, fetched from that repository on this machine (unpushed commits included, uncommitted edits not); `release()` resets it again: the recorded commit, `git reset --hard`, `git clean -ffd`, ignored files such as `.dart_tool/` kept. `origin` carries the live URL, pushing is disabled. `findLiveRoot` is `tomFindWorkspaceRoot`; `tomRequireWorkspaceClone` lets a helper refuse to change anything but a clone. |
+| `licence_audit.dart` | A licence audit of the packages an application links: `tomResolvedPackages` reads its package configuration, `tomLinkedPackages` walks its `dependencies:` (not dev dependencies), `tomAuditLicences` checks that each carries a `LICENSE` the application admits (`TomLicence.permissive`, optionally with `TomLicence.mpl2`). Licences are recognised by their operative sentences (`tomClassifyLicence`); the GNU family (`tomIsGplFamily`) is never admitted. |
 | `tom_test_support.dart` | All of them. |
 
-No token is held in a printable form: a `TomGitHubLiveConfig` prints its
-repositories and `<withheld>`, and every sentence the contract writes names a
-variable, never its value.
+---
 
-## Using it
+## Quick start
 
-```yaml
-dev_dependencies:
-  tom_test_support:
-    path: ../../tom_ai/basics/tom_test_support
+```dart
+import 'package:tom_test_support/tom_test_support.dart';
+
+void main() {
+  // The repository this example runs in, found by its marker file.
+  print(tomFindRepositoryRoot().path); // /…/tom_ai/basics
+
+  // Whether a live suite would run here, and what its skip would say.
+  final live = TomGitHubLiveConfig.fromEnvironment();
+  print(live ?? tomLiveSkipReason()); // set GITHUB_TEST_TOKEN and TOM_LIVE …
+
+  // The Dart CLI a test may spawn, never the runner taken on trust.
+  print(tomDartCli() ?? tomMissingDartReason('run this example')); // /…/bin/dart
+}
 ```
+
+This is [`example/tom_test_support_example.dart`](example/tom_test_support_example.dart);
+it must run inside a repository that has a `tom_repository.yaml` above it:
+
+```bash
+dart run example/tom_test_support_example.dart
+```
+
+### Gating a live suite
 
 ```dart
 import 'package:test/test.dart';
@@ -67,13 +134,35 @@ Run one live suite directly with both variables set:
 GITHUB_TEST_TOKEN=… TOM_LIVE=1 dart test test/github_storage_live_test.dart
 ```
 
-## Example
+---
 
-`example/tom_test_support_example.dart` finds the repository it runs in, says
-whether a live suite would run, and locates the Dart CLI:
+## Documentation
 
-```bash
-dart run example/tom_test_support_example.dart
-```
+| Document | What it covers |
+| -------- | -------------- |
+| [`doc/test_support.md`](doc/test_support.md) | The user guide — every library with examples: roots, the Dart CLI, waits, the live-GitHub contract, Gitea, browser suites, the CORS proxy, process trees, the workspace clone and the licence audit; errors and limits. |
+| [`example/`](example/) | The runnable quick start. |
+| [`CHANGELOG.md`](CHANGELOG.md) | What changed in each version. |
 
-Status: 0.2.0 — green under `dart test`, with no network and no credential.
+### Related packages
+
+| Package | Relationship |
+| ------- | ------------ |
+| [`tom_github_api`](../tom_github_api/) | Reads the credential the live contract classifies. |
+| `tom_reusable_ui` | Binds `tomPumpUntil` to a `WidgetTester` (`package:tom_reusable_ui/testing.dart`). |
+
+---
+
+## Status
+
+- **Version:** 0.8.1, published on pub.dev.
+- **SDK:** Dart `^3.10.0`.
+- **Tests:** the suite under `test/` runs with `testkit :test` (or
+  `dart test`) and needs no GitHub credential; the process-tree tests are
+  skipped on Windows, where `pgrep` and `ps` are not available.
+
+---
+
+## License
+
+BSD-3-Clause — see [LICENSE](LICENSE) for details.

@@ -72,6 +72,42 @@ browser build.
 | `TomIndex`, `TomIndexEntry`, `TomIndexQuery` | The index contract and its one `query`. |
 | `TomBacklinkIndex`, `TomRefSource`, `TomRefSlot`, `TomBackref` | The reverse index of references and how a document is read. |
 
+## Quick start
+
+A condition is evaluated over any property lookup — here a plain map per
+record — and a sorter orders records by one property:
+
+```dart
+import 'package:tom_query/tom_query.dart';
+
+void main() {
+  final records = <Map<String, Object>>[
+    {'id': 'a', 'status': 'open', 'tags': ['docs/api'], 'rank': 2},
+    {'id': 'b', 'status': 'done', 'rank': 1},
+    {'id': 'c', 'status': 'open', 'tags': ['docsets']},
+    {'id': 'd', 'status': 'open', 'tags': ['docs'], 'rank': 2},
+  ];
+
+  // Open, and tagged under docs/ — `docs` covers `docs/api`, not `docsets`.
+  const condition = TomPropertyQuery([
+    TomQueryTerm('status', TomAnyOf(['open'])),
+    TomQueryTerm('tags', TomAnyOf(['docs'], hierarchical: true)),
+  ]);
+  final hits = records.where((r) => condition.matches((key) => r[key]));
+  print([for (final r in hits) r['id']]); // [a, d]
+
+  // Highest rank first; unset rank last; equal ranks by id.
+  final byRank = TomPropertySorter<Map<String, Object>>(
+    value: (r) => r['rank'],
+    tieBreak: (r) => [r['id']! as String],
+    descending: true,
+  );
+  print([for (final r in byRank.sorted(records)) r['id']]); // [a, d, b, c]
+}
+```
+
+The example below adds the index contract and the backlink index.
+
 ## Example
 
 ```dart
@@ -207,6 +243,14 @@ The compiled form of this section is
 | Dependency | Kind | For |
 | ---------- | ---- | --- |
 | `test`, `lints` | dev | the suite |
+
+## Documentation
+
+| Document | What is there |
+| -------- | ------------- |
+| [doc/query.md](doc/query.md) | The user guide: conditions and predicates, sorting, the index contract, the backlink index, behaviour and limits. |
+| [example/readme_example.dart](example/readme_example.dart) | The example above as a runnable program. |
+| [CHANGELOG.md](CHANGELOG.md) | What each version added. |
 
 ## Status
 

@@ -21,8 +21,8 @@ changes; answering it by running `dart pub`/`gh`/`dart test` per package is slow
 and needs network access.
 
 `tom_package_scanner` answers it **statically**. Point a
-[`PackageScanner`](#packagescanner) at a workspace root, name a repo, and it
-returns one [`PackageInfo`](#packageinfo) per discovered package — each carrying
+[`PackageScanner`](doc/package_scanner.md#creating-a-scanner) at a workspace root, name a repo, and it
+returns one [`PackageInfo`](doc/package_scanner.md#the-package-record) per discovered package — each carrying
 a derived [`ComponentStatus`](#the-status-ladder), a classified license token,
 static [code metrics](#display-metrics), and the metadata the website needs to
 render a module entry. The scanner makes **no process calls and no network
@@ -119,7 +119,7 @@ tom_stub       not_started  stub (10 LOC ≤ 200)
 tom_ts_ext     works        src/ 250 LOC
 ```
 
-Each row is a [`PackageInfo`](#packageinfo). Inspecting one in full:
+Each row is a [`PackageInfo`](doc/package_scanner.md#the-package-record). Inspecting one in full:
 
 ```text
 sourcePath : tom_agent_container/tom_ai/d4rt/tom_pub
@@ -137,6 +137,7 @@ links      : {repository: https://github.com/al-the-bear/d4rt}
 
 | Example | What it shows |
 | ------- | ------------- |
+| [`example/tom_package_scanner_example.dart`](example/tom_package_scanner_example.dart) | Builds a fixture repo in a temp dir, scans it as public and private, prints one full record and classifies license bodies |
 | [Quick start](#quick-start) | Scan a repo; read each package's status |
 | [The status ladder](#the-status-ladder) | The four rungs and how the first match wins |
 | [License token](#license-token) | `classifyLicense` vocabulary and curated overrides |
@@ -144,11 +145,15 @@ links      : {repository: https://github.com/al-the-bear/d4rt}
 | [Scanning TypeScript packages](#scanning-typescript-packages) | `package.json` + `tsconfig.json` discovery |
 | [`test/package_scanner_test.dart`](test/package_scanner_test.dart) | 35 fixture-tree cases covering every rule |
 
-> This package has no standalone `example/` program — it is a library consumed by
-> the website's `gen_modules` / `gen_status_report` generators. The runnable test
-> suite is the executable reference for every rule below: it scaffolds fixture
-> trees in a temp dir and asserts each status branch, license source, metric, and
-> the Dart/TypeScript discovery rules.
+Run the example from the package folder:
+
+```bash
+dart run example/tom_package_scanner_example.dart
+```
+
+It creates its own input in a temporary directory and deletes it at the end.
+The test suite scaffolds fixture trees the same way and asserts every status
+branch, license source, metric and the Dart/TypeScript discovery rules.
 
 ---
 
@@ -331,6 +336,10 @@ website's license-seed tooling as the single classification source of truth.
 
 ## Further documentation
 
+- [User guide](doc/package_scanner.md) — discovery, the status and license
+  rules, metric counting, errors and limits.
+- [Example](example/tom_package_scanner_example.dart) — a runnable scan of a
+  temporary fixture repo.
 - [LICENSE](LICENSE) — BSD-3-Clause licence text.
 - [`test/package_scanner_test.dart`](test/package_scanner_test.dart) — 35
   fixture-tree cases that double as the executable specification.
