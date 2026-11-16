@@ -2641,7 +2641,15 @@ Options:
   _RequirementCheckResult _runRequiredEnvironmentChecks({
     required bool withVersionTests,
   }) {
-    final wsRoot = findWorkspaceRootOrNull(Directory.current.path);
+    // A run started in a directory that no longer exists has no workspace
+    // to check (its command reports the missing directory if it needs one).
+    final String cwd;
+    try {
+      cwd = Directory.current.path;
+    } on FileSystemException {
+      return const _RequirementCheckResult();
+    }
+    final wsRoot = findWorkspaceRootOrNull(cwd);
     final requiredMap = wsRoot == null
         ? null
         : _loadRequiredEnvironmentSection(wsRoot);

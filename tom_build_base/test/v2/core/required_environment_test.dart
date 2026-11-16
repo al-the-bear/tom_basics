@@ -15,7 +15,9 @@ import 'package:tom_build_base/tom_build_base_v2.dart';
 /// `<platform>/` folder) or on PATH; a missing binary's `error` / `warning`
 /// get `%{version-constraint}` substituted.
 ///
-/// Test IDs: BB-ENV-1..6.
+/// A run whose working directory no longer exists has no workspace to check.
+///
+/// Test IDs: BB-ENV-1..7.
 
 const _tool = ToolDefinition(
   name: 'envtool',
@@ -178,6 +180,22 @@ required-environment:
     expect(result.success, isFalse);
     expect(out.toString(), contains('Please install it, version ^9.9.'));
     expect(out.toString(), isNot(contains('%{version-constraint}')));
+  });
+
+  test('BB-ENV-7: the checks of a run whose working directory is gone find '
+      'no workspace and do not throw [2026-11-16]', () async {
+    master(failing);
+    final gone = Directory(p.join(workspace.path, 'gone'))..createSync();
+    Directory.current = gone.path;
+    gone.deleteSync();
+    final ToolResult result;
+    try {
+      result = await run(['doctor']);
+    } finally {
+      Directory.current = workspace.path;
+    }
+    expect(result.success, isTrue, reason: out.toString());
+    expect(out.toString(), contains('Doctor check passed.'));
   });
 
   test('BB-ENV-6: doctor reports errors and warnings and how to fix them '

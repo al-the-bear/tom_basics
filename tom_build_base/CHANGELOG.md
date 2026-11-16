@@ -1,3 +1,11 @@
+## 2.39.1
+
+### Fixed — a run started in a deleted directory
+
+The required-environment checks, which now run before every command, read the
+working directory and threw when it no longer existed (testkit's exit-code
+tests run there). They find no workspace and check nothing.
+
 ## 2.39.0
 
 ### Changed — `required-environment` is checked before every run
