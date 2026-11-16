@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.1
+
+- The README rewritten: installation with the C compiler each platform's build needs (clang on macOS and Linux, MSVC on Windows), `dart build cli` instead of `dart compile exe`, a verified quick start, usage per algorithm, key sizes, the test vectors, platforms, limits.
+
 ## 0.1.0
 
 The first release.

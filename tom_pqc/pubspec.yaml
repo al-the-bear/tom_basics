@@ -3,7 +3,7 @@ description: >-
   Post-quantum cryptography for Dart: ML-KEM-768, ML-DSA-65, X-Wing and
   composite ML-DSA-65 + Ed25519 (RFC 10073), via FFI to vendored
   mlkem-native and mldsa-native C code.
-version: 0.1.0
+version: 0.1.1
 repository: https://github.com/al-the-bear/tom_basics
 topics:
   - cryptography
