@@ -391,7 +391,7 @@ packages:
       path: "../../tom_build_base"
       relative: true
     source: path
-    version: "2.38.2"
+    version: "2.39.0"
   tom_dcli:
     dependency: transitive
     description:
@@ -448,5 +448,13 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.1.4"
+  yaml_edit:
+    dependency: transitive
+    description:
+      name: yaml_edit
+      sha256: "07c9e63ba42519745182b88ca12264a7ba2484d8239958778dfe4d44fe760488"
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.2.4"
 sdks:
   dart: ">=3.10.4 <4.0.0"
