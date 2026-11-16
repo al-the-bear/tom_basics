@@ -1156,6 +1156,10 @@ bk -r --group tom_ai :projects --json
 (which keep whole subtrees, e.g. `ai_build/**`, from the build commands); skip
 markers and the selection options still apply. The extension lists with it.
 
+`:projects` reads the tree and runs no tool, so the `required-environment`
+check of `buildkit_master.yaml` does not stop it: it lists also from a
+process without `TOM_BINARY_PATH` or dart on its PATH (as the extension's).
+
 The JSON document is `{formatVersion, tool, root, all, count, projects}`; each
 project is `{id, name, path, absolutePath, language, type, natures, version?,
 description?}`: `id` and `name` from the project's `buildkit.yaml`

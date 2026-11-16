@@ -1,3 +1,14 @@
+## 1.30.12
+
+### Fixed — `:projects` lists without the build environment
+
+Since tom_build_base 2.39.0 the `required-environment` check runs before
+every command, and it refused `:projects` in the VS Code extension, which runs
+it from a process without `TOM_BINARY_PATH` or dart on its PATH (the extension
+fell back to its JavaScript port). `:projects` declares `needsEnvironment:
+false` (tom_build_base 2.39.3), so a listing is never stopped by a missing
+build tool (BK-PRJ-6).
+
 ## 1.30.11
 
 ### Fixed — `:pubget` and a git dependency on a moving branch

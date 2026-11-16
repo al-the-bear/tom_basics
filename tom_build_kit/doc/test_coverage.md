@@ -29,11 +29,11 @@ This document lists all testable features across buildkit tools and tracks test 
 | 14 | [Built-in Commands — Parsing & Resolution](#14-built-in-commands--parsing--resolution) | 19 | 19✅ | `builtin_commands_test.dart` | [→](#14-built-in-commands--parsing--resolution) |
 | 15 | [Unreferenced — Export Audit](#15-unreferenced--export-audit) | 9 | 9✅ | `unreferenced_exports_test.dart` | [→](#15-unreferenced--export-audit) |
 | 16 | [Build, Test, Clean — Per Nature](#16-build-test-clean--per-nature) | 7 | 7✅ | `project_action_test.dart` | [→](#16-build-test-clean--per-nature) |
-| 17 | [Projects — The Project Listing](#17-projects--the-project-listing) | 5 | 5✅ | `projects_command_test.dart` | [→](#17-projects--the-project-listing) |
+| 17 | [Projects — The Project Listing](#17-projects--the-project-listing) | 6 | 6✅ | `projects_command_test.dart` | [→](#17-projects--the-project-listing) |
 | 18 | [Versioner — Build Number](#2-versioner--version-file-generation) | 5 | 5✅ | `versioner_build_number_test.dart` | [→](#2-versioner--version-file-generation) |
 | 19 | [Help Footer](#19-help-footer) | 1 | 1✅ | `help_footer_test.dart` | [→](#19-help-footer) |
 | 20 | [Pub Get — Stale Git Refs](#20-pub-get--stale-git-refs) | 3 | 3✅ | `pubget_git_ref_test.dart` | [→](#20-pub-get--stale-git-refs) |
-| — | **Total** | **183** | **183✅** | | |
+| — | **Total** | **184** | **184✅** | | |
 
 ---
 
@@ -661,6 +661,7 @@ The integration suites run on the machine's workspace clone (tom_test_support `T
 | BK-PRJ-3 | Table | ✅ | Without `--json`: path, id, natures per line and the count. |
 | BK-PRJ-4 | `-R` | ✅ | Run from another directory with `-R` and `-s`, the listing is of that root. |
 | BK-PRJ-5 | `--all` | ✅ | The `navigation:` excludes of `buildkit_master.yaml` apply by default and not with `--all`. |
+| BK-PRJ-6 | No environment needed | ✅ | A missing `required-environment` entry does not stop `:projects` / `:proj`; it still stops `:versioner`. |
 
 ---
 

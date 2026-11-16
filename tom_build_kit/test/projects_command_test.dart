@@ -1,7 +1,11 @@
 /// `:projects`: the projects buildkit works on, as a table or one JSON
 /// document (build_tom build_cleanup8; the VS Code extension reads the JSON).
 ///
-/// Test IDs: BK-PRJ-1..5.
+/// `:projects` needs no build environment: a missing `required-environment`
+/// entry of buildkit_master.yaml does not stop it (the extension runs it from
+/// a process without TOM_BINARY_PATH or dart on PATH).
+///
+/// Test IDs: BK-PRJ-1..6.
 @Timeout(Duration(minutes: 2))
 library;
 
@@ -132,5 +136,24 @@ void main() {
     final (_, all) = await buildkit([':projects', '--all', '--json']);
     expect(jsonDecode(all)['count'], 2);
     expect(jsonDecode(all)['all'], isTrue);
+  });
+
+  test('BK-PRJ-6: a missing required environment does not stop the listing; '
+      'it still stops a command that needs it [2026-11-17]', () async {
+    File(p.join(ws.path, 'buildkit_master.yaml')).writeAsStringSync('''
+required-environment:
+  env-variables:
+    - name: BK_PRJ_SURELY_NOT_SET
+      error: BK_PRJ_SURELY_NOT_SET is not set.
+''');
+    final (listed, text) = await buildkit([':projects', '--all', '--json']);
+    expect(listed.success, isTrue, reason: listed.errorMessage);
+    expect(jsonDecode(text)['count'], 2);
+    final (proj, _) = await buildkit([':proj', '--json']);
+    expect(proj.success, isTrue, reason: proj.errorMessage);
+
+    final (versioner, _) = await buildkit([':versioner']);
+    expect(versioner.success, isFalse);
+    expect(versioner.errorMessage, 'Installation requirements not met');
   });
 }

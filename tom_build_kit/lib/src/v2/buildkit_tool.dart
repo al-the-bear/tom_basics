@@ -924,6 +924,9 @@ const projectsCommand = CommandDefinition(
   requiresTraversal: false,
   supportsProjectTraversal: true,
   canRunStandalone: true,
+  // A listing reads the tree and runs no tool: the VS Code extension calls
+  // it from a process without TOM_BINARY_PATH or dart on its PATH.
+  needsEnvironment: false,
   examples: [
     'buildkit :projects',
     'buildkit :projects --json',
