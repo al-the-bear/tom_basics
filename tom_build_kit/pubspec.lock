@@ -711,7 +711,7 @@ packages:
       path: "../tom_github_api"
       relative: true
     source: path
-    version: "1.4.0"
+    version: "1.5.0"
   tom_test_support:
     dependency: "direct dev"
     description:
