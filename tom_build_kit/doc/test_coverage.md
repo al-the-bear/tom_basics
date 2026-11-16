@@ -480,7 +480,7 @@ Unit tests for argument parsing and command shorthand resolution.
 
 ### Apireference
 
-**Test file:** `test/apireference_test.dart` (BK-APIREF-1..3 collect and assemble; 4..7 and 9 run `bin/buildkit.dart` with a stand-in md2pdf; 8 with the real tom_md2pdf, compiled from the workspace when its source is there)
+**Test file:** `test/apireference_test.dart` (BK-APIREF-1..3 and 10 collect and assemble; 4..7 and 9 run buildkit (compiled once) with a stand-in md2pdf; 8 with the real tom_md2pdf, compiled from the workspace when its source is there)
 
 | ID | Feature | Status | How to Test |
 |----|---------|--------|-------------|
@@ -492,7 +492,8 @@ Unit tests for argument parsing and command shorthand resolution.
 | BK-APIREF-6 | md2pdf failing or absent | ✅ | Exit 3 from md2pdf, and an executable that is not there, fail the package. |
 | BK-APIREF-7 | `--output` in `doc/`; `--dry-run` | ✅ | Refused; the dry run writes nothing. |
 | BK-APIREF-8 | Real tom_md2pdf | ✅ | The output starts with `%PDF-`. |
-| BK-APIREF-9 | `--timeout` | ✅ | A stand-in md2pdf that hangs is stopped after 3 s; the package fails, naming the limit. |
+| BK-APIREF-9 | `--timeout` | ✅ | A stand-in md2pdf that hangs is stopped after 3 s; the package fails, naming the limit; the run ends within 40 s of md2pdf's own start, its process is gone and it never woke up. |
+| BK-APIREF-10 | Guides named by the index | ✅ | A guide the index links beside a module summary (Quick Navigation) is that module's guide, before `doc/<module>.md`; a linked guide that is not there is a missing input. |
 
 ### Doccheck
 

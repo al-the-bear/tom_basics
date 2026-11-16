@@ -988,7 +988,7 @@ bk -s tom_ai/core -r :apireference     # every package under the folder
 |-------|-------|----------|
 | Summary index | `doc/api/api_summary_index.md` | yes |
 | Module summaries | `doc/api/api_summary_<module>.md`, at least one | yes |
-| Module guides | `doc/<module>.md` or `doc/<module>/<module>.md` | no |
+| Module guides | the file the index's Quick Navigation links beside the module's summary, else `doc/<module>.md` or `doc/<module>/<module>.md` | no |
 
 **The document:** the title `<Package> API Reference` and the creation date, then Part I (the index), Part II (each
 module summary, alphabetically, under `## <Module> Reference`, headings one level deeper) and Part III (each module's
@@ -1002,8 +1002,8 @@ has page numbers; tom_md2pdf makes no table of contents and no forced page break
 ```
 
 - **ok**: `build/api_reference/<package>_api_reference.pdf` and the assembled `<package>_api_reference.md` beside it.
-- **missing input**: no index, no module summary, or a summary the index links to that is not there; each is named
-  and the package fails (buildkit exits 1). The other packages are still rendered.
+- **missing input**: no index, no module summary, or a summary or guide the index links to that is not there; each is
+  named and the package fails (buildkit exits 1). The other packages are still rendered.
 - **no guide for ...**: the modules without a guide, left out of Part III; not a failure.
 - **NOT DOCUMENTED**: the package has no `doc/api/`; listed under *Skipped*.
 - md2pdf failing, not found, or not finishing within `--timeout` (default 600 s; it can hang on a document it cannot

@@ -6,9 +6,10 @@
 /// **The parts:** Part I is `doc/api/api_summary_index.md`; Part II every
 /// `doc/api/api_summary_<module>.md`, alphabetically, under
 /// `## <Module> Reference` with its own headline dropped and its headings one
-/// level deeper; Part III the guide of each module that has one,
-/// `doc/<module>.md` or `doc/<module>/<module>.md`, under
-/// `## <Module> Guide`. Link-only table columns are removed and links become
+/// level deeper; Part III the guide of each module that has one, under
+/// `## <Module> Guide`: the file the index links beside the module's summary
+/// (its Quick Navigation), else `doc/<module>.md` or
+/// `doc/<module>/<module>.md`. Link-only table columns are removed and links become
 /// their text: a PDF reader cannot follow them.
 library;
 
@@ -89,10 +90,42 @@ ApiReferenceInputs? collectApiReferenceInputs(String packageDir) {
     );
   }
 
+  // The guides the index names: a table row (the Quick Navigation of
+  // api_summary_creation.md) that links a module summary and another
+  // Markdown file names that file the module's guide.
+  final indexedGuides = <String, String>{};
+  if (indexFile.existsSync()) {
+    final summaryLink = RegExp(
+      r'\]\((?:\./)?api_summary_([A-Za-z0-9_]+)\.md(?:#[^)]*)?\)',
+    );
+    final mdLink = RegExp(r'\]\(([^)#\s]+\.md)(?:#[^)]*)?\)');
+    for (final line in indexFile.readAsLinesSync()) {
+      if (!line.trimLeft().startsWith('|')) continue;
+      final module = summaryLink.firstMatch(line)?.group(1);
+      if (module == null || module == 'index') continue;
+      final guide = mdLink
+          .allMatches(line)
+          .map((m) => m.group(1)!)
+          .where((l) => !p.basename(l).startsWith('api_summary_'))
+          .firstOrNull;
+      if (guide == null) continue;
+      final path = p.normalize(p.join(apiDir.path, guide));
+      if (File(path).existsSync()) {
+        indexedGuides[module] = path;
+      } else {
+        missing.add(
+          'the index links ${rel(path)} as the guide of $module, '
+          'which does not exist',
+        );
+      }
+    }
+  }
+
   final guides = <String, String>{};
   final withoutGuide = <String>[];
   for (final module in sorted.keys) {
     final candidates = [
+      ?indexedGuides[module],
       p.join(packageDir, kApiDocDir, '$module.md'),
       p.join(packageDir, kApiDocDir, module, '$module.md'),
     ];

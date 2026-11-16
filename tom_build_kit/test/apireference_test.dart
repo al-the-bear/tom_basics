@@ -1,9 +1,9 @@
 // BK-APIREF: `buildkit :apireference` — a package's combined API reference
 // (index, module summaries, guides) rendered to PDF by tom_md2pdf, into a
-// gitignored folder. BK-APIREF-1..3 collect and assemble; 4..7 and 9 run the
-// real executable with a stand-in md2pdf; 8 renders with the real tom_md2pdf when
-// its source is in the workspace. Fixtures live under .dart_tool and the run
-// is rooted there (-R), so the workspace is never read.
+// gitignored folder. BK-APIREF-1..3 and 10 collect and assemble; 4..7 and 9
+// run buildkit (compiled once) with a stand-in md2pdf; 8 renders with the real
+// tom_md2pdf when its source is in the workspace. Fixtures live under
+// .dart_tool and the run is rooted there (-R), so the workspace is never read.
 @TestOn('vm')
 @Timeout(Duration(minutes: 6))
 library;
@@ -118,6 +118,40 @@ void main() {
         'no index: ${p.join('doc', 'api', 'api_summary_index.md')}',
         'no module summary: ${p.join('doc', 'api')}/api_summary_<module>.md',
       ]);
+    });
+
+    test('BK-APIREF-10: a guide the index links beside a module summary '
+        '(Quick Navigation) is that module\'s guide; a linked guide that is '
+        'not there is a missing input [2026-11-16]', () {
+      const index = '''
+# Vault API Reference: Index
+
+## Quick Navigation
+
+| Module Reference | Module Guide | Description |
+| ---------------- | ------------ | ----------- |
+| [AWS](api_summary_aws.md) | [Guide](../aws_secrets.md) | AWS. |
+| [Local](api_summary_local.md) | [Guide](../local_secrets.md) | Local. |
+| [Vault](api_summary_vault.md) | — | Vault. |
+''';
+      final dir = package('vaults', {
+        'doc/api/api_summary_index.md': index,
+        'doc/api/api_summary_aws.md': '# AWS\n',
+        'doc/api/api_summary_local.md': '# Local\n',
+        'doc/api/api_summary_vault.md': '# Vault\n',
+        'doc/aws_secrets.md': '# AWS Guide\n',
+        'doc/vault.md': '# Vault Guide\n',
+      });
+      final inputs = collectApiReferenceInputs(dir)!;
+      expect(inputs.guides, {
+        'aws': p.join(dir, 'doc', 'aws_secrets.md'),
+        'vault': p.join(dir, 'doc', 'vault.md'),
+      });
+      expect(inputs.missing, [
+        'the index links ${p.join('doc', 'local_secrets.md')} as the guide '
+            'of local, which does not exist',
+      ]);
+      expect(inputs.withoutGuide, ['local']);
     });
 
     test('BK-APIREF-3: the document: title and date, the three parts in '

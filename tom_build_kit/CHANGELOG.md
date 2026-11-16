@@ -1,3 +1,13 @@
+## 1.30.9
+
+### Changed — `:apireference` takes each module's guide from the index
+
+A module's guide is the file the index's Quick Navigation links beside the
+module's summary (the guideline's "Module Guide" column), else, as before,
+`doc/<module>.md` or `doc/<module>/<module>.md`. A guide the index links that
+is not there is a missing input. Packages whose guides are named otherwise
+(`doc/aws_secrets.md` for the module `aws`) now get them into Part III.
+
 ## 1.30.8
 
 ### Fixed — a binary's record names its project by its workspace path
