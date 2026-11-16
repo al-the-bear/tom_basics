@@ -8,6 +8,7 @@
 @Timeout(Duration(minutes: 6))
 library;
 
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
@@ -160,11 +161,16 @@ void main() {
 
   group('the command', () {
     late String fakeMd2pdf;
+    late String buildkitKernel;
+    late Directory toolsDir;
 
     setUpAll(() async {
       // A stand-in md2pdf: writes `%PDF-fake` as <output>/<input name>.pdf,
-      // exits 3 when the input holds FAIL, and hangs when it holds SLOW.
+      // exits 3 when the input holds FAIL, and hangs when it holds SLOW:
+      // then it first writes its pid and start time to <output>/slow.json,
+      // and <output>/slow.finished if it ever wakes up.
       final dir = Directory.systemTemp.createTempSync('fake_md2pdf_');
+      toolsDir = dir;
       final source = File(p.join(dir.path, 'fake.dart'))
         ..writeAsStringSync(r'''
 import 'dart:io';
@@ -173,9 +179,16 @@ void main(List<String> args) {
   final out = args.firstWhere((a) => a.startsWith('--output=')).substring(9);
   final text = File(input).readAsStringSync();
   if (text.contains('FAIL')) exit(3);
-  if (text.contains('SLOW')) sleep(const Duration(seconds: 60));
-  final name = input.split(Platform.pathSeparator).last.replaceAll('.md', '');
-  File('$out${Platform.pathSeparator}$name.pdf').writeAsStringSync('%PDF-fake');
+  final sep = Platform.pathSeparator;
+  if (text.contains('SLOW')) {
+    final started = DateTime.now().millisecondsSinceEpoch;
+    File('$out${sep}slow.json')
+        .writeAsStringSync('{"pid": $pid, "started": $started}');
+    sleep(const Duration(seconds: 60));
+    File('$out${sep}slow.finished').writeAsStringSync('woke up');
+  }
+  final name = input.split(sep).last.replaceAll('.md', '');
+  File('$out$sep$name.pdf').writeAsStringSync('%PDF-fake');
 }
 ''');
       fakeMd2pdf = p.join(
@@ -190,11 +203,26 @@ void main(List<String> args) {
         fakeMd2pdf,
       ]);
       expect(r.exitCode, 0, reason: '${r.stderr}');
+
+      // buildkit compiled once: `dart run` compiled it again in every test,
+      // which under a loaded suite took longer than the tests themselves.
+      buildkitKernel = p.join(dir.path, 'buildkit.dill');
+      final k = await Process.run('dart', [
+        'compile',
+        'kernel',
+        _buildkit,
+        '-o',
+        buildkitKernel,
+      ]);
+      expect(k.exitCode, 0, reason: '${k.stdout}${k.stderr}');
+    });
+
+    tearDownAll(() {
+      if (toolsDir.existsSync()) toolsDir.deleteSync(recursive: true);
     });
 
     Future<ProcessResult> buildkit(List<String> args) => Process.run('dart', [
-      'run',
-      _buildkit,
+      buildkitKernel,
       '-R',
       root.path,
       '-s',
@@ -280,8 +308,7 @@ void main(List<String> args) {
 
     test('BK-APIREF-9: an md2pdf that does not finish within --timeout is '
         'stopped and fails the package [2026-11-14]', () async {
-      shop(extra: {'doc/cart/cart.md': '# Cart Guide\n\nSLOW\n'});
-      final watch = Stopwatch()..start();
+      final dir = shop(extra: {'doc/cart/cart.md': '# Cart Guide\n\nSLOW\n'});
       final r = await buildkit([
         ':apireference',
         '--md2pdf',
@@ -289,9 +316,24 @@ void main(List<String> args) {
         '--timeout',
         '3',
       ]);
+      final ended = DateTime.now();
       expect(r.exitCode, isNot(0), reason: out(r));
       expect(out(r), contains('did not finish within 3 s'));
-      expect(watch.elapsed, lessThan(const Duration(seconds: 50)));
+
+      // Measured from md2pdf's own start, not buildkit's: the run's start-up
+      // is no part of the timeout, and under a loaded suite it is most of
+      // the time. md2pdf sleeps 60 s; stopped after 3 s, the run ends long
+      // before that.
+      final outDir = p.join(dir, 'build', 'api_reference');
+      final slow =
+          jsonDecode(File(p.join(outDir, 'slow.json')).readAsStringSync())
+              as Map<String, dynamic>;
+      final started = DateTime.fromMillisecondsSinceEpoch(
+        slow['started'] as int,
+      );
+      expect(ended.difference(started), lessThan(const Duration(seconds: 40)));
+      expect(_isRunning(slow['pid'] as int), isFalse, reason: 'md2pdf stopped');
+      expect(File(p.join(outDir, 'slow.finished')).existsSync(), isFalse);
     });
 
     test('BK-APIREF-7: --output inside doc/ is refused; --dry-run writes '
@@ -373,4 +415,13 @@ String? _md2pdfSource() {
     if (parent.path == dir.path) return null;
     dir = parent;
   }
+}
+
+/// Whether the process [pid] is still running.
+bool _isRunning(int pid) {
+  if (Platform.isWindows) {
+    final r = Process.runSync('tasklist', ['/FI', 'PID eq $pid', '/NH']);
+    return '${r.stdout}'.contains(' $pid ');
+  }
+  return Process.runSync('kill', ['-0', '$pid']).exitCode == 0;
 }
