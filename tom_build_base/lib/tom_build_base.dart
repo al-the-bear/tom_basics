@@ -5,7 +5,8 @@
 /// - Tool definition and CLI argument parsing ([ToolDefinition], [CliArgs])
 /// - Command execution with traversal ([ToolRunner], [CommandExecutor])
 /// - Folder scanning and nature detection ([FolderScanner], [NatureDetector])
-/// - Pipeline configuration and execution ([PipelineConfig], [PipelineExecutor])
+/// - Pipeline configuration and execution ([ToolPipelineConfig],
+///   [ToolPipelineExecutor])
 /// - Help generation and shell completion ([HelpGenerator], [CompletionGenerator])
 /// - Configuration loading from `buildkit_master.yaml` / `buildkit.yaml`
 ///

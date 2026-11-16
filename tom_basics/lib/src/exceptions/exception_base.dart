@@ -43,7 +43,7 @@ import 'package:stack_trace/stack_trace.dart';
 ///
 /// This class is designed to have minimal dependencies for use in foundational
 /// libraries. For the full-featured exception class with logging support,
-/// use [TomException] from tom_core_kernel.
+/// use `TomException` from tom_core_kernel.
 ///
 /// ## Example
 ///
@@ -98,10 +98,11 @@ class TomBaseException implements Exception {
   ///
   /// `StackTrace?` rather than `Object?`, which is what the very next thing to
   /// touch it always required: the constructor hands this straight to
-  /// [_getStackTrace], and `Chain.forTrace` takes a `StackTrace`. A wider field
-  /// promised a width nothing downstream accepted, and — being public and
-  /// mutable — let an unformattable value be assigned after construction, where
-  /// it surfaced as a `TypeError` thrown *while reporting some other failure*.
+  /// [renderStackTrace], and `Chain.forTrace` takes a `StackTrace`. A wider
+  /// field promised a width nothing downstream accepted, and — being public
+  /// and mutable — let an unformattable value be assigned after construction,
+  /// where it surfaced as a `TypeError` thrown *while reporting some other
+  /// failure*.
   StackTrace? stack;
 
   /// The underlying exception that caused this error, if any.

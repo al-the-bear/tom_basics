@@ -316,7 +316,7 @@ class DcliExecutor extends CommandExecutor {
 /// Create all buildkit executors.
 ///
 /// All tool commands use native v2 executors. Git executors are defined
-/// in [git_executors.dart]. Project tool executors are in individual files
+/// in `git_executors.dart`. Project tool executors are in individual files
 /// under `executors/`.
 ///
 Map<String, CommandExecutor> createBuildkitExecutors() {

@@ -652,7 +652,7 @@ abstract class TomLogOutput {
   /// Handles:
   /// - Strings (returned as-is)
   /// - Functions (called and result converted)
-  /// - [TomLoggable] objects (uses [logRepresentation])
+  /// - [TomLoggable] objects (uses [TomLoggable.logRepresentation])
   /// - Other objects (uses [toString])
   String convertToString(Object message) {
     if (message is String) {

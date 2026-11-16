@@ -3,7 +3,7 @@ library;
 
 import 'chat_message.dart';
 
-/// Encapsulates the response from [ChatAPI.getMessages].
+/// Encapsulates the response from [ChatApi.getMessages].
 ///
 /// Contains the messages received, along with status information
 /// about the request and any platform-specific metadata.

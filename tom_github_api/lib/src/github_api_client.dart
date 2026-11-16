@@ -299,7 +299,7 @@ class GitHubApiClient {
   /// return, and handing back a response whose `data` is null would leave
   /// every caller to re-derive the distinction that `path` already makes.
   ///
-  /// [expectErrors] is deliberately **not** a parameter. A flag that suppresses
+  /// `expectErrors` is deliberately **not** a parameter. A flag that suppresses
   /// errors is a flag somebody sets once and forgets, and the shape above
   /// already gives a caller both halves: partial data with its errors beside
   /// it, or a throw when there is no data at all.

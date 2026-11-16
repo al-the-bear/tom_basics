@@ -1,7 +1,8 @@
 /// tom_build_base v2 - Unified CLI framework for workspace traversal.
 ///
 /// This library provides:
-/// - Structured traversal configuration ([TraversalInfo])
+/// - Structured traversal configuration ([ProjectTraversalInfo],
+///   [GitTraversalInfo])
 /// - Automatic folder scanning and nature detection
 /// - Filter pipelines for flexible project selection
 /// - Type-safe command context ([CommandContext])
