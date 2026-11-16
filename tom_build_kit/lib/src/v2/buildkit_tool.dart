@@ -1434,7 +1434,7 @@ Execution Modes:
   Workspace Mode:         Runs from workspace root (triggered by -R, -s <path>, -i, -o)
 
 Pipeline Execution:
-  Pipelines are defined in buildkit_master.yaml or buildkit.yaml under buildkit.pipelines.
+  Pipelines are defined in buildkit_master.yaml under pipelines: (not in a project's buildkit.yaml).
   Run a pipeline by name: buildkit <pipeline-name>
 
 Configuration:

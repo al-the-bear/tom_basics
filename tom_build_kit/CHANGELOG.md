@@ -1,3 +1,19 @@
+## 1.30.10
+
+### Changed — on tom_build_base 2.39.1
+
+- `required-environment:` of `buildkit_master.yaml` is checked before every
+  command: an error stops the run and says how to fix it (the setup
+  instructions and `buildkit setup`); `buildkit doctor` reports warnings too.
+- A project's `recursive: false` keeps buildkit's walks out of its subfolders.
+- `:define` / `:macro` keep `buildkit_master.yaml`'s comments.
+
+### Fixed — where pipelines live
+
+The help footer said pipelines may be in a project's `buildkit.yaml` under
+`buildkit.pipelines`; they are read from `buildkit_master.yaml`'s top-level
+`pipelines:` only. The user guide's "Configuration Hierarchy" says the same.
+
 ## 1.30.9
 
 ### Changed — `:apireference` takes each module's guide from the index

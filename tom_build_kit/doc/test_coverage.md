@@ -31,7 +31,8 @@ This document lists all testable features across buildkit tools and tracks test 
 | 16 | [Build, Test, Clean — Per Nature](#16-build-test-clean--per-nature) | 7 | 7✅ | `project_action_test.dart` | [→](#16-build-test-clean--per-nature) |
 | 17 | [Projects — The Project Listing](#17-projects--the-project-listing) | 5 | 5✅ | `projects_command_test.dart` | [→](#17-projects--the-project-listing) |
 | 18 | [Versioner — Build Number](#2-versioner--version-file-generation) | 5 | 5✅ | `versioner_build_number_test.dart` | [→](#2-versioner--version-file-generation) |
-| — | **Total** | **179** | **179✅** | | |
+| 19 | [Help Footer](#19-help-footer) | 1 | 1✅ | `help_footer_test.dart` | [→](#19-help-footer) |
+| — | **Total** | **180** | **180✅** | | |
 
 ---
 
@@ -659,3 +660,13 @@ The integration suites run on the machine's workspace clone (tom_test_support `T
 | BK-PRJ-3 | Table | ✅ | Without `--json`: path, id, natures per line and the count. |
 | BK-PRJ-4 | `-R` | ✅ | Run from another directory with `-R` and `-s`, the listing is of that root. |
 | BK-PRJ-5 | `--all` | ✅ | The `navigation:` excludes of `buildkit_master.yaml` apply by default and not with `--all`. |
+
+---
+
+## 19. Help Footer
+
+**Test file:** `test/help_footer_test.dart`
+
+| ID | Feature | Status | Description |
+|----|---------|--------|-------------|
+| BK-HELPFOOT-1 | Where pipelines live | ✅ | The footer names the top-level `pipelines:` of `buildkit_master.yaml` and no project file. |

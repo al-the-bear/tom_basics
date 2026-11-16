@@ -1907,17 +1907,7 @@ Projects with `buildkit_skip.yaml` are automatically skipped. Master YAML `navig
 
 ## Configuration Hierarchy
 
-BuildKit's pipeline execution is implemented by the shared base engine (`tom_build_base`). The base engine loads configuration from two sources:
-
-| Priority | Source | Merge Behavior |
-|----------|--------|----------------|
-| 1 (highest) | **Command-line arguments** | Overrides all |
-| 2 | **Project `buildkit.yaml`** | **Replaces** workspace pipelines for matching names |
-| 3 (lowest) | **Workspace `buildkit_master.yaml`** | Base pipeline definitions |
-
-**Important:** Project-level pipeline definitions **completely replace** workspace-level definitions for the same pipeline name — there is no merging of pipeline steps across levels.
-
-**Allowed binaries** are **additive** across internal defaults, workspace config, and project config.
+BuildKit's pipeline execution is implemented by the shared base engine (`tom_build_base`). Pipelines are defined in one place: the top-level `pipelines:` of the workspace's `buildkit_master.yaml`. A project's `buildkit.yaml` holds no pipelines (its schema refuses the key); a project changes what a command does through its own `build:` / `test:` / `clean:` steps and tool sections.
 
 **Pipeline option precedence** (command > invocation > pipeline-level):
 
