@@ -831,9 +831,12 @@ class ToolRunner {
 
     // A single-command tool that visits no projects (a daemon, a server:
     // neither project nor git traversal) runs once, in the current directory.
+    // An executor that implements only execute() (a tool that works on the
+    // project it is run in) gets the current directory as its project.
     if (!_effectiveTool.features.projectTraversal &&
         !_effectiveTool.features.gitTraversal) {
-      return executor.executeWithoutTraversal(cliArgs);
+      final result = await executor.executeWithoutTraversal(cliArgs);
+      if (!hasNoRunWithoutTraversal(result)) return result;
     }
 
     return _runWithTraversal(executor, null, cliArgs);

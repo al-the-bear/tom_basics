@@ -279,7 +279,10 @@ own `=== Pipeline <name>: timing ===` block with each command's time.
 A single-command tool whose features have neither project nor git traversal
 (`NavigationFeatures.minimal`), such as a daemon or a server, runs its
 executor's `executeWithoutTraversal` once in the current directory; it gets
-`--help`, `--version` and option parsing from ToolRunner all the same. A short
+`--help`, `--version` and option parsing from ToolRunner all the same. An
+executor that does not implement `executeWithoutTraversal` (a tool that works
+on the package it is run in, such as dart-editor-bundler) has `execute` run on
+the current directory as its project instead. A short
 form a tool declares for its own global options (`-p` for `--port`) means that
 option even where a navigation option has the same letter.
 

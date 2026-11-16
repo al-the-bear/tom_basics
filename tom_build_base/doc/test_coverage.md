@@ -64,7 +64,7 @@ This document lists all testable features across `tom_build_base` and tracks tes
 | 49 | [Broken Pipe](#49-broken-pipe) | 3 | 3✅ | `v2/core/broken_pipe_test.dart` | [→](#49-broken-pipe) |
 | 50 | [Option Suppression Refused](#50-option-suppression-refused) | 4 | 4✅ | `v2/core/option_suppression_test.dart` | [→](#50-option-suppression-refused) |
 | 51 | [--list Runs Nothing](#51---list-runs-nothing) | 9 | 9✅ | `v2/core/list_flag_test.dart` | [→](#51---list-runs-nothing) |
-| 52 | [Standalone Tools](#52-standalone-tools) | 5 | 5✅ | `v2/core/standalone_tool_test.dart` | [→](#52-standalone-tools) |
+| 52 | [Standalone Tools](#52-standalone-tools) | 6 | 6✅ | `v2/core/standalone_tool_test.dart` | [→](#52-standalone-tools) |
 | 53 | [After the Traversal](#53-after-the-traversal) | 5 | 5✅ | `v2/core/after_traversal_test.dart` | [→](#53-after-the-traversal) |
 | 54 | [Projects at Once](#54-projects-at-once) | 5 | 5✅ | `v2/core/parallel_jobs_test.dart` | [→](#54-projects-at-once) |
 | 55 | [Windows Paths in the Filters](#55-windows-paths-in-the-filters) | 6 | 6✅ | `v2/traversal/windows_path_filter_test.dart` | [→](#55-windows-paths-in-the-filters) |
@@ -74,7 +74,7 @@ This document lists all testable features across `tom_build_base` and tracks tes
 | 59 | [Required Environment](#59-required-environment) | 7 | 7✅ | `v2/core/required_environment_test.dart` | [→](#59-required-environment) |
 | 60 | [Tool Sections Without Defines](#60-tool-sections-without-defines) | 4 | 4✅ | `tool_section_test.dart` | [→](#60-tool-sections-without-defines) |
 | 61 | [Master File Edits](#61-master-file-edits) | 3 | 3✅ | `v2/core/master_yaml_edit_test.dart` | [→](#61-master-file-edits) |
-| — | **Total** | **1116** | **1116✅** | | | | |
+| — | **Total** | **1117** | **1117✅** | | | | |
 
 > Every row links to a section, and the counts are measured from
 > `dart test --reporter json -j 1` rather than maintained by hand. Run it
@@ -1121,6 +1121,7 @@ and its own global options keep their short forms.
 | BB-STA-3 | Value forms, hidden option, stray argument | ✅ | `--instance watcher` and `--instance=watcher`; a positional argument does not stop the run. |
 | BB-STA-4 | `--version` | ✅ | Prints the `versionString`; nothing runs. |
 | BB-STA-5 | `--help` | ✅ | The tool's and the shared options; no hidden option, no traversal-only option. |
+| BB-STA-6 | Only `execute` | ✅ | An executor that does not implement `executeWithoutTraversal` has `execute` run once on the current directory. |
 
 ---
 

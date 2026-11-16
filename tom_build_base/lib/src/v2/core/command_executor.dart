@@ -6,6 +6,18 @@ import 'pub_cache_integrity.dart';
 import 'tool_runner.dart';
 import '../traversal/command_context.dart';
 
+/// The result of [CommandExecutor.executeWithoutTraversal]'s default
+/// implementation: one instance of its own, so it is told apart from a
+/// success an executor returns itself.
+// ignore: prefer_const_constructors
+final ToolResult _noRunWithoutTraversal = ToolResult.success();
+
+/// Whether [result] is what [CommandExecutor.executeWithoutTraversal] returns
+/// when the executor does not implement it: the executor has no run of its
+/// own without traversal.
+bool hasNoRunWithoutTraversal(ToolResult result) =>
+    identical(result, _noRunWithoutTraversal);
+
 /// Base class for command executors.
 ///
 /// Implement this to create custom command logic that integrates
@@ -21,9 +33,11 @@ abstract class CommandExecutor {
   ///
   /// Called for commands that don't require folder traversal
   /// (e.g., --help, --version, or commands that operate globally).
-  /// Default implementation returns success.
+  /// The default implementation does nothing and succeeds; its result is
+  /// one [hasNoRunWithoutTraversal] recognises, so a single-command tool that
+  /// visits no projects runs [execute] on the current directory instead.
   Future<ToolResult> executeWithoutTraversal(CliArgs args) async {
-    return const ToolResult.success();
+    return _noRunWithoutTraversal;
   }
 
   /// Whether this executor has its own `--list` mode ([CliArgs.listOnly]):

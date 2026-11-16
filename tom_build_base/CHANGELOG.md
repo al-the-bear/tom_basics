@@ -1,3 +1,14 @@
+## 2.39.2
+
+### Fixed — a single-command tool without traversal that implements only `execute`
+
+Since 2.30.0 a single-command tool that visits no projects runs its executor's
+`executeWithoutTraversal`; an executor that implements only `execute` (one that
+works on the package it is run in, such as dart-editor-bundler) got the default
+no-op and the run did nothing, exit 0. Such an executor now has `execute` run
+on the current directory, as before 2.30.0. `hasNoRunWithoutTraversal` tells
+the default result from an executor's own.
+
 ## 2.39.1
 
 ### Fixed — a run started in a deleted directory
