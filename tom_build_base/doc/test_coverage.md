@@ -30,7 +30,7 @@ This document lists all testable features across `tom_build_base` and tracks tes
 | 15 | [ToolRunner](#15-toolrunner) | 64 | 64✅ | `v2/core/tool_runner_test.dart` | [→](#15-toolrunner) |
 | 16 | [ToolRunner — Nested Tools](#16-toolrunner--nested-tools) | 20 | 20✅ | `v2/core/tool_runner_nested_test.dart` | [→](#16-toolrunner--nested-tools) |
 | 17 | [Nested Tool Executor](#17-nested-tool-executor) | 16 | 16✅ | `v2/core/nested_tool_executor_test.dart` | [→](#17-nested-tool-executor) |
-| 18 | [Folder Scanner](#18-folder-scanner) | 23 | 23✅ | `v2/traversal/folder_scanner_test.dart` | [→](#18-folder-scanner) |
+| 18 | [Folder Scanner](#18-folder-scanner) | 25 | 25✅ | `v2/traversal/folder_scanner_test.dart` | [→](#18-folder-scanner) |
 | 19 | [Nature Detector](#19-nature-detector) | 39 | 39✅ | `v2/traversal/nature_detector_test.dart` | [→](#19-nature-detector) |
 | 20 | [Nature Filter](#20-nature-filter) | 20 | 20✅ | `v2/traversal/nature_filter_test.dart` | [→](#20-nature-filter) |
 | 21 | [Filter Pipeline](#21-filter-pipeline) | 47 | 47✅ | `v2/traversal/filter_pipeline_test.dart` | [→](#21-filter-pipeline) |
@@ -71,7 +71,10 @@ This document lists all testable features across `tom_build_base` and tracks tes
 | 56 | [Repeated Options](#56-repeated-options) | 8 | 8✅ | `v2/core/repeated_option_test.dart` | [→](#56-repeated-options) |
 | 57 | [Console Styling](#57-console-styling) | 6 | 6✅ | `v2/core/console_styling_test.dart` | [→](#57-console-styling) |
 | 58 | [Help Command](#58-help-command) | 8 | 8✅ | `v2/core/help_command_test.dart` | [→](#58-help-command) |
-| — | **Total** | **1100** | **1100✅** | | | | |
+| 59 | [Required Environment](#59-required-environment) | 6 | 6✅ | `v2/core/required_environment_test.dart` | [→](#59-required-environment) |
+| 60 | [Tool Sections Without Defines](#60-tool-sections-without-defines) | 4 | 4✅ | `tool_section_test.dart` | [→](#60-tool-sections-without-defines) |
+| 61 | [Master File Edits](#61-master-file-edits) | 3 | 3✅ | `v2/core/master_yaml_edit_test.dart` | [→](#61-master-file-edits) |
+| — | **Total** | **1115** | **1115✅** | | | | |
 
 > Every row links to a section, and the counts are measured from
 > `dart test --reporter json -j 1` rather than maintained by hand. Run it
@@ -451,6 +454,8 @@ Tests for the recently implemented features: modes, persistent defines, runtime 
 | BB-V2-SCN-ALWAYS-2 | Symlinked `_ai` mount | ✅ | A `_ai` link is not followed. |
 | BB-V2-SCN-ALWAYS-3 | The set | ✅ | `kAlwaysSkipDirectories` holds `ztmp`, `_ai`, `build`. |
 | BB-V2-SCN-ALWAYS-4 | `--no-skip` | ✅ | `ignoreSkipMarkers` walks into a marked folder but still not into `ztmp/` or `build/`. |
+| BB-REC-1 | `recursive: false` | ✅ | A project whose `buildkit.yaml` says `recursive: false` keeps every tool's walk out of its subfolders, also with `-r`. |
+| BB-REC-2 | Other values | ✅ | `recursive: true`, and a `recursive: false` nested under a tool section, do not stop the walk. |
 
 ---
 
@@ -1209,6 +1214,46 @@ it visited.
 | BB-HELPCMD-6 | `help` alone | ✅ | Prints the tool overview. |
 | BB-HELPCMD-7 | `--nested help <command>` | ✅ | A nested tool answers with the command's help (how a host delegates a wired command's help) and runs nothing. |
 | BB-HELPCMD-8 | `help <wired command>` | ✅ | A host takes the help of a wired command from its nested tool (`help fakegen`, `help :fakegen`); with the binary missing it names the command and reports the binary missing, and its own commands' help still works. |
+
+---
+
+## 59. Required Environment
+
+**Test file:** `test/v2/core/required_environment_test.dart`
+
+| ID | Feature | Status | Description |
+|----|---------|--------|-------------|
+| BB-ENV-1 | Errors stop a run | ✅ | A missing variable at error level stops a regular run before any command; the output says how to fix it: the setup instructions and `<tool> <setup-pipeline>`. |
+| BB-ENV-2 | Not checked | ✅ | Help, version, `--nested` and the setup pipeline itself run despite the error. |
+| BB-ENV-3 | Warnings | ✅ | Warnings do not stop a run and show only with `--verbose`. |
+| BB-ENV-4 | `binaryPath` | ✅ | A binary in `binaryPath` or its `<os>-<arch>/` folder counts as present. |
+| BB-ENV-5 | `%{version-constraint}` | ✅ | A missing binary's `error` gets the constraint substituted. |
+| BB-ENV-6 | `doctor` | ✅ | Reports the errors and how to fix them, runs no command. |
+
+---
+
+## 60. Tool Sections Without Defines
+
+**Test file:** `test/tool_section_test.dart`
+
+| ID | Feature | Status | Description |
+|----|---------|--------|-------------|
+| BB-TSEC-1 | `isDefinesKey` | ✅ | `defines` and `<MODE>-defines` are defines keys, nothing else. |
+| BB-TSEC-2 | `withoutDefines` | ✅ | Drops the section's defines keys, keeps the rest (nested maps as plain maps). |
+| BB-TSEC-3 | `TomBuildConfig.readToolSection` | ✅ | A tool's section of `buildkit.yaml` without its defines; a section of only defines is none; a section that is no map is handed on as it is. |
+| BB-TSEC-4 | `toolOptions` | ✅ | `TomBuildConfig.load` puts no defines into `toolOptions`. |
+
+---
+
+## 61. Master File Edits
+
+**Test file:** `test/v2/core/master_yaml_edit_test.dart`
+
+| ID | Feature | Status | Description |
+|----|---------|--------|-------------|
+| BB-MYE-1 | `:define` / `:undefine` | ✅ | Edit the defines in place; the file's comments and schema line stay. |
+| BB-MYE-2 | `:macro` / `:unmacro` | ✅ | Edit `macros:` in place; the comments stay. |
+| BB-MYE-3 | Round trip | ✅ | Adding and removing a define leaves the file byte for byte as it was. |
 
 ---
 

@@ -1,3 +1,38 @@
+## 2.39.0
+
+### Changed — `required-environment` is checked before every run
+
+The checks of `required-environment:` in `<tool>_master.yaml` ran in `doctor`
+only. They now run before every command: a missing environment variable,
+folder or binary at error level stops the run, and the output says how to fix
+it (`setup.instructions`, and `Run \`<tool> <setup-pipeline>\``). Not checked:
+help, version, `--list`, `--nested` runs, the setup pipeline itself, and runs
+with `TOM_BOOTSTRAP_ALLOW_MISSING_SETUP` set. Warnings show with `-v` and in
+`doctor`; version tests run in `doctor` only. A binary is looked up in the file
+system: `binaryPath`, its `<os>-<arch>/` folder, then PATH.
+
+### Fixed — `%{version-constraint}` in a missing binary's `error` / `warning`
+
+Only `version-error` had the placeholder substituted.
+
+### Added — a project's `recursive: false`
+
+A project whose `buildkit.yaml` says `recursive: false` keeps every tool's walk
+out of its subfolders, also with `-r`. The check read a tool-named file and
+only for `buildkit`.
+
+### Added — tool sections without defines
+
+`TomBuildConfig.readToolSection`, `withoutDefines` and `isDefinesKey`: a tool
+reads its section of `buildkit.yaml` without the `defines:` /
+`<MODE>-defines:` ToolRunner takes from it. `TomBuildConfig.toolOptions`
+leaves them out too.
+
+### Fixed — `:define` / `:macro` keep the master file's comments
+
+`:define`, `:undefine`, `:macro` and `:unmacro` edit `<tool>_master.yaml` in
+place (yaml_edit) instead of rewriting it, so its comments and schema line stay.
+
 ## 2.38.2
 
 ### Fixed — no `:default` in the output of a single-command tool

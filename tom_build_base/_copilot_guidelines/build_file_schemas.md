@@ -9,7 +9,7 @@ The two files the build tools read have JSON schemas in the container's `.tom/js
 
 ## How they are kept
 
-- **Written by hand from the readers**, not from the files: every key in a schema has a reader in tom_build_base, tom_build_kit, tom_test_kit, tom_issue_kit, tom_package_scanner, a generator (d4rtgen, astgen, the reflection generator, the reflector / analyzer) or the dart editor bundler. A key nothing reads is not in the schema; the few kept as documentation say "Not read" in their description (`pipelines.<name>.description`, `required-environment.setup.setup-pipeline`, `required-environment.binaries[].name`, `required-environment.binaryPath`).
+- **Written by hand from the readers**, not from the files: every key in a schema has a reader in tom_build_base, tom_build_kit, tom_test_kit, tom_issue_kit, tom_package_scanner, a generator (d4rtgen, astgen, the reflection generator, the reflector / analyzer) or the dart editor bundler. A key nothing reads is not in the schema; the few kept as documentation say "Not read" in their description (`pipelines.<name>.description`, `required-environment.binaries[].name`).
 - **Change a reader, change its schema in the same commit**: a new key, a renamed one, a new tool section, a new enum value. Both schemas set `additionalProperties: false`, so an unknown key, a typo and a section in the wrong file (`pipelines:` in a project file) are errors.
 - **Every tracked build file names its schema** on its first line, so editors with the YAML language server validate while you type:
 
@@ -26,7 +26,10 @@ The two files the build tools read have JSON schemas in the container's `.tom/js
 
   A file that tests invalid input on purpose goes into the script's `EXCEPTIONS` with its reason (there is none today).
 
-## Things the schema cannot see
+## How the readers treat the keys
 
-- `buildkit :define` / `buildkit :macro` rewrite `buildkit_master.yaml` through their own serialiser, which drops comments, the schema line included; the check reports the missing line afterwards.
-- A project's `recursive:` is read into `BuildkitFolder.recursive`, but no traversal acts on it yet. This and the other keys a doc or help text promises but no reader honours are build_tom `aft_bkcfg_akmt-build-file-readers-and-docs-disagree`.
+- `buildkit :define` / `:undefine` / `:macro` / `:unmacro` edit `buildkit_master.yaml` in place (yaml_edit): only the entry they change is written; comments and the schema line stay.
+- A project's `recursive: false` keeps every tool's walk out of the project's subfolders, also with `-r` (FolderScanner).
+- `required-environment` is checked before every run of the tool (not for help, version, `--nested`, the setup pipeline, or with `TOM_BOOTSTRAP_ALLOW_MISSING_SETUP` set): an error stops the run and the output says how to fix it, from `setup.instructions` and `setup.setup-pipeline`; binaries are looked up in `binaryPath`, its `<os>-<arch>/` folder, then on PATH; `error` / `warning` / `version-error` get `%{version-constraint}` substituted. Version tests run in `doctor` only.
+- Pipelines are read from `buildkit_master.yaml` only (its top-level `pipelines:`); a project's `buildkit.yaml` holds none.
+- `defines:` and `<MODE>-defines:` inside a tool's section are ToolRunner's: a tool reads its section through `TomBuildConfig.readToolSection` / `withoutDefines` / `TomBuildConfig.toolOptions`, which leave them out, so a tool that refuses unknown keys and a section of only defines both work.

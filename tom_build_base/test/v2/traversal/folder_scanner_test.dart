@@ -666,4 +666,52 @@ void main() {
       );
     });
   });
+
+  group('a project that says recursive: false', () {
+    late Directory root;
+    setUp(() => root = Directory.systemTemp.createTempSync('bb_rec_'));
+    tearDown(() => root.deleteSync(recursive: true));
+
+    void package(String rel, {String? buildkitYaml}) {
+      final dir = Directory(p.join(root.path, rel))..createSync(recursive: true);
+      File(p.join(dir.path, 'pubspec.yaml')).writeAsStringSync(
+        'name: ${p.basename(rel)}\n',
+      );
+      if (buildkitYaml != null) {
+        File(p.join(dir.path, 'buildkit.yaml')).writeAsStringSync(buildkitYaml);
+      }
+    }
+
+    List<String> names(List<FsFolder> found) =>
+        [for (final f in found) p.basename(f.path)]..sort();
+
+    test('BB-REC-1: its buildkit.yaml keeps every tool out of its subfolders, '
+        'also with -r [2026-11-16]', () async {
+      package('outer', buildkitYaml: 'recursive: false\n');
+      package('outer/test/fixtures/inner');
+      package('other');
+      package('other/example/nested');
+      for (final tool in ['buildkit', 'testkit', 'issuekit']) {
+        final found = await FolderScanner(
+          toolBasename: tool,
+        ).scan(root.path, recursive: true);
+        expect(names(found), containsAll(['outer', 'other', 'nested']),
+            reason: tool);
+        expect(names(found), isNot(contains('inner')), reason: tool);
+      }
+    });
+
+    test('BB-REC-2: only the top-level key counts; recursive: true and a '
+        'nested recursive: false do not stop the walk [2026-11-16]', () async {
+      package('a', buildkitYaml: 'recursive: true\n');
+      package('a/fixtures/a_inner');
+      package(
+        'b',
+        buildkitYaml: 'compiler:\n  recursive: false\n',
+      );
+      package('b/fixtures/b_inner');
+      final found = await FolderScanner().scan(root.path, recursive: true);
+      expect(names(found), containsAll(['a_inner', 'b_inner']));
+    });
+  });
 }

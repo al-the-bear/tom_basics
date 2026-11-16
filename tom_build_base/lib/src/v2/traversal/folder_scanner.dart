@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:glob/glob.dart';
 import 'package:path/path.dart' as p;
+import 'package:yaml/yaml.dart';
 
 import '../folder/fs_folder.dart';
 import 'project_files.dart';
@@ -123,7 +124,8 @@ class FolderScanner {
     final isProjectDir = isProjectFolder(dir.path);
     if (!recursive && isProjectDir) return;
 
-    // Check if this directory has {toolBasename}.yaml with recursive: false
+    // A project whose buildkit.yaml says `recursive: false` keeps the walk
+    // out of its subfolders.
     if (_hasToolConfigRecursiveFalse(dir.path)) return;
 
     // Descend into subdirectories
@@ -179,27 +181,21 @@ class FolderScanner {
     return null;
   }
 
-  /// Check if {toolBasename}.yaml exists and has recursive: false.
+  /// Whether the folder's project file, `buildkit.yaml` (the one every tool
+  /// on tom_build_base reads), says `recursive: false` at its top level: the
+  /// project keeps every walk out of its subfolders (its test fixtures,
+  /// samples), also with `-r`.
   bool _hasToolConfigRecursiveFalse(String dirPath) {
-    final configPath = p.join(dirPath, '$toolBasename.yaml');
-    final file = File(configPath);
+    final file = File(p.join(dirPath, 'buildkit.yaml'));
     if (!file.existsSync()) return false;
-
     try {
-      final content = file.readAsStringSync();
-      // Simple check - look for recursive: false pattern
-      final lines = content.split('\n');
-      for (final line in lines) {
-        final trimmed = line.trim();
-        if (trimmed.startsWith('recursive:')) {
-          final value = trimmed.substring('recursive:'.length).trim();
-          return value == 'false' || value == 'no';
-        }
-      }
-    } catch (_) {
-      // Ignore read errors
+      final yaml = loadYaml(file.readAsStringSync());
+      return yaml is YamlMap && yaml['recursive'] == false;
+    } on Exception {
+      // A file that does not parse says nothing about recursion; the build
+      // commands report it where they read it.
+      return false;
     }
-    return false;
   }
 
   /// Whether a folder at [path] named [name] matches one of the

@@ -1,3 +1,5 @@
+import 'dart:io' show File;
+
 import 'package:tom_dcli/dcli.dart';
 import 'package:path/path.dart' as p;
 import 'package:yaml/yaml.dart';
@@ -46,8 +48,8 @@ class TomBuildConfig {
   /// Whether to show detailed output.
   final bool verbose;
 
-  /// Tool-specific options as a raw map.
-  /// Tools can extract additional options from this.
+  /// Tool-specific options as a raw map, without the section's defines
+  /// ([isDefinesKey]). Tools can extract additional options from this.
   final Map<String, dynamic> toolOptions;
 
   const TomBuildConfig({
@@ -77,6 +79,30 @@ class TomBuildConfig {
       filePath: p.join(dir, projectFilename),
       toolKey: toolKey,
     );
+  }
+
+  /// The [toolKey] section of the `buildkit.yaml` in [dir] as the tool reads
+  /// it: a plain map without the defines ToolRunner takes from it
+  /// ([withoutDefines]). Null when the file or the section is missing, the
+  /// file is no valid YAML, or the section holds only defines; a section that
+  /// is no map is returned as it is, for the tool to report.
+  static Object? readToolSection({
+    required String dir,
+    required String toolKey,
+  }) {
+    final file = File(p.join(dir, projectFilename));
+    if (!file.existsSync()) return null;
+    final Object? doc;
+    try {
+      doc = loadYaml(file.readAsStringSync());
+    } on YamlException {
+      return null;
+    }
+    if (doc is! YamlMap) return null;
+    final section = doc[toolKey];
+    if (section is! YamlMap) return section;
+    final stripped = withoutDefines(section);
+    return stripped.isEmpty && section.isNotEmpty ? null : stripped;
   }
 
   /// Load configuration from buildkit_master.yaml for a specific tool.
@@ -136,6 +162,7 @@ class TomBuildConfig {
     // Convert YamlMap to regular Map for toolOptions
     final toolOptions = <String, dynamic>{};
     for (final key in yaml.keys) {
+      if (isDefinesKey(key)) continue;
       final value = yaml[key];
       if (value is YamlMap) {
         toolOptions[key.toString()] = yamlToMap(value);

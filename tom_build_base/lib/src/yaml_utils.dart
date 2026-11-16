@@ -53,3 +53,27 @@ List<String> toStringList(dynamic value) {
   if (value is List) return value.map((e) => e.toString()).toList();
   return [value.toString()];
 }
+
+/// Whether [key] names defines in a tool's section of `buildkit.yaml`:
+/// `defines` or `<MODE>-defines`. ToolRunner reads them; the tool's own
+/// reader never sees them ([withoutDefines]).
+bool isDefinesKey(Object? key) {
+  final name = '$key';
+  return name == 'defines' || name.endsWith('-defines');
+}
+
+/// [section] as a plain map without its defines keys ([isDefinesKey]); keys
+/// of nested maps are kept as they are.
+Map<String, dynamic> withoutDefines(Map<dynamic, dynamic> section) {
+  final result = <String, dynamic>{};
+  for (final entry in section.entries) {
+    if (isDefinesKey(entry.key)) continue;
+    final value = entry.value;
+    result['${entry.key}'] = switch (value) {
+      YamlMap() => yamlToMap(value),
+      YamlList() => yamlListToList(value),
+      _ => value,
+    };
+  }
+  return result;
+}

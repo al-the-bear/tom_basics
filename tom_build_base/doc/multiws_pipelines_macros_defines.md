@@ -368,7 +368,9 @@ Use `@[name]` syntax anywhere in YAML configuration files:
 
 ```yaml
 compiler:
-  binaryPath: @[output_dir]/bin/@[arch]
+  compiles:
+    - files: [bin/tool.dart]
+      commandline: dart compile exe %{file} -o @[output_dir]/bin/@[arch]/%{file.name}
 ```
 
 Define resolution is recursive (max depth 10):

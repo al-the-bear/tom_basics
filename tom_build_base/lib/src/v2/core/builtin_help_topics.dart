@@ -154,8 +154,9 @@ Each system is independent and uses its own syntax.
   <cyan>Example</cyan> (buildkit.yaml)
 
     compiler:
-      binaryPath: @{workspace-root}/tom_binaries/@{tool-name}
-      outputDir: @{project-path}/build/bin
+      compiles:
+        - files: [bin/@{tool-name}.dart]
+          commandline: dart compile exe %{file} -o @{project-path}/build/bin/%{file.name}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -188,7 +189,9 @@ Each system is independent and uses its own syntax.
       bin-root: @{workspace-root}/tom_binaries
       arch: darwin-arm64
     compiler:
-      binaryPath: @[bin-root]/@[arch]
+      compiles:
+        - files: [bin/tool.dart]
+          commandline: dart compile exe %{file} -o @[bin-root]/@[arch]/%{file.name}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -277,10 +280,11 @@ Each system is independent and uses its own syntax.
     defines:
       arch: darwin-arm64
     compiler:
-      binaryPath: @{workspace-root}/tom_binaries/@[arch]
-      commands:
-        - mkdir -p $TOM_BINARY_PATH/%{target-platform-vs}
-        - dart compile exe %{file} -o $TOM_BINARY_PATH/%{target-platform-vs}/%{file.name}
+      compiles:
+        - files: [bin/tool.dart]
+          commandline:
+            - mkdir -p @{workspace-root}/tom_binaries/@[arch]
+            - dart compile exe %{file} -o $TOM_BINARY_PATH/%{target-platform-vs}/%{file.name}
 ''';
 
 // ─────────────────────────────────────────────────────────────
@@ -347,7 +351,9 @@ const _definesContent = r'''
   Use @[name] syntax anywhere in YAML config files:
 
     compiler:
-      binaryPath: @[output-dir]/bin/@[arch]
+      compiles:
+        - files: [bin/tool.dart]
+          commandline: dart compile exe %{file} -o @[output-dir]/bin/@[arch]/%{file.name}
 
   Defines are resolved recursively (max depth 10):
 

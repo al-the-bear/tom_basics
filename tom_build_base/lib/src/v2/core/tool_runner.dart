@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'dart:ffi' show Abi;
 import 'dart:io';
 
 import 'package:yaml/yaml.dart';
+import 'package:yaml_edit/yaml_edit.dart';
 
 import '../../console_encoding.dart';
 import 'cli_arg_parser.dart';
@@ -320,10 +322,15 @@ class _RequirementCheckResult {
   final List<String> errors;
   final String? setupInstructions;
 
+  /// The pipeline `required-environment.setup.setup-pipeline` names: run it
+  /// to set up what is missing.
+  final String? setupPipeline;
+
   const _RequirementCheckResult({
     this.warnings = const [],
     this.errors = const [],
     this.setupInstructions,
+    this.setupPipeline,
   });
 
   bool get hasErrors => errors.isNotEmpty;
@@ -649,37 +656,54 @@ class ToolRunner {
       );
     }
 
+    // `required-environment:` of the master file is checked before every run
+    // except help / version / list, a `--nested` run (its host checked), the
+    // setup pipeline (it is the fix) and an explicit bypass. An error stops
+    // the run and says how to fix it; warnings show in doctor and with -v.
+    // Version tests (they start the binary) run in doctor only.
     final doctorRequested = _isDoctorRequested(cliArgs);
     final bypassRequiredEnvironmentChecks =
-        !doctorRequested && _isRequiredEnvironmentCheckBypassed();
-    final shouldValidateEnvironment = doctorRequested;
+        !doctorRequested &&
+        (cliArgs.isHelpMode ||
+            cliArgs.nested ||
+            _isRequiredEnvironmentCheckBypassed());
 
     if (cliArgs.verbose) {
       output.writeln(
         '[startup] Required-environment checks: '
-        '${shouldValidateEnvironment && !bypassRequiredEnvironmentChecks ? 'enabled' : 'skipped'}',
+        '${bypassRequiredEnvironmentChecks ? 'skipped' : 'enabled'}',
       );
     }
 
-    if (shouldValidateEnvironment && !bypassRequiredEnvironmentChecks) {
-      final checks = _runRequiredEnvironmentChecks();
+    if (!bypassRequiredEnvironmentChecks) {
+      final checks = _runRequiredEnvironmentChecks(
+        withVersionTests: doctorRequested,
+      );
       if (cliArgs.verbose) {
         final phase = phaseSinceLast();
         final total = checkpoint();
         _printStartupTiming('Run required-environment checks', phase, total);
       }
-      if (checks.hasIssues) {
-        _printRequirementIssues(checks);
-      }
+      final setupRun =
+          checks.setupPipeline != null &&
+          cliArgs.commands.isEmpty &&
+          cliArgs.positionalArgs.firstOrNull == checks.setupPipeline;
       if (doctorRequested) {
+        if (checks.hasIssues) _printRequirementIssues(checks);
         if (checks.hasErrors) {
           return const ToolResult.failure('Installation requirements not met');
         }
         output.writeln('Doctor check passed.');
         return const ToolResult.success();
       }
-      if (checks.hasErrors) {
-        return const ToolResult.failure('Installation requirements not met');
+      if (!setupRun) {
+        if (checks.hasErrors) {
+          _printRequirementIssues(checks);
+          return const ToolResult.failure('Installation requirements not met');
+        }
+        if (cliArgs.verbose && checks.hasIssues) {
+          _printRequirementIssues(checks);
+        }
       }
     }
 
@@ -2315,13 +2339,61 @@ Options:
     }
 
     final doc = _readMasterYaml();
-    if (doc == null) {
+    final before = _readMasterYaml();
+    if (doc == null || before == null) {
       return const ToolResult.failure('Unable to parse tool master yaml');
     }
 
     mutate(doc);
-    file.writeAsStringSync(_toYaml(doc));
+    // Only what [mutate] changed is written, through yaml_edit: the file's
+    // comments, its schema line and every other entry stay as they are.
+    final editor = YamlEditor(file.readAsStringSync());
+    _applyMasterEdits(editor, const [], before, doc);
+    final edited = editor.toString();
+    if (edited != file.readAsStringSync()) file.writeAsStringSync(edited);
     return null;
+  }
+
+  /// Turns [before] into [after] at [path] of [editor]: removed keys are
+  /// removed, maps on both sides are edited key by key, any other changed
+  /// value is written whole.
+  void _applyMasterEdits(
+    YamlEditor editor,
+    List<Object> path,
+    Map<dynamic, dynamic> before,
+    Map<dynamic, dynamic> after,
+  ) {
+    for (final key in before.keys) {
+      if (!after.containsKey(key)) editor.remove([...path, key as Object]);
+    }
+    for (final MapEntry(:key, :value) in after.entries) {
+      final keyPath = [...path, key as Object];
+      if (!before.containsKey(key)) {
+        editor.update(keyPath, value);
+        continue;
+      }
+      final old = before[key];
+      if (old is Map && value is Map) {
+        _applyMasterEdits(editor, keyPath, old, value);
+      } else if (!_sameYamlValue(old, value)) {
+        editor.update(keyPath, value);
+      }
+    }
+  }
+
+  static bool _sameYamlValue(Object? a, Object? b) {
+    if (a is Map && b is Map) {
+      return a.length == b.length &&
+          a.keys.every((k) => b.containsKey(k) && _sameYamlValue(a[k], b[k]));
+    }
+    if (a is List && b is List) {
+      if (a.length != b.length) return false;
+      for (var i = 0; i < a.length; i++) {
+        if (!_sameYamlValue(a[i], b[i])) return false;
+      }
+      return true;
+    }
+    return a == b;
   }
 
   /// Ensures the tool-specific section exists in the document.
@@ -2479,53 +2551,6 @@ Options:
     return value;
   }
 
-  String _toYaml(dynamic value, {int indent = 0}) {
-    final pad = ' ' * indent;
-    if (value is Map) {
-      final lines = <String>[];
-      for (final entry in value.entries) {
-        final key = entry.key.toString();
-        final v = entry.value;
-        if (v is Map || v is List) {
-          lines.add('$pad$key:');
-          lines.add(_toYaml(v, indent: indent + 2));
-        } else {
-          lines.add('$pad$key: ${_yamlScalar(v)}');
-        }
-      }
-      return lines.join('\n');
-    }
-    if (value is List) {
-      final lines = <String>[];
-      for (final item in value) {
-        if (item is Map || item is List) {
-          lines.add('$pad-');
-          lines.add(_toYaml(item, indent: indent + 2));
-        } else {
-          lines.add('$pad- ${_yamlScalar(item)}');
-        }
-      }
-      return lines.join('\n');
-    }
-    return '$pad${_yamlScalar(value)}';
-  }
-
-  String _yamlScalar(dynamic value) {
-    if (value == null) return 'null';
-    if (value is num || value is bool) return '$value';
-    final text = value.toString();
-    final needsQuote =
-        text.isEmpty ||
-        text.contains(':') ||
-        text.contains('#') ||
-        text.contains('\n') ||
-        text.startsWith(' ') ||
-        text.endsWith(' ');
-    if (!needsQuote) return text;
-    final escaped = text.replaceAll('\\', '\\\\').replaceAll('"', '\\"');
-    return '"$escaped"';
-  }
-
   /// Delegate help for a wired command to the nested tool.
   ///
   /// Calls the nested tool's help system for detailed command help.
@@ -2595,22 +2620,27 @@ Options:
         output.writeln('  - $warning');
       }
     }
-    if (result.errors.isNotEmpty) {
-      output.writeln('Installation requirements not met:');
-      for (final error in result.errors) {
-        output.writeln('  - $error');
-      }
+    if (result.errors.isEmpty) return;
+    output.writeln('Installation requirements not met:');
+    for (final error in result.errors) {
+      output.writeln('  - $error');
     }
-    final setupInstructions = result.setupInstructions?.trim();
-    if (result.hasErrors &&
-        setupInstructions != null &&
-        setupInstructions.isNotEmpty) {
-      output.writeln('Setup instructions:');
-      output.writeln('  $setupInstructions');
+    final instructions = result.setupInstructions?.trim();
+    final pipeline = result.setupPipeline;
+    final hasInstructions = instructions != null && instructions.isNotEmpty;
+    if (!hasInstructions && pipeline == null) return;
+    output.writeln('How to fix:');
+    if (hasInstructions) output.writeln('  $instructions');
+    if (pipeline != null) {
+      output.writeln(
+        '  Run `${tool.name} $pipeline` to set up what is missing.',
+      );
     }
   }
 
-  _RequirementCheckResult _runRequiredEnvironmentChecks() {
+  _RequirementCheckResult _runRequiredEnvironmentChecks({
+    required bool withVersionTests,
+  }) {
     final wsRoot = findWorkspaceRootOrNull(Directory.current.path);
     final requiredMap = wsRoot == null
         ? null
@@ -2622,11 +2652,18 @@ Options:
     final warnings = <String>[];
     final errors = <String>[];
     String? setupInstructions;
+    String? setupPipeline;
 
     final setup = requiredMap['setup'];
     if (setup is YamlMap) {
       setupInstructions = setup['instructions']?.toString();
+      final pipeline = setup['setup-pipeline']?.toString().trim();
+      if (pipeline != null && pipeline.isNotEmpty) setupPipeline = pipeline;
     }
+    final binaryPathRaw = requiredMap['binaryPath']?.toString().trim();
+    final binaryPath = binaryPathRaw == null || binaryPathRaw.isEmpty
+        ? null
+        : _resolveEnvVars(binaryPathRaw);
 
     final envVars = requiredMap['env-variables'];
     if (envVars is List) {
@@ -2674,21 +2711,26 @@ Options:
         final binary = item['binary']?.toString();
         if (binary == null || binary.isEmpty) continue;
 
-        if (!_isBinaryOnPath(binary)) {
+        final versionConstraint = item['version-constraint']?.toString();
+        String substituted(String text) => versionConstraint == null
+            ? text
+            : text.replaceAll('%{version-constraint}', versionConstraint);
+
+        if (!_isBinaryAvailable(binary, binaryPath)) {
           final err = item['error']?.toString();
           final warn = item['warning']?.toString();
           if (err != null && err.isNotEmpty) {
-            errors.add(err);
+            errors.add(substituted(err));
           } else if (warn != null && warn.isNotEmpty) {
-            warnings.add(warn);
+            warnings.add(substituted(warn));
           } else {
             warnings.add('$binary is not installed or not in PATH');
           }
           continue;
         }
 
+        if (!withVersionTests) continue;
         final versionTest = item['version-test']?.toString();
-        final versionConstraint = item['version-constraint']?.toString();
         if (versionTest == null || versionConstraint == null) continue;
 
         final detectedVersion = _runVersionCommand(versionTest);
@@ -2701,12 +2743,7 @@ Options:
         if (!ok) {
           final versionError = item['version-error']?.toString();
           if (versionError != null && versionError.isNotEmpty) {
-            errors.add(
-              versionError.replaceAll(
-                '%{version-constraint}',
-                versionConstraint,
-              ),
-            );
+            errors.add(substituted(versionError));
           } else {
             errors.add(
               '$binary version $detectedVersion does not satisfy '
@@ -2721,6 +2758,7 @@ Options:
       warnings: warnings,
       errors: errors,
       setupInstructions: setupInstructions,
+      setupPipeline: setupPipeline,
     );
   }
 
@@ -2773,10 +2811,52 @@ Options:
     });
   }
 
-  bool _isBinaryOnPath(String binary) {
-    final checker = Platform.isWindows ? 'where' : 'which';
-    final result = Process.runSync(checker, [binary], runInShell: true);
-    return result.exitCode == 0;
+  /// Whether [binary] is in [binaryPath] (the binaries layer: the folder
+  /// itself or its `<os>-<arch>/` folder) or in a folder on PATH. Looked up
+  /// in the file system, without starting a process: the check runs before
+  /// every command.
+  bool _isBinaryAvailable(String binary, String? binaryPath) {
+    final names = <String>[binary];
+    if (Platform.isWindows && !binary.contains('.')) {
+      final extensions = (Platform.environment['PATHEXT'] ?? '.EXE;.BAT;.CMD')
+          .split(';')
+          .where((e) => e.isNotEmpty);
+      names.addAll([for (final e in extensions) '$binary${e.toLowerCase()}']);
+    }
+    final dirs = <String>[
+      if (binaryPath != null) ...[
+        binaryPath,
+        '$binaryPath${Platform.pathSeparator}${_platformFolder()}',
+      ],
+      ...(Platform.environment['PATH'] ?? '')
+          .split(Platform.isWindows ? ';' : ':')
+          .where((d) => d.isNotEmpty),
+    ];
+    for (final dir in dirs) {
+      for (final name in names) {
+        final candidate = '$dir${Platform.pathSeparator}$name';
+        if (FileSystemEntity.typeSync(candidate) == FileSystemEntityType.file) {
+          return true;
+        }
+        if (FileSystemEntity.isLinkSync(candidate) &&
+            File(candidate).existsSync()) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  /// The binaries layer's folder of this platform: `darwin-arm64`,
+  /// `linux-x64`, `win32-x64`, ...
+  static String _platformFolder() {
+    final parts = Abi.current().toString().split('_');
+    final os = switch (parts.first) {
+      'macos' => 'darwin',
+      'windows' => 'win32',
+      final other => other,
+    };
+    return '$os-${parts.last}';
   }
 
   String? _runVersionCommand(String command) {

@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:test/test.dart';
 import 'package:tom_build_base/tom_build_base_v2.dart';
+import 'package:yaml/yaml.dart';
 
 /// Test tool definition for use in tests.
 const testTool = ToolDefinition(
@@ -1102,8 +1103,8 @@ required-environment:
         );
       });
 
-      test('BB-RUN-45: non-doctor run skips required-environment checks '
-          '[2026-03-11]', () async {
+      test('BB-RUN-45: a regular run stops on a required-environment error '
+          'and says how to fix it [2026-11-16]', () async {
         final tempRoot = await Directory.systemTemp.createTemp(
           'bb_run_checks_',
         );
@@ -1127,14 +1128,10 @@ required-environment:
           final result = await runner.run([':simple']);
 
           expect(result.success, isFalse);
-          expect(
-            output.toString(),
-            isNot(contains('Installation requirements not met')),
-          );
-          expect(
-            output.toString(),
-            isNot(contains('Missing TESTTOOL_REQUIRED_RUN')),
-          );
+          expect(result.errorMessage, 'Installation requirements not met');
+          expect(output.toString(), contains('Missing TESTTOOL_REQUIRED_RUN'));
+          expect(output.toString(), contains('How to fix:'));
+          expect(output.toString(), contains('Please run "testtool setup".'));
         } finally {
           Directory.current = previousCwd;
           if (tempRoot.existsSync()) {
@@ -1401,8 +1398,8 @@ required-environment:
           expect(output.toString(), contains('Removed define: A_FIRST : 1'));
 
           final yaml = master.readAsStringSync();
-          expect(yaml, contains('defines:'));
-          expect(yaml, contains('Z_LAST: 2'));
+          final doc = loadYaml(yaml) as YamlMap;
+          expect(doc['testtool']['defines'], {'Z_LAST': '2'});
           expect(yaml, isNot(contains('A_FIRST')));
         } finally {
           Directory.current = previousCwd;
