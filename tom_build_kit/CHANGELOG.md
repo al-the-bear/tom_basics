@@ -1,3 +1,14 @@
+## 1.30.11
+
+### Fixed — `:pubget` and a git dependency on a moving branch
+
+A library's `pubspec.lock` is not tracked, so `pub get` keeps a git dependency
+at the commit the host resolved first; when the branch has moved on and another
+dependency needs the new commit's dependencies, `pub get` fails on version
+solving (seen on legiondary01 with app_webwork's appflowy_editor fork).
+`:pubget` / `:pubgetall` now retry once with `pub upgrade <the lock's git
+packages>` and say so. A tracked (application) lock is not upgraded.
+
 ## 1.30.10
 
 ### Changed — on tom_build_base 2.39.1

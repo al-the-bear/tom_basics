@@ -35,6 +35,7 @@ import 'executors/status_executor.dart';
 import 'executors/unreferenced_executor.dart';
 import 'executors/versioner_executor.dart';
 import 'incremental/step_inputs.dart';
+import 'pub_get_runner.dart';
 
 // =============================================================================
 // Pub Command Executors
@@ -67,30 +68,7 @@ class PubGetExecutor extends CommandExecutor {
       print('  Working directory: ${context.name}');
     }
 
-    // Printed, not streamed: under --jobs the projects run at once, and
-    // ToolRunner keeps each project's printed output together.
-    final run = await ProcessRunner.run(
-      executable,
-      ['pub', 'get'],
-      workingDirectory: projectPath,
-      runInShell: Platform.isWindows,
-    );
-    _printProcessOutput(run.stdout, run.stderr);
-    final exitCode = run.exitCode;
-
-    if (exitCode != 0) {
-      return ItemResult.failure(
-        path: projectPath,
-        name: context.name,
-        error: '$executable pub get failed (exit $exitCode)',
-      );
-    }
-
-    return ItemResult.success(
-      path: projectPath,
-      name: context.name,
-      message: 'pub get OK',
-    );
+    return _pubGetItem(context, executable);
   }
 }
 
@@ -98,54 +76,7 @@ class PubGetExecutor extends CommandExecutor {
 ///
 /// Deprecated: Use `:pubget` which now defaults to recursive.
 /// Kept for backwards compatibility.
-class PubGetAllExecutor extends CommandExecutor {
-  @override
-  Future<ItemResult> execute(CommandContext context, CliArgs args) async {
-    // Delegate to same logic as PubGetExecutor
-    final projectPath = context.path;
-    final isFlutter = context.hasNature<FlutterProjectFolder>();
-    final executable = isFlutter ? 'flutter' : 'dart';
-
-    if (args.dryRun) {
-      print('  [DRY RUN] $executable pub get in ${context.name}');
-      return ItemResult.success(
-        path: projectPath,
-        name: context.name,
-        message: 'dry-run',
-      );
-    }
-
-    if (args.verbose) {
-      print('  Running: $executable pub get');
-      print('  Working directory: ${context.name}');
-    }
-
-    // Printed, not streamed: under --jobs the projects run at once, and
-    // ToolRunner keeps each project's printed output together.
-    final run = await ProcessRunner.run(
-      executable,
-      ['pub', 'get'],
-      workingDirectory: projectPath,
-      runInShell: Platform.isWindows,
-    );
-    _printProcessOutput(run.stdout, run.stderr);
-    final exitCode = run.exitCode;
-
-    if (exitCode != 0) {
-      return ItemResult.failure(
-        path: projectPath,
-        name: context.name,
-        error: '$executable pub get failed (exit $exitCode)',
-      );
-    }
-
-    return ItemResult.success(
-      path: projectPath,
-      name: context.name,
-      message: 'pub get OK',
-    );
-  }
-}
+class PubGetAllExecutor extends PubGetExecutor {}
 
 /// Executor for :pubupdate - runs `dart pub upgrade` or `flutter pub upgrade` per project.
 ///
@@ -378,6 +309,31 @@ Map<String, CommandExecutor> createBuildkitExecutors() {
 
 /// Prints a finished process's output, stdout then stderr, without the
 /// trailing blank line.
+/// `pub get` in [context]'s project through [runPubGet] (which retries once
+/// with `pub upgrade` for a stale git ref in an untracked lock), as an item
+/// result.
+Future<ItemResult> _pubGetItem(
+  CommandContext context,
+  String executable,
+) async {
+  final outcome = await runPubGet(context.path, executable);
+  if (outcome.exitCode != 0) {
+    final command = outcome.upgraded.isEmpty ? 'pub get' : 'pub upgrade';
+    return ItemResult.failure(
+      path: context.path,
+      name: context.name,
+      error: '$executable $command failed (exit ${outcome.exitCode})',
+    );
+  }
+  return ItemResult.success(
+    path: context.path,
+    name: context.name,
+    message: outcome.upgraded.isEmpty
+        ? 'pub get OK'
+        : 'pub get OK after pub upgrade ${outcome.upgraded.join(' ')}',
+  );
+}
+
 void _printProcessOutput(String out, String err) {
   for (final text in [out, err]) {
     final trimmed = text.trimRight();

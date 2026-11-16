@@ -945,7 +945,10 @@ const statusCommand = CommandDefinition(
 
 const pubgetCommand = CommandDefinition(
   name: 'pubget',
-  description: 'Run dart/flutter pub get on projects',
+  description:
+      'Run dart/flutter pub get on projects (a version-solving failure '
+      'with git packages in an untracked lock is retried once with pub '
+      'upgrade of those packages)',
   aliases: ['pg'],
   options: pubOptions,
   worksWithNatures: {DartProjectFolder},

@@ -32,7 +32,8 @@ This document lists all testable features across buildkit tools and tracks test 
 | 17 | [Projects — The Project Listing](#17-projects--the-project-listing) | 5 | 5✅ | `projects_command_test.dart` | [→](#17-projects--the-project-listing) |
 | 18 | [Versioner — Build Number](#2-versioner--version-file-generation) | 5 | 5✅ | `versioner_build_number_test.dart` | [→](#2-versioner--version-file-generation) |
 | 19 | [Help Footer](#19-help-footer) | 1 | 1✅ | `help_footer_test.dart` | [→](#19-help-footer) |
-| — | **Total** | **180** | **180✅** | | |
+| 20 | [Pub Get — Stale Git Refs](#20-pub-get--stale-git-refs) | 3 | 3✅ | `pubget_git_ref_test.dart` | [→](#20-pub-get--stale-git-refs) |
+| — | **Total** | **183** | **183✅** | | |
 
 ---
 
@@ -670,3 +671,15 @@ The integration suites run on the machine's workspace clone (tom_test_support `T
 | ID | Feature | Status | Description |
 |----|---------|--------|-------------|
 | BK-HELPFOOT-1 | Where pipelines live | ✅ | The footer names the top-level `pipelines:` of `buildkit_master.yaml` and no project file. |
+
+---
+
+## 20. Pub Get — Stale Git Refs
+
+**Test file:** `test/pubget_git_ref_test.dart` (local git repositories and a `PUB_CACHE` of its own under `.dart_tool`; runs `bin/buildkit.dart`)
+
+| ID | Feature | Status | Description |
+|----|---------|--------|-------------|
+| BK-PUBGIT-1 | Retry for an untracked lock | ✅ | A lock pinning a moved git branch that no longer solves is upgraded once (`pub upgrade` of the lock's git packages); the output says so. |
+| BK-PUBGIT-2 | Tracked lock left alone | ✅ | A lock git tracks is not upgraded; `:pubget` fails as `pub get` did. |
+| BK-PUBGIT-3 | Git packages of a lock | ✅ | `gitPackagesInLock` names the `source: git` packages in the lock's order; none for a missing file. |

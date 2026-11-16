@@ -198,6 +198,13 @@ CPU count, at most 8); each project's output is printed in one piece when it is 
 mixing them with others (the `build` pipeline's `:pubget :runner :d4rtgen :v :comp`), keeps the build order. The
 measured figures are in the build_tom quest (`buildkit_performance.build_tom.md`).
 
+**A git dependency on a moving branch.** A library's `pubspec.lock` is not tracked, so each host keeps its own, and
+`pub get` keeps a git dependency at the commit the host resolved first. When the branch has moved on and another
+dependency needs what the new commit brings, `pub get` fails with `version solving failed`. `:pubget` then retries
+once with `pub upgrade <every git package of the lock>` and prints `Retrying with dart pub upgrade ...` (`flutter`
+for a Flutter package); the project's result says `pub get OK after pub upgrade ...`. A tracked lock (an
+application's) is never upgraded this way: its failure is reported as it is.
+
 ### Skipping unchanged projects
 
 `:compiler`, `:versioner` and `:runner` (with `--command=build`, the default) skip a project whose inputs did not
