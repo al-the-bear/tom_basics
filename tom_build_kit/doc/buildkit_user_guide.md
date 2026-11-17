@@ -1188,6 +1188,8 @@ bk :status [options]
 | `-v`, `--verbose` | Show detailed file and commit information |
 | `--skip-binaries` | Skip binary version checks |
 | `--skip-git` | Skip git status checks |
+| `-i`, `-o` | Report every repository git mode walks (skipping `ztmp/`, `_ai`, marked folders and nested workspaces), not only the one holding the current folder |
+| `--no-skip` | With `-i` / `-o`: also the repositories in folders with a skip marker and in nested workspaces |
 
 **Output Sections:**
 
@@ -1580,6 +1582,16 @@ Git tools require explicit traversal order for correct operation with nested rep
 | Commit/Push | Inner-first (`-i`) | Commit submodules first so parent records updated hashes |
 | Pull/Sync | Outer-first (`-o`) | Pull parent first to get correct submodule refs |
 | Checkout/Reset | Outer-first (`-o`) | Parent determines which submodule versions to use |
+
+**Which repositories git mode walks:** every git repository below the execution root, a submodule checkout (`.git`
+file) and an independent clone (`.git` folder) alike, ordered by depth and, at the same depth, by path. It skips what
+project mode skips: hidden folders, `ztmp/`, `_ai/`, `build/` and the other always-skipped folders, folders with
+`tom_skip.yaml` or `buildkit_skip.yaml` (a repository holding one included) and nested workspaces (a
+`buildkit_master.yaml` below the root). `--no-skip` walks into the marked folders and nested workspaces.
+
+`--modules` / `--skip-modules` select repositories by a repository ID (the folder holding its `tom_repository.yaml`)
+or by a name or path matched as whole path segments: `-m basics` selects `tom_ai/basics`, `-m tom_basics` does not
+select `tom_basics_console`.
 
 ### Specialized Git Tools
 

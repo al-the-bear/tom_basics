@@ -1,3 +1,25 @@
+## 1.31.0
+
+### Changed — git mode on tom_build_base 2.41.0
+
+- Git mode (`-i` / `-o`) skips what project mode skips: `ztmp`, `_ai` and the
+  other always-skipped folders, folders with `tom_skip.yaml` /
+  `buildkit_skip.yaml` and nested workspaces; `--no-skip` lists the marked
+  ones. A `:gitcommit -i` no longer commits in scratch copies under `ztmp/` or
+  in the `_ai` mount.
+- `--modules` / `--skip-modules` select repositories by whole path segments
+  or by repository ID (the folder holding its `tom_repository.yaml`), so
+  independent clones are selected like submodule checkouts; `tom_basics` no
+  longer selects `tom_basics_console`.
+- Repositories at the same depth run in path order.
+
+### Fixed
+
+- `:status -i` / `-o` were refused ("This command does not support git
+  traversal"): the command now declares git traversal and reports every
+  repository git mode walks, with its skips; `--no-skip` lists the marked
+  ones (BK-STAT-1).
+
 ## 1.30.13
 
 ### Fixed — `:compiler` from the workspace root with `-p`

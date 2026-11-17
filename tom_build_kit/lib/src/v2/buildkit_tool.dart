@@ -943,7 +943,14 @@ const statusCommand = CommandDefinition(
   worksWithNatures: {DartProjectFolder},
   requiresTraversal: false,
   supportsProjectTraversal: true,
-  examples: ['buildkit :status', 'status --json --skip-git'],
+  // `-i` / `-o` report every repository git mode walks, not only the one
+  // holding the execution root.
+  supportsGitTraversal: true,
+  examples: [
+    'buildkit :status',
+    'status --json --skip-git',
+    'buildkit :status -i',
+  ],
 );
 
 const pubgetCommand = CommandDefinition(

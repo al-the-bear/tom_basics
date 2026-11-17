@@ -33,7 +33,8 @@ This document lists all testable features across buildkit tools and tracks test 
 | 18 | [Versioner — Build Number](#2-versioner--version-file-generation) | 5 | 5✅ | `versioner_build_number_test.dart` | [→](#2-versioner--version-file-generation) |
 | 19 | [Help Footer](#19-help-footer) | 1 | 1✅ | `help_footer_test.dart` | [→](#19-help-footer) |
 | 20 | [Pub Get — Stale Git Refs](#20-pub-get--stale-git-refs) | 3 | 3✅ | `pubget_git_ref_test.dart` | [→](#20-pub-get--stale-git-refs) |
-| — | **Total** | **185** | **185✅** | | |
+| 21 | [Status — Git Mode](#21-status--git-mode) | 1 | 1✅ | `status_git_mode_test.dart` | [→](#21-status--git-mode) |
+| — | **Total** | **186** | **186✅** | | |
 
 ---
 
@@ -685,3 +686,13 @@ The integration suites run on the machine's workspace clone (tom_test_support `T
 | BK-PUBGIT-1 | Retry for an untracked lock | ✅ | A lock pinning a moved git branch that no longer solves is upgraded once (`pub upgrade` of the lock's git packages); the output says so. |
 | BK-PUBGIT-2 | Tracked lock left alone | ✅ | A lock git tracks is not upgraded; `:pubget` fails as `pub get` did. |
 | BK-PUBGIT-3 | Git packages of a lock | ✅ | `gitPackagesInLock` names the `source: git` packages in the lock's order; none for a missing file. |
+
+---
+
+## 21. Status — Git Mode
+
+**Test file:** `test/status_git_mode_test.dart` (repositories made with `git init` in a temporary folder; the buildkit runner in-process)
+
+| ID | Feature | Status | Description |
+|----|---------|--------|-------------|
+| BK-STAT-1 | `:status -i` | ✅ | Accepted (git traversal declared); lists the repositories git mode walks, without `ztmp/` and a repository holding `buildkit_skip.yaml`; `--no-skip` lists the marked one. |

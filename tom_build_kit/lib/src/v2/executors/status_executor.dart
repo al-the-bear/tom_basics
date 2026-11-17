@@ -209,6 +209,7 @@ class StatusExecutor extends CommandExecutor {
       executionRoot: root,
       innerFirstGit: args.innerFirstGit,
       outerFirstGit: args.outerFirstGit,
+      noSkip: args.noSkip,
       skipBinaries: skipBinaries,
       skipGit: skipGit,
       verbose: verbose,
@@ -231,6 +232,7 @@ class StatusExecutor extends CommandExecutor {
     required String executionRoot,
     required bool innerFirstGit,
     required bool outerFirstGit,
+    required bool noSkip,
     required bool skipBinaries,
     required bool skipGit,
     required bool verbose,
@@ -257,7 +259,7 @@ class StatusExecutor extends CommandExecutor {
     if (!skipGit) {
       if (innerFirstGit || outerFirstGit) {
         // Find git repos by scanning for .git directories
-        final gitRoots = await _findGitRepos(executionRoot);
+        final gitRoots = await _findGitRepos(executionRoot, noSkip: noSkip);
         for (final repoPath in gitRoots) {
           final status = await _analyzeGitRepo(repoPath);
           if (status != null) repos.add(status);
@@ -309,9 +311,13 @@ class StatusExecutor extends CommandExecutor {
     }
   }
 
-  /// Find all git repositories under a directory.
-  Future<List<String>> _findGitRepos(String rootDir) async {
-    final finder = GitRepoFinder();
+  /// Find all git repositories under a directory, as git mode walks them:
+  /// skip markers and nested workspaces stop it unless [noSkip].
+  Future<List<String>> _findGitRepos(
+    String rootDir, {
+    required bool noSkip,
+  }) async {
+    final finder = GitRepoFinder(ignoreSkipMarkers: noSkip);
     final repos = await finder.findAll(rootDir);
     return repos.map((f) => f.path).toList();
   }
