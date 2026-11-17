@@ -206,7 +206,7 @@ try {
   Remove-Item Env:\TOM_BOOTSTRAP_ALLOW_MISSING_SETUP -ErrorAction SilentlyContinue
 }
 
-$tools = @('buildkit', 'findproject')
+$tools = @('buildkit', 'findproject', 'wssetup')
 $compiled = 0
 $failed = @()
 Write-Host 'Compiling tools...'

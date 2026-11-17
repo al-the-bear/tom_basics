@@ -65,6 +65,7 @@ This package extends the shared infrastructure from **tom_build_base**:
   - [Adding Persistent Defines](#adding-persistent-defines)
   - [Using Persistent Defines in Configuration](#using-persistent-defines-in-configuration)
   - [Managing Persistent Defines](#managing-persistent-defines)
+- [Setting Up a Tree: `wssetup`](#setting-up-a-tree-wssetup)
 - [Running Other Tools](#running-other-tools)
 - [Git Operations](#git-operations)
 - [Shell Commands](#shell-commands)
@@ -1540,6 +1541,45 @@ When `--modes=DEV` is specified, both the global defines and the `DEV`-specific 
 
 > For complete documentation on modes and defines, see
 > [Modes and Placeholders](../../tom_build_base/doc/modes_and_placeholders.md).
+
+---
+
+## Setting Up a Tree: `wssetup`
+
+`wssetup` (also `buildkit :wssetup`, the same options) sets up the directory tree after a checkout from the
+root's repository manifest `repos.yaml`:
+
+- **after a checkout of the root repository**, run at the root: every repository of the tree;
+- **in a workspace folder** (or with `--folder <path>`): only the repositories below that folder.
+
+It clones only what is missing: each entry at its path, on its `branch` (an upstream at its pinned SHA), when
+the entry is for this host (`hosts:` absent: every host; `[]`: on demand, cloned only with `--only <path>`).
+A repository that is there is compared (origin URL, branch, an upstream's pin) and reported `exists` or
+`differs`; it is never pulled, pushed or changed. Then each parent's generated ignore block is written as
+`tom_repos --apply` writes it (`--check`: reported, not written). `-n` lists the plan and changes nothing.
+
+```bash
+wssetup -n                      # the plan for the whole tree (at the root)
+wssetup                         # clone what is missing, write the ignore blocks
+wssetup --folder inhouse/second_wind/c2dart
+wssetup --only inhouse/second_wind/c2dart/c_samples/libgit2   # an on-demand entry
+```
+
+| Option | Meaning |
+| --- | --- |
+| `--tree <dir>` | The root of the tree (default: the nearest folder above holding `repos.yaml`) |
+| `--folder <path>` | The workspace folder to set up (default: the one the working directory is in) |
+| `--host <id>` | This host's fleet id (default: `TOM_REPOS_HOST`, `.tom/machine_id`, the host name) |
+| `--only <path>` | Only this entry (repeatable), also an on-demand one or another host's |
+| `--manifest <file>` | A `repos.yaml` kept elsewhere |
+| `--check` | Report the ignore blocks instead of writing them |
+
+It needs no AI setup: no `.tom`, no `_ai`, no extension configuration, and no build environment
+(`:wssetup` is not stopped by `required-environment`). The AI state (`kind: ai`) and the `links:` are left to
+the fleet skill that clones a machine (`tom_clone_new`). Before the cutover, while the root still holds a
+`.gitmodules`, the entries that are submodules are left to git and no ignore block is written. Exit codes: 0
+done, 1 a clone failed (or with `--check` a block differs), 2 no or an invalid `repos.yaml`. buildkit's
+traversal and its build commands never read `repos.yaml`; only `wssetup` does.
 
 ---
 

@@ -18,7 +18,10 @@ so buildkit gets argument parsing, workspace traversal, pipeline execution and
 end-of-run summaries for free.
 
 A second, smaller binary — **`findproject`** — resolves a project by name, ID or
-folder and prints its path, so a shell wrapper can `cd` to it.
+folder and prints its path, so a shell wrapper can `cd` to it. A third —
+**`wssetup`** — sets up the directory tree after a checkout: it clones the
+repositories the root's `repos.yaml` lists that are missing (the whole tree, or
+one workspace folder), needing no AI setup; `buildkit :wssetup` runs the same.
 
 ---
 
@@ -80,6 +83,7 @@ The package declares two executables:
 executables:
   buildkit:
   findproject:
+  wssetup:
 ```
 
 In day-to-day use the binaries are activated/compiled and put on `PATH`:
@@ -91,7 +95,7 @@ dart run bin/buildkit.dart --help     # or, once on PATH: buildkit --help
 ```
 
 Inside the Tom workspace, `bootstrap_binaries.sh` (`bootstrap_binaries.ps1` on
-Windows) compiles `buildkit` and `findproject` into
+Windows) compiles `buildkit`, `findproject` and `wssetup` into
 `$TOM_BINARY_PATH/<platform>/` (`~/tac/tom_binaries/tom/<platform>/`), and with
 `--setup-shell` puts that folder on `PATH` for every shell, non-interactive ones
 included (`~/.zshenv`, the top of `~/.bashrc`). `buildkit setup` then builds
@@ -164,6 +168,7 @@ Run summary: 20 ok · 0 skipped · 0 errors
 | ----- | ------------ |
 | [`bin/buildkit.dart`](bin/buildkit.dart) | The v2 entry point: `ToolRunner(tool: buildkitTool, executors: createBuildkitExecutors())`. |
 | [`bin/findproject.dart`](bin/findproject.dart) | A standalone project-resolver tool wrapped by a shell `goto()` function. |
+| [`bin/wssetup.dart`](bin/wssetup.dart) | A standalone single-command tool on tom_build_base: sets up the tree from `repos.yaml`. |
 | [`test/`](test/) | 182 tests covering executors, pipelines, project scanning and git commands — each is a runnable usage example. |
 | [`tom_build_kit_sample`](../../devops/tom_devops_samples/tom_build_kit_sample/) | Authoring a small build tool / pipeline with buildkit against a fixture workspace *(planned — forward reference until the samples build-out lands)*. |
 
@@ -426,7 +431,7 @@ buildkit sits at the top of the build toolchain, built on the shared framework
 and reusing the workspace understanding from `tom_build`.
 
 ```
-                      buildkit · findproject   (this package)
+                buildkit · findproject · wssetup   (this package)
                              │ built on
                              ▼
                     ┌──────────────────┐
@@ -475,11 +480,11 @@ Related packages (don't duplicate — follow the link):
 
 ## Status
 
-- **Version:** 1.13.0 (on pub.dev)
+- **Version:** 1.32.0 (on pub.dev)
 - **SDK:** Dart `^3.10.4`
-- **Base:** `tom_build_base: ^2.17.0` (hosted)
+- **Base:** `tom_build_base: ^2.41.0` (hosted)
 - **Tests:** `dart test` (executor, pipeline, project-scan and git suites).
-- **Binaries:** `buildkit` (primary), `findproject`.
+- **Binaries:** `buildkit` (primary), `findproject`, `wssetup`.
 
 ---
 

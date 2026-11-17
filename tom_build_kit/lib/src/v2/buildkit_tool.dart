@@ -6,6 +6,7 @@ library;
 import 'package:tom_build_base/tom_build_base_v2.dart';
 
 import '../version.versioner.dart';
+import '../wssetup/wssetup_tool.dart' show wssetupOptions;
 
 // =============================================================================
 // Common Options
@@ -1339,6 +1340,28 @@ const findProjectCommand = CommandDefinition(
   ],
 );
 
+/// `:wssetup` runs the standalone `wssetup`: clones the repositories
+/// `repos.yaml` lists that are missing (the tree, or one workspace folder).
+/// Only wssetup reads repos.yaml; buildkit's traversal never does.
+const wssetupCommand = CommandDefinition(
+  name: 'wssetup',
+  description:
+      'Set up the tree after a checkout: clone the repositories repos.yaml '
+      'lists that are missing (runs wssetup)',
+  options: wssetupOptions,
+  requiresTraversal: false,
+  supportsProjectTraversal: false,
+  supportsGitTraversal: false,
+  canRunStandalone: true,
+  // A setup run comes before any build tool is installed.
+  needsEnvironment: false,
+  examples: [
+    'buildkit :wssetup -n',
+    'buildkit :wssetup --folder inhouse/second_wind/c2dart',
+    'wssetup --only inhouse/second_wind/c2dart/c_samples/libgit2',
+  ],
+);
+
 const dcliCommand = CommandDefinition(
   name: 'dcli',
   description: 'Execute Dart scripts via dcli',
@@ -1439,6 +1462,7 @@ final buildkitTool = ToolDefinition(
     gitrebaseCommand,
     // Other
     findProjectCommand,
+    wssetupCommand,
     dcliCommand,
   ],
   helpFooter: '''

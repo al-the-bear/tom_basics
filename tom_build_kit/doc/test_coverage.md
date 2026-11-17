@@ -34,7 +34,8 @@ This document lists all testable features across buildkit tools and tracks test 
 | 19 | [Help Footer](#19-help-footer) | 1 | 1✅ | `help_footer_test.dart` | [→](#19-help-footer) |
 | 20 | [Pub Get — Stale Git Refs](#20-pub-get--stale-git-refs) | 3 | 3✅ | `pubget_git_ref_test.dart` | [→](#20-pub-get--stale-git-refs) |
 | 21 | [Status — Git Mode](#21-status--git-mode) | 1 | 1✅ | `status_git_mode_test.dart` | [→](#21-status--git-mode) |
-| — | **Total** | **186** | **186✅** | | |
+| 21 | [wssetup — Tree Setup](#21-wssetup--tree-setup) | 10 | 10✅ | `wssetup_test.dart` | [→](#21-wssetup--tree-setup) |
+| — | **Total** | **196** | **196✅** | | |
 
 ---
 
@@ -696,3 +697,23 @@ The integration suites run on the machine's workspace clone (tom_test_support `T
 | ID | Feature | Status | Description |
 |----|---------|--------|-------------|
 | BK-STAT-1 | `:status -i` | ✅ | Accepted (git traversal declared); lists the repositories git mode walks, without `ztmp/` and a repository holding `buildkit_skip.yaml`; `--no-skip` lists the marked one. |
+
+---
+
+## 21. wssetup — Tree Setup
+
+**Test file:** `test/wssetup_test.dart` (a fixture of bare local repositories under the system temp folder, `git@fixture:<name>.git` mapped onto them with `insteadOf`; no `.tom`, no `_ai`)
+
+| ID | Feature | Status | Description |
+|----|---------|--------|-------------|
+| BK-WSS-1 | Whole tree | ✅ | From a root checkout: every entry for this host on its branch, an upstream at its pin, the AI entry and other hosts' / on-demand entries skipped, each parent's ignore block written. |
+| BK-WSS-2 | Idempotent | ✅ | A second run clones nothing and writes nothing. |
+| BK-WSS-3 | One workspace folder | ✅ | Run in a workspace folder (or `--folder`): only its repositories; the root's block is left alone. |
+| BK-WSS-4 | `-n`, `--check` | ✅ | The dry run lists the plan and changes nothing; `--check` clones but reports the blocks. |
+| BK-WSS-5 | `--only` | ✅ | An on-demand entry and another host's are cloned when named; an unknown path fails. |
+| BK-WSS-6 | Compare, never change | ✅ | Wrong branch, wrong origin and an upstream off its pin are reported `differs`; nothing is changed. |
+| BK-WSS-7 | Reduced mode | ✅ | With a root `.gitmodules` no ignore block is written. |
+| BK-WSS-8 | Usage errors | ✅ | No `repos.yaml` is a usage error; an invalid one names each problem. |
+| BK-WSS-9 | Block format | ✅ | `blockWritten` gives what `tom_repos --apply` writes (new, replaced, removed). |
+| BK-WSS-10 | Both entry points | ✅ | `wssetup` and `buildkit :wssetup` run the same; a failing `required-environment` does not stop it. |
+

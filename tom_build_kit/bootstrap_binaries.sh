@@ -275,7 +275,7 @@ if ! TOM_BOOTSTRAP_ALLOW_MISSING_SETUP=1 \
     warn "Versioner step failed during bootstrap; continuing with existing version file."
 fi
 
-TOOLS=(buildkit findproject)
+TOOLS=(buildkit findproject wssetup)
 COMPILED=0
 FAILED=0
 echo "Compiling tools..."

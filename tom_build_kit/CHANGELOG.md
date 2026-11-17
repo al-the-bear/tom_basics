@@ -1,3 +1,20 @@
+## 1.32.0
+
+### Added — `wssetup`, and `buildkit :wssetup`
+
+A standalone tool on tom_build_base that sets up the directory tree after a
+checkout from the root's `repos.yaml`: at the root every repository of the
+tree, in a workspace folder (or `--folder`) the ones below it. It clones only
+what is missing (on the entry's branch, an upstream at its pin, for this host
+or with `--only`), compares what is there (origin, branch, pin) without
+changing it, and writes each parent's generated ignore block as `tom_repos
+--apply` does (`--check` reports it; `-n` lists the plan). It needs no `.tom`,
+no `_ai`, no extension configuration and no build environment; the AI state
+and the links stay the fleet skill's. Before the cutover (root `.gitmodules`)
+submodule entries are left to git and no block is written. `buildkit
+:wssetup` runs the same with the same options; buildkit's traversal never
+reads `repos.yaml` (BK-WSS-1..10). Compiled with buildkit and findproject.
+
 ## 1.31.0
 
 ### Changed — git mode on tom_build_base 2.41.0
@@ -20,7 +37,7 @@
   repository git mode walks, with its skips; `--no-skip` lists the marked
   ones (BK-STAT-1).
 
-## 1.30.13
+## 1.32.0
 
 ### Fixed — `:compiler` from the workspace root with `-p`
 

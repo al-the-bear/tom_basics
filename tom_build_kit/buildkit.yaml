@@ -33,6 +33,7 @@ compiler:
       files:
         - bin/buildkit.dart
         - bin/findproject.dart
+        - bin/wssetup.dart
       targets: [darwin-arm64, linux-x64]
       platforms: [darwin-arm64]
     
@@ -43,6 +44,7 @@ compiler:
       files:
         - bin/buildkit.dart
         - bin/findproject.dart
+        - bin/wssetup.dart
       platforms: [darwin-x64, linux-*]
 
     # Windows - compile for self only
@@ -51,6 +53,7 @@ compiler:
       files:
         - bin/buildkit.dart
         - bin/findproject.dart
+        - bin/wssetup.dart
       platforms: [win32-*]
 
   postcompile:

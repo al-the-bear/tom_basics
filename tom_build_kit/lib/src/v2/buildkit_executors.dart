@@ -28,6 +28,7 @@ import 'executors/dependencies_executor.dart';
 import 'executors/execute_executor.dart';
 import 'executors/git_executors.dart';
 import 'executors/findproject_executor.dart';
+import '../wssetup/wssetup_tool.dart' show WssetupExecutor;
 import 'executors/publisher_executor.dart';
 import 'executors/runner_executor.dart';
 import 'executors/projects_executor.dart';
@@ -303,6 +304,7 @@ Map<String, CommandExecutor> createBuildkitExecutors() {
 
     // Other
     'findproject': FindProjectExecutor(),
+    'wssetup': WssetupExecutor(),
     'dcli': DcliExecutor(),
   };
 }
