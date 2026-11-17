@@ -2,10 +2,10 @@ import 'package:path/path.dart' as p;
 
 /// Git traversal order mode.
 enum GitTraversalMode {
-  /// Process inner git repos first (submodules before parent).
+  /// Process inner git repos first (nested repositories before their parent).
   innerFirst,
 
-  /// Process outer git repos first (parent before submodules).
+  /// Process outer git repos first (a parent before its nested repositories).
   outerFirst,
 }
 
@@ -161,10 +161,11 @@ class ProjectTraversalInfo extends BaseTraversalInfo {
 ///
 /// Used when traversing git repositories (finds all .git/ folders).
 class GitTraversalInfo extends BaseTraversalInfo {
-  /// Git submodules to include (by name, empty = all).
+  /// Repositories to include, empty = all (`--modules`): a repository ID or
+  /// a name or path compared with whole path segments.
   final List<String> modules;
 
-  /// Git submodules to exclude (by name).
+  /// Repositories to exclude (`--skip-modules`), selected as [modules].
   final List<String> skipModules;
 
   /// Traversal order (innerFirst or outerFirst).

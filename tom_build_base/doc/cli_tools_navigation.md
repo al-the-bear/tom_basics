@@ -188,6 +188,19 @@ the current directory.
 | `--inner-first-git` | `-i` | Scan git repos, process innermost (deepest) first |
 | `--outer-first-git` | `-o` | Scan git repos, process outermost (shallowest) first |
 | `--top-repo` | `-T` | Find topmost git repo by traversing up (requires `-i` or `-o`) |
+| `--modules` | `-m` | Repositories to include (see below) |
+| `--skip-modules` | | Repositories to exclude (see below) |
+
+`--modules` and `--skip-modules` select repositories by path, so an independent clone (a `.git` directory) is
+selected like a submodule checkout. Each value is one of:
+
+- a **repository ID** or configured `name:` from a `tom_repository.yaml` (case-insensitive): the folder holding that
+  file and everything below it (`-m BAS`, `-m WEBWK` for `app_webwork`, whose name is `webwork`);
+- a **name or path**, compared with whole path segments, case-insensitive: `-m basics` selects `tom_ai/basics`,
+  `-m xternal/tom_dcli` that run of segments; `-m tom_basics` does not select `tom_basics_console`.
+
+A submodule checkout also matches by its submodule name. `%{git.isSubmodule}` says whether `.git` is a file (a
+submodule checkout or a worktree); it is information only, and neither the filters nor the order depend on it.
 
 **Use cases:**
 - `-i`: For commit/push operations (leaf repos first)

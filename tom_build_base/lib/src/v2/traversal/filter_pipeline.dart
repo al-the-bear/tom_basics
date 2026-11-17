@@ -378,81 +378,25 @@ class FilterPipeline {
     return false;
   }
 
-  /// Filter to keep only folders within specified git submodules.
-  ///
-  /// Accepts repository IDs (e.g., "BSC", "D4"), repository names (e.g., "tom_module_basics"),
-  /// or path substrings.
+  /// `--modules`: keep the folders in one of the [modules] repositories.
   List<FsFolder> _applyModulesFilter(
     List<FsFolder> folders,
     List<String> modules, {
     required String executionRoot,
   }) {
-    // Resolve IDs to names
-    final resolvedModules = modules
-        .map(
-          (x) =>
-              RepositoryIdLookup.resolveToName(x, executionRoot: executionRoot),
-        )
-        .toList();
-
-    return folders.where((f) {
-      // Check if this folder is within any of the specified modules
-      for (final module in resolvedModules) {
-        if (f.path.contains(module)) return true;
-        // Also check natures for submodule name
-        for (final nature in f.natures) {
-          if (nature is GitFolder && nature.submoduleName != null) {
-            final submoduleName = nature.submoduleName!.toLowerCase();
-            if (resolvedModules.any(
-              (m) =>
-                  submoduleName.contains(m.toLowerCase()) ||
-                  submoduleName == m.toLowerCase(),
-            )) {
-              return true;
-            }
-          }
-        }
-      }
-      return false;
-    }).toList();
+    final selectors = _ModuleSelector.all(modules, executionRoot, _path);
+    return folders.where((f) => selectors.any((s) => s.matches(f))).toList();
   }
 
-  /// Filter to exclude folders within specified git submodules.
-  ///
-  /// Accepts repository IDs (e.g., "BSC", "D4"), repository names (e.g., "tom_module_basics"),
-  /// or path substrings.
+  /// `--skip-modules`: drop the folders in one of the [skipModules]
+  /// repositories.
   List<FsFolder> _applySkipModulesFilter(
     List<FsFolder> folders,
     List<String> skipModules, {
     required String executionRoot,
   }) {
-    // Resolve IDs to names
-    final resolvedModules = skipModules
-        .map(
-          (x) =>
-              RepositoryIdLookup.resolveToName(x, executionRoot: executionRoot),
-        )
-        .toList();
-
-    return folders.where((f) {
-      // Exclude if this folder is within any of the specified modules
-      for (final module in resolvedModules) {
-        if (f.path.contains(module)) return false;
-        for (final nature in f.natures) {
-          if (nature is GitFolder && nature.submoduleName != null) {
-            final submoduleName = nature.submoduleName!.toLowerCase();
-            if (resolvedModules.any(
-              (m) =>
-                  submoduleName.contains(m.toLowerCase()) ||
-                  submoduleName == m.toLowerCase(),
-            )) {
-              return false;
-            }
-          }
-        }
-      }
-      return true;
-    }).toList();
+    final selectors = _ModuleSelector.all(skipModules, executionRoot, _path);
+    return folders.where((f) => !selectors.any((s) => s.matches(f))).toList();
   }
 }
 
@@ -532,4 +476,79 @@ class FolderSorter {
   /// doubled separators) are ignored so equivalent paths compare equally.
   static int _pathDepth(String path) =>
       path.split(RegExp(r'[/\\]')).where((s) => s.isNotEmpty).length;
+}
+
+/// One value of `--modules` / `--skip-modules` and the folders it selects.
+///
+/// Repositories are selected by path, so independent clones (a `.git`
+/// directory) are selected like submodule checkouts:
+/// - a repository ID or configured `name:` from `tom_repository.yaml`
+///   (case-insensitive) selects the folder holding that file and everything
+///   below it;
+/// - a name or path (an ID's configured `name:` included) selects a folder
+///   whose path holds it as whole segments, case-insensitive: `basics`
+///   selects `tom_ai/basics/...`, `xternal/tom_dcli` that run of segments,
+///   and `tom_basics` does not select `tom_basics_console`;
+/// - a submodule checkout's [GitFolder.submoduleName] is compared the same
+///   way, as an extra match while submodules exist.
+class _ModuleSelector {
+  _ModuleSelector(String value, String executionRoot, this._path)
+    : _folder = RepositoryIdLookup.resolveToFolder(
+        value,
+        executionRoot: executionRoot,
+      ),
+      _segments = _segmentsOf(
+        RepositoryIdLookup.resolveToName(value, executionRoot: executionRoot),
+      );
+
+  static List<_ModuleSelector> all(
+    List<String> values,
+    String executionRoot,
+    p.Context path,
+  ) => [for (final v in values) _ModuleSelector(v, executionRoot, path)];
+
+  final p.Context _path;
+
+  /// The repository folder of an ID or configured name, else null.
+  final String? _folder;
+
+  /// The name or path, as lower-case segments.
+  final List<String> _segments;
+
+  bool matches(FsFolder folder) {
+    final folderPath = _path.normalize(_path.absolute(folder.path));
+    final repository = _folder;
+    if (repository != null &&
+        (folderPath == repository || _path.isWithin(repository, folderPath))) {
+      return true;
+    }
+    if (_holdsSegments(_segmentsOf(folderPath))) return true;
+    for (final nature in folder.natures) {
+      final submoduleName = nature is GitFolder ? nature.submoduleName : null;
+      if (submoduleName != null && _holdsSegments(_segmentsOf(submoduleName))) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /// Whether [segments] hold [_segments] as a contiguous run.
+  bool _holdsSegments(List<String> segments) {
+    if (_segments.isEmpty) return false;
+    for (var start = 0; start + _segments.length <= segments.length; start++) {
+      var all = true;
+      for (var i = 0; i < _segments.length && all; i++) {
+        all = segments[start + i] == _segments[i];
+      }
+      if (all) return true;
+    }
+    return false;
+  }
+
+  static List<String> _segmentsOf(String path) => path
+      .replaceAll('\\', '/')
+      .split('/')
+      .where((s) => s.isNotEmpty && s != '.')
+      .map((s) => s.toLowerCase())
+      .toList();
 }

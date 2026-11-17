@@ -313,10 +313,10 @@ buildkit -s . -r --inner-first-git :gitstatus
 # Commit then push all repos, processing outer repo last
 buildkit -s . -r --inner-first-git :commit :push
 
-# Only process specific git submodules
+# Only process specific repositories (by name, path segments or repository ID)
 buildkit -s . -r --modules=basics,d4rt :gitstatus
 
-# Skip certain git submodules
+# Skip certain repositories
 buildkit -s . -r --skip-modules=crypto :commit
 
 # Mix with path exclusions
@@ -582,7 +582,7 @@ flowchart TB
         D1["1. Recursion exclude<br/>(already applied during scan)"]
         D2["2. Path exclude patterns"]
         D3["3. Project name patterns"]
-        D4["4. Module filter<br/>(git submodules)"]
+        D4["4. Module filter<br/>(repositories)"]
         D5["5. Test project filter"]
     end
     
@@ -626,7 +626,7 @@ class CliArgs {
   final List<String> excludeProjects;         // --exclude-projects
   final List<String> recursionExclude;        // --recursion-exclude
   final List<String> projectPatterns;         // -p: include projects
-  final List<String> modules;                 // -m: include git submodules
+  final List<String> modules;                 // -m: include repositories
   final List<String> skipModules;             // --skip-modules
   final bool buildOrder;                      // -b: dependency order
   final bool innerFirstGit;                   // -i: inner repos first
@@ -754,8 +754,8 @@ flowchart TB
         F2["<b>2. Path Exclude</b><br/>--exclude, -x<br/>Remove folders matching path patterns<br/>e.g., -x 'xternal/*' -x '_build'"]
         F3["<b>3. Project Include</b><br/>--project, -p<br/>Keep only folders matching patterns<br/>e.g., -p 'tom_*' or -p BB,D4G"]
         F4["<b>4. Project Name Exclude</b><br/>--exclude-projects<br/>Remove folders by name<br/>e.g., --exclude-projects=tom_test_*"]
-        F5["<b>5. Module Filter</b><br/>--modules, -m<br/>Keep folders in specified git submodules<br/>e.g., -m basics,d4rt"]
-        F6["<b>6. Skip Modules</b><br/>--skip-modules<br/>Exclude specific git submodules<br/>e.g., --skip-modules=crypto"]
+        F5["<b>5. Module Filter</b><br/>--modules, -m<br/>Keep folders in the given repositories<br/>e.g., -m basics,d4rt"]
+        F6["<b>6. Skip Modules</b><br/>--skip-modules<br/>Exclude the given repositories<br/>e.g., --skip-modules=crypto"]
         F7["<b>7. Test Project Filter</b><br/>--test / --test-only<br/>Default: exclude zom_* projects<br/>--test: include them<br/>--test-only: only them"]
     end
     
@@ -782,8 +782,8 @@ flowchart TB
 | 2 | Path Exclude | `--exclude`, `-x` | After scan | Removes folders matching path patterns |
 | 3 | Project Include | `--project`, `-p` | After scan | Keeps folders by project ID, name, or folder pattern |
 | 4 | Project Name Exclude | `--exclude-projects` | After scan | Removes folders by project ID, name, or folder name |
-| 5 | Module Filter | `--modules`, `-m` | After scan | Keeps folders by repository ID, name, or path |
-| 6 | Skip Modules | `--skip-modules` | After scan | Excludes by repository ID, name, or path |
+| 5 | Module Filter | `--modules`, `-m` | After scan | Keeps folders by repository ID (its folder and below), or a name or path matched as whole path segments |
+| 6 | Skip Modules | `--skip-modules` | After scan | Excludes by the same rule |
 | 7 | Test Project | `--test` / `--test-only` | After scan | Controls zom_* project inclusion |
 
 **Filter implementation:**
@@ -958,8 +958,8 @@ Understanding filter order is critical for predictable behavior:
 │  1. --exclude (-x)        → Remove by path pattern              │
 │  2. --project (-p)        → Keep only matching                  │
 │  3. --exclude-projects    → Remove by name                      │
-│  4. --modules (-m)        → Keep only in git submodules         │
-│  5. --skip-modules        → Exclude git submodules              │
+│  4. --modules (-m)        → Keep only in given repositories     │
+│  5. --skip-modules        → Exclude given repositories          │
 │  6. --test / --test-only  → Control zom_* inclusion             │
 ├─────────────────────────────────────────────────────────────────┤
 │ ORDERING (applied after filtering)                              │

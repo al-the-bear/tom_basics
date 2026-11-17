@@ -74,6 +74,7 @@ class NatureDetector {
 
   // Nature creation methods
   GitFolder _createGitNature(FsFolder folder) {
+    // `.git` is a file: a submodule checkout or a worktree (information only).
     final isSubmodule = !Directory(p.join(folder.path, '.git')).existsSync();
     String currentBranch = 'unknown';
     bool hasUncommittedChanges = false;

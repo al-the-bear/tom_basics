@@ -6,44 +6,50 @@ import 'package:yaml/yaml.dart';
 /// Lookup helper for repository IDs.
 ///
 /// Reads metadata from `tom_repository.yaml` files in the workspace and
-/// resolves repository IDs to repository names for module filtering.
+/// resolves repository IDs to repository names and folders for module
+/// filtering.
 class RepositoryIdLookup {
   static const _metadataFileName = 'tom_repository.yaml';
 
-  static final Map<String, Map<String, String>> _cacheByRoot = {};
+  static final Map<String, Map<String, _Repository>> _cacheByRoot = {};
 
-  /// Resolves a repository ID or name to the actual folder name.
-  ///
-  /// Returns [value] unchanged if not found as an ID.
-  /// Resolution order:
-  /// 1. Check if value is a repository ID from `tom_repository.yaml`
-  /// 2. Return value unchanged (assume it's already a name)
+  /// Resolves a repository ID (case-insensitive) to the repository's
+  /// configured `name:` (else its folder name); any other [value] is returned
+  /// unchanged. The configured name may differ from the folder name
+  /// (`webwork` in `app_webwork`); [resolveToFolder] gives the folder.
   static String resolveToName(String value, {String? executionRoot}) {
-    final idToName = _loadIdToNameMap(executionRoot);
-    final upperValue = value.toUpperCase();
-    if (idToName.containsKey(upperValue)) {
-      return idToName[upperValue]!;
+    final repository = _load(executionRoot)[value.toUpperCase()];
+    // Not an ID: return unchanged, it is already a name or path.
+    return repository?.name ?? value;
+  }
+
+  /// The folder of the repository whose ID, or else configured `name:`, is
+  /// [value] (both case-insensitive): the folder holding its
+  /// `tom_repository.yaml`. Null when no repository has that ID or name.
+  static String? resolveToFolder(String value, {String? executionRoot}) {
+    final repositories = _load(executionRoot);
+    final byId = repositories[value.toUpperCase()];
+    if (byId != null) return byId.folder;
+    final name = value.toLowerCase();
+    for (final repository in repositories.values) {
+      if (repository.name.toLowerCase() == name) return repository.folder;
     }
-    // Return unchanged - assume it's already a name or path
-    return value;
+    return null;
   }
 
   /// Check if a value matches a repository ID (case-insensitive).
   static bool isRepositoryId(String value, {String? executionRoot}) {
-    final idToName = _loadIdToNameMap(executionRoot);
-    return idToName.containsKey(value.toUpperCase());
+    return _load(executionRoot).containsKey(value.toUpperCase());
   }
 
   /// Get all known repository IDs.
   static List<String> allIds({String? executionRoot}) {
-    final idToName = _loadIdToNameMap(executionRoot);
-    return idToName.keys.toList();
+    return _load(executionRoot).keys.toList();
   }
 
   /// Get all known repository names.
   static List<String> allNames({String? executionRoot}) {
-    final idToName = _loadIdToNameMap(executionRoot);
-    return idToName.values.toList();
+    return _load(executionRoot).values.map((r) => r.name).toList();
   }
 
   /// Clears cached repository metadata lookups.
@@ -61,7 +67,7 @@ class RepositoryIdLookup {
 
   static String _normalizeRoot(String root) => p.normalize(p.absolute(root));
 
-  static Map<String, String> _loadIdToNameMap(String? executionRoot) {
+  static Map<String, _Repository> _load(String? executionRoot) {
     final rootPath = _normalizeRoot(executionRoot ?? Directory.current.path);
 
     final cached = _cacheByRoot[rootPath];
@@ -69,7 +75,7 @@ class RepositoryIdLookup {
       return cached;
     }
 
-    final map = <String, String>{};
+    final map = <String, _Repository>{};
     final rootDir = Directory(rootPath);
     if (!rootDir.existsSync()) {
       _cacheByRoot[rootPath] = map;
@@ -128,7 +134,10 @@ class RepositoryIdLookup {
     return false;
   }
 
-  static void _registerMetadata(File metadataFile, Map<String, String> map) {
+  static void _registerMetadata(
+    File metadataFile,
+    Map<String, _Repository> map,
+  ) {
     try {
       final raw = loadYaml(metadataFile.readAsStringSync());
       if (raw is! YamlMap) return;
@@ -137,14 +146,18 @@ class RepositoryIdLookup {
       if (id == null || id.isEmpty) return;
 
       final configuredName = raw['name']?.toString().trim();
-      final fallbackName = p.basename(p.dirname(metadataFile.path));
+      final folder = p.normalize(p.absolute(p.dirname(metadataFile.path)));
+      final fallbackName = p.basename(folder);
       final resolvedName = (configuredName == null || configuredName.isEmpty)
           ? fallbackName
           : configuredName;
 
-      map[id.toUpperCase()] = resolvedName;
+      map[id.toUpperCase()] = (name: resolvedName, folder: folder);
     } catch (_) {
       // Invalid yaml or unreadable file -> ignore this metadata file.
     }
   }
 }
+
+/// A repository of the workspace: its configured name and its folder.
+typedef _Repository = ({String name, String folder});

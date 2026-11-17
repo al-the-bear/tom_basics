@@ -1,5 +1,20 @@
 ## Unreleased
 
+### Changed
+
+- `--modules` / `--skip-modules` select repositories by path, so an
+  independent clone (a `.git` directory) is selected like a submodule
+  checkout. A name or path is compared with whole path segments,
+  case-insensitive: `tom_basics` no longer selects `tom_basics_console`
+  (before, any substring of the path matched). A repository ID or configured
+  `name:` from `tom_repository.yaml` selects the folder holding that file
+  and everything below it, so `WEBWK` selects `app_webwork` although its name
+  is `webwork`. A submodule checkout still also matches by its submodule
+  name. New: `RepositoryIdLookup.resolveToFolder`.
+- `GitFolder.isSubmodule` / `%{git.isSubmodule}` are documented as what they
+  are: true when `.git` is a file (a submodule checkout or a worktree);
+  information only, no filter or order depends on them.
+
 ### Fixed
 
 - Git mode (`-i` / `-o`, `GitRepoFinder.findAll`) skips what project mode

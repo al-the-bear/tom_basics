@@ -76,7 +76,7 @@ This package is published to pub.dev. See [Project Republishing](../../../../_co
 
 | Term | Description |
 |------|-------------|
-| **git-traversal** | Traversal mode that discovers and processes git repositories. Uses `-i` (inner-first) or `-o` (outer-first) flags. Inner-first processes submodules before parent repos; outer-first does the reverse. Required for git commands (`:gitstatus`, `:gitcommit`). |
+| **git-traversal** | Traversal mode that discovers and processes git repositories. Uses `-i` (inner-first) or `-o` (outer-first) flags. Inner-first processes nested repositories (submodule checkouts or independent clones) before their parents; outer-first does the reverse. Required for git commands (`:gitstatus`, `:gitcommit`). |
 | **project-traversal** | Traversal mode that discovers and processes projects by markers (pubspec.yaml, buildkit.yaml, etc.). Uses `-s`/`--scan` and `-r`/`--recursive` flags. Default mode when no git flags specified. |
 
 ### Execution Modes
@@ -90,8 +90,8 @@ This package is published to pub.dev. See [Project Republishing](../../../../_co
 
 | Flag | Mode | Description |
 |------|------|-------------|
-| `-i`, `--inner-first-git` | git-traversal | Process deepest repos first (submodules before parents) |
-| `-o`, `--outer-first-git` | git-traversal | Process shallowest repos first (parents before submodules) |
+| `-i`, `--inner-first-git` | git-traversal | Process deepest repos first (nested repositories before parents) |
+| `-o`, `--outer-first-git` | git-traversal | Process shallowest repos first (parents before nested repositories) |
 | `-T`, `--top-repo` | git-traversal | Find topmost git repo by walking up from cwd |
 | `-s`, `--scan` | project-traversal | Starting directory for project scan |
 | `-r`, `--recursive` | project-traversal | Also scan inside projects for nested projects (e.g. `test/` fixtures); folders without a `pubspec.yaml` are always scanned |

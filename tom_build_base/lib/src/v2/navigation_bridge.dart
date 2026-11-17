@@ -95,7 +95,8 @@ class WorkspaceNavigationArgs {
   /// Exclude patterns during recursive scan.
   final List<String> recursionExclude;
 
-  /// Include only projects within specified git modules (comma-separated).
+  /// Include only projects within the given repositories (comma-separated):
+  /// repository IDs, or names or paths matched as whole path segments.
   ///
   /// Module names are git repository folder names
   /// (e.g., "tom_module_d4rt").
@@ -416,8 +417,9 @@ void addNavigationOptions(ArgParser parser) {
     'modules',
     abbr: 'm',
     help:
-        'Include only projects within specified git modules '
-        '(comma-separated, e.g. tom_module_d4rt,tom_module_basics)',
+        'Include only projects within the given repositories: a repository '
+        'ID, or a name or path matched as whole path segments '
+        '(comma-separated, e.g. BAS,d4rt)',
   );
   parser.addFlag(
     'no-skip',

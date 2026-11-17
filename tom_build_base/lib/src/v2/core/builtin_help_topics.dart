@@ -113,7 +113,8 @@ Each system is independent and uses its own syntax.
     %{flutter.platforms}   Comma-separated platform list
     %{flutter.isPlugin}    true if Flutter plugin (boolean)
     %{git.branch}          Current branch name
-    %{git.isSubmodule}     true if git submodule (boolean)
+    %{git.isSubmodule}     true when .git is a file: a submodule checkout
+                           or a worktree (boolean)
     %{git.hasChanges}      true if uncommitted changes (boolean)
     %{git.remotes}         Comma-separated remote list
     %{vscode.name}         Extension name

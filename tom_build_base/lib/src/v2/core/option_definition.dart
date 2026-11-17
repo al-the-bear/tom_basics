@@ -210,18 +210,22 @@ const List<OptionDefinition> gitTraversalOptions = [
   OptionDefinition.multi(
     name: 'modules',
     abbr: 'm',
-    description: 'Git submodules to include',
+    description:
+        'Repositories to include: a repository ID, or a name or path '
+        'matched as whole path segments',
     valueName: 'name',
   ),
   OptionDefinition.multi(
     name: 'skip-modules',
-    description: 'Git submodules to exclude',
+    description:
+        'Repositories to exclude: a repository ID, or a name or path '
+        'matched as whole path segments',
     valueName: 'name',
   ),
   OptionDefinition.flag(
     name: 'inner-first-git',
     abbr: 'i',
-    description: 'Process inner repos (submodules) first',
+    description: 'Process inner repos (nested repositories) first',
   ),
   OptionDefinition.flag(
     name: 'outer-first-git',

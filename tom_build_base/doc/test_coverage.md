@@ -76,7 +76,8 @@ This document lists all testable features across `tom_build_base` and tracks tes
 | 61 | [Master File Edits](#61-master-file-edits) | 3 | 3✅ | `v2/core/master_yaml_edit_test.dart` | [→](#61-master-file-edits) |
 | 62 | [Stand-Alone Commands](#62-stand-alone-commands) | 16 | 16✅ | `v2/core/strict_command_options_test.dart` | [→](#62-stand-alone-commands) |
 | 63 | [Git Mode Skips](#63-git-mode-skips) | 6 | 6✅ | `v2/traversal/git_repo_finder_skip_test.dart` | [→](#63-git-mode-skips) |
-| — | **Total** | **1140** | **1140✅** | | | | |
+| 64 | [Repository Selection by Path](#64-repository-selection-by-path) | 6 | 6✅ | `v2/traversal/module_filter_path_test.dart` | [→](#64-repository-selection-by-path) |
+| — | **Total** | **1146** | **1146✅** | | | | |
 
 > Every row links to a section, and the counts are measured from
 > `dart test --reporter json -j 1` rather than maintained by hand. Run it
@@ -1300,6 +1301,21 @@ it visited.
 
 ---
 
+## 64. Repository Selection by Path
+
+**Test file:** `test/v2/traversal/module_filter_path_test.dart`
+
+| ID | Feature | Status | Description |
+|----|---------|--------|-------------|
+| BB-MOD-1 | By name | ✅ | `--modules <name>` selects an independent clone (a `.git` directory) by its folder name, case-insensitive. |
+| BB-MOD-2 | Whole segments | ✅ | `tom_basics` selects `tom_basics`, not `tom_basics_console`; `xternal/tom_dcli` matches that run of segments; `dcli` matches nothing; the same for `--skip-modules`. |
+| BB-MOD-3 | By repository ID | ✅ | An ID selects the folder holding its `tom_repository.yaml` (`WEBWK` selects `app_webwork`, named `webwork`); the configured name does too. |
+| BB-MOD-4 | `--skip-modules` | ✅ | Drops a repository by name and by ID. |
+| BB-MOD-5 | Submodule name | ✅ | A submodule checkout also matches by its submodule name from `gitdir: .../modules/<name>`. |
+| BB-MOD-6 | `isSubmodule` | ✅ | True when `.git` is a file (a worktree too), false for a `.git` directory. |
+
+---
+
 ## Test Gaps & Potential Additions
 
 The current test suite is comprehensive. Areas where additional tests could be valuable:
@@ -1312,4 +1328,4 @@ The current test suite is comprehensive. Areas where additional tests could be v
 | `--dump-definitions` output format | Tested in ToolRunner | Validate complete YAML structure | Low |
 | ConfigLoader with nested `@{...}` in `@[...]` | ✅ Recursive test exists | Additional nesting depth scenarios | Low |
 
-Overall coverage assessment: **Excellent — 1140 tests covering all features.**
+Overall coverage assessment: **Excellent — 1146 tests covering all features.**

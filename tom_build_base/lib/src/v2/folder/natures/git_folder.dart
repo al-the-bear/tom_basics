@@ -4,8 +4,8 @@ import '../run_folder.dart';
 
 /// Git repository nature.
 ///
-/// Detected when a folder contains `.git/` directory or `.git` file
-/// (for submodules).
+/// Detected when a folder contains a `.git/` directory (a clone) or a `.git`
+/// file (a submodule checkout or a worktree).
 class GitFolder extends RunFolder {
   /// Current branch name.
   final String currentBranch;
@@ -16,13 +16,18 @@ class GitFolder extends RunFolder {
   /// Whether there are commits not pushed to remote.
   final bool hasUnpushedCommits;
 
-  /// Whether this is a git submodule (has .git file instead of .git/).
+  /// True when `.git` is a file: a submodule checkout or a worktree.
+  ///
+  /// Information only: ordering and the `--modules` filters do not depend
+  /// on it (an independent clone has a `.git` directory and is false).
   final bool isSubmodule;
 
   /// List of configured remotes.
   final List<String> remotes;
 
-  /// Submodule name (if this is a submodule, extracted from parent's .gitmodules).
+  /// When `.git` is a file: the submodule name from its `gitdir:` path
+  /// (`.git/modules/<name>`), else the folder name. Null for a `.git`
+  /// directory. `--modules` matches it besides the path.
   final String? submoduleName;
 
   GitFolder(
@@ -42,7 +47,8 @@ class GitFolder extends RunFolder {
     return gitDir.existsSync() || gitFile.existsSync();
   }
 
-  /// Check if this is a submodule (has .git file instead of directory).
+  /// True when `.git` in [dirPath] is a file: a submodule checkout or a
+  /// worktree.
   static bool isSubmoduleFolder(String dirPath) {
     final gitFile = File('$dirPath/.git');
     return gitFile.existsSync() && !Directory('$dirPath/.git').existsSync();

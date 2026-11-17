@@ -564,7 +564,8 @@ class ExecutePlaceholderResolver {
 
       // Git attributes
       'git.branch': 'Current branch name',
-      'git.isSubmodule': 'true if git submodule',
+      'git.isSubmodule':
+          'true when .git is a file (a submodule checkout or a worktree)',
       'git.hasChanges': 'true if uncommitted changes',
       'git.remotes': 'Comma-separated remote list',
 
