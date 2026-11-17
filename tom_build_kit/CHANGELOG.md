@@ -1,3 +1,15 @@
+## 1.30.13
+
+### Fixed — `:compiler` from the workspace root with `-p`
+
+A project selected with `-p` from the workspace root has a relative path.
+`:compiler` changes into the project before compiling, and the build cache's
+input hash (1.30.0) resolved that relative path against the project itself:
+`git ls-files` started in a folder that is not there, and every compile failed
+with `ProcessException: No such file or directory` (13 projects in a
+`buildkit :compiler` over the tree on mbp). The compiler works with the
+absolute project path (BK-CACHE-7).
+
 ## 1.30.12
 
 ### Fixed — `:projects` lists without the build environment

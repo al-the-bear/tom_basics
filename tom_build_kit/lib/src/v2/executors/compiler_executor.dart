@@ -147,11 +147,15 @@ class CompilerExecutor extends CommandExecutor with DeclaresStepInputs {
   /// The binaries the last run in [context]'s project compiled.
   @override
   List<String> stepOutputs(CommandContext context) =>
-      _written[context.path] ?? const [];
+      _written[p.normalize(p.absolute(context.path))] ?? const [];
 
   @override
   Future<ItemResult> execute(CommandContext context, CliArgs args) async {
-    final projectPath = context.path;
+    // Absolute, taken before the compile changes into the project: a project
+    // selected with -p from the workspace root has a relative context path,
+    // which would resolve against the project itself afterwards (the build
+    // cache's input hash ran `git ls-files` in a folder that is not there).
+    final projectPath = p.normalize(p.absolute(context.path));
     final written = _written[projectPath] = <String>[];
 
     // Check if project has compiler config

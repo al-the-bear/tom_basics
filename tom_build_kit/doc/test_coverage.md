@@ -33,7 +33,7 @@ This document lists all testable features across buildkit tools and tracks test 
 | 18 | [Versioner — Build Number](#2-versioner--version-file-generation) | 5 | 5✅ | `versioner_build_number_test.dart` | [→](#2-versioner--version-file-generation) |
 | 19 | [Help Footer](#19-help-footer) | 1 | 1✅ | `help_footer_test.dart` | [→](#19-help-footer) |
 | 20 | [Pub Get — Stale Git Refs](#20-pub-get--stale-git-refs) | 3 | 3✅ | `pubget_git_ref_test.dart` | [→](#20-pub-get--stale-git-refs) |
-| — | **Total** | **184** | **184✅** | | |
+| — | **Total** | **185** | **185✅** | | |
 
 ---
 
@@ -576,6 +576,7 @@ Unit tests for argument parsing and command shorthand resolution.
 | BK-CACHE-4 | Eviction | ✅ | Past the size limit the entry used longest ago is deleted; a restored entry counts as used. |
 | BK-CACHE-5 | Folder and limit | ✅ | `~/.tom/cache/buildkit` and 2048 MB by default; `TOM_BUILDKIT_CACHE_DIR`, `TOM_BUILDKIT_CACHE_MAX_MB`. |
 | BK-CACHE-6 | `buildkit :compiler` | ✅ | A deleted binary comes back from the cache on `--force`; a changed lock compiles (a second entry); the lock switched back hits; `--force --no-cache` compiles. |
+| BK-CACHE-7 | A relative project path | ✅ | A project selected with `-p` from the workspace root compiles with the cache on (the input hash runs before the compile changes into the project). |
 
 ### Bootstrap — Shell Setup
 

@@ -228,4 +228,49 @@ void main() {
       expect(entries(), 2);
     },
   );
+
+  test(
+    'BK-CACHE-7: a project selected with -p from the workspace root (a '
+    'relative project path) compiles with the cache on [2026-11-17]',
+    () async {
+      final base = Directory(p.join(Directory.current.path, '.dart_tool'))
+        ..createSync(recursive: true);
+      final root = Directory(
+        base.createTempSync('compile_cache_rel_').resolveSymbolicLinksSync(),
+      );
+      addTearDown(() => root.deleteSync(recursive: true));
+      final project = p.join(root.path, 'pkgs', 'app');
+      final binary = p.join(root.path, 'out', 'main.dill');
+      File(p.join(root.path, 'buildkit_master.yaml')).writeAsStringSync('');
+      File(p.join(project, 'pubspec.yaml'))
+        ..parent.createSync(recursive: true)
+        ..writeAsStringSync('name: app\nenvironment:\n  sdk: ^3.0.0\n');
+      File(p.join(project, 'bin', 'main.dart'))
+        ..parent.createSync(recursive: true)
+        ..writeAsStringSync('void main() => print("hi");\n');
+      File(p.join(project, 'buildkit.yaml')).writeAsStringSync(
+        'compiler:\n  compiles:\n    - commandline:\n'
+        '        - shell mkdir -p ../../out\n'
+        '        - shell dart compile kernel %{file} -o ../../out/%{file.name}.dill\n'
+        '      files:\n        - bin/main.dart\n',
+      );
+      final get = Process.runSync('dart', [
+        'pub',
+        'get',
+        '--offline',
+      ], workingDirectory: project);
+      expect(get.exitCode, 0, reason: '${get.stdout}${get.stderr}');
+
+      final r = await Process.run(
+        'dart',
+        ['run', _buildkit, '-p', 'app', ':compiler'],
+        workingDirectory: root.path,
+        environment: {'TOM_BUILDKIT_CACHE_DIR': p.join(tmp.path, 'cache')},
+      );
+      final out = '${r.stdout}${r.stderr}';
+      expect(r.exitCode, 0, reason: out);
+      expect(out, isNot(contains('ProcessException')));
+      expect(File(binary).existsSync(), isTrue, reason: out);
+    },
+  );
 }
