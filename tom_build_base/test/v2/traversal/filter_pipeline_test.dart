@@ -5,6 +5,7 @@ import 'package:path/path.dart' as p;
 import 'package:tom_build_base/tom_build_base_v2.dart';
 
 import '../../fixtures/zom_fixture.dart';
+import '../fixtures/repo_shapes.dart';
 
 /// Tests for FilterPipeline using the zom_analyzer_test fixture projects.
 /// The git repositories of [buildGitFixture], relative to its root.
@@ -20,31 +21,32 @@ const _fixtureRepos = {
 };
 
 /// A workspace-shaped tree of git repositories for the GitRepoFinder and
-/// git-filter tests: the root a `.git` folder, the nested repositories
-/// submodule-shaped (a `.git` file naming the gitdir) or plain, the forks
-/// under `xternal/`, a `zom_` project, a plain project that is no repository,
-/// and repositories the finder must not report (under `build/`,
-/// `node_modules/` and a hidden folder). Small, so the tests measure the
-/// finder and not the size of the machine's checkout.
-String buildGitFixture() {
-  final root = Directory.systemTemp.createTempSync('bb_flt_git_').path;
+/// git-filter tests, in [shape]: the root a `.git` folder; the nested
+/// repositories submodule checkouts (a `.git` file naming the gitdir, two of
+/// them plain nested repositories) or independent clones (a `.git` folder,
+/// ignored by the parent repository); the forks under `xternal/`, a `zom_`
+/// project, a plain project that is no repository, and repositories the
+/// finder must not report (under `build/`, `node_modules/` and a hidden
+/// folder). Small, so the tests measure the finder and not the size of the
+/// machine's checkout.
+String buildGitFixture(RepoShape shape) {
+  final root = Directory.systemTemp
+      .createTempSync('bb_flt_git_')
+      .resolveSymbolicLinksSync();
   void gitDir(String rel) =>
       Directory(p.join(root, rel, '.git')).createSync(recursive: true);
-  void gitFile(String rel) =>
-      (File(
-        p.join(root, rel, '.git'),
-      )..parent.createSync(recursive: true)).writeAsStringSync(
-        'gitdir: ${p.join(root, '.git', 'modules', rel)}\n',
-      );
+  void repo(String rel, {bool plain = false}) => plain
+      ? (shape == RepoShape.clones ? makeRepo(root, rel, shape) : gitDir(rel))
+      : makeRepo(root, rel, shape);
 
-  gitDir('.');
-  gitFile('tom_ai');
-  gitFile('tom_ai/basics');
-  gitDir('tom_ai/crypto');
-  gitFile('tom_ai/d4rt');
-  gitFile('tom_ai/xternal/native_semaphores');
-  gitFile('tom_ai/xternal/tom_dart_amqp');
-  gitDir('zom_workspaces/zom_analyzer_test');
+  repo('.');
+  repo('tom_ai');
+  repo('tom_ai/basics');
+  repo('tom_ai/crypto', plain: true);
+  repo('tom_ai/d4rt');
+  repo('tom_ai/xternal/native_semaphores');
+  repo('tom_ai/xternal/tom_dart_amqp');
+  repo('zom_workspaces/zom_analyzer_test', plain: true);
   File(p.join(root, 'tom_ai/basics/tom_build_base/pubspec.yaml'))
     ..parent.createSync(recursive: true)
     ..writeAsStringSync('name: tom_build_base\n');
@@ -56,10 +58,6 @@ String buildGitFixture() {
 }
 
 void main() {
-  // A workspace-shaped tree of git repositories (buildGitFixture) for the
-  // GitRepoFinder and git-filter tests; never the live workspace or its
-  // clone, whose size and load made BB-FLT-25/26 time out (build_completion2).
-  late String workspaceRoot;
   late String zomTestRoot;
   late FilterPipeline filter;
   late List<FsFolder> allFolders;
@@ -68,7 +66,6 @@ void main() {
     // Resolve the package root (cwd-independent) before any path helper reads
     // it; the process cwd is shared across concurrently running suites.
     await resolvePackageRoot();
-    workspaceRoot = buildGitFixture();
     // Copy the checked-in zom fixture into a throwaway temp dir for this run.
     zomTestRoot = installZomFixture();
 
@@ -86,7 +83,6 @@ void main() {
 
   tearDownAll(() async {
     removeZomFixture(zomTestRoot);
-    Directory(workspaceRoot).deleteSync(recursive: true);
   });
 
   setUp(() {
@@ -616,137 +612,219 @@ void main() {
     });
   });
 
-  group('FilterPipeline.applyGitFilters', () {
-    late List<FsFolder> gitFolders;
+  // A workspace-shaped tree of git repositories (buildGitFixture) for the
+  // GitRepoFinder and git-filter tests, once per shape (submodule checkouts,
+  // independent clones); never the live workspace or its clone, whose size
+  // and load made BB-FLT-25/26 time out (build_completion2).
+  for (final shape in RepoShape.values) {
+    group('git repositories as ${shape.name}', () {
+      late String workspaceRoot;
 
-    setUpAll(() async {
-      // Find git repos for git filter tests
-      final finder = GitRepoFinder();
-      gitFolders = await finder.findAll(workspaceRoot);
-    });
+      setUpAll(() => workspaceRoot = buildGitFixture(shape));
+      tearDownAll(() => Directory(workspaceRoot).deleteSync(recursive: true));
 
-    group('Module filter (--modules, -m)', () {
-      test('BB-FLT-15: Filters to specified modules [2026-02-12]', () {
-        final info = GitTraversalInfo(
-          executionRoot: workspaceRoot,
-          gitMode: GitTraversalMode.innerFirst,
-          modules: ['basics'],
-        );
+      group('FilterPipeline.applyGitFilters', () {
+        late List<FsFolder> gitFolders;
 
-        final filtered = filter.applyGitFilters(gitFolders, info);
-        expect(filtered, isNotEmpty);
+        setUpAll(() async {
+          // Find git repos for git filter tests
+          final finder = GitRepoFinder();
+          gitFolders = await finder.findAll(workspaceRoot);
+        });
 
-        // All filtered folders should contain 'basics' in path
-        for (final folder in filtered) {
-          expect(
-            folder.path.contains('basics'),
-            isTrue,
-            reason: 'Should only include basics module',
+        group('Module filter (--modules, -m)', () {
+          test('BB-FLT-15: Filters to specified modules [2026-02-12]', () {
+            final info = GitTraversalInfo(
+              executionRoot: workspaceRoot,
+              gitMode: GitTraversalMode.innerFirst,
+              modules: ['basics'],
+            );
+
+            final filtered = filter.applyGitFilters(gitFolders, info);
+            expect(filtered, isNotEmpty);
+
+            // All filtered folders should contain 'basics' in path
+            for (final folder in filtered) {
+              expect(
+                folder.path.contains('basics'),
+                isTrue,
+                reason: 'Should only include basics module',
+              );
+            }
+          });
+
+          test('BB-FLT-16: Filters with multiple modules [2026-02-12]', () {
+            final info = GitTraversalInfo(
+              executionRoot: workspaceRoot,
+              gitMode: GitTraversalMode.innerFirst,
+              modules: ['basics', 'd4rt'],
+            );
+
+            final filtered = filter.applyGitFilters(gitFolders, info);
+            expect(
+              filtered.where((f) => f.path.contains('basics')),
+              isNotEmpty,
+            );
+            expect(filtered.where((f) => f.path.contains('d4rt')), isNotEmpty);
+
+            // All filtered folders should contain basics OR d4rt
+            for (final folder in filtered) {
+              expect(
+                folder.path.contains('basics') || folder.path.contains('d4rt'),
+                isTrue,
+                reason: 'Should include basics or d4rt modules',
+              );
+            }
+          });
+
+          test('BB-FLT-17: Empty modules returns all [2026-02-12]', () {
+            final info = GitTraversalInfo(
+              executionRoot: workspaceRoot,
+              gitMode: GitTraversalMode.innerFirst,
+              modules: [],
+              // Only the module filter is under test: the default test-project
+              // filter would drop the fixture's zom_ repository.
+              includeTestProjects: true,
+            );
+
+            final filtered = filter.applyGitFilters(gitFolders, info);
+
+            // Should return all git folders
+            expect(filtered.length, equals(gitFolders.length));
+          });
+        });
+
+        group('Skip modules filter (--skip-modules)', () {
+          test('BB-FLT-18: Excludes specified modules [2026-02-12]', () {
+            final info = GitTraversalInfo(
+              executionRoot: workspaceRoot,
+              gitMode: GitTraversalMode.innerFirst,
+              skipModules: ['crypto'],
+            );
+
+            final filtered = filter.applyGitFilters(gitFolders, info);
+            expect(
+              gitFolders.where((f) => f.path.contains('crypto')),
+              isNotEmpty,
+            );
+            expect(filtered, isNotEmpty);
+
+            // No filtered folders should contain 'crypto' in path
+            for (final folder in filtered) {
+              expect(
+                folder.path.contains('crypto'),
+                isFalse,
+                reason: 'Should exclude crypto module',
+              );
+            }
+          });
+        });
+
+        group('Path exclude filter', () {
+          test('BB-FLT-19: Excludes paths matching pattern [2026-02-12]', () {
+            final info = GitTraversalInfo(
+              executionRoot: workspaceRoot,
+              gitMode: GitTraversalMode.innerFirst,
+              excludePatterns: ['*xternal*'],
+            );
+
+            final filtered = filter.applyGitFilters(gitFolders, info);
+            expect(
+              gitFolders.where((f) => f.path.contains('xternal')),
+              isNotEmpty,
+            );
+            expect(filtered, isNotEmpty);
+
+            for (final folder in filtered) {
+              expect(
+                folder.path.contains('xternal'),
+                isFalse,
+                reason: 'xternal should be excluded',
+              );
+            }
+          });
+        });
+
+        group('Test project filter', () {
+          test(
+            'BB-FLT-20: Excludes zom_* by default in git mode [2026-02-12]',
+            () {
+              final info = GitTraversalInfo(
+                executionRoot: workspaceRoot,
+                gitMode: GitTraversalMode.innerFirst,
+                includeTestProjects: false,
+              );
+
+              final filtered = filter.applyGitFilters(gitFolders, info);
+              expect(
+                gitFolders.where((f) => f.name.startsWith('zom_')),
+                isNotEmpty,
+              );
+              expect(filtered, isNotEmpty);
+
+              for (final folder in filtered) {
+                expect(folder.name.startsWith('zom_'), isFalse);
+              }
+            },
           );
-        }
+        });
       });
 
-      test('BB-FLT-16: Filters with multiple modules [2026-02-12]', () {
-        final info = GitTraversalInfo(
-          executionRoot: workspaceRoot,
-          gitMode: GitTraversalMode.innerFirst,
-          modules: ['basics', 'd4rt'],
-        );
+      group('GitRepoFinder', () {
+        test('BB-FLT-25: Finds git repositories [2026-02-12]', () async {
+          final finder = GitRepoFinder();
+          final repos = await finder.findAll(workspaceRoot);
 
-        final filtered = filter.applyGitFilters(gitFolders, info);
-        expect(filtered.where((f) => f.path.contains('basics')), isNotEmpty);
-        expect(filtered.where((f) => f.path.contains('d4rt')), isNotEmpty);
+          expect(repos, isNotEmpty, reason: 'Should find git repos');
 
-        // All filtered folders should contain basics OR d4rt
-        for (final folder in filtered) {
+          // Verify all found folders are git repos
+          for (final folder in repos) {
+            final gitDir = Directory(p.join(folder.path, '.git'));
+            final gitFile = File(p.join(folder.path, '.git'));
+            expect(
+              gitDir.existsSync() || gitFile.existsSync(),
+              isTrue,
+              reason: '${folder.path} should have .git',
+            );
+          }
+          // Exactly the fixture's repositories: nested and submodule-shaped ones
+          // found, those under build/, node_modules/ and hidden folders not.
           expect(
-            folder.path.contains('basics') || folder.path.contains('d4rt'),
-            isTrue,
-            reason: 'Should include basics or d4rt modules',
+            repos.map((r) => p.relative(r.path, from: workspaceRoot)).toSet(),
+            _fixtureRepos,
           );
-        }
-      });
+        });
 
-      test('BB-FLT-17: Empty modules returns all [2026-02-12]', () {
-        final info = GitTraversalInfo(
-          executionRoot: workspaceRoot,
-          gitMode: GitTraversalMode.innerFirst,
-          modules: [],
-          // Only the module filter is under test: the default test-project
-          // filter would drop the fixture's zom_ repository.
-          includeTestProjects: true,
-        );
+        test('BB-FLT-26: Finds submodules [2026-02-12]', () async {
+          final finder = GitRepoFinder();
+          final repos = await finder.findAll(workspaceRoot);
 
-        final filtered = filter.applyGitFilters(gitFolders, info);
-
-        // Should return all git folders
-        expect(filtered.length, equals(gitFolders.length));
-      });
-    });
-
-    group('Skip modules filter (--skip-modules)', () {
-      test('BB-FLT-18: Excludes specified modules [2026-02-12]', () {
-        final info = GitTraversalInfo(
-          executionRoot: workspaceRoot,
-          gitMode: GitTraversalMode.innerFirst,
-          skipModules: ['crypto'],
-        );
-
-        final filtered = filter.applyGitFilters(gitFolders, info);
-        expect(gitFolders.where((f) => f.path.contains('crypto')), isNotEmpty);
-        expect(filtered, isNotEmpty);
-
-        // No filtered folders should contain 'crypto' in path
-        for (final folder in filtered) {
+          // Should find repos in xternal/ (which are submodules)
+          final xternalRepos = repos.where((r) => r.path.contains('xternal'));
           expect(
-            folder.path.contains('crypto'),
-            isFalse,
-            reason: 'Should exclude crypto module',
+            xternalRepos,
+            isNotEmpty,
+            reason: 'Should find repos in xternal/ (submodules)',
           );
-        }
-      });
-    });
+        });
 
-    group('Path exclude filter', () {
-      test('BB-FLT-19: Excludes paths matching pattern [2026-02-12]', () {
-        final info = GitTraversalInfo(
-          executionRoot: workspaceRoot,
-          gitMode: GitTraversalMode.innerFirst,
-          excludePatterns: ['*xternal*'],
+        test(
+          'BB-FLT-27: Returns empty list for non-git folder [2026-02-12]',
+          () async {
+            final tempDir = Directory.systemTemp.createTempSync('git_test_');
+            try {
+              final finder = GitRepoFinder();
+              final repos = await finder.findAll(tempDir.path);
+
+              expect(repos, isEmpty);
+            } finally {
+              tempDir.deleteSync();
+            }
+          },
         );
-
-        final filtered = filter.applyGitFilters(gitFolders, info);
-        expect(gitFolders.where((f) => f.path.contains('xternal')), isNotEmpty);
-        expect(filtered, isNotEmpty);
-
-        for (final folder in filtered) {
-          expect(
-            folder.path.contains('xternal'),
-            isFalse,
-            reason: 'xternal should be excluded',
-          );
-        }
       });
     });
-
-    group('Test project filter', () {
-      test('BB-FLT-20: Excludes zom_* by default in git mode [2026-02-12]', () {
-        final info = GitTraversalInfo(
-          executionRoot: workspaceRoot,
-          gitMode: GitTraversalMode.innerFirst,
-          includeTestProjects: false,
-        );
-
-        final filtered = filter.applyGitFilters(gitFolders, info);
-        expect(gitFolders.where((f) => f.name.startsWith('zom_')), isNotEmpty);
-        expect(filtered, isNotEmpty);
-
-        for (final folder in filtered) {
-          expect(folder.name.startsWith('zom_'), isFalse);
-        }
-      });
-    });
-  });
+  }
 
   group('FolderScanner', () {
     test(
@@ -835,60 +913,6 @@ void main() {
     });
   });
 
-  group('GitRepoFinder', () {
-    test('BB-FLT-25: Finds git repositories [2026-02-12]', () async {
-      final finder = GitRepoFinder();
-      final repos = await finder.findAll(workspaceRoot);
-
-      expect(repos, isNotEmpty, reason: 'Should find git repos');
-
-      // Verify all found folders are git repos
-      for (final folder in repos) {
-        final gitDir = Directory(p.join(folder.path, '.git'));
-        final gitFile = File(p.join(folder.path, '.git'));
-        expect(
-          gitDir.existsSync() || gitFile.existsSync(),
-          isTrue,
-          reason: '${folder.path} should have .git',
-        );
-      }
-      // Exactly the fixture's repositories: nested and submodule-shaped ones
-      // found, those under build/, node_modules/ and hidden folders not.
-      expect(
-        repos.map((r) => p.relative(r.path, from: workspaceRoot)).toSet(),
-        _fixtureRepos,
-      );
-    });
-
-    test('BB-FLT-26: Finds submodules [2026-02-12]', () async {
-      final finder = GitRepoFinder();
-      final repos = await finder.findAll(workspaceRoot);
-
-      // Should find repos in xternal/ (which are submodules)
-      final xternalRepos = repos.where((r) => r.path.contains('xternal'));
-      expect(
-        xternalRepos,
-        isNotEmpty,
-        reason: 'Should find repos in xternal/ (submodules)',
-      );
-    });
-
-    test(
-      'BB-FLT-27: Returns empty list for non-git folder [2026-02-12]',
-      () async {
-        final tempDir = Directory.systemTemp.createTempSync('git_test_');
-        try {
-          final finder = GitRepoFinder();
-          final repos = await finder.findAll(tempDir.path);
-
-          expect(repos, isEmpty);
-        } finally {
-          tempDir.deleteSync();
-        }
-      },
-    );
-  });
-
   group('FolderSorter', () {
     test(
       'BB-FLT-28: SortByInnerFirst orders deeper paths first [2026-02-12]',
@@ -919,6 +943,34 @@ void main() {
         expect(sorted.indexOf('/x'), lessThan(sorted.indexOf('/x/y')));
       },
     );
+
+    test('BB-FLT-48: repositories at the same depth are ordered by path, '
+        'whatever order the walk found them in [2026-11-17]', () {
+      final sorter = FolderSorter();
+      final found = [
+        '/ws/xternal/module_two',
+        '/ws',
+        '/ws/xternal/module_one',
+        '/ws/b',
+        '/ws/a',
+      ];
+      for (final input in [found, found.reversed.toList()]) {
+        expect(sorter.sortByInnerFirst(input, (s) => s), [
+          '/ws/xternal/module_one',
+          '/ws/xternal/module_two',
+          '/ws/a',
+          '/ws/b',
+          '/ws',
+        ]);
+        expect(sorter.sortByOuterFirst(input, (s) => s), [
+          '/ws',
+          '/ws/a',
+          '/ws/b',
+          '/ws/xternal/module_one',
+          '/ws/xternal/module_two',
+        ]);
+      }
+    });
   });
 
   group('RepositoryIdLookup', () {

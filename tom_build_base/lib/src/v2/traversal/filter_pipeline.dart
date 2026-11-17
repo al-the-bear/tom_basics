@@ -442,26 +442,30 @@ class FolderSorter {
 
   /// Sort git repos by inner-first order.
   ///
-  /// Deeper nested repos (submodules) come before outer repos.
+  /// Deeper nested repos come before outer repos; repos at the same depth by
+  /// path, so the order does not depend on the order of the directory walk.
   List<T> sortByInnerFirst<T>(List<T> folders, String Function(T) getPath) {
     final sorted = List<T>.from(folders);
     sorted.sort((a, b) {
       final depthA = _pathDepth(getPath(a));
       final depthB = _pathDepth(getPath(b));
-      return depthB.compareTo(depthA); // Deeper first
+      final byDepth = depthB.compareTo(depthA); // Deeper first
+      return byDepth != 0 ? byDepth : getPath(a).compareTo(getPath(b));
     });
     return sorted;
   }
 
   /// Sort git repos by outer-first order.
   ///
-  /// Parent repos come before nested repos (submodules).
+  /// Parent repos come before nested repos; repos at the same depth by path,
+  /// so the order does not depend on the order of the directory walk.
   List<T> sortByOuterFirst<T>(List<T> folders, String Function(T) getPath) {
     final sorted = List<T>.from(folders);
     sorted.sort((a, b) {
       final depthA = _pathDepth(getPath(a));
       final depthB = _pathDepth(getPath(b));
-      return depthA.compareTo(depthB); // Shallower first
+      final byDepth = depthA.compareTo(depthB); // Shallower first
+      return byDepth != 0 ? byDepth : getPath(a).compareTo(getPath(b));
     });
     return sorted;
   }

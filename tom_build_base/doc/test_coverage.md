@@ -33,11 +33,11 @@ This document lists all testable features across `tom_build_base` and tracks tes
 | 18 | [Folder Scanner](#18-folder-scanner) | 25 | 25✅ | `v2/traversal/folder_scanner_test.dart` | [→](#18-folder-scanner) |
 | 19 | [Nature Detector](#19-nature-detector) | 39 | 39✅ | `v2/traversal/nature_detector_test.dart` | [→](#19-nature-detector) |
 | 20 | [Nature Filter](#20-nature-filter) | 20 | 20✅ | `v2/traversal/nature_filter_test.dart` | [→](#20-nature-filter) |
-| 21 | [Filter Pipeline](#21-filter-pipeline) | 47 | 47✅ | `v2/traversal/filter_pipeline_test.dart` | [→](#21-filter-pipeline) |
+| 21 | [Filter Pipeline](#21-filter-pipeline) | 57 | 57✅ | `v2/traversal/filter_pipeline_test.dart` | [→](#21-filter-pipeline) |
 | 22 | [Build Order](#22-build-order) | 15 | 15✅ | `v2/traversal/build_order_test.dart` | [→](#22-build-order) |
 | 23 | [Traversal Info](#23-traversal-info) | 22 | 22✅ | `v2/traversal/traversal_info_test.dart` | [→](#23-traversal-info) |
 | 24 | [Build Base Integration](#24-build-base-integration) | 22 | 22✅ | `v2/traversal/build_base_integration_test.dart` | [→](#24-build-base-integration) |
-| 25 | [Comprehensive Traversal](#25-comprehensive-traversal) | 51 | 51✅ | `v2/traversal/traversal_comprehensive_test.dart` | [→](#25-comprehensive-traversal) |
+| 25 | [Comprehensive Traversal](#25-comprehensive-traversal) | 56 | 56✅ | `v2/traversal/traversal_comprehensive_test.dart` | [→](#25-comprehensive-traversal) |
 | 26 | [Pub Cache Integrity](#26-pub-cache-integrity) | 8 | 8✅ | `v2/core/pub_cache_integrity_test.dart` | [→](#26-pub-cache-integrity) |
 | 27 | [Console Encoding](#27-console-encoding) | 9 | 9✅ | `console_encoding_test.dart` | [→](#27-console-encoding) |
 | 28 | [Output Format](#28-output-format) | 10 | 10✅ | `v2/core/output_format_test.dart` | [→](#28-output-format) |
@@ -58,7 +58,7 @@ This document lists all testable features across `tom_build_base` and tracks tes
 | 43 | [Context Boundaries](#43-context-boundaries) | 14 | 14✅ | `v2/boundaries/context_boundaries_test.dart` | [→](#43-context-boundaries) |
 | 44 | [Item Exit Codes and Process Trees](#44-item-exit-codes-and-process-trees) | 5 | 5✅ | `v2/core/item_exit_code_test.dart` | [→](#44-item-exit-codes-and-process-trees) |
 | 45 | [Repeated Multi Options](#45-repeated-multi-options) | 5 | 5✅ | `v2/core/multi_option_repeat_test.dart` | [→](#45-repeated-multi-options) |
-| 46 | [Project Groups](#46-project-groups) | 7 | 7✅ | `v2/traversal/project_groups_test.dart` | [→](#46-project-groups) |
+| 46 | [Project Groups](#46-project-groups) | 16 | 16✅ | `v2/traversal/project_groups_test.dart` | [→](#46-project-groups) |
 | 47 | [Language Natures](#47-language-natures) | 16 | 16✅ | `v2/traversal/language_natures_test.dart` | [→](#47-language-natures) |
 | 48 | [Project Listing](#48-project-listing) | 7 | 7✅ | `v2/traversal/project_listing_test.dart` | [→](#48-project-listing) |
 | 49 | [Broken Pipe](#49-broken-pipe) | 3 | 3✅ | `v2/core/broken_pipe_test.dart` | [→](#49-broken-pipe) |
@@ -75,9 +75,9 @@ This document lists all testable features across `tom_build_base` and tracks tes
 | 60 | [Tool Sections Without Defines](#60-tool-sections-without-defines) | 4 | 4✅ | `tool_section_test.dart` | [→](#60-tool-sections-without-defines) |
 | 61 | [Master File Edits](#61-master-file-edits) | 3 | 3✅ | `v2/core/master_yaml_edit_test.dart` | [→](#61-master-file-edits) |
 | 62 | [Stand-Alone Commands](#62-stand-alone-commands) | 16 | 16✅ | `v2/core/strict_command_options_test.dart` | [→](#62-stand-alone-commands) |
-| 63 | [Git Mode Skips](#63-git-mode-skips) | 6 | 6✅ | `v2/traversal/git_repo_finder_skip_test.dart` | [→](#63-git-mode-skips) |
+| 63 | [Git Mode Skips](#63-git-mode-skips) | 12 | 12✅ | `v2/traversal/git_repo_finder_skip_test.dart` | [→](#63-git-mode-skips) |
 | 64 | [Repository Selection by Path](#64-repository-selection-by-path) | 6 | 6✅ | `v2/traversal/module_filter_path_test.dart` | [→](#64-repository-selection-by-path) |
-| — | **Total** | **1146** | **1146✅** | | | | |
+| — | **Total** | **1176** | **1176✅** | | | | |
 
 > Every row links to a section, and the counts are measured from
 > `dart test --reporter json -j 1` rather than maintained by hand. Run it
@@ -502,10 +502,11 @@ Tests for the recently implemented features: modes, persistent defines, runtime 
 | BB-FLT-41–47 | Project filter by path | ✅ | Absolute paths (native, forward-slash, backslash) and paths through links. |
 | BB-FLT-5–8, 35–36 | Exclude filter | ✅ | Path patterns, names, globs, project ids and names. |
 | BB-FLT-9–14 | Test projects and combinations | ✅ | `zom_*` excluded by default, `--test`, `--test-only`; include and exclude together. |
-| BB-FLT-15–20 | Git-mode filters | ✅ | `--modules`, `--skip-modules`, path exclude and `zom_*` on the repositories of a workspace-shaped fixture. |
+| BB-FLT-15–20 | Git-mode filters | ✅ | `--modules`, `--skip-modules`, path exclude and `zom_*` on the repositories of a workspace-shaped fixture, once with submodule checkouts and once with independent clones (each run counted). |
 | BB-FLT-21–24 | FolderScanner | ✅ | Recursive and root-only scans, recursion excludes, hidden folders. |
-| BB-FLT-25–27 | GitRepoFinder | ✅ | On a fixture tree, never the live workspace: nested and submodule-shaped (`.git` file) repositories found, those under `build/`, `node_modules/` and hidden folders not; none in a plain folder. The skips of git mode: [§ 63](#63-git-mode-skips). |
+| BB-FLT-25–27 | GitRepoFinder | ✅ | On a fixture tree, never the live workspace, in both shapes: nested repositories found, as submodule checkouts (`.git` file) and as independent clones (`.git` folder the parent ignores); those under `build/`, `node_modules/` and hidden folders not; none in a plain folder. The skips of git mode: [§ 63](#63-git-mode-skips). |
 | BB-FLT-28–29 | FolderSorter | ✅ | Inner-first and outer-first order. |
+| BB-FLT-48 | FolderSorter ties | ✅ | Repositories at the same depth are ordered by path, whatever the order of the walk. |
 | BB-FLT-37–40 | RepositoryIdLookup | ✅ | Id to name, case-insensitive, unknown ids unchanged, `isRepositoryId`. |
 
 ---
@@ -554,7 +555,9 @@ Full integration test using filesystem fixtures — end-to-end workspace scannin
 
 **Test file:** `test/v2/traversal/traversal_comprehensive_test.dart`
 
-51 tests covering complex workspace scenarios — the most thorough traversal test suite.
+56 tests covering complex workspace scenarios — the most thorough traversal test suite. The git traversal
+tests (TRV-GIT-1–4) run on both shapes of nested repositories, submodule checkouts and independent clones
+(`TraversalFixture(shape:)`); TRV-GIT-5 checks that `-i` and `-o` give the same order on both.
 
 | ID | Feature | Status | Description |
 |----|---------|--------|-------------|
@@ -999,17 +1002,19 @@ directive scanner it reads imports with.
 **Test file:** `test/v2/traversal/project_groups_test.dart`
 
 Groups are derived from the directory walk: git repositories and
-`buildkit_group.yaml` directories (`--group`).
+`buildkit_group.yaml` directories (`--group`). BB-GRP-1–8 run on both shapes
+of nested repositories (submodule checkouts, independent clones).
 
 | ID | Feature | Status | Description |
 |----|---------|--------|-------------|
 | BB-GRP-1 | Repository group | ✅ | A git repository selects its projects by its folder name. |
-| BB-GRP-2 | Submodule checkout | ✅ | A `.git` file counts; the root-relative path names the group too. |
+| BB-GRP-2 | Nested repository | ✅ | A submodule checkout (`.git` file) and an independent clone (`.git` folder) count; the root-relative path names the group too. |
 | BB-GRP-3 | `buildkit_group.yaml` | ✅ | Named by its `name:`, else its folder; a named group is not known by its folder. |
 | BB-GRP-4 | Several groups | ✅ | Their union is selected. |
 | BB-GRP-5 | No `--group` | ✅ | Every project is selected. |
 | BB-GRP-6 | Unknown group | ✅ | Reported as an unmatched selector; nothing runs. |
 | BB-GRP-7 | Parsing | ✅ | Global, before or after the command, comma-separated or repeated; reaches `ProjectTraversalInfo.groups`. |
+| BB-GRP-8 | `tom_ai` group | ✅ | A `buildkit_group.yaml` with `name: tom_ai` in a plain folder (no repository) is the group `tom_ai`; the repository inside is a group by its name and path. |
 
 ---
 
@@ -1290,6 +1295,9 @@ it visited.
 
 **Test file:** `test/v2/traversal/git_repo_finder_skip_test.dart`
 
+Every test runs on both shapes of nested repositories (submodule checkouts,
+independent clones).
+
 | ID | Feature | Status | Description |
 |----|---------|--------|-------------|
 | BB-GSK-1 | Always-skipped folders | ✅ | No repository under a name of `kAlwaysSkipDirectories` (`ztmp`, `_ai`, `build`, ...) or a hidden folder is listed, at any depth, with or without `--no-skip`. |
@@ -1328,4 +1336,4 @@ The current test suite is comprehensive. Areas where additional tests could be v
 | `--dump-definitions` output format | Tested in ToolRunner | Validate complete YAML structure | Low |
 | ConfigLoader with nested `@{...}` in `@[...]` | ✅ Recursive test exists | Additional nesting depth scenarios | Low |
 
-Overall coverage assessment: **Excellent — 1146 tests covering all features.**
+Overall coverage assessment: **Excellent — 1176 tests covering all features.**

@@ -4,6 +4,8 @@ import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 import 'package:tom_build_base/tom_build_base_v2.dart';
 
+import '../fixtures/repo_shapes.dart';
+
 /// Git mode (`-i` / `-o`) skips what project mode skips: hidden folders and
 /// every name in `kAlwaysSkipDirectories` (`ztmp`, `_ai`, `build`, ...), the
 /// folders holding `tom_skip.yaml` or `buildkit_skip.yaml` with everything
@@ -11,11 +13,18 @@ import 'package:tom_build_base/tom_build_base_v2.dart';
 /// nested workspace (`buildkit_master.yaml`) other than the execution root's
 /// own. `--no-skip` lists the marked folders and nested workspaces, never the
 /// always-skipped ones; a run rooted in a nested workspace (`-R`) lists its
-/// repositories.
+/// repositories. Every test runs on both shapes of nested repositories:
+/// submodule checkouts and independent clones.
 ///
 /// Test IDs: BB-GSK-1..6.
 
 void main() {
+  for (final shape in RepoShape.values) {
+    group('repositories as ${shape.name}', () => _tests(shape));
+  }
+}
+
+void _tests(RepoShape shape) {
   late Directory root;
 
   setUp(() {
@@ -25,16 +34,8 @@ void main() {
   });
   tearDown(() => root.deleteSync(recursive: true));
 
-  /// A repository at [rel] (a `.git` directory, or a `.git` file as a
-  /// submodule checkout has).
-  void repo(String rel, {bool gitFile = false}) {
-    final dir = Directory(p.join(root.path, rel))..createSync(recursive: true);
-    if (gitFile) {
-      File(p.join(dir.path, '.git')).writeAsStringSync('gitdir: elsewhere\n');
-    } else {
-      Directory(p.join(dir.path, '.git')).createSync();
-    }
-  }
+  /// A repository at [rel] in this run's [shape].
+  void repo(String rel) => makeRepo(root.path, rel, shape);
 
   void file(String rel) => File(p.join(root.path, rel))
     ..parent.createSync(recursive: true)
@@ -54,7 +55,7 @@ void main() {
   test('BB-GSK-1: the always-skipped folders and hidden folders hold no '
       'listed repository [2026-11-17]', () async {
     repo('.');
-    repo('tom_ai/basics', gitFile: true);
+    repo('tom_ai/basics');
     for (final skipped in kAlwaysSkipDirectories) {
       repo('$skipped/inside');
     }

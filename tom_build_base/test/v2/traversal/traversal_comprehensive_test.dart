@@ -5,6 +5,7 @@ import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 import 'package:tom_build_base/tom_build_base_v2.dart';
 
+import '../fixtures/repo_shapes.dart';
 import '../fixtures/traversal_fixture.dart';
 
 /// Comprehensive traversal tests for BuildBase and the traversal pipeline.
@@ -330,136 +331,191 @@ void main() {
   // Group 3: Git Traversal
   // ==========================================================================
   group('Git Traversal', () {
-    test(
-      'TRV-GIT-1: Git traversal finds all repos (root + submodules) [2026-06-30]',
-      () async {
-        final info = GitTraversalInfo(
-          executionRoot: fixture.rootPath,
-          gitMode: GitTraversalMode.innerFirst,
-          includeTestProjects: true,
-        );
+    for (final shape in RepoShape.values) {
+      group('repositories as ${shape.name}', () {
+        late TraversalFixture gitFixture;
 
-        final found = <String>[];
-        await BuildBase.traverse(
-          info: info,
-          requiredNatures: {FsFolder},
-          run: (ctx) async {
-            found.add(ctx.name);
-            return true;
-          },
-        );
+        setUpAll(() async {
+          gitFixture = TraversalFixture(shape: shape);
+          await gitFixture.setUp();
+        });
 
-        expect(found, isNotEmpty, reason: 'Should find git repos');
-        // Should find the submodule repos
-        expect(
-          found,
-          contains('module_one'),
-          reason: 'Should find module_one git repo',
-        );
-        expect(
-          found,
-          contains('module_two'),
-          reason: 'Should find module_two git repo',
-        );
-      },
-    );
+        tearDownAll(() async {
+          await gitFixture.tearDown();
+        });
 
-    test(
-      'TRV-GIT-2: InnerFirst orders deeper repos before shallower [2026-06-30]',
-      () async {
-        final info = GitTraversalInfo(
-          executionRoot: fixture.rootPath,
-          gitMode: GitTraversalMode.innerFirst,
-          includeTestProjects: true,
-        );
-
-        final paths = <String>[];
-        await BuildBase.traverse(
-          info: info,
-          requiredNatures: {FsFolder},
-          run: (ctx) async {
-            paths.add(ctx.path);
-            return true;
-          },
-        );
-
-        if (paths.length >= 2) {
-          for (var i = 0; i < paths.length - 1; i++) {
-            final depthA = p.split(paths[i]).length;
-            final depthB = p.split(paths[i + 1]).length;
-            expect(
-              depthA,
-              greaterThanOrEqualTo(depthB),
-              reason:
-                  'InnerFirst: ${p.basename(paths[i])} (depth=$depthA) should come before or at same level as ${p.basename(paths[i + 1])} (depth=$depthB)',
+        test(
+          'TRV-GIT-1: Git traversal finds all repos (root + submodules) [2026-06-30]',
+          () async {
+            final info = GitTraversalInfo(
+              executionRoot: gitFixture.rootPath,
+              gitMode: GitTraversalMode.innerFirst,
+              includeTestProjects: true,
             );
-          }
-        }
-      },
-    );
 
-    test(
-      'TRV-GIT-3: OuterFirst orders shallower repos before deeper [2026-06-30]',
-      () async {
-        final info = GitTraversalInfo(
-          executionRoot: fixture.rootPath,
-          gitMode: GitTraversalMode.outerFirst,
-          includeTestProjects: true,
-        );
-
-        final paths = <String>[];
-        await BuildBase.traverse(
-          info: info,
-          requiredNatures: {FsFolder},
-          run: (ctx) async {
-            paths.add(ctx.path);
-            return true;
-          },
-        );
-
-        if (paths.length >= 2) {
-          for (var i = 0; i < paths.length - 1; i++) {
-            final depthA = p.split(paths[i]).length;
-            final depthB = p.split(paths[i + 1]).length;
-            expect(
-              depthA,
-              lessThanOrEqualTo(depthB),
-              reason:
-                  'OuterFirst: ${p.basename(paths[i])} (depth=$depthA) should come before or at same level as ${p.basename(paths[i + 1])} (depth=$depthB)',
+            final found = <String>[];
+            await BuildBase.traverse(
+              info: info,
+              requiredNatures: {FsFolder},
+              run: (ctx) async {
+                found.add(ctx.name);
+                return true;
+              },
             );
-          }
-        }
-      },
-    );
 
-    test(
-      'TRV-GIT-4: Git traversal detects GitFolder nature [2026-06-30]',
-      () async {
-        final info = GitTraversalInfo(
-          executionRoot: fixture.rootPath,
-          gitMode: GitTraversalMode.innerFirst,
-          includeTestProjects: true,
-        );
-
-        final naturesPerRepo = <String, List<String>>{};
-        await BuildBase.traverse(
-          info: info,
-          requiredNatures: {FsFolder},
-          run: (ctx) async {
-            naturesPerRepo[ctx.name] = ctx.natures
-                .map((n) => n.runtimeType.toString())
-                .toList();
-            return true;
+            expect(found, isNotEmpty, reason: 'Should find git repos');
+            // Should find the submodule repos
+            expect(
+              found,
+              contains('module_one'),
+              reason: 'Should find module_one git repo',
+            );
+            expect(
+              found,
+              contains('module_two'),
+              reason: 'Should find module_two git repo',
+            );
           },
         );
 
-        for (final entry in naturesPerRepo.entries) {
-          expect(
-            entry.value,
-            contains('GitFolder'),
-            reason:
-                '${entry.key} should have GitFolder nature in git traversal',
+        test(
+          'TRV-GIT-2: InnerFirst orders deeper repos before shallower [2026-06-30]',
+          () async {
+            final info = GitTraversalInfo(
+              executionRoot: gitFixture.rootPath,
+              gitMode: GitTraversalMode.innerFirst,
+              includeTestProjects: true,
+            );
+
+            final paths = <String>[];
+            await BuildBase.traverse(
+              info: info,
+              requiredNatures: {FsFolder},
+              run: (ctx) async {
+                paths.add(ctx.path);
+                return true;
+              },
+            );
+
+            if (paths.length >= 2) {
+              for (var i = 0; i < paths.length - 1; i++) {
+                final depthA = p.split(paths[i]).length;
+                final depthB = p.split(paths[i + 1]).length;
+                expect(
+                  depthA,
+                  greaterThanOrEqualTo(depthB),
+                  reason:
+                      'InnerFirst: ${p.basename(paths[i])} (depth=$depthA) should come before or at same level as ${p.basename(paths[i + 1])} (depth=$depthB)',
+                );
+              }
+            }
+          },
+        );
+
+        test(
+          'TRV-GIT-3: OuterFirst orders shallower repos before deeper [2026-06-30]',
+          () async {
+            final info = GitTraversalInfo(
+              executionRoot: gitFixture.rootPath,
+              gitMode: GitTraversalMode.outerFirst,
+              includeTestProjects: true,
+            );
+
+            final paths = <String>[];
+            await BuildBase.traverse(
+              info: info,
+              requiredNatures: {FsFolder},
+              run: (ctx) async {
+                paths.add(ctx.path);
+                return true;
+              },
+            );
+
+            if (paths.length >= 2) {
+              for (var i = 0; i < paths.length - 1; i++) {
+                final depthA = p.split(paths[i]).length;
+                final depthB = p.split(paths[i + 1]).length;
+                expect(
+                  depthA,
+                  lessThanOrEqualTo(depthB),
+                  reason:
+                      'OuterFirst: ${p.basename(paths[i])} (depth=$depthA) should come before or at same level as ${p.basename(paths[i + 1])} (depth=$depthB)',
+                );
+              }
+            }
+          },
+        );
+
+        test(
+          'TRV-GIT-4: Git traversal detects GitFolder nature [2026-06-30]',
+          () async {
+            final info = GitTraversalInfo(
+              executionRoot: gitFixture.rootPath,
+              gitMode: GitTraversalMode.innerFirst,
+              includeTestProjects: true,
+            );
+
+            final naturesPerRepo = <String, List<String>>{};
+            await BuildBase.traverse(
+              info: info,
+              requiredNatures: {FsFolder},
+              run: (ctx) async {
+                naturesPerRepo[ctx.name] = ctx.natures
+                    .map((n) => n.runtimeType.toString())
+                    .toList();
+                return true;
+              },
+            );
+
+            for (final entry in naturesPerRepo.entries) {
+              expect(
+                entry.value,
+                contains('GitFolder'),
+                reason:
+                    '${entry.key} should have GitFolder nature in git traversal',
+              );
+            }
+          },
+        );
+      });
+    }
+
+    test(
+      'TRV-GIT-5: -i and -o give the same order on both shapes [2026-11-17]',
+      () async {
+        Future<List<String>> order(
+          TraversalFixture f,
+          GitTraversalMode mode,
+        ) async {
+          final paths = <String>[];
+          await BuildBase.traverse(
+            info: GitTraversalInfo(
+              executionRoot: f.rootPath,
+              gitMode: mode,
+              includeTestProjects: true,
+            ),
+            requiredNatures: {FsFolder},
+            run: (ctx) async {
+              paths.add(p.relative(ctx.path, from: f.rootPath));
+              return true;
+            },
           );
+          return paths;
+        }
+
+        final clones = TraversalFixture(shape: RepoShape.clones);
+        final submodules = TraversalFixture(shape: RepoShape.submodules);
+        await clones.setUp();
+        await submodules.setUp();
+        try {
+          for (final mode in GitTraversalMode.values) {
+            final a = await order(clones, mode);
+            expect(a, hasLength(3), reason: '$mode: $a');
+            expect(await order(submodules, mode), a, reason: '$mode');
+          }
+        } finally {
+          await clones.tearDown();
+          await submodules.tearDown();
         }
       },
     );

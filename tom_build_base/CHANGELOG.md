@@ -11,6 +11,9 @@
   and everything below it, so `WEBWK` selects `app_webwork` although its name
   is `webwork`. A submodule checkout still also matches by its submodule
   name. New: `RepositoryIdLookup.resolveToFolder`.
+- Git mode orders repositories at the same depth by path (`-i` and `-o`);
+  before, they kept the order of the directory walk, which differs between
+  machines and file systems.
 - `GitFolder.isSubmodule` / `%{git.isSubmodule}` are documented as what they
   are: true when `.git` is a file (a submodule checkout or a worktree);
   information only, no filter or order depends on them.

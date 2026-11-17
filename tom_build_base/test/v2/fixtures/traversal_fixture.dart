@@ -1,6 +1,8 @@
 import 'dart:io';
 import 'package:path/path.dart' as p;
 
+import 'repo_shapes.dart';
+
 /// Creates a temporary workspace fixture for traversal testing.
 ///
 /// The fixture resembles a real Tom workspace with nested projects,
@@ -20,13 +22,22 @@ import 'package:path/path.dart' as p;
 ///   ├── sub_dart/              (non-project subdir)
 ///   │   └── proj_delta/        (nested Dart package)
 ///   ├── xternal/
-///   │   ├── module_one/        (.git submodule, Dart package)
-///   │   │   └── pkg_one_a/     (nested Dart package in submodule)
-///   │   └── module_two/        (.git submodule, Dart package)
-///   │       └── pkg_two_a/     (nested Dart package in submodule)
+///   │   ├── module_one/        (nested repository, Dart package)
+///   │   │   └── pkg_one_a/     (nested Dart package in the repository)
+///   │   └── module_two/        (nested repository, Dart package)
+///   │       └── pkg_two_a/     (nested Dart package in the repository)
 ///   └── ts_project/            (TypeScript project, has package.json)
 /// ```
+///
+/// The nested repositories have the given [shape]: independent clones (a
+/// `.git` folder the root's `.gitignore` names) or submodule checkouts (a
+/// `.git` file).
 class TraversalFixture {
+  TraversalFixture({this.shape = RepoShape.clones});
+
+  /// The shape of the nested repositories.
+  final RepoShape shape;
+
   /// Root path of the temporary workspace.
   late final String rootPath;
   late final Directory _tempDir;
@@ -38,7 +49,7 @@ class TraversalFixture {
 
     // Workspace root markers
     _writeFile('buildkit_master.yaml', 'name: zom_traversal_ws\n');
-    _createDir('.git'); // fake git root
+    makeRepo(rootPath, '.', shape); // fake git root
 
     // ---- proj_alpha: Dart console app ----
     _writePubspec('proj_alpha', '''
@@ -121,8 +132,8 @@ environment:
 ''');
     _writeFile('sub_dart/proj_delta/lib/delta.dart', 'int delta = 4;\n');
 
-    // ---- xternal/module_one: git submodule with nested project ----
-    _createDir('xternal/module_one/.git'); // submodule
+    // ---- xternal/module_one: nested repository with nested project ----
+    makeRepo(rootPath, 'xternal/module_one', shape);
     _writePubspec('xternal/module_one', '''
 name: module_one
 version: 0.1.0
@@ -141,8 +152,8 @@ dependencies:
     path: ..
 ''');
 
-    // ---- xternal/module_two: git submodule with nested project ----
-    _createDir('xternal/module_two/.git'); // submodule
+    // ---- xternal/module_two: nested repository with nested project ----
+    makeRepo(rootPath, 'xternal/module_two', shape);
     _writePubspec('xternal/module_two', '''
 name: module_two
 version: 0.1.0
