@@ -329,6 +329,7 @@ class CliArgs {
       gitMode: mode,
       includeTestProjects: includeTestProjects,
       testProjectsOnly: testProjectsOnly,
+      ignoreSkipMarkers: noSkip,
     );
   }
 

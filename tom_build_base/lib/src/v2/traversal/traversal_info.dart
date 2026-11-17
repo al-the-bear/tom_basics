@@ -170,6 +170,10 @@ class GitTraversalInfo extends BaseTraversalInfo {
   /// Traversal order (innerFirst or outerFirst).
   final GitTraversalMode gitMode;
 
+  /// When true, skip markers and nested workspaces do not stop the search
+  /// for repositories. Activated by `--no-skip`.
+  final bool ignoreSkipMarkers;
+
   const GitTraversalInfo({
     required super.executionRoot,
     super.excludePatterns,
@@ -178,6 +182,7 @@ class GitTraversalInfo extends BaseTraversalInfo {
     this.modules = const [],
     this.skipModules = const [],
     required this.gitMode,
+    this.ignoreSkipMarkers = false,
   });
 
   @override
@@ -189,6 +194,7 @@ class GitTraversalInfo extends BaseTraversalInfo {
     List<String>? modules,
     List<String>? skipModules,
     GitTraversalMode? gitMode,
+    bool? ignoreSkipMarkers,
   }) {
     return GitTraversalInfo(
       executionRoot: executionRoot ?? this.executionRoot,
@@ -198,6 +204,7 @@ class GitTraversalInfo extends BaseTraversalInfo {
       modules: modules ?? this.modules,
       skipModules: skipModules ?? this.skipModules,
       gitMode: gitMode ?? this.gitMode,
+      ignoreSkipMarkers: ignoreSkipMarkers ?? this.ignoreSkipMarkers,
     );
   }
 

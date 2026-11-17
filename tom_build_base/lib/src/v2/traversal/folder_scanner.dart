@@ -11,6 +11,35 @@ import '../workspace_utils.dart' show kAlwaysSkipDirectories;
 /// Global skip file that blocks all tools.
 const kTomSkipYaml = 'tom_skip.yaml';
 
+/// The skip marker in [dirPath], if any: a nested workspace
+/// (`{toolBasename}_master.yaml`), `tom_skip.yaml` (all tools) or
+/// `{toolBasename}_skip.yaml`. Shared by project and git mode.
+_SkipType? _skipMarkerIn(String dirPath, String toolBasename) {
+  if (File(p.join(dirPath, '${toolBasename}_master.yaml')).existsSync()) {
+    return _SkipType.workspaceBoundary;
+  }
+  if (File(p.join(dirPath, kTomSkipYaml)).existsSync()) {
+    return _SkipType.globalSkip;
+  }
+  if (File(p.join(dirPath, '${toolBasename}_skip.yaml')).existsSync()) {
+    return _SkipType.toolSkip;
+  }
+  return null;
+}
+
+/// Tells the user on stderr which folder a skip marker excludes.
+void _reportSkip(_SkipType marker, String dirPath, String toolBasename) {
+  final folderName = p.basename(dirPath);
+  switch (marker) {
+    case _SkipType.workspaceBoundary:
+      stderr.writeln('Skipping subworkspace: $folderName');
+    case _SkipType.globalSkip:
+      stderr.writeln('Skipping - $kTomSkipYaml found: $folderName');
+    case _SkipType.toolSkip:
+      stderr.writeln('Skipping - ${toolBasename}_skip.yaml found: $folderName');
+  }
+}
+
 /// Type of skip marker found in a directory.
 enum _SkipType {
   /// `tom_skip.yaml` — global skip for all tools.
@@ -92,19 +121,10 @@ class FolderScanner {
   }) async {
     // Check for skip markers.
     // Skip markers mean "don't include this folder AND don't descend into children"
-    final skipMarker = !isRoot ? _getSkipMarker(dir.path) : null;
+    final skipMarker = !isRoot ? _skipMarkerIn(dir.path, toolBasename) : null;
 
     if (skipMarker != null) {
-      final folderName = p.basename(dir.path);
-      // Always print skip messages to stderr so the user knows what's excluded.
-      switch (skipMarker) {
-        case _SkipType.workspaceBoundary:
-          stderr.writeln('Skipping subworkspace: $folderName');
-        case _SkipType.globalSkip:
-          stderr.writeln('Skipping - $kTomSkipYaml found: $folderName');
-        case _SkipType.toolSkip:
-          stderr.writeln('Skipping - $skipFilename found: $folderName');
-      }
+      _reportSkip(skipMarker, dir.path, toolBasename);
       // When --all is active, continue into skipped folders instead of returning.
       if (!ignoreSkipMarkers) return;
       stderr.writeln('Ignoring skip file, --no-skip active');
@@ -156,29 +176,6 @@ class FolderScanner {
     } on FileSystemException {
       // Permission denied or other filesystem error - skip this directory
     }
-  }
-
-  /// Determine skip marker type for a directory.
-  ///
-  /// Returns:
-  /// - [_SkipType.globalSkip] for `tom_skip.yaml`
-  /// - [_SkipType.toolSkip] for `{toolBasename}_skip.yaml`
-  /// - [_SkipType.workspaceBoundary] for nested workspace markers
-  /// - null if no skip marker found
-  _SkipType? _getSkipMarker(String dirPath) {
-    // Workspace boundaries — separate workspaces, stop descending
-    if (File(p.join(dirPath, '${toolBasename}_master.yaml')).existsSync()) {
-      return _SkipType.workspaceBoundary;
-    }
-    // Global skip file — blocks all tools
-    if (File(p.join(dirPath, kTomSkipYaml)).existsSync()) {
-      return _SkipType.globalSkip;
-    }
-    // Tool-specific skip file
-    if (File(p.join(dirPath, skipFilename)).existsSync()) {
-      return _SkipType.toolSkip;
-    }
-    return null;
   }
 
   /// Whether the folder's project file, `buildkit.yaml` (the one every tool
@@ -234,10 +231,28 @@ class FolderScanner {
 
 /// Finds git repositories under a given root.
 class GitRepoFinder {
-  /// Find all git repositories under [root] recursively.
+  /// A finder that skips what project mode ([FolderScanner]) skips: hidden
+  /// folders, [kAlwaysSkipDirectories], folders holding `tom_skip.yaml` or
+  /// `{toolBasename}_skip.yaml`, and nested workspaces
+  /// (`{toolBasename}_master.yaml` below the root). [ignoreSkipMarkers]
+  /// (`--no-skip`) walks into the marked folders and nested workspaces.
+  GitRepoFinder({
+    this.toolBasename = 'buildkit',
+    this.ignoreSkipMarkers = false,
+  });
+
+  /// Tool name of the tool-specific skip file and workspace marker.
+  final String toolBasename;
+
+  /// When true, the skip markers and nested workspaces do not stop the walk
+  /// (`--no-skip`); hidden and always-skipped folders still do.
+  final bool ignoreSkipMarkers;
+
+  /// Find all git repositories under [root] recursively. [root] itself is
+  /// not checked for skip markers (its own workspace marker is its root).
   Future<List<FsFolder>> findAll(String root) async {
     final repos = <FsFolder>[];
-    await _findGitRepos(Directory(root), repos);
+    await _findGitRepos(Directory(root), repos, isRoot: true);
     return repos;
   }
 
@@ -327,16 +342,20 @@ class GitRepoFinder {
     return topRepo;
   }
 
-  /// Directories that never contain git repos — skip for performance.
-  static const _skipDirectories = {
-    'build',
-    'node_modules',
-    'coverage',
-    '__pycache__',
-  };
-
-  Future<void> _findGitRepos(Directory dir, List<FsFolder> results) async {
+  Future<void> _findGitRepos(
+    Directory dir,
+    List<FsFolder> results, {
+    bool isRoot = false,
+  }) async {
     if (!dir.existsSync()) return;
+    // A marked folder, or a nested workspace, is neither listed nor entered
+    // (as in project mode), a marked repository included.
+    final skipMarker = isRoot ? null : _skipMarkerIn(dir.path, toolBasename);
+    if (skipMarker != null) {
+      _reportSkip(skipMarker, dir.path, toolBasename);
+      if (!ignoreSkipMarkers) return;
+      stderr.writeln('Ignoring skip file, --no-skip active');
+    }
 
     // Check if this is a git repo
     final gitDir = Directory(p.join(dir.path, '.git'));
@@ -352,7 +371,7 @@ class GitRepoFinder {
         if (entity is Directory) {
           final name = p.basename(entity.path);
           if (name.startsWith('.')) continue; // Skip hidden
-          if (_skipDirectories.contains(name)) continue; // Skip non-project
+          if (kAlwaysSkipDirectories.contains(name)) continue;
           await _findGitRepos(entity, results);
         }
       }

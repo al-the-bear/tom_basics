@@ -2,6 +2,15 @@
 
 ### Fixed
 
+- Git mode (`-i` / `-o`, `GitRepoFinder.findAll`) skips what project mode
+  skips: every name in `kAlwaysSkipDirectories` (`ztmp`, `_ai`, `build`, ...)
+  besides hidden folders, the folders holding `tom_skip.yaml` or
+  `buildkit_skip.yaml` with everything below them (a repository holding one is
+  not listed), and nested workspaces (a `buildkit_master.yaml` below the
+  execution root). It listed the scratch copies under `ztmp/` and the `_ai`
+  mount, so a `:gitcommit -i` committed in them. `--no-skip` lifts the skip
+  markers and nested workspaces (`GitTraversalInfo.ignoreSkipMarkers`,
+  `GitRepoFinder(ignoreSkipMarkers:)`).
 - The error for an option a command does not declare
   (`strictCommandOptions`) names the tool (`specs :one --help`); it said
   `tool :one --help`.

@@ -75,7 +75,8 @@ This document lists all testable features across `tom_build_base` and tracks tes
 | 60 | [Tool Sections Without Defines](#60-tool-sections-without-defines) | 4 | 4✅ | `tool_section_test.dart` | [→](#60-tool-sections-without-defines) |
 | 61 | [Master File Edits](#61-master-file-edits) | 3 | 3✅ | `v2/core/master_yaml_edit_test.dart` | [→](#61-master-file-edits) |
 | 62 | [Stand-Alone Commands](#62-stand-alone-commands) | 16 | 16✅ | `v2/core/strict_command_options_test.dart` | [→](#62-stand-alone-commands) |
-| — | **Total** | **1134** | **1134✅** | | | | |
+| 63 | [Git Mode Skips](#63-git-mode-skips) | 6 | 6✅ | `v2/traversal/git_repo_finder_skip_test.dart` | [→](#63-git-mode-skips) |
+| — | **Total** | **1140** | **1140✅** | | | | |
 
 > Every row links to a section, and the counts are measured from
 > `dart test --reporter json -j 1` rather than maintained by hand. Run it
@@ -502,7 +503,7 @@ Tests for the recently implemented features: modes, persistent defines, runtime 
 | BB-FLT-9–14 | Test projects and combinations | ✅ | `zom_*` excluded by default, `--test`, `--test-only`; include and exclude together. |
 | BB-FLT-15–20 | Git-mode filters | ✅ | `--modules`, `--skip-modules`, path exclude and `zom_*` on the repositories of a workspace-shaped fixture. |
 | BB-FLT-21–24 | FolderScanner | ✅ | Recursive and root-only scans, recursion excludes, hidden folders. |
-| BB-FLT-25–27 | GitRepoFinder | ✅ | On a fixture tree, never the live workspace: nested and submodule-shaped (`.git` file) repositories found, those under `build/`, `node_modules/` and hidden folders not; none in a plain folder. |
+| BB-FLT-25–27 | GitRepoFinder | ✅ | On a fixture tree, never the live workspace: nested and submodule-shaped (`.git` file) repositories found, those under `build/`, `node_modules/` and hidden folders not; none in a plain folder. The skips of git mode: [§ 63](#63-git-mode-skips). |
 | BB-FLT-28–29 | FolderSorter | ✅ | Inner-first and outer-first order. |
 | BB-FLT-37–40 | RepositoryIdLookup | ✅ | Id to name, case-insensitive, unknown ids unchanged, `isRepositoryId`. |
 
@@ -1284,6 +1285,21 @@ it visited.
 
 ---
 
+## 63. Git Mode Skips
+
+**Test file:** `test/v2/traversal/git_repo_finder_skip_test.dart`
+
+| ID | Feature | Status | Description |
+|----|---------|--------|-------------|
+| BB-GSK-1 | Always-skipped folders | ✅ | No repository under a name of `kAlwaysSkipDirectories` (`ztmp`, `_ai`, `build`, ...) or a hidden folder is listed, at any depth, with or without `--no-skip`. |
+| BB-GSK-2 | Symlinked `_ai` | ✅ | A `_ai` symlink is not followed; its target is listed where it really lies. |
+| BB-GSK-3 | Skip markers | ✅ | `tom_skip.yaml` and `buildkit_skip.yaml` skip the folder and everything below it; a repository holding a marker is not listed. |
+| BB-GSK-4 | `--no-skip` | ✅ | `ignoreSkipMarkers` lists the marked folders. |
+| BB-GSK-5 | Nested workspaces | ✅ | A nested `buildkit_master.yaml` stops the walk, the execution root's own does not; rooted in the nested workspace its repositories are listed; `--no-skip` walks in. |
+| BB-GSK-6 | Through the parser | ✅ | `-i` and `-i --no-skip` reach `GitRepoFinder` through `toGitTraversalInfo` and `BuildBase.traverse`. |
+
+---
+
 ## Test Gaps & Potential Additions
 
 The current test suite is comprehensive. Areas where additional tests could be valuable:
@@ -1296,4 +1312,4 @@ The current test suite is comprehensive. Areas where additional tests could be v
 | `--dump-definitions` output format | Tested in ToolRunner | Validate complete YAML structure | Low |
 | ConfigLoader with nested `@{...}` in `@[...]` | ✅ Recursive test exists | Additional nesting depth scenarios | Low |
 
-Overall coverage assessment: **Excellent — 1018 tests covering all features.**
+Overall coverage assessment: **Excellent — 1140 tests covering all features.**

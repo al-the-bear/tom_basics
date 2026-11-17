@@ -398,7 +398,7 @@ abstract class BuildBase {
 
   /// Find all git repositories based on GitTraversalInfo.
   static Future<List<FsFolder>> _findGitRepos(GitTraversalInfo info) async {
-    final finder = GitRepoFinder();
+    final finder = GitRepoFinder(ignoreSkipMarkers: info.ignoreSkipMarkers);
     return await finder.findAll(info.executionRoot);
   }
 

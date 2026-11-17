@@ -194,6 +194,12 @@ the current directory.
 - `-o`: For pull/fetch operations (parent repos first)
 - `-T`: Find and operate on the parent repository containing the current directory
 
+Git mode skips what project mode skips: hidden folders and the
+[always-skipped folders](#always-skipped-folders) (`ztmp`, `_ai`, `build`, ...), folders holding a
+[skip file](#skip-files) with everything below them (a repository holding one is not listed), and nested
+workspaces (a `{basename}_master.yaml` below the execution root). `--no-skip` lists the marked folders and the
+nested workspaces; rooting the run in a nested workspace (`-R`) lists its repositories.
+
 The `--top-repo` flag traverses upward from the current directory to find the topmost git repository. It requires a git traversal mode (`-i` or `-o`) to be specified. This is useful when running from a nested subdirectory and you want to operate on the containing repository hierarchy.
 
 ```bash
@@ -526,7 +532,7 @@ Some folder names never hold a project to process, at any depth and for every to
 `kAlwaysSkipDirectories` (`workspace_utils.dart`) — `.dart_tool`, `.git`, `.idea`, `.vscode`, `build`,
 `node_modules`, `coverage`, `.pub-cache`, `.pub`, `__pycache__`, `.fvm`, `ztmp` (scratch copies of projects, with
 stale constraints) and `_ai` (the AI state mount, symlinked or not). The traversal (`FolderScanner`) and
-`scanForDartProjects` never descend into them, so a nested `ztmp/<copy>/pubspec.yaml` is not discovered, pub-updated
+`scanForDartProjects` never descend into them, nor does git mode (`GitRepoFinder.findAll`), so a nested `ztmp/<copy>/pubspec.yaml` is not discovered, pub-updated
 or built. No skip file is needed for them, and `--no-skip` does not reach them: it lifts skip markers only.
 
 ### NavigationResult Properties
