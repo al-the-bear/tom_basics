@@ -329,6 +329,7 @@ class CliArgs {
       gitMode: mode,
       includeTestProjects: includeTestProjects,
       testProjectsOnly: testProjectsOnly,
+      ignoreSkipMarkers: noSkip,
     );
   }
 
@@ -758,7 +759,7 @@ class CliArgParser {
           if (!_strictGlobalAllowed(name)) {
             state.argumentErrors.add(
               '`:${cmdDef.name}` has no option `${_dashed(name)}`. '
-              'Its options: `tool :${cmdDef.name} --help`.',
+              'Its options: `${toolDefinition!.name} :${cmdDef.name} --help`.',
             );
             return;
           }

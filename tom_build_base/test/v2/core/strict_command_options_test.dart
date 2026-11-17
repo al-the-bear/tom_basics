@@ -167,7 +167,10 @@ void main() {
       () {
         expect(
           _parse([':one', '--bogus']).argumentErrors.single,
-          contains('`:one` has no option `--bogus`'),
+          allOf(
+            contains('`:one` has no option `--bogus`'),
+            contains('`specs :one --help`'),
+          ),
         );
         expect(_parse([':one', '--scan', '.']).argumentErrors, isNotEmpty);
         expect(

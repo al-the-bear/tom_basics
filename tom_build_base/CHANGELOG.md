@@ -1,3 +1,11 @@
+## Unreleased
+
+### Fixed
+
+- The error for an option a command does not declare
+  (`strictCommandOptions`) names the tool (`specs :one --help`); it said
+  `tool :one --help`.
+
 ## 2.40.0
 
 ### Added — stand-alone commands: one binary for several tools
