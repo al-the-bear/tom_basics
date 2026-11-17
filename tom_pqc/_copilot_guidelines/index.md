@@ -98,7 +98,7 @@ Flutter desktop app (`flutter create`, `flutter build <os> --release`).
 | Platform (host) | `dart test` (all suites) | `dart build cli` | Flutter desktop release |
 | --- | --- | --- | --- |
 | macOS arm64 (mbp) | 1,330 passed, 45 skipped (HashML-DSA) | `bundle/lib/libtom_pqc.dylib`; runs, also after the bundle is moved | `Contents/Frameworks/tom_pqc.framework`; the app runs |
-| Linux x64 (bigbeast) | 1,330 passed, 45 skipped (HashML-DSA) | `bundle/lib/libtom_pqc.so`; runs | `bundle/lib/libtom_pqc.so`, mapped in `data/flutter_assets/NativeAssetsManifest.json`; not launched: bigbeast has no display |
+| Linux x64 (bigbeast) | 1,330 passed, 45 skipped (HashML-DSA) | `bundle/lib/libtom_pqc.so`; runs | `bundle/lib/libtom_pqc.so`, mapped in `data/flutter_assets/NativeAssetsManifest.json`; the app runs: launched on bigbeast's RDP desktop on 2026-11-17, an ML-KEM-768 round trip in a Flutter release app printed OK (al_the_bear linappind1); the Tom Secrets Manager app's release build carries the same library |
 | Windows x64 (legiondary01, MSVC) | 1,330 passed, 45 skipped (HashML-DSA) | `bundle\lib\tom_pqc.dll`; runs | `tom_pqc.dll` beside the exe, mapped in the manifest; the app runs (started over SSH) |
 | macOS x64 | — | not buildable: `dart build cli` on macOS arm64 targets only Linux | — |
 | Linux arm64 | — | no cross C compiler on mbp or bigbeast | — |
@@ -110,9 +110,10 @@ Windows), and the native-assets manifest names it.
 
 What the table does not cover, and where it is caught up:
 
-- **The Linux desktop app has not been launched.** The bundle and manifest
-  are right; the first launch on a Linux machine with a display is the
-  desktop app's (tsm_a23) or the fleet rollout's (tsm_a28).
+- **The Linux desktop app** was launched on 2026-11-17 on bigbeast's RDP
+  desktop (al_the_bear linappind1): a Flutter Linux release app with
+  `tom_pqc` ran an ML-KEM-768 round trip, and the Tom Secrets Manager app's
+  release build started with the same `libtom_pqc.so` in its bundle.
 - **macOS x64 and Linux arm64 are not fleet platforms** (mbp is arm64,
   bomber and bigbeast x64, legiondary01 x64). The C code compiles and links
   for macOS x86_64 (`clang -arch x86_64`, the 11 exported symbols), and an
