@@ -30,7 +30,7 @@ This document lists all testable features across `tom_build_base` and tracks tes
 | 15 | [ToolRunner](#15-toolrunner) | 64 | 64✅ | `v2/core/tool_runner_test.dart` | [→](#15-toolrunner) |
 | 16 | [ToolRunner — Nested Tools](#16-toolrunner--nested-tools) | 20 | 20✅ | `v2/core/tool_runner_nested_test.dart` | [→](#16-toolrunner--nested-tools) |
 | 17 | [Nested Tool Executor](#17-nested-tool-executor) | 16 | 16✅ | `v2/core/nested_tool_executor_test.dart` | [→](#17-nested-tool-executor) |
-| 18 | [Folder Scanner](#18-folder-scanner) | 25 | 25✅ | `v2/traversal/folder_scanner_test.dart` | [→](#18-folder-scanner) |
+| 18 | [Folder Scanner](#18-folder-scanner) | 27 | 27✅ | `v2/traversal/folder_scanner_test.dart` | [→](#18-folder-scanner) |
 | 19 | [Nature Detector](#19-nature-detector) | 39 | 39✅ | `v2/traversal/nature_detector_test.dart` | [→](#19-nature-detector) |
 | 20 | [Nature Filter](#20-nature-filter) | 20 | 20✅ | `v2/traversal/nature_filter_test.dart` | [→](#20-nature-filter) |
 | 21 | [Filter Pipeline](#21-filter-pipeline) | 57 | 57✅ | `v2/traversal/filter_pipeline_test.dart` | [→](#21-filter-pipeline) |
@@ -77,7 +77,7 @@ This document lists all testable features across `tom_build_base` and tracks tes
 | 62 | [Stand-Alone Commands](#62-stand-alone-commands) | 16 | 16✅ | `v2/core/strict_command_options_test.dart` | [→](#62-stand-alone-commands) |
 | 63 | [Git Mode Skips](#63-git-mode-skips) | 12 | 12✅ | `v2/traversal/git_repo_finder_skip_test.dart` | [→](#63-git-mode-skips) |
 | 64 | [Repository Selection by Path](#64-repository-selection-by-path) | 6 | 6✅ | `v2/traversal/module_filter_path_test.dart` | [→](#64-repository-selection-by-path) |
-| — | **Total** | **1176** | **1176✅** | | | | |
+| — | **Total** | **1178** | **1178✅** | | | | |
 
 > Every row links to a section, and the counts are measured from
 > `dart test --reporter json -j 1` rather than maintained by hand. Run it
@@ -459,6 +459,7 @@ Tests for the recently implemented features: modes, persistent defines, runtime 
 | BB-V2-SCN-ALWAYS-4 | `--no-skip` | ✅ | `ignoreSkipMarkers` walks into a marked folder but still not into `ztmp/` or `build/`. |
 | BB-REC-1 | `recursive: false` | ✅ | A project whose `buildkit.yaml` says `recursive: false` keeps every tool's walk out of its subfolders, also with `-r`. |
 | BB-REC-2 | Other values | ✅ | `recursive: true`, and a `recursive: false` nested under a tool section, do not stop the walk. |
+| BB-V2-GIT-7 | `findTopRepo`, both shapes | ✅ | Nested repositories as submodule checkouts and as independent clones: the topmost repository is found from a nested project and from a nested repository (one run per shape). |
 
 ---
 
@@ -1336,4 +1337,4 @@ The current test suite is comprehensive. Areas where additional tests could be v
 | `--dump-definitions` output format | Tested in ToolRunner | Validate complete YAML structure | Low |
 | ConfigLoader with nested `@{...}` in `@[...]` | ✅ Recursive test exists | Additional nesting depth scenarios | Low |
 
-Overall coverage assessment: **Excellent — 1176 tests covering all features.**
+Overall coverage assessment: **Excellent — 1178 tests covering all features.**

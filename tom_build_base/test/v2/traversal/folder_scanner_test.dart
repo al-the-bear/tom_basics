@@ -4,6 +4,8 @@ import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 import 'package:tom_build_base/tom_build_base_v2.dart';
 
+import '../fixtures/repo_shapes.dart';
+
 void main() {
   group('BB-V2-SCN: FolderScanner Skip Files [2026-02-14]', () {
     late Directory tempDir;
@@ -665,6 +667,29 @@ void main() {
         reason: 'Should detect .git file as well as .git directory',
       );
     });
+  });
+
+  group('BB-V2-GIT-7: findTopRepo over nested repositories of both shapes '
+      '[2026-11-17]', () {
+    for (final shape in RepoShape.values) {
+      test('nested repositories as ${shape.name}', () {
+        final tempDir = Directory(
+          Directory.systemTemp
+              .createTempSync('git_top_shapes_')
+              .resolveSymbolicLinksSync(),
+        );
+        addTearDown(() => tempDir.deleteSync(recursive: true));
+        final top = p.join(tempDir.path, 'l1');
+        makeRepo(top, '.', shape);
+        makeRepo(top, 'l2', shape);
+        makeRepo(top, 'l2/l3', shape);
+        Directory(p.join(top, 'l2/l3/project')).createSync(recursive: true);
+
+        final finder = GitRepoFinder();
+        expect(finder.findTopRepo(p.join(top, 'l2/l3/project')), top);
+        expect(finder.findTopRepo(p.join(top, 'l2')), top);
+      });
+    }
   });
 
   group('a project that says recursive: false', () {
