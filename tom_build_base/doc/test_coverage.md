@@ -74,7 +74,8 @@ This document lists all testable features across `tom_build_base` and tracks tes
 | 59 | [Required Environment](#59-required-environment) | 8 | 8✅ | `v2/core/required_environment_test.dart` | [→](#59-required-environment) |
 | 60 | [Tool Sections Without Defines](#60-tool-sections-without-defines) | 4 | 4✅ | `tool_section_test.dart` | [→](#60-tool-sections-without-defines) |
 | 61 | [Master File Edits](#61-master-file-edits) | 3 | 3✅ | `v2/core/master_yaml_edit_test.dart` | [→](#61-master-file-edits) |
-| — | **Total** | **1118** | **1118✅** | | | | |
+| 62 | [Stand-Alone Commands](#62-stand-alone-commands) | 16 | 16✅ | `v2/core/strict_command_options_test.dart` | [→](#62-stand-alone-commands) |
+| — | **Total** | **1134** | **1134✅** | | | | |
 
 > Every row links to a section, and the counts are measured from
 > `dart test --reporter json -j 1` rather than maintained by hand. Run it
@@ -1257,6 +1258,29 @@ it visited.
 | BB-MYE-1 | `:define` / `:undefine` | ✅ | Edit the defines in place; the file's comments and schema line stay. |
 | BB-MYE-2 | `:macro` / `:unmacro` | ✅ | Edit `macros:` in place; the comments stay. |
 | BB-MYE-3 | Round trip | ✅ | Adding and removing a define leaves the file byte for byte as it was. |
+
+---
+
+## 62. Stand-Alone Commands
+
+**Test file:** `test/v2/core/strict_command_options_test.dart`
+
+| ID | Feature | Status | Description |
+|----|---------|--------|-------------|
+| BB-SCO-1 | Positionals per command | ✅ | `:a x :b y` gives `:a` `[x]` and `:b` `[y]` in `PerCommandArgs.positionalArgs`; `CliArgs.positionalArgs` keeps all. |
+| BB-SCO-2 | Without strict options | ✅ | Per-command positionals do not depend on `strictCommandOptions`. |
+| BB-SCO-3 | A command's negatable flag | ✅ | `--no-x` after a command sets its flag `x` false, strict or not. |
+| BB-SCO-4 | Values | ✅ | Abbreviations, single and repeated values, `splitCommas`, flags and positionals of a strict command. |
+| BB-SCO-5 | Defaults | ✅ | A strict command gets the declared default of each option it was not given. |
+| BB-SCO-6 | Undeclared options | ✅ | An option the command does not declare is an argument error; `--help`, `-v` and `--version` stay run-wide. |
+| BB-SCO-7 | A command flag under a global name | ✅ | A command's own `-v`, `--dry-run`, `--root` are its own, not the run's. |
+| BB-SCO-8 | Checks | ✅ | A value outside `allowedValues`, a missing `mandatory` option, a value option without a value, a flag with one. |
+| BB-SCO-9 | Flag or value by command | ✅ | A name is a flag or a value option according to the command it is written after. |
+| BB-SCO-10 | Off by default | ✅ | Without `strictCommandOptions` nothing is checked or defaulted. |
+| BB-SCO-11 | Running commands | ✅ | Commands without traversal run in order; on success the runner writes nothing. |
+| BB-SCO-12 | Exit codes (×3) | ✅ | A failing command stops the run with its own code, 1, 2 or 3. |
+| BB-SCO-13 | Usage errors | ✅ | `usageErrorExitCode` and `errorOutput` for an undeclared option and an unknown command; nothing runs. |
+| BB-SCO-14 | Version and help | ✅ | `--version` prints `versionString`; `builtInHelpTopics: false` leaves the master-YAML topics out; a command's help shows its allowed values and `--no-x`. |
 
 ---
 

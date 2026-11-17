@@ -220,6 +220,9 @@ class ToolDefinitionSerializer {
     if (opt.hidden) {
       parts.add('hidden: true');
     }
+    if (opt.splitCommas) {
+      parts.add('split_commas: true');
+    }
     if (opt.allowedValues != null && opt.allowedValues!.isNotEmpty) {
       parts.add('allowed: [${opt.allowedValues!.join(', ')}]');
     }
@@ -275,6 +278,7 @@ class ToolDefinitionSerializer {
     final mandatory = map['mandatory'] == true;
     final negatable = map['negatable'] == true;
     final hidden = map['hidden'] == true;
+    final splitCommas = map['split_commas'] == true;
 
     final allowedList = map['allowed'];
     final allowedValues = allowedList is List
@@ -292,6 +296,7 @@ class ToolDefinitionSerializer {
       negatable: negatable,
       hidden: hidden,
       allowedValues: allowedValues,
+      splitCommas: splitCommas,
     );
   }
 

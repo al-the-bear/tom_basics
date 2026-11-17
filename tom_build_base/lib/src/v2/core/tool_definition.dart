@@ -216,6 +216,29 @@ class ToolDefinition {
   /// first positional is a path or a pipeline name keeps reading it so.
   final bool prefixlessCommands;
 
+  /// Whether a command's options are held to what the command declares — for
+  /// a tool whose commands each stand alone (no traversal), like the commands
+  /// of a former set of separate binaries. On (off by default):
+  /// - an option a command does not declare is an argument error, but for
+  ///   `--help`, `--verbose`, `--version` and the tool's own global options;
+  /// - a flag the command declares is the command's, also when it shares a
+  ///   name with a global flag (a command's `--verbose`, `--dry-run`);
+  /// - after parsing, each command of the run gets the declared defaults of
+  ///   the options it was not given, and a value outside `allowedValues`, a
+  ///   missing `mandatory` option, a value option without a value and a flag
+  ///   given a value are argument errors.
+  final bool strictCommandOptions;
+
+  /// The exit code of a run that stops on a usage error — an argument error
+  /// or an unknown command — before any command ran. 1 by default; 2 is the
+  /// `package:args` convention.
+  final int usageErrorExitCode;
+
+  /// Whether the master-YAML help topics (defines, macros, pipelines, wiring)
+  /// are added to a multi-command tool's help. On by default; a tool that
+  /// reads no master YAML turns it off.
+  final bool builtInHelpTopics;
+
   const ToolDefinition({
     required this.name,
     required this.description,
@@ -234,6 +257,9 @@ class ToolDefinition {
     this.wiringFile,
     this.defaultIncludes,
     this.prefixlessCommands = false,
+    this.strictCommandOptions = false,
+    this.usageErrorExitCode = 1,
+    this.builtInHelpTopics = true,
   }) : pipelineName = pipelineName ?? name;
 
   /// Whether this tool has any wiring configuration (code-level or file-level).
@@ -411,6 +437,9 @@ class ToolDefinition {
     String? wiringFile,
     List<ToolWiringEntry>? defaultIncludes,
     bool? prefixlessCommands,
+    bool? strictCommandOptions,
+    int? usageErrorExitCode,
+    bool? builtInHelpTopics,
   }) {
     return ToolDefinition(
       name: name ?? this.name,
@@ -430,6 +459,9 @@ class ToolDefinition {
       wiringFile: wiringFile ?? this.wiringFile,
       defaultIncludes: defaultIncludes ?? this.defaultIncludes,
       prefixlessCommands: prefixlessCommands ?? this.prefixlessCommands,
+      strictCommandOptions: strictCommandOptions ?? this.strictCommandOptions,
+      usageErrorExitCode: usageErrorExitCode ?? this.usageErrorExitCode,
+      builtInHelpTopics: builtInHelpTopics ?? this.builtInHelpTopics,
     );
   }
 }

@@ -543,11 +543,17 @@ class PerCommandArgs {
   /// Extra command-specific options.
   final Map<String, dynamic> options;
 
+  /// The positional arguments written after this command and before the next
+  /// one (`tool :a x :b y` gives `:a` `[x]` and `:b` `[y]`). They are in
+  /// [CliArgs.positionalArgs] too, which holds every positional of the run.
+  final List<String> positionalArgs;
+
   const PerCommandArgs({
     required this.commandName,
     this.projectPatterns = const [],
     this.excludePatterns = const [],
     this.options = const {},
+    this.positionalArgs = const [],
   });
 }
 
@@ -652,10 +658,15 @@ class CliArgParser {
 
       // Positional argument
       result.positionalArgs.add(arg);
+      final current = result.currentCommand;
+      if (current != null) {
+        result.commandArgs[current]?.positionalArgs.add(arg);
+      }
       i++;
     }
 
     _applyFlagDefaults(result);
+    _applyCommandOptionRules(result);
     return result.toCliArgs();
   }
 
@@ -678,7 +689,7 @@ class CliArgParser {
           !args[index + 1].startsWith('-') &&
           !args[index + 1].startsWith(':')) {
         // Only consume as value if option expects a value
-        if (_optionExpectsValue(name)) {
+        if (_optionExpectsValue(name, currentCommand: state.currentCommand)) {
           value = args[index + 1];
           index++;
         }
@@ -695,7 +706,10 @@ class CliArgParser {
 
     // Handle bundled short options like -rv
     if (arg.length > 2 &&
-        !_optionExpectsValue(_shortToLong(arg[1], currentCommand: cmd))) {
+        !_optionExpectsValue(
+          _shortToLong(arg[1], currentCommand: cmd),
+          currentCommand: cmd,
+        )) {
       // Multiple flags bundled together
       for (var i = 1; i < arg.length; i++) {
         final shortName = arg[i];
@@ -716,7 +730,7 @@ class CliArgParser {
     } else if (index + 1 < args.length &&
         !args[index + 1].startsWith('-') &&
         !args[index + 1].startsWith(':') &&
-        _optionExpectsValue(longName)) {
+        _optionExpectsValue(longName, currentCommand: cmd)) {
       // Value as next arg
       value = args[index + 1];
       index++;
@@ -730,6 +744,56 @@ class CliArgParser {
     // Handle per-command options
     if (state.currentCommand != null) {
       final cmdState = state.commandArgs[state.currentCommand!]!;
+      final cmdDef = toolDefinition?.findCommand(state.currentCommand!);
+      // `--no-x` for a flag `x` the command declares negatable: `x` is false.
+      // (The run's own negatable flags are handled the same way below.)
+      final negated = _commandNegatableStem(cmdDef, name);
+      if (negated != null) {
+        cmdState.options[negated] = false;
+        return;
+      }
+      if ((toolDefinition?.strictCommandOptions ?? false) && cmdDef != null) {
+        final declared = _commandOption(cmdDef, name);
+        if (declared == null) {
+          if (!_strictGlobalAllowed(name)) {
+            state.argumentErrors.add(
+              '`:${cmdDef.name}` has no option `${_dashed(name)}`. '
+              'Its options: `tool :${cmdDef.name} --help`.',
+            );
+            return;
+          }
+          // Fall through: a run-wide flag (--help, --verbose, --version) or
+          // one of the tool's own global options.
+        } else if (declared.type == OptionType.flag &&
+            declared.name != 'help') {
+          if (value != null) {
+            state.argumentErrors.add(
+              '`--${declared.name}` is a flag of `:${cmdDef.name}` and takes '
+              'no value (`--${declared.name}=$value`).',
+            );
+            return;
+          }
+          cmdState.options[declared.name] = true;
+          return;
+        } else if (declared.type != OptionType.flag && value == null) {
+          state.argumentErrors.add(
+            '`--${declared.name}` of `:${cmdDef.name}` needs a value.',
+          );
+          return;
+        } else if (declared.type != OptionType.flag) {
+          final multi = declared.type == OptionType.multiOption;
+          if (!multi) {
+            _noteSingleValue(
+              state,
+              state.currentCommand!,
+              declared.name,
+              value!,
+            );
+          }
+          _store(cmdState.options, declared.name, value!, multi: multi);
+          return;
+        }
+      }
       if (name == 'project' || name == 'p') {
         if (value != null) cmdState.projectPatterns.addAll(_splitValue(value));
         return;
@@ -1000,6 +1064,101 @@ class CliArgParser {
     return null;
   }
 
+  /// For `--no-x` written after a command: `x` when [command] declares a
+  /// negatable flag `x`, else null.
+  static String? _commandNegatableStem(
+    CommandDefinition? command,
+    String name,
+  ) {
+    if (command == null || !name.startsWith('no-') || name.length <= 3) {
+      return null;
+    }
+    final stem = name.substring(3);
+    for (final opt in command.options) {
+      if (opt.name == stem && opt.type == OptionType.flag && opt.negatable) {
+        return stem;
+      }
+    }
+    return null;
+  }
+
+  /// The option [command] declares under the name or abbreviation [name].
+  static OptionDefinition? _commandOption(
+    CommandDefinition command,
+    String name,
+  ) {
+    for (final opt in command.options) {
+      if (opt.name == name || opt.abbr == name) return opt;
+    }
+    return null;
+  }
+
+  /// Under [ToolDefinition.strictCommandOptions], the options a command line
+  /// may still give after a command without the command declaring them: the
+  /// run-wide `--help`, `--verbose` and `--version`, and the tool's own
+  /// global options.
+  bool _strictGlobalAllowed(String name) {
+    const runWide = {'help', 'h', 'verbose', 'v', 'version', 'V'};
+    if (runWide.contains(name)) return true;
+    for (final opt in _declaredGlobalFlags()) {
+      if (opt.name == name || opt.abbr == name) return true;
+    }
+    return false;
+  }
+
+  static String _dashed(String name) => name.length == 1 ? '-$name' : '--$name';
+
+  /// Under [ToolDefinition.strictCommandOptions], for each command of the
+  /// run: the declared defaults of the options it was not given, then the
+  /// checks of what it was given (`allowedValues`, `mandatory`). A multi
+  /// option declared `splitCommas` is split at commas in every tool.
+  void _applyCommandOptionRules(_ParseState state) {
+    final def = toolDefinition;
+    if (def == null) return;
+    for (final entry in state.commandArgs.entries) {
+      final cmd = def.findCommand(entry.key);
+      if (cmd == null) continue;
+      final options = entry.value.options;
+      for (final opt in cmd.options) {
+        if (opt.type == OptionType.multiOption && opt.splitCommas) {
+          final given = options[opt.name];
+          if (given is String) {
+            options[opt.name] = _splitValue(given);
+          } else if (given is List) {
+            options[opt.name] = [for (final v in given) ..._splitValue('$v')];
+          }
+        }
+      }
+      if (!def.strictCommandOptions) continue;
+      for (final opt in cmd.options) {
+        final given = options[opt.name];
+        if (given == null) {
+          if (opt.mandatory) {
+            state.argumentErrors.add('`:${cmd.name}` needs `--${opt.name}`.');
+          } else if (opt.defaultValue != null) {
+            options[opt.name] = opt.type == OptionType.flag
+                ? opt.defaultValue == 'true'
+                : opt.type == OptionType.multiOption
+                ? <String>[opt.defaultValue!]
+                : opt.defaultValue;
+          }
+          continue;
+        }
+        final allowed = opt.allowedValues;
+        if (allowed == null || allowed.isEmpty) continue;
+        final values = given is List ? given : [given];
+        for (final v in values) {
+          if (v is String && !allowed.contains(v)) {
+            state.argumentErrors.add(
+              '`--${opt.name}` of `:${cmd.name}` is `$v`; it takes one of '
+              '${allowed.join(', ')}.',
+            );
+          }
+        }
+      }
+    }
+  }
+
   /// Every globally declared option, from both places a tool can declare one.
   Iterable<OptionDefinition> _declaredGlobalFlags() sync* {
     yield* allowedOptions;
@@ -1089,7 +1248,14 @@ class CliArgParser {
     return false;
   }
 
-  bool _optionExpectsValue(String name) {
+  bool _optionExpectsValue(String name, {String? currentCommand}) {
+    // An option the current command declares takes a value exactly when it
+    // is declared with one, whatever other commands declare under the name.
+    if (currentCommand != null) {
+      final cmd = toolDefinition?.findCommand(currentCommand);
+      final own = cmd == null ? null : _commandOption(cmd, name);
+      if (own != null) return own.type != OptionType.flag;
+    }
     // Known global options that expect values
     const valueOptions = {
       'scan',
@@ -1398,6 +1564,7 @@ class _PerCommandState {
   final List<String> projectPatterns = [];
   final List<String> excludePatterns = [];
   final Map<String, dynamic> options = {};
+  final List<String> positionalArgs = [];
 
   PerCommandArgs toPerCommandArgs() {
     return PerCommandArgs(
@@ -1405,6 +1572,7 @@ class _PerCommandState {
       projectPatterns: projectPatterns,
       excludePatterns: excludePatterns,
       options: options,
+      positionalArgs: positionalArgs,
     );
   }
 }

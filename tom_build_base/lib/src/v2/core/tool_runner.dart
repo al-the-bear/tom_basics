@@ -47,6 +47,11 @@ class ToolResult {
   /// Detailed results per item.
   final List<ItemResult> itemResults;
 
+  /// The exit code of a failure that carries no failed item — a usage error
+  /// the run stopped on before any command ran ([ToolDefinition
+  /// .usageErrorExitCode]); null means 1.
+  final int? failureExitCode;
+
   /// The highest exit code a process may end with for a run: 126 and above
   /// have shell meanings, and an exit status is one byte, so a count of 256
   /// would be read as success.
@@ -54,11 +59,12 @@ class ToolResult {
 
   /// The exit code of the run: 0 on success; on failure the sum of the
   /// failed items' own [ItemResult.exitCode]s (1 for an item without one, and
-  /// 1 for a failure with no items), capped at [maxExitCode].
+  /// [failureExitCode] or 1 for a failure with no items), capped at
+  /// [maxExitCode].
   int get exitCode {
     if (success) return 0;
     final failed = itemResults.where((i) => !i.success);
-    if (failed.isEmpty) return 1;
+    if (failed.isEmpty) return (failureExitCode ?? 1).clamp(1, maxExitCode);
     final sum = failed.fold<int>(0, (n, i) => n + (i.exitCode ?? 1));
     return sum.clamp(1, maxExitCode);
   }
@@ -69,6 +75,7 @@ class ToolResult {
     this.failedCount = 0,
     this.errorMessage,
     this.itemResults = const [],
+    this.failureExitCode,
   });
 
   /// Create a success result.
@@ -77,14 +84,17 @@ class ToolResult {
     this.itemResults = const [],
   }) : success = true,
        failedCount = 0,
-       errorMessage = null;
+       errorMessage = null,
+       failureExitCode = null;
 
-  /// Create a failure result.
-  const ToolResult.failure(this.errorMessage)
+  /// Create a failure result; [exitCode] is the process exit code it ends
+  /// with (1 when null).
+  const ToolResult.failure(this.errorMessage, {int? exitCode})
     : success = false,
       processedCount = 0,
       failedCount = 0,
-      itemResults = const [];
+      itemResults = const [],
+      failureExitCode = exitCode;
 
   /// Create from aggregated item results.
   factory ToolResult.fromItems(List<ItemResult> items) {
@@ -358,6 +368,11 @@ class ToolRunner {
   /// Output writer (default: stdout).
   final StringSink output;
 
+  /// Where a usage error is written — an argument error, an unknown or
+  /// ambiguous command (default: [output]). A tool whose commands keep stdout
+  /// for their own output (a JSON report) passes stderr.
+  final StringSink errorOutput;
+
   /// Runtime-only macros (`$macro`) for this invocation session.
   ///
   /// These are persisted to `{workspace_root}/{tool_name}_macros.yaml` so that
@@ -372,7 +387,9 @@ class ToolRunner {
     this.executors = const {},
     this.verbose = true,
     StringSink? output,
-  }) : output = _resolveOutput(output) {
+    StringSink? errorOutput,
+  }) : output = _resolveOutput(output),
+       errorOutput = errorOutput ?? _resolveOutput(output) {
     _effectiveTool = tool;
   }
 
@@ -616,10 +633,11 @@ class ToolRunner {
     // else: a run carried out without what the caller wrote is the wrong run.
     if (cliArgs.argumentErrors.isNotEmpty) {
       for (final error in cliArgs.argumentErrors) {
-        output.writeln('Error: $error');
+        errorOutput.writeln('Error: $error');
       }
       return ToolResult.failure(
         'Invalid arguments: ${cliArgs.argumentErrors.join('; ')}',
+        exitCode: tool.usageErrorExitCode,
       );
     }
 
@@ -732,7 +750,8 @@ class ToolRunner {
     }
 
     // Auto-inject master YAML help topics for multiCommand tools.
-    if (_effectiveTool.mode == ToolMode.multiCommand) {
+    if (_effectiveTool.mode == ToolMode.multiCommand &&
+        _effectiveTool.builtInHelpTopics) {
       _injectMasterYamlHelpTopics();
       if (cliArgs.verbose) {
         final phase = phaseSinceLast();
@@ -816,9 +835,12 @@ class ToolRunner {
         if (_effectiveTool.defaultCommand != null) {
           return _runCommand(_effectiveTool.defaultCommand!, cliArgs);
         }
-        output.writeln('No command specified.\n');
-        output.writeln(HelpGenerator.generateUsageSummary(_effectiveTool));
-        return const ToolResult.failure('No command specified');
+        errorOutput.writeln('No command specified.\n');
+        errorOutput.writeln(HelpGenerator.generateUsageSummary(_effectiveTool));
+        return ToolResult.failure(
+          'No command specified',
+          exitCode: _effectiveTool.usageErrorExitCode,
+        );
       }
 
       return _runMultiCommandFolderByFolder(cliArgs);
@@ -1215,14 +1237,20 @@ class ToolRunner {
       // Check if it's an ambiguous prefix
       final matches = _effectiveTool.findCommandsWithPrefix(cmdName);
       if (matches.length > 1) {
-        output.writeln('Ambiguous command prefix ":$cmdName" matches:');
+        errorOutput.writeln('Ambiguous command prefix ":$cmdName" matches:');
         for (final match in matches) {
-          output.writeln('  :${match.name}');
+          errorOutput.writeln('  :${match.name}');
         }
-        return const ToolResult.failure('Ambiguous command prefix');
+        return ToolResult.failure(
+          'Ambiguous command prefix',
+          exitCode: _effectiveTool.usageErrorExitCode,
+        );
       }
-      output.writeln('Unknown command: :$cmdName');
-      return ToolResult.failure('Unknown command: $cmdName');
+      errorOutput.writeln('Unknown command: :$cmdName');
+      return ToolResult.failure(
+        'Unknown command: $cmdName',
+        exitCode: _effectiveTool.usageErrorExitCode,
+      );
     }
 
     // Use the actual command name for executor lookup and help
@@ -1887,8 +1915,11 @@ class ToolRunner {
         );
         return const ToolResult.success();
       }
-      output.writeln('Unknown command: :$cmdName');
-      return const ToolResult.failure('Unknown command');
+      errorOutput.writeln('Unknown command: :$cmdName');
+      return ToolResult.failure(
+        'Unknown command',
+        exitCode: _effectiveTool.usageErrorExitCode,
+      );
     }
     final baseHelp = HelpGenerator.generateToolHelp(
       _effectiveTool,
@@ -2618,7 +2649,7 @@ Options:
     return true;
   }
 
-    bool _isRequiredEnvironmentCheckBypassed() {
+  bool _isRequiredEnvironmentCheckBypassed() {
     final raw = Platform.environment['TOM_BOOTSTRAP_ALLOW_MISSING_SETUP'];
     if (raw == null) return false;
     final normalized = raw.trim().toLowerCase();

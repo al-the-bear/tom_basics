@@ -209,9 +209,58 @@ const tsm = ToolDefinition(
   `-v`, `-s`, …) while that command is being parsed.
 - A command with `requiresTraversal: false` runs once through its executor's
   `executeWithoutTraversal(CliArgs)` (`CallbackExecutor.onExecuteWithoutTraversal`);
-  its options are in `args.commandArgs['<command>'].options`. Pass
+  its options are in `args.commandArgs['<command>'].options` and the
+  positionals written after it in `args.commandArgs['<command>'].positionalArgs`
+  (`CliArgs.positionalArgs` holds every positional of the run). Pass
   `ToolRunner(output: stderr)` when standard output carries the command's
   own data.
+- `--no-x` written after a command sets that command's flag `x` to false when
+  the command declares it `negatable: true`.
+
+#### Stand-alone commands: one binary for several tools
+
+A tool whose commands each stand alone — no traversal, each with its own
+options, as several former binaries gathered into one — turns on three
+switches:
+
+```dart
+const specs = ToolDefinition(
+  name: 'specs',
+  description: 'The specification tools',
+  versionString: 'specs 1.2.3+4.abcdef0',   // from the versioner stamp
+  features: NavigationFeatures.minimal,
+  strictCommandOptions: true,  // each command holds to what it declares
+  usageErrorExitCode: 2,       // package:args' convention for bad usage
+  builtInHelpTopics: false,    // no master YAML, so no defines/macros topics
+  commands: [/* requiresTraversal: false, supportsProjectTraversal: false */],
+);
+final runner = ToolRunner(tool: specs, executors: executors, errorOutput: stderr);
+```
+
+- **`strictCommandOptions`.** After a command:
+  - an option it does not declare is an argument error. The run-wide
+    `--help`, `--verbose` and `--version` and the tool's own global options
+    are still accepted;
+  - a flag it declares is its own, also under a global name (its `-v`,
+    `--dry-run`);
+  - whether a name takes a value follows the command's declaration, whatever
+    other commands declare under that name.
+  After parsing, each command of the run gets the declared default of every
+  option it was not given. A value outside `allowedValues`, a missing
+  `mandatory` option, a value option without a value and a flag given a value
+  are argument errors.
+- **`usageErrorExitCode`.** The exit code of a run that stops on a usage
+  error (an argument error, an unknown or ambiguous command, no command)
+  before any command ran. A failing command ends the run with its own
+  `ItemResult.exitCode`; the commands after it do not run.
+- **`ToolRunner.errorOutput`.** Where those usage errors go (default:
+  `output`), so a command's standard output stays its own, e.g. a JSON report.
+- **`builtInHelpTopics`.** Off leaves the master-YAML help topics (defines,
+  macros, pipelines, wiring) out of the help.
+- **`OptionDefinition.multi(splitCommas: true)`** splits `--x a,b` into
+  `[a, b]`, as `package:args`' `addMultiOption` does; off by default, so a
+  value holding a comma stays whole. A command's help lists its
+  `allowedValues` ("One of: …").
 
 ### Command Executors
 

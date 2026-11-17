@@ -289,6 +289,10 @@ class HelpGenerator {
       if (opt.defaultValue != null) {
         buf.writeln('${' ' * 30}Default: ${opt.defaultValue}');
       }
+      final allowed = opt.allowedValues;
+      if (allowed != null && allowed.isNotEmpty) {
+        buf.writeln('${' ' * 30}One of: ${allowed.join(', ')}');
+      }
     }
   }
 

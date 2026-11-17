@@ -45,6 +45,11 @@ class OptionDefinition {
   /// Whether this option is hidden from help.
   final bool hidden;
 
+  /// For a multi-value option: whether a value is split at commas
+  /// (`--x a,b` as `--x a --x b`), as `package:args`' `addMultiOption` does
+  /// by default. Off by default here: a value holding a comma stays whole.
+  final bool splitCommas;
+
   const OptionDefinition({
     required this.name,
     this.abbr,
@@ -56,6 +61,7 @@ class OptionDefinition {
     this.negatable = false,
     this.valueName,
     this.hidden = false,
+    this.splitCommas = false,
   });
 
   /// Create a flag option.
@@ -69,7 +75,8 @@ class OptionDefinition {
   }) : type = OptionType.flag,
        allowedValues = null,
        mandatory = false,
-       valueName = null;
+       valueName = null,
+       splitCommas = false;
 
   /// Create a single-value option.
   const OptionDefinition.option({
@@ -82,7 +89,8 @@ class OptionDefinition {
     this.valueName,
     this.hidden = false,
   }) : type = OptionType.option,
-       negatable = false;
+       negatable = false,
+       splitCommas = false;
 
   /// Create a multi-value option.
   const OptionDefinition.multi({
@@ -93,6 +101,7 @@ class OptionDefinition {
     this.mandatory = false,
     this.valueName,
     this.hidden = false,
+    this.splitCommas = false,
   }) : type = OptionType.multiOption,
        defaultValue = null,
        negatable = false;

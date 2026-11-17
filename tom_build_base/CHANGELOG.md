@@ -1,3 +1,43 @@
+## 2.40.0
+
+### Added — stand-alone commands: one binary for several tools
+
+For a tool whose commands each stand alone (no traversal, each with its own
+options), such as several former binaries gathered into one:
+
+- `ToolDefinition.strictCommandOptions` (default false). After a command:
+  - an option the command does not declare is an argument error (`--help`,
+    `--verbose`, `--version` and the tool's own global options stay run-wide);
+  - a flag the command declares is its own even under a global name (its
+    `-v`, `--dry-run`);
+  - each command of the run gets the declared defaults of the options it was
+    not given;
+  - a value outside `allowedValues`, a missing `mandatory` option, a value
+    option without a value and a flag given a value are argument errors.
+- `ToolDefinition.usageErrorExitCode` (default 1): the exit code of a run that
+  stops on a usage error (an argument error, an unknown or ambiguous command,
+  no command). `ToolResult.failure` takes an `exitCode`
+  (`ToolResult.failureExitCode`).
+- `ToolRunner.errorOutput` (default: `output`): where the usage errors go, so a
+  command's standard output stays its own.
+- `ToolDefinition.builtInHelpTopics` (default true): off leaves the master-YAML
+  help topics out of a multi-command tool's help.
+- `PerCommandArgs.positionalArgs`: the positionals written after a command and
+  before the next one (`CliArgs.positionalArgs` still holds them all).
+- `OptionDefinition.multi(splitCommas: true)` splits `--x a,b` into `[a, b]`;
+  the serializer writes and reads it as `split_commas`.
+- A command's help lists an option's `allowedValues` ("One of: …").
+
+### Fixed
+
+- `--no-x` written after a command set `no-x: true` in its options; for a flag
+  `x` the command declares `negatable: true` it now sets `x` to false, as the
+  run's own negatable flags already did.
+- Whether an option written after a command takes a value followed the first
+  declaration of that name in any command; the command's own declaration now
+  decides, so a flag of one command no longer swallows the next argument
+  because another command declares a value option of the same name.
+
 ## 2.39.3
 
 ### Added — commands that need no build environment
