@@ -136,12 +136,18 @@ enum NativeBuildSystem {
 
   /// A `CMakeLists.txt`.
   cmake,
+
+  /// A Meson project: a `meson.build` that declares the `project(...)`.
+  meson,
+
+  /// A Bazel workspace: `MODULE.bazel`, `WORKSPACE.bazel` or `WORKSPACE`.
+  bazel,
 }
 
-/// A C or C++ project: a `Makefile` or `CMakeLists.txt` beside the sources
-/// that decide the language ([CFolder], [CppFolder]).
+/// A C or C++ project: a make, CMake, Meson or Bazel build file beside the
+/// sources that decide the language ([CFolder], [CppFolder]).
 abstract class NativeProjectFolder extends LanguageProjectFolder {
-  /// Make or CMake.
+  /// Make, CMake, Meson or Bazel.
   final NativeBuildSystem buildSystem;
 
   @override
@@ -154,7 +160,7 @@ abstract class NativeProjectFolder extends LanguageProjectFolder {
   });
 }
 
-/// C project nature: a `Makefile` / `CMakeLists.txt` with C sources (`.c`)
+/// C project nature: a native build file ([NativeBuildSystem]) with C sources (`.c`)
 /// and no C++ sources.
 class CFolder extends NativeProjectFolder {
   CFolder(
@@ -167,7 +173,7 @@ class CFolder extends NativeProjectFolder {
   String get language => 'c';
 }
 
-/// C++ project nature: a `Makefile` / `CMakeLists.txt` with C++ sources
+/// C++ project nature: a native build file ([NativeBuildSystem]) with C++ sources
 /// (`.cpp`, `.cc`, `.cxx`, `.hpp`, ...).
 class CppFolder extends NativeProjectFolder {
   CppFolder(

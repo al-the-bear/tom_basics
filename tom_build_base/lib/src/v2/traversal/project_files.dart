@@ -319,9 +319,27 @@ const languageProjectFiles = [
   'build.sbt',
 ];
 
+/// The files that mark the root of a Bazel workspace.
+const bazelWorkspaceFiles = ['MODULE.bazel', 'WORKSPACE.bazel', 'WORKSPACE'];
+
+/// Whether [path] is a `meson.build` that declares a project (the top
+/// file of a Meson build; the `meson.build` of a `subdir()` does not).
+bool isMesonProjectFile(String path) {
+  final file = File(path);
+  if (!file.existsSync()) return false;
+  try {
+    return RegExp(
+      r'^\s*project\s*\(',
+      multiLine: true,
+    ).hasMatch(file.readAsStringSync());
+  } on FileSystemException {
+    return false;
+  }
+}
+
 /// Whether [dir] is a project folder of any language the build tools know:
-/// a `pubspec.yaml`, one of [languageProjectFiles], or a make / CMake file
-/// beside C or C++ sources.
+/// a `pubspec.yaml`, one of [languageProjectFiles], or a make, CMake, Meson
+/// or Bazel file beside C or C++ sources.
 bool isProjectFolder(String dir) {
   if (File(p.join(dir, 'pubspec.yaml')).existsSync()) return true;
   for (final file in languageProjectFiles) {
@@ -333,7 +351,9 @@ bool isProjectFolder(String dir) {
     'GNUmakefile',
     'CMakeLists.txt',
   ];
-  if (nativeBuildFiles.any((f) => File(p.join(dir, f)).existsSync())) {
+  if (nativeBuildFiles.any((f) => File(p.join(dir, f)).existsSync()) ||
+      isMesonProjectFile(p.join(dir, 'meson.build')) ||
+      bazelWorkspaceFiles.any((f) => File(p.join(dir, f)).existsSync())) {
     return nativeSourceLanguages(dir).isNotEmpty;
   }
   return false;

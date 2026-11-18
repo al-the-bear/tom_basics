@@ -102,8 +102,8 @@ Each system is independent and uses its own syntax.
     %{go.exists}               true if Go module (go.mod)
     %{rust.exists}             true if Rust crate (Cargo.toml)
     %{scala.exists}            true if Scala sbt project (build.sbt)
-    %{c.exists}                true if C project (Makefile / CMakeLists.txt + C sources)
-    %{cpp.exists}              true if C++ project (Makefile / CMakeLists.txt + C++ sources)
+    %{c.exists}                true if C project (make / CMake / Meson / Bazel + C sources)
+    %{cpp.exists}              true if C++ project (make / CMake / Meson / Bazel + C++ sources)
     %{language}                language of a non-Dart project (typescript, javascript, ...)
 
   <cyan>Nature Attributes</cyan>

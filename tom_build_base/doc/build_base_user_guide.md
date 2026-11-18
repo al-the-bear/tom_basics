@@ -377,8 +377,8 @@ Natures are auto-detected for each folder during traversal:
 | `GoFolder` | `go.mod` | `modulePath`, `projectName` |
 | `RustFolder` | `Cargo.toml` | `projectName`, `version` (from `[package]`) |
 | `ScalaFolder` | `build.sbt` | `projectName`, `version` (from `name :=` / `version :=`) |
-| `CFolder` | `Makefile` / `CMakeLists.txt` with C sources (`.c`), no C++ | `buildSystem` (make / cmake) |
-| `CppFolder` | `Makefile` / `CMakeLists.txt` with C++ sources (`.cpp`, `.cc`, `.hpp`, ...) | `buildSystem` (make / cmake) |
+| `CFolder` | `Makefile` / `CMakeLists.txt` / `meson.build` (with `project(`) / `MODULE.bazel`, `WORKSPACE(.bazel)` with C sources (`.c`), no C++ | `buildSystem` (make / cmake / meson / bazel, in that order) |
+| `CppFolder` | the same build files with C++ sources (`.cpp`, `.cc`, `.hpp`, ...) | `buildSystem` (make / cmake / meson / bazel) |
 | `BuildkitFolder` | `buildkit.yaml` exists | `projectId`, `projectName`, `description`, `license`, `config` |
 | `BuildRunnerFolder` | `build.yaml` exists | `config` |
 

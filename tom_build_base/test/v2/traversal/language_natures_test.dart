@@ -221,6 +221,49 @@ void main() {
       expect(cmake.buildSystem, NativeBuildSystem.cmake);
     });
 
+    test('BB-LNG-18: C and C++ built with Meson or Bazel; a meson.build '
+        'without project() (a subdir) is no project [2026-11-18]', () {
+      final meson = single<CFolder>(
+        project('meson', {
+          'meson.build': "project('m', 'c')\nsubdir('tests')\n",
+          'tests/meson.build': "test('t', executable('t', 't.c'))\n",
+          'src/a.c': '',
+        }),
+      );
+      expect(meson.buildSystem, NativeBuildSystem.meson);
+      expect(meson.projectFile, 'meson.build');
+      expect(
+        natures(
+          project('subdir', {
+            'meson.build': "test('t', executable('t', 't.c'))\n",
+            't.c': '',
+          }),
+        ).whereType<LanguageProjectFolder>(),
+        isEmpty,
+      );
+      for (final file in ['MODULE.bazel', 'WORKSPACE.bazel', 'WORKSPACE']) {
+        final bazel = single<CppFolder>(
+          project('bazel_$file', {file: '', 'BUILD.bazel': '', 'lib/a.cc': ''}),
+        );
+        expect(bazel.buildSystem, NativeBuildSystem.bazel, reason: file);
+        expect(bazel.projectFile, file);
+      }
+      // A Makefile beside a meson.build stays make.
+      expect(
+        single<CFolder>(
+          project('both', {
+            'Makefile': 'all:\n',
+            'meson.build': "project('m', 'c')\n",
+            'a.c': '',
+          }),
+        ).buildSystem,
+        NativeBuildSystem.make,
+      );
+      expect(isProjectFolder(p.join(tmp.path, 'meson')), isTrue);
+      expect(isProjectFolder(p.join(tmp.path, 'bazel_MODULE.bazel')), isTrue);
+      expect(isProjectFolder(p.join(tmp.path, 'subdir')), isFalse);
+    });
+
     test('BB-LNG-8: a Makefile without sources (docs) is no project', () {
       final docs = natures(
         project('docs', {'Makefile': 'html:\n', 'index.rst': '', 'a.h': ''}),

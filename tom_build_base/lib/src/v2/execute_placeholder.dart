@@ -556,8 +556,8 @@ class ExecutePlaceholderResolver {
       'go.exists': 'true if Go module (go.mod)',
       'rust.exists': 'true if Rust crate (Cargo.toml)',
       'scala.exists': 'true if Scala sbt project (build.sbt)',
-      'c.exists': 'true if C project (Makefile / CMakeLists.txt, C sources)',
-      'cpp.exists': 'true if C++ project (Makefile / CMakeLists.txt, C++ sources)',
+      'c.exists': 'true if C project (make / CMake / Meson / Bazel, C sources)',
+      'cpp.exists': 'true if C++ project (make / CMake / Meson / Bazel, C++ sources)',
       'language': 'Language of a non-Dart project (typescript, javascript, python, java, go, rust, scala, c, cpp)',
 
       // Dart/Flutter attributes

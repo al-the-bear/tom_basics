@@ -1,3 +1,15 @@
+## 2.43.0
+
+### Added — C and C++ built with Meson or Bazel
+
+- `NativeBuildSystem.meson` and `NativeBuildSystem.bazel`: a C or C++
+  project is also marked by a `meson.build` that declares the `project(...)`
+  (the `meson.build` of a `subdir()` does not) or by a Bazel workspace file
+  (`MODULE.bazel`, `WORKSPACE.bazel`, `WORKSPACE`), beside its sources. A
+  `Makefile` or `CMakeLists.txt` in the same folder comes first.
+- `isMesonProjectFile()` and `bazelWorkspaceFiles`; `isProjectFolder()`
+  knows both.
+
 ## 2.42.0
 
 ### Added — Scala projects
