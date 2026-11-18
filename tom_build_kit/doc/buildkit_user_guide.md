@@ -545,7 +545,7 @@ Built-in commands run the respective tools directly via their Dart implementatio
 | `test` | Run each project's tests with its language's tool |
 | `clean` | Remove each project's build outputs with its language's tool |
 | `versioner` | Generate `version.versioner.dart` files with build metadata |
-| `bumpversion` | Bump versions across projects (`pubspec.yaml`, `package.json`, `pyproject.toml`, `Cargo.toml`, `pom.xml`); `--changelog` drafts the CHANGELOG section from the commits since the last version change |
+| `bumpversion` | Bump versions across projects (`pubspec.yaml`, `package.json`, `pyproject.toml`, `Cargo.toml`, `pom.xml`, `build.sbt`); `--changelog` drafts the CHANGELOG section from the commits since the last version change |
 | `compiler` | Cross-platform Dart compilation |
 | `runner` | `build_runner` wrapper with builder filtering |
 | `cleanup` | Delete the globs a project's `buildkit.yaml` `cleanup:` lists (alias `cl`) |
@@ -611,6 +611,7 @@ with its language's own tool, chosen by the project's nature:
 | Java | `pom.xml` / `build.gradle(.kts)` | `mvn package -DskipTests` / `gradle build -x test` | `mvn test` / `gradle test` | `mvn clean` / `gradle clean` |
 | Go | `go.mod` | `go build ./...` | `go test ./...` | `go clean ./...` |
 | Rust | `Cargo.toml` | `cargo build` | `cargo test` | `cargo clean` |
+| Scala | `build.sbt` | `sbt -batch compile` | `sbt -batch test` | `sbt -batch clean` |
 | C / C++ | `Makefile` / `CMakeLists.txt` beside C or C++ sources | `make` / `cmake --build build` | `make test` / `ctest` | `make clean` / delete `build/` |
 
 TypeScript and JavaScript run `npm install` first when the project declares
@@ -635,8 +636,8 @@ toolchain is not on `PATH`.
 
 `:bumpversion` bumps the version in each project's own version file:
 `pubspec.yaml`, `package.json`, `pyproject.toml` (`[project]` /
-`[tool.poetry]`), `Cargo.toml` (`[package]`) or `pom.xml` (the project's own
-`<version>`). Go modules and C / C++ projects state no version and are
+`[tool.poetry]`), `Cargo.toml` (`[package]`), `pom.xml` (the project's own
+`<version>`) or `build.sbt` (`version :=`). Go modules and C / C++ projects state no version and are
 skipped. A bump does not reset the build number: it lives in the
 project's `version.versioner.dart` and only grows.
 

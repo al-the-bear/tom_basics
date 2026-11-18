@@ -437,6 +437,7 @@ with its language's tool, by the project's nature:
 | Java | `pom.xml` / `build.gradle(.kts)` | `mvn package -DskipTests` / `gradle build -x test` | `mvn test` / `gradle test` | `mvn clean` / `gradle clean` |
 | Go | `go.mod` | `go build ./...` | `go test ./...` | `go clean ./...` |
 | Rust | `Cargo.toml` | `cargo build` | `cargo test` | `cargo clean` |
+| Scala | `build.sbt` | `sbt -batch compile` | `sbt -batch test` | `sbt -batch clean` |
 | C / C++ | `Makefile` / `CMakeLists.txt` beside C or C++ sources | `make` / `cmake --build build` | `make test` / `ctest` | `make clean` / delete `build/` |
 
 TypeScript and JavaScript run `npm install` first when the project declares
@@ -461,8 +462,8 @@ toolchain is not on `PATH`.
 
 `:bumpversion` bumps the version in each project's own version file:
 `pubspec.yaml`, `package.json`, `pyproject.toml` (`[project]` /
-`[tool.poetry]`), `Cargo.toml` (`[package]`) or `pom.xml` (the project's own
-`<version>`). Go modules and C / C++ projects state no version and are
+`[tool.poetry]`), `Cargo.toml` (`[package]`), `pom.xml` (the project's own
+`<version>`) or `build.sbt` (`version :=`). Go modules and C / C++ projects state no version and are
 skipped. A bump does not reset the build number: it lives in the
 project's `version.versioner.dart` and only grows.
 
@@ -475,7 +476,7 @@ Other per-language steps (run, watch, publish) are pipelines in
 
 Bumps project versions across multiple projects, in each project's own version
 file (`pubspec.yaml`, `package.json`, `pyproject.toml`, `Cargo.toml`,
-`pom.xml`), with optional versioner integration for Dart projects. Go modules and
+`pom.xml`, `build.sbt`), with optional versioner integration for Dart projects. Go modules and
 C / C++ projects state no version and are skipped.
 
 **Usage:**

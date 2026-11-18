@@ -59,6 +59,10 @@ void main() {
         {'Cargo.toml': '[package]\nname = "r"\n'},
         ['cargo build', 'cargo test', 'cargo clean'],
       ),
+      'scala': (
+        {'build.sbt': 'name := "s"\n'},
+        ['sbt -batch compile', 'sbt -batch test', 'sbt -batch clean'],
+      ),
       'go': (
         {'go.mod': 'module a/b\n'},
         ['go build ./...', 'go test ./...', 'go clean ./...'],

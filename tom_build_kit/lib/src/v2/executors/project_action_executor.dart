@@ -200,6 +200,12 @@ ActionStep _defaultStep(
         ProjectAction.test => run(['cargo test']),
         ProjectAction.clean => run(['cargo clean']),
       };
+    case ScalaFolder():
+      return switch (action) {
+        ProjectAction.build => run(['sbt -batch compile']),
+        ProjectAction.test => run(['sbt -batch test']),
+        ProjectAction.clean => run(['sbt -batch clean']),
+      };
     case NativeProjectFolder(:final buildSystem):
       if (buildSystem == NativeBuildSystem.make) {
         return switch (action) {

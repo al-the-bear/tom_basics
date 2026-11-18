@@ -1,3 +1,11 @@
+## 1.33.0
+
+### Added — Scala projects
+
+On tom_build_base 2.42.0 (`ScalaFolder`): `:build`, `:test` and `:clean` of
+a Scala project run `sbt -batch compile` / `test` / `clean`. `:bumpversion`
+bumps `build.sbt`'s `version :=`, and `:projects` lists Scala projects.
+
 ## 1.32.0
 
 ### Added — `wssetup`, and `buildkit :wssetup`
