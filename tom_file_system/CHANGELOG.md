@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.1
+
+- `onWillSave` delivers its events synchronously, inside `save`: a listener
+  that changes `TomWillSaveEvent.content` changes what is saved, as the
+  documentation said. Before, the event arrived after `save` had compared and
+  written the content, so a listener's change was lost.
+
 ## 0.2.0
 
 - `TomFileSystemFolders`: `writeTextMakingFolder` (write into a folder that

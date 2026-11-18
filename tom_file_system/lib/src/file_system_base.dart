@@ -23,7 +23,9 @@ abstract class TomFileSystemBase implements TomFileSystem {
 
   final _changes = StreamController<TomFileChangeEvent>.broadcast();
   final _saves = StreamController<Uri>.broadcast();
-  final _willSaves = StreamController<TomWillSaveEvent>.broadcast();
+  // Synchronous, so every listener has run when `add` returns and `save`
+  // writes what the listeners left in the event.
+  final _willSaves = StreamController<TomWillSaveEvent>.broadcast(sync: true);
 
   /// [uri] made absolute against [root].
   Uri absolute(Uri uri) => uri.hasScheme ? uri : root.resolveUri(uri);
@@ -85,8 +87,9 @@ abstract class TomFileSystemBase implements TomFileSystem {
       content: content,
       reason: TomSaveReason.manual,
     );
+    // Delivered synchronously: each listener has run here, and a change it
+    // made to the content is what is written.
     _willSaves.add(event);
-    // A listener may change what is saved.
     if (event.content != content) await writeText(uri, event.content);
     _saves.add(absolute(uri));
   }

@@ -158,6 +158,29 @@ void main() {
       expect(didSave.path, '/test.txt');
     });
 
+    test('a listener of onWillSave changes what save writes', () async {
+      final uri = Uri.parse('file:///test.txt');
+      await fs.writeText(uri, 'trailing   \n\n');
+      final sub = fs.onWillSave.listen(
+        (event) => event.content = event.content.trimRight(),
+      );
+      await fs.save(uri);
+      await sub.cancel();
+      expect(await fs.readText(uri), 'trailing');
+    });
+
+    test('a save no listener changes writes nothing', () async {
+      final uri = Uri.parse('file:///test.txt');
+      final before = await fs.stat(uri);
+      final changes = <TomFileChangeEvent>[];
+      final sub = fs.onDidChange.listen(changes.add);
+      await fs.save(uri);
+      await Future<void>.delayed(Duration.zero);
+      await sub.cancel();
+      expect(changes, isEmpty);
+      expect((await fs.stat(uri))?.size, before?.size);
+    });
+
     test('paths returns all file paths', () {
       expect(fs.paths, contains('/test.txt'));
     });

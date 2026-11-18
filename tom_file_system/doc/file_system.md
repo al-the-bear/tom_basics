@@ -334,7 +334,12 @@ file system; changes made by other processes arrive through `watch`.
 `TomSaveReason.manual`) on `onWillSave`, writes `content` back when it differs
 from what was read, and then emits the URI on `onDidSave`.
 
+A listener of `onWillSave` runs synchronously, inside `save`, before the
+comparison, so it can change what is saved — trim trailing whitespace, say. A
+change made after an `await` in the listener comes too late for that save.
+
 ```dart
+fs.onWillSave.listen((event) => event.content = event.content.trimRight());
 fs.onWillSave.listen((event) => print('saving ${event.uri}'));
 fs.onDidSave.listen((uri) => print('saved $uri'));
 await fs.save(fs.uriOf('notes.txt'));
@@ -342,9 +347,8 @@ await fs.save(fs.uriOf('notes.txt'));
 // saved file:///notes.txt
 ```
 
-The event streams are broadcast streams, which deliver their events
-asynchronously: a listener on `onWillSave` runs after `save` has compared the
-content, so a change it makes to `event.content` is not written by that `save`.
+The event streams are broadcast streams. `onWillSave` delivers its events
+synchronously; `onDidChange` and `onDidSave` deliver theirs asynchronously.
 `dispose` closes the streams.
 
 ## Folder Helpers

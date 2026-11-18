@@ -40,8 +40,9 @@ class TomFileChangeEvent {
 /// Why a file is saved.
 enum TomSaveReason { manual, autoSave, focusLoss }
 
-/// Announced before a file is saved. A listener may change [content], and the
-/// changed content is what is saved.
+/// Announced before a file is saved. [TomFileSystem.onWillSave] delivers it
+/// synchronously, so a listener that changes [content] before it returns
+/// changes what is saved; a change made after an `await` comes too late.
 class TomWillSaveEvent {
   /// The URI being saved.
   final Uri uri;
@@ -260,8 +261,9 @@ abstract interface class TomFileSystem {
   /// native recursive watch costs the same either way — but never less.
   Stream<TomFileChange>? watch({bool Function(String path)? descend});
 
-  /// Announces that [uri] is saved: [onWillSave] with its text, then
-  /// [onDidSave].
+  /// Saves [uri]: reads its text, announces it on [onWillSave] (whose
+  /// listeners run synchronously and may change the content), writes the
+  /// content back when a listener changed it, then announces [onDidSave].
   Future<void> save(Uri uri);
 
   /// Every create, write, rename and delete made through this file system.
@@ -269,6 +271,8 @@ abstract interface class TomFileSystem {
 
   Stream<Uri> get onDidSave;
 
+  /// The saves about to happen, delivered synchronously inside [save]: a
+  /// listener's change to [TomWillSaveEvent.content] is what is saved.
   Stream<TomWillSaveEvent> get onWillSave;
 
   /// Ends the event streams.
