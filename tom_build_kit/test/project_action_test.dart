@@ -75,6 +75,26 @@ void main() {
         {'Makefile': 'all:\n', 'src/a.cpp': ''},
         ['make', 'make test', 'make clean'],
       ),
+      'cmake': (
+        {'CMakeLists.txt': '', 'src/a.cpp': ''},
+        [
+          'cmake -S . -B build && cmake --build build',
+          'ctest --test-dir build',
+          'delete build',
+        ],
+      ),
+      'meson': (
+        {'meson.build': "project('m', 'c')\n", 'src/a.c': ''},
+        [
+          'meson setup --reconfigure build && meson compile -C build',
+          'meson test -C build',
+          'delete build',
+        ],
+      ),
+      'bazel': (
+        {'MODULE.bazel': '', 'BUILD.bazel': '', 'src/a.cc': ''},
+        ['bazel build //...', 'bazel test //...', 'bazel clean'],
+      ),
       'java': (
         {'pom.xml': '<project/>'},
         ['mvn -q -B package -DskipTests', 'mvn -q -B test', 'mvn -q -B clean'],

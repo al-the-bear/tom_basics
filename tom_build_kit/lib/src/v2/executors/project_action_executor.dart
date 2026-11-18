@@ -207,20 +207,34 @@ ActionStep _defaultStep(
         ProjectAction.clean => run(['sbt -batch clean']),
       };
     case NativeProjectFolder(:final buildSystem):
-      if (buildSystem == NativeBuildSystem.make) {
-        return switch (action) {
+      return switch (buildSystem) {
+        NativeBuildSystem.make => switch (action) {
           ProjectAction.build => run(['make']),
           ProjectAction.test => run(['make test']),
           ProjectAction.clean => run(['make clean']),
-        };
-      }
-      return switch (action) {
-        ProjectAction.build => run([
-          'cmake -S . -B build',
-          'cmake --build build',
-        ]),
-        ProjectAction.test => run(['ctest --test-dir build']),
-        ProjectAction.clean => run(const [], ['build']),
+        },
+        NativeBuildSystem.cmake => switch (action) {
+          ProjectAction.build => run([
+            'cmake -S . -B build',
+            'cmake --build build',
+          ]),
+          ProjectAction.test => run(['ctest --test-dir build']),
+          ProjectAction.clean => run(const [], ['build']),
+        },
+        // --reconfigure sets up a new build folder too (Meson 1.1+).
+        NativeBuildSystem.meson => switch (action) {
+          ProjectAction.build => run([
+            'meson setup --reconfigure build',
+            'meson compile -C build',
+          ]),
+          ProjectAction.test => run(['meson test -C build']),
+          ProjectAction.clean => run(const [], ['build']),
+        },
+        NativeBuildSystem.bazel => switch (action) {
+          ProjectAction.build => run(['bazel build //...']),
+          ProjectAction.test => run(['bazel test //...']),
+          ProjectAction.clean => run(['bazel clean']),
+        },
       };
     default:
       return ActionStep(origin: origin);

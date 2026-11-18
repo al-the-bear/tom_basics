@@ -1,3 +1,13 @@
+## 1.34.0
+
+### Added — C and C++ built with Meson or Bazel
+
+- Takes tom_build_base 2.43.0: a `meson.build` that declares the project or
+  a Bazel workspace file beside C / C++ sources makes a C / C++ project.
+- `:build`, `:test` and `:clean` for them: Meson `meson setup --reconfigure
+  build && meson compile -C build`, `meson test -C build`, delete `build/`;
+  Bazel `bazel build //...`, `bazel test //...`, `bazel clean`.
+
 ## 1.33.0
 
 ### Added — Scala projects

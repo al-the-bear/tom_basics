@@ -612,7 +612,7 @@ with its language's own tool, chosen by the project's nature:
 | Go | `go.mod` | `go build ./...` | `go test ./...` | `go clean ./...` |
 | Rust | `Cargo.toml` | `cargo build` | `cargo test` | `cargo clean` |
 | Scala | `build.sbt` | `sbt -batch compile` | `sbt -batch test` | `sbt -batch clean` |
-| C / C++ | `Makefile` / `CMakeLists.txt` beside C or C++ sources | `make` / `cmake --build build` | `make test` / `ctest` | `make clean` / delete `build/` |
+| C / C++ | `Makefile` / `CMakeLists.txt` / `meson.build` / `MODULE.bazel` (`WORKSPACE`) beside C or C++ sources | `make` / `cmake --build build` / `meson compile -C build` / `bazel build //...` | `make test` / `ctest` / `meson test -C build` / `bazel test //...` | `make clean` / delete `build/` / delete `build/` / `bazel clean` |
 
 TypeScript and JavaScript run `npm install` first when the project declares
 dependencies and has no `node_modules/`. A project with several natures (a
