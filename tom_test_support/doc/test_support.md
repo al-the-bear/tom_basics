@@ -68,7 +68,7 @@ Each library is its own entry point; `tom_test_support.dart` exports them all.
 
 The default entry point uses `dart:io` and does not compile for the web. The
 Flutter binding of `tomPumpUntil` (`tester.pumpUntil(finder)`) is in
-`package:tom_reusable_ui/testing.dart`.
+`package:tom_ui_testing/tom_ui_testing.dart`.
 
 ## Quick Start
 
