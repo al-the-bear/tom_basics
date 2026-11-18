@@ -1,3 +1,13 @@
+## 1.35.0
+
+### Added — C built by Ceedling
+
+- Takes tom_build_base 2.44.0: a Ceedling `project.yml` beside C sources
+  makes a C project.
+- `:build` runs `ceedling release` when the project.yml configures a
+  `:release_build:` (else nothing), `:test` `ceedling test:all`, `:clean`
+  `ceedling clobber`.
+
 ## 1.34.0
 
 ### Added — C and C++ built with Meson or Bazel

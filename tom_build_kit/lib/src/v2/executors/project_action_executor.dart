@@ -235,9 +235,31 @@ ActionStep _defaultStep(
           ProjectAction.test => run(['bazel test //...']),
           ProjectAction.clean => run(['bazel clean']),
         },
+        // A Ceedling project builds a release only when it configures one.
+        NativeBuildSystem.ceedling => switch (action) {
+          ProjectAction.build => run([
+            if (_ceedlingHasRelease(projectPath)) 'ceedling release',
+          ]),
+          ProjectAction.test => run(['ceedling test:all']),
+          ProjectAction.clean => run(['ceedling clobber']),
+        },
       };
     default:
       return ActionStep(origin: origin);
+  }
+}
+
+/// Whether the Ceedling `project.yml` of [projectPath] configures a release
+/// build (a top-level `:release_build:` section).
+bool _ceedlingHasRelease(String projectPath) {
+  final file = File(p.join(projectPath, ceedlingProjectFile));
+  try {
+    return RegExp(
+      r'^:release_build:',
+      multiLine: true,
+    ).hasMatch(file.readAsStringSync());
+  } on FileSystemException {
+    return false;
   }
 }
 

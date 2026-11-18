@@ -95,6 +95,22 @@ void main() {
         {'MODULE.bazel': '', 'BUILD.bazel': '', 'src/a.cc': ''},
         ['bazel build //...', 'bazel test //...', 'bazel clean'],
       ),
+      'ceedling': (
+        {
+          'project.yml': ':project:\n  :build_root: build\n',
+          'src/a.c': '',
+        },
+        ['', 'ceedling test:all', 'ceedling clobber'],
+      ),
+      'ceedling_release': (
+        {
+          'project.yml':
+              ':project:\n  :release_build: TRUE\n'
+              ':release_build:\n  :output: calc.out\n',
+          'src/a.c': '',
+        },
+        ['ceedling release', 'ceedling test:all', 'ceedling clobber'],
+      ),
       'java': (
         {'pom.xml': '<project/>'},
         ['mvn -q -B package -DskipTests', 'mvn -q -B test', 'mvn -q -B clean'],
