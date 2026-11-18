@@ -337,9 +337,27 @@ bool isMesonProjectFile(String path) {
   }
 }
 
+/// The project file of a Ceedling project.
+const ceedlingProjectFile = 'project.yml';
+
+/// Whether [path] is a Ceedling `project.yml`: it holds Ceedling's
+/// top-level `:project:` section.
+bool isCeedlingProjectFile(String path) {
+  final file = File(path);
+  if (!file.existsSync()) return false;
+  try {
+    return RegExp(
+      r'^:project:\s*$',
+      multiLine: true,
+    ).hasMatch(file.readAsStringSync());
+  } on FileSystemException {
+    return false;
+  }
+}
+
 /// Whether [dir] is a project folder of any language the build tools know:
-/// a `pubspec.yaml`, one of [languageProjectFiles], or a make, CMake, Meson
-/// or Bazel file beside C or C++ sources.
+/// a `pubspec.yaml`, one of [languageProjectFiles], or a make, CMake, Meson,
+/// Bazel or Ceedling file beside C or C++ sources.
 bool isProjectFolder(String dir) {
   if (File(p.join(dir, 'pubspec.yaml')).existsSync()) return true;
   for (final file in languageProjectFiles) {
@@ -353,7 +371,8 @@ bool isProjectFolder(String dir) {
   ];
   if (nativeBuildFiles.any((f) => File(p.join(dir, f)).existsSync()) ||
       isMesonProjectFile(p.join(dir, 'meson.build')) ||
-      bazelWorkspaceFiles.any((f) => File(p.join(dir, f)).existsSync())) {
+      bazelWorkspaceFiles.any((f) => File(p.join(dir, f)).existsSync()) ||
+      isCeedlingProjectFile(p.join(dir, ceedlingProjectFile))) {
     return nativeSourceLanguages(dir).isNotEmpty;
   }
   return false;

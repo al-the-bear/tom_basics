@@ -142,12 +142,17 @@ enum NativeBuildSystem {
 
   /// A Bazel workspace: `MODULE.bazel`, `WORKSPACE.bazel` or `WORKSPACE`.
   bazel,
+
+  /// A Ceedling project: a `project.yml` with Ceedling's `:project:`
+  /// section.
+  ceedling,
 }
 
-/// A C or C++ project: a make, CMake, Meson or Bazel build file beside the
+/// A C or C++ project: a make, CMake, Meson, Bazel or Ceedling build file
+/// beside the
 /// sources that decide the language ([CFolder], [CppFolder]).
 abstract class NativeProjectFolder extends LanguageProjectFolder {
-  /// Make, CMake, Meson or Bazel.
+  /// Make, CMake, Meson, Bazel or Ceedling.
   final NativeBuildSystem buildSystem;
 
   @override

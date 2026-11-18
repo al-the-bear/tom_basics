@@ -264,6 +264,37 @@ void main() {
       expect(isProjectFolder(p.join(tmp.path, 'subdir')), isFalse);
     });
 
+    test('BB-LNG-19: a C project built by Ceedling alone; a project.yml '
+        'without Ceedling\'s :project: section is none [2026-11-18]', () {
+      final ceedling = single<CFolder>(
+        project('ceedling', {
+          'project.yml': '---\n:project:\n  :build_root: build\n',
+          'src/calc.c': '',
+          'test/test_calc.c': '',
+        }),
+      );
+      expect(ceedling.buildSystem, NativeBuildSystem.ceedling);
+      expect(ceedling.projectFile, 'project.yml');
+      expect(isProjectFolder(p.join(tmp.path, 'ceedling')), isTrue);
+      final other = project('other', {
+        'project.yml': 'project:\n  name: x\n',
+        'src/a.c': '',
+      });
+      expect(natures(other).whereType<LanguageProjectFolder>(), isEmpty);
+      expect(isProjectFolder(other), isFalse);
+      // A Makefile beside it stays make.
+      expect(
+        single<CFolder>(
+          project('both', {
+            'Makefile': 'all:\n',
+            'project.yml': ':project:\n',
+            'src/a.c': '',
+          }),
+        ).buildSystem,
+        NativeBuildSystem.make,
+      );
+    });
+
     test('BB-LNG-8: a Makefile without sources (docs) is no project', () {
       final docs = natures(
         project('docs', {'Makefile': 'html:\n', 'index.rst': '', 'a.h': ''}),

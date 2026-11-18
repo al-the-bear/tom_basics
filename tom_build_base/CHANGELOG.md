@@ -1,3 +1,12 @@
+## 2.44.0
+
+### Added — C built by Ceedling
+
+- `NativeBuildSystem.ceedling`: a `project.yml` that holds Ceedling's
+  `:project:` section, beside C or C++ sources, marks a C / C++ project
+  (after make, CMake, Meson and Bazel). `isCeedlingProjectFile()`,
+  `ceedlingProjectFile`; `isProjectFolder()` knows it.
+
 ## 2.43.0
 
 ### Added — C and C++ built with Meson or Bazel

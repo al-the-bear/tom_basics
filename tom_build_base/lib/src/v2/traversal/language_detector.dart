@@ -109,9 +109,9 @@ class LanguageDetector {
     return natures;
   }
 
-  /// A C or C++ nature when the folder has a make, CMake, Meson or Bazel
-  /// build file ([NativeBuildSystem]) and the
-  /// sources beside it say which language: any C++ source makes it C++, C
+  /// A C or C++ nature when the folder has a make, CMake, Meson, Bazel or
+  /// Ceedling build file ([NativeBuildSystem]) and the sources beside it say
+  /// which language: any C++ source makes it C++, C
   /// sources alone make it C, no sources (a docs `Makefile`) make it neither.
   NativeProjectFolder? _nativeNature(FsFolder folder) {
     final dir = folder.path;
@@ -140,6 +140,11 @@ class LanguageDetector {
           break;
         }
       }
+    }
+    if (buildFile == null &&
+        isCeedlingProjectFile(p.join(dir, ceedlingProjectFile))) {
+      buildFile = ceedlingProjectFile;
+      system = NativeBuildSystem.ceedling;
     }
     if (buildFile == null || system == null) return null;
 
