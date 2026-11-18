@@ -3,8 +3,12 @@
 /// output under NO_COLOR, carries the text with the markers removed and no
 /// escape code. FORCE_COLOR forces the styling through a pipe.
 ///
+/// The fixture tool is compiled once (`dart compile exe`) and run as the
+/// binaries are.
+///
 /// Test IDs: BB-STYLE-1..6.
 @TestOn('vm')
+@Timeout(Duration(minutes: 10))
 library;
 
 import 'dart:io';
@@ -13,15 +17,17 @@ import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 import 'package:tom_build_base/tom_build_base.dart';
 
-final _tool = p.join('test', 'fixtures', 'console_styling', 'styled_tool.dart');
+import '../../fixtures/compiled_tool.dart';
+
+late CompiledTool _tool;
 const _esc = '\x1B[';
 
 Future<ProcessResult> _run(
   List<String> args, {
   Map<String, String> environment = const {},
 }) => Process.run(
-  'dart',
-  ['run', _tool, ...args],
+  _tool.path,
+  args,
   environment: {
     // A test runner may itself run with these set; each test says what it needs.
     'NO_COLOR': '',
@@ -31,6 +37,13 @@ Future<ProcessResult> _run(
 );
 
 void main() {
+  setUpAll(
+    () async => _tool = await CompiledTool.compile(
+      p.join('test', 'fixtures', 'console_styling', 'styled_tool.dart'),
+    ),
+  );
+  tearDownAll(() => _tool.delete());
+
   group('piped output', () {
     test('BB-STYLE-1: --help and an Error: line through a pipe carry no '
         'escape code, the markers removed [2026-11-15]', () async {
@@ -70,7 +83,7 @@ void main() {
     () async {
       // `script` gives the tool a pseudo-terminal for stdout. Its stdin stays
       // open until the tool exits: an end of input ends the session early.
-      final command = 'dart run $_tool --help';
+      final command = '"${_tool.path}" --help';
       final process = await Process.start(
         'script',
         Platform.isMacOS

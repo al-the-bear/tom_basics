@@ -4,6 +4,8 @@ import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 import 'package:tom_build_base/tom_build_base_v2.dart';
 
+import '../../fixtures/compiled_tool.dart';
+
 /// `<tool> help <command>` prints the help of the tool's own command, as
 /// `<tool> :<command> --help` does: by name, by alias, with the leading colon,
 /// and by an unambiguous prefix. Help topics keep their place (a topic is
@@ -149,56 +151,61 @@ void main() {
     expect(unknownOut, contains('Unknown help topic: nosuch'));
   });
 
-  test(
-    'BB-HELPCMD-8: `help <wired command>` takes the help from the nested '
-    'tool; a missing nested binary is reported, the own commands\' help '
-    'stays '
-    '[2026-11-15]',
-    () async {
+  group('a nested tool, compiled', () {
+    late CompiledTool host;
+    late CompiledTool fakegen;
+
+    setUpAll(() async {
+      final fixtures = p.join('test', 'fixtures', 'help_command');
+      host = await CompiledTool.compile(p.join(fixtures, 'host_tool.dart'));
+      // The nested binary the host's wiring names: `fakegen` on PATH.
+      fakegen = await CompiledTool.compile(
+        p.join(fixtures, 'nested_tool.dart'),
+        name: 'fakegen',
+      );
+    });
+    tearDownAll(() {
+      host.delete();
+      fakegen.delete();
+    });
+
+    test('BB-HELPCMD-8: `help <wired command>` takes the help from the nested '
+        'tool; a missing nested binary is reported, the own commands\' help '
+        'stays '
+        '[2026-11-15]', () async {
       final dir = Directory.systemTemp.createTempSync('bb_helpcmd_');
       addTearDown(() => dir.deleteSync(recursive: true));
-      final root = Directory.current.path;
-      final fixtures = p.join(root, 'test', 'fixtures', 'help_command');
-      final packages = p.join(root, '.dart_tool', 'package_config.json');
-      final fakegen = File(p.join(dir.path, 'fakegen'))
-        ..writeAsStringSync(
-          '#!/bin/sh\nexec dart --packages=$packages '
-          '${p.join(fixtures, 'nested_tool.dart')} "\$@"\n',
-        );
-      Process.runSync('chmod', ['+x', fakegen.path]);
 
-      Future<ProcessResult> host(List<String> args, {bool onPath = true}) =>
-          Process.run(
-            'dart',
-            [
-              '--packages=$packages',
-              p.join(fixtures, 'host_tool.dart'),
-              ...args,
-            ],
-            workingDirectory: dir.path,
-            environment: {
-              'PATH': onPath
-                  ? '${dir.path}:${Platform.environment['PATH']}'
-                  : Platform.environment['PATH']!,
-            },
-          );
+      Future<ProcessResult> run(
+        List<String> args, {
+        bool onPath = true,
+      }) => Process.run(
+        host.path,
+        args,
+        workingDirectory: dir.path,
+        environment: {
+          'PATH': onPath
+              ? '${p.dirname(fakegen.path)}${Platform.isWindows ? ';' : ':'}'
+                    '${Platform.environment['PATH']}'
+              : Platform.environment['PATH']!,
+        },
+      );
 
       for (final name in ['fakegen', ':fakegen']) {
-        final r = await host(['help', name]);
+        final r = await run(['help', name]);
         expect(r.exitCode, 0, reason: '$name: ${r.stdout}${r.stderr}');
         expect(r.stdout, contains('Generates the fake artefacts'));
         expect(r.stdout, contains('--depth'));
       }
 
-      final own = await host(['help', 'own'], onPath: false);
+      final own = await run(['help', 'own'], onPath: false);
       expect(own.exitCode, 0, reason: '${own.stdout}${own.stderr}');
       expect(own.stdout, contains('The own command'));
       // As `:fakegen --help` and the overview do: the command is named,
       // its binary reported missing.
-      final missing = await host(['help', 'fakegen'], onPath: false);
+      final missing = await run(['help', 'fakegen'], onPath: false);
       expect(missing.stdout, contains('[binary fakegen not found]'));
-    },
-    skip: Platform.isWindows ? 'the fake nested binary is a sh script' : false,
-    timeout: const Timeout(Duration(minutes: 3)),
-  );
+    }, timeout: const Timeout(Duration(minutes: 3)));
+    // The compiles in setUpAll get the group's limit.
+  }, timeout: const Timeout(Duration(minutes: 10)));
 }

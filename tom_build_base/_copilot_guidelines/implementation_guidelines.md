@@ -275,6 +275,22 @@ Integration tests use real project structures in `zom_workspaces/zom_analyzer_te
 | `zom_test_vscode_ext` | VS Code extension (TypeScript) |
 | `zom_test_workspace` | Nested workspace structure |
 
+### Tests that run a tool as a process
+
+A test that starts a fixture tool as a process (`test/fixtures/<area>/*.dart`) compiles it once per
+test file with `CompiledTool.compile` (`test/fixtures/compiled_tool.dart`, `dart compile exe`) in
+`setUpAll`, deletes it in `tearDownAll`, and runs the compiled binary, never `dart run` or
+`dart <file>.dart` per call:
+
+- `dart run` compiles on every call: seconds on an idle machine, minutes on a loaded one, so the
+  test times out without anything being wrong;
+- the shipped tools are AOT builds, and the compiled fixture checks that the AOT build runs.
+
+The file's library `@Timeout` (or its group's) covers the compile in `setUpAll`; a test's own
+`timeout:` stays a guard against a hang, not a speed check. A test that measures time compares two
+runs against each other (BB-JOBS-1: `--jobs 2` under 80 % of `--jobs 1`), never against an absolute
+bound that machine load can exceed.
+
 ---
 
 ## Testkit Integration

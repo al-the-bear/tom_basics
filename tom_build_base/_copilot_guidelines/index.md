@@ -58,7 +58,7 @@ This package is published to pub.dev. See [Project Republishing](../../../../_co
 | [build_base_projects.md](build_base_projects.md) | List of all projects depending on tom_build_base |
 | [build_file_schemas.md](build_file_schemas.md) | The JSON schemas of `buildkit_master.yaml` and `buildkit.yaml` (`.tom/json-schema/buildkit/`), the schema line in every build file, and `_bin/check_buildkit_schemas.py` |
 | [cli_v2_design.md](cli_v2_design.md) | V2 CLI framework architecture and design specification |
-| [implementation_guidelines.md](implementation_guidelines.md) | Development workflow, test-first approach, naming conventions, and strict shared-ownership propagation workflow |
+| [implementation_guidelines.md](implementation_guidelines.md) | Development workflow, test-first approach, naming conventions, tests that run a tool as a process (compiled once), and strict shared-ownership propagation workflow |
 
 ## Quick Reference
 

@@ -106,15 +106,23 @@ void main() {
     final parallelTime = watch.elapsed;
     expect(result.success, isTrue);
     expect(fetch.maxRunning, 2);
-    expect(parallelTime, lessThan(const Duration(milliseconds: 1100)));
 
     final sequential = _Sleeper();
     watch.reset();
     result = await run({'fetch': sequential}, ['--jobs', '1', ':fetch']);
+    final sequentialTime = watch.elapsed;
     expect(sequential.maxRunning, 1);
+    // Four projects of 300 ms each: one after another takes at least 1.2 s.
     expect(
-      watch.elapsed,
+      sequentialTime,
       greaterThanOrEqualTo(const Duration(milliseconds: 1200)),
+    );
+    // Two at a time take about half of that. Relative, so a loaded machine
+    // slows both runs alike instead of failing an absolute bound.
+    expect(
+      parallelTime.inMicroseconds,
+      lessThan(sequentialTime.inMicroseconds * 0.8),
+      reason: 'parallel $parallelTime, sequential $sequentialTime',
     );
   });
 

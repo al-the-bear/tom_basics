@@ -1063,7 +1063,7 @@ The projects a traversal selects, as `buildkit :projects --json` prints them.
 
 ## 49. Broken Pipe
 
-**Test file:** `test/v2/core/broken_pipe_test.dart`
+**Test file:** `test/v2/core/broken_pipe_test.dart` (BB-PIPE-1 and 3 run the fixture tools in `test/fixtures/broken_pipe/`, compiled once with `dart compile exe`)
 
 A tool whose output is piped into something that stops reading (`head -1`,
 `grep -m1`, a pager) must end quietly with the exit code it has so far, not
@@ -1159,7 +1159,7 @@ it visited.
 
 | ID | Feature | Status | Description |
 |----|---------|--------|-------------|
-| BB-JOBS-1 | At once, at most `--jobs` | ✅ | Four sleeping projects with `--jobs 2`: two at a time, faster; `--jobs 1` one after another. |
+| BB-JOBS-1 | At once, at most `--jobs` | ✅ | Four sleeping projects with `--jobs 2`: two at a time, in under 80 % of the time of `--jobs 1`, which runs them one after another (relative, so machine load slows both alike). |
 | BB-JOBS-2 | Output and results | ✅ | Each project's lines together; results in traversal order; a failure does not stop the others. |
 | BB-JOBS-3 | Not parallel | ✅ | A command without `parallel` ignores `--jobs`. |
 | BB-JOBS-4 | Several commands | ✅ | Folders at once only when every command is parallel. |
@@ -1198,7 +1198,7 @@ it visited.
 
 ## 57. Console Styling
 
-**Test file:** `test/v2/core/console_styling_test.dart` (BB-STYLE-1–4 run the fixture tool `test/fixtures/console_styling/styled_tool.dart` as a process)
+**Test file:** `test/v2/core/console_styling_test.dart` (BB-STYLE-1–4 run the fixture tool `test/fixtures/console_styling/styled_tool.dart` as a process, compiled once with `dart compile exe`)
 
 | ID | Feature | Status | Description |
 |----|---------|--------|-------------|
@@ -1212,7 +1212,7 @@ it visited.
 
 ## 58. Help Command
 
-**Test file:** `test/v2/core/help_command_test.dart` (BB-HELPCMD-8 runs the fixture tools `test/fixtures/help_command/host_tool.dart` and `nested_tool.dart` as processes)
+**Test file:** `test/v2/core/help_command_test.dart` (BB-HELPCMD-8 runs the fixture tools `test/fixtures/help_command/host_tool.dart` and `nested_tool.dart` as processes, compiled once with `dart compile exe`)
 
 | ID | Feature | Status | Description |
 |----|---------|--------|-------------|
