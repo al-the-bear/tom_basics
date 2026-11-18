@@ -96,10 +96,7 @@ void main() {
         ['bazel build //...', 'bazel test //...', 'bazel clean'],
       ),
       'ceedling': (
-        {
-          'project.yml': ':project:\n  :build_root: build\n',
-          'src/a.c': '',
-        },
+        {'project.yml': ':project:\n  :build_root: build\n', 'src/a.c': ''},
         ['', 'ceedling test:all', 'ceedling clobber'],
       ),
       'ceedling_release': (
