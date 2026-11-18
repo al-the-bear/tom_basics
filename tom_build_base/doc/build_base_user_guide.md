@@ -376,6 +376,7 @@ Natures are auto-detected for each folder during traversal:
 | `JavaFolder` | `pom.xml`, `build.gradle` or `build.gradle.kts` | `buildTool` (maven / gradle), `projectName` (artifactId), `version` |
 | `GoFolder` | `go.mod` | `modulePath`, `projectName` |
 | `RustFolder` | `Cargo.toml` | `projectName`, `version` (from `[package]`) |
+| `ScalaFolder` | `build.sbt` | `projectName`, `version` (from `name :=` / `version :=`) |
 | `CFolder` | `Makefile` / `CMakeLists.txt` with C sources (`.c`), no C++ | `buildSystem` (make / cmake) |
 | `CppFolder` | `Makefile` / `CMakeLists.txt` with C++ sources (`.cpp`, `.cc`, `.hpp`, ...) | `buildSystem` (make / cmake) |
 | `BuildkitFolder` | `buildkit.yaml` exists | `projectId`, `projectName`, `description`, `license`, `config` |
@@ -388,10 +389,10 @@ Every non-Dart language nature is a `LanguageProjectFolder` (`language`,
 every subtype, as `DartProjectFolder` selects every Dart project. A `Makefile`
 without C or C++ sources (a docs build) is no project. `%{javascript.exists}`,
 `%{python.exists}`, `%{java.exists}`, `%{go.exists}`, `%{rust.exists}`,
-`%{c.exists}`, `%{cpp.exists}` and `%{language}` resolve in execute
-placeholders. `ProjectVersionFile.of(dir)` reads and writes the version in
-`pubspec.yaml`, `package.json`, `pyproject.toml`, `Cargo.toml` or `pom.xml`
-(Go and C / C++ state none).
+`%{scala.exists}`, `%{c.exists}`, `%{cpp.exists}` and `%{language}` resolve in
+execute placeholders. `ProjectVersionFile.of(dir)` reads and writes the
+version in `pubspec.yaml`, `package.json`, `pyproject.toml`, `Cargo.toml`,
+`pom.xml` or `build.sbt` (Go and C / C++ state none).
 
 A project folder of any of these languages, like a Dart project, is only
 descended into with `--recursive`, so its own test fixtures are not projects of

@@ -1369,6 +1369,7 @@ classDiagram
 | `JavaFolder` | `pom.xml`, `build.gradle` or `build.gradle.kts` exists |
 | `GoFolder` | `go.mod` exists |
 | `RustFolder` | `Cargo.toml` exists |
+| `ScalaFolder` | `build.sbt` exists (sbt) |
 | `CFolder` / `CppFolder` | `Makefile` / `CMakeLists.txt` beside C (`.c`) or C++ (`.cpp`, `.cc`, `.hpp`, ...) sources; any C++ source makes it C++ |
 | `LanguageProjectFolder` | abstract: every nature above from `TypeScriptFolder` on |
 | **Tom Framework Natures** | |

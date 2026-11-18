@@ -1,3 +1,14 @@
+## 2.42.0
+
+### Added — Scala projects
+
+- `ScalaFolder`, a language nature for an sbt build (`build.sbt`): its
+  `name :=` and `version :=` give the project name and version.
+  - `%{scala.exists}`; `%{language}` is `scala`.
+  - `ProjectVersionFile` reads and writes `build.sbt`'s version.
+  - The project listing places Scala after Rust.
+- A folder with `build.sbt` is a project folder.
+
 ## 2.41.0
 
 ### Changed

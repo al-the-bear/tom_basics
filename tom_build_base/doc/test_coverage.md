@@ -59,7 +59,7 @@ This document lists all testable features across `tom_build_base` and tracks tes
 | 44 | [Item Exit Codes and Process Trees](#44-item-exit-codes-and-process-trees) | 5 | 5✅ | `v2/core/item_exit_code_test.dart` | [→](#44-item-exit-codes-and-process-trees) |
 | 45 | [Repeated Multi Options](#45-repeated-multi-options) | 5 | 5✅ | `v2/core/multi_option_repeat_test.dart` | [→](#45-repeated-multi-options) |
 | 46 | [Project Groups](#46-project-groups) | 16 | 16✅ | `v2/traversal/project_groups_test.dart` | [→](#46-project-groups) |
-| 47 | [Language Natures](#47-language-natures) | 16 | 16✅ | `v2/traversal/language_natures_test.dart` | [→](#47-language-natures) |
+| 47 | [Language Natures](#47-language-natures) | 17 | 17✅ | `v2/traversal/language_natures_test.dart` | [→](#47-language-natures) |
 | 48 | [Project Listing](#48-project-listing) | 7 | 7✅ | `v2/traversal/project_listing_test.dart` | [→](#48-project-listing) |
 | 49 | [Broken Pipe](#49-broken-pipe) | 3 | 3✅ | `v2/core/broken_pipe_test.dart` | [→](#49-broken-pipe) |
 | 50 | [Option Suppression Refused](#50-option-suppression-refused) | 4 | 4✅ | `v2/core/option_suppression_test.dart` | [→](#50-option-suppression-refused) |
@@ -77,7 +77,7 @@ This document lists all testable features across `tom_build_base` and tracks tes
 | 62 | [Stand-Alone Commands](#62-stand-alone-commands) | 16 | 16✅ | `v2/core/strict_command_options_test.dart` | [→](#62-stand-alone-commands) |
 | 63 | [Git Mode Skips](#63-git-mode-skips) | 12 | 12✅ | `v2/traversal/git_repo_finder_skip_test.dart` | [→](#63-git-mode-skips) |
 | 64 | [Repository Selection by Path](#64-repository-selection-by-path) | 6 | 6✅ | `v2/traversal/module_filter_path_test.dart` | [→](#64-repository-selection-by-path) |
-| — | **Total** | **1178** | **1178✅** | | | | |
+| — | **Total** | **1179** | **1179✅** | | | | |
 
 > Every row links to a section, and the counts are measured from
 > `dart test --reporter json -j 1` rather than maintained by hand. Run it
@@ -1023,8 +1023,8 @@ of nested repositories (submodule checkouts, independent clones).
 
 **Test file:** `test/v2/traversal/language_natures_test.dart`
 
-The natures of the SOM runtime languages other than Dart; the fixtures copy the
-`tom_som_<lang>_runtime` layouts.
+The natures of the SOM runtime languages other than Dart, and Scala (sbt); the
+fixtures copy the `tom_som_<lang>_runtime` layouts.
 
 | ID | Feature | Status | Description |
 |----|---------|--------|-------------|
@@ -1041,9 +1041,10 @@ The natures of the SOM runtime languages other than Dart; the fixtures copy the
 | BB-LNG-11 | YAML tool definition | ✅ | Every nature name parses. |
 | BB-LNG-12 | Placeholders | ✅ | `%{<lang>.exists}`, `%{language}`. |
 | BB-LNG-13 | Scan | ✅ | A language project is not descended into without `-r`. |
-| BB-LNG-14 | Version files | ✅ | Read and write in pubspec, package.json, pyproject, Cargo, pom; nothing else changes. |
+| BB-LNG-14 | Version files | ✅ | Read and write in pubspec, package.json, pyproject, Cargo, pom, build.sbt; nothing else changes. |
 | BB-LNG-15 | No version | ✅ | Go and C state none. |
 | BB-LNG-16 | ToolRunner | ✅ | A command's abstract natures select the same folders through ToolRunner as through traversal. |
+| BB-LNG-17 | Scala | ✅ | `build.sbt`: `name :=` and `version :=`; a project folder. |
 
 ## 48. Project Listing
 
@@ -1337,4 +1338,4 @@ The current test suite is comprehensive. Areas where additional tests could be v
 | `--dump-definitions` output format | Tested in ToolRunner | Validate complete YAML structure | Low |
 | ConfigLoader with nested `@{...}` in `@[...]` | ✅ Recursive test exists | Additional nesting depth scenarios | Low |
 
-Overall coverage assessment: **Excellent — 1178 tests covering all features.**
+Overall coverage assessment: **Excellent — 1179 tests covering all features.**

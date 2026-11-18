@@ -101,6 +101,7 @@ Each system is independent and uses its own syntax.
     %{java.exists}             true if Java project (pom.xml, build.gradle)
     %{go.exists}               true if Go module (go.mod)
     %{rust.exists}             true if Rust crate (Cargo.toml)
+    %{scala.exists}            true if Scala sbt project (build.sbt)
     %{c.exists}                true if C project (Makefile / CMakeLists.txt + C sources)
     %{cpp.exists}              true if C++ project (Makefile / CMakeLists.txt + C++ sources)
     %{language}                language of a non-Dart project (typescript, javascript, ...)

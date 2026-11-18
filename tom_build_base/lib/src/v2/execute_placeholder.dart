@@ -141,11 +141,12 @@ class ExecutePlaceholderContext {
   bool get hasJava => hasNature<JavaFolder>();
   bool get hasGo => hasNature<GoFolder>();
   bool get hasRust => hasNature<RustFolder>();
+  bool get hasScala => hasNature<ScalaFolder>();
   bool get hasC => hasNature<CFolder>();
   bool get hasCpp => hasNature<CppFolder>();
 
   /// The project's language nature (TypeScript, JavaScript, Python, Java,
-  /// Go, Rust, C, C++), if it has one.
+  /// Go, Rust, Scala, C, C++), if it has one.
   LanguageProjectFolder? get languageProject =>
       getNature<LanguageProjectFolder>();
   /// Always false: tom_project.yaml is retired.
@@ -197,6 +198,7 @@ class ExecutePlaceholderResolver {
     'java.exists',
     'go.exists',
     'rust.exists',
+    'scala.exists',
     'c.exists',
     'cpp.exists',
     'dart.publishable',
@@ -282,6 +284,8 @@ class ExecutePlaceholderResolver {
         return ctx.hasGo.toString();
       case 'rust.exists':
         return ctx.hasRust.toString();
+      case 'scala.exists':
+        return ctx.hasScala.toString();
       case 'c.exists':
         return ctx.hasC.toString();
       case 'cpp.exists':
@@ -551,9 +555,10 @@ class ExecutePlaceholderResolver {
       'java.exists': 'true if Java project (pom.xml, build.gradle)',
       'go.exists': 'true if Go module (go.mod)',
       'rust.exists': 'true if Rust crate (Cargo.toml)',
+      'scala.exists': 'true if Scala sbt project (build.sbt)',
       'c.exists': 'true if C project (Makefile / CMakeLists.txt, C sources)',
       'cpp.exists': 'true if C++ project (Makefile / CMakeLists.txt, C++ sources)',
-      'language': 'Language of a non-Dart project (typescript, javascript, python, java, go, rust, c, cpp)',
+      'language': 'Language of a non-Dart project (typescript, javascript, python, java, go, rust, scala, c, cpp)',
 
       // Dart/Flutter attributes
       'dart.name': 'Project name from pubspec',

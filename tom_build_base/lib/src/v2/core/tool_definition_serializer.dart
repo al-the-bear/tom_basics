@@ -377,6 +377,8 @@ class ToolDefinitionSerializer {
         return GoFolder;
       case 'RustFolder':
         return RustFolder;
+      case 'ScalaFolder':
+        return ScalaFolder;
       case 'NativeProjectFolder':
         return NativeProjectFolder;
       case 'CFolder':

@@ -124,6 +124,7 @@ RunFolder? primaryProjectNature(List<RunFolder> natures) {
     (n) => n is JavaFolder,
     (n) => n is GoFolder,
     (n) => n is RustFolder,
+    (n) => n is ScalaFolder,
     (n) => n is CppFolder,
     (n) => n is CFolder,
   ]) {

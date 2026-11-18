@@ -1,8 +1,8 @@
 import '../run_folder.dart';
 
-/// A project in one of the SOM runtime languages other than Dart, detected
-/// by its project file: TypeScript, JavaScript, Python, Java, Go, Rust, C and
-/// C++.
+/// A project in a language other than Dart, detected by its project file:
+/// the SOM runtime languages TypeScript, JavaScript, Python, Java, Go, Rust,
+/// C and C++, and Scala (sbt).
 ///
 /// Dart projects are `DartProjectFolder`s. A command that works on every
 /// language project names this type in its natures; the detector creates the
@@ -17,7 +17,7 @@ abstract class LanguageProjectFolder extends RunFolder {
   LanguageProjectFolder(super.fsFolder, {this.projectName, this.version});
 
   /// The language, named as the SOM runtimes name it: `typescript`,
-  /// `javascript`, `python`, `java`, `go`, `rust`, `c`, `cpp`.
+  /// `javascript`, `python`, `java`, `go`, `rust`, `c`, `cpp`; and `scala`.
   String get language;
 
   /// The file that marks the project, relative to its folder.
@@ -116,6 +116,17 @@ class RustFolder extends LanguageProjectFolder {
 
   @override
   String get projectFile => 'Cargo.toml';
+}
+
+/// Scala project nature: an sbt build, `build.sbt`.
+class ScalaFolder extends LanguageProjectFolder {
+  ScalaFolder(super.fsFolder, {super.projectName, super.version});
+
+  @override
+  String get language => 'scala';
+
+  @override
+  String get projectFile => 'build.sbt';
 }
 
 /// The build system of a C or C++ project.

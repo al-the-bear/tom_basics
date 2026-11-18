@@ -91,6 +91,18 @@ class LanguageDetector {
       );
     }
 
+    final sbt = File(p.join(dir, 'build.sbt'));
+    if (sbt.existsSync()) {
+      final identity = sbtIdentity(sbt.readAsStringSync());
+      natures.add(
+        ScalaFolder(
+          folder,
+          projectName: identity.name,
+          version: identity.version,
+        ),
+      );
+    }
+
     final native = _nativeNature(folder);
     if (native != null) natures.add(native);
 

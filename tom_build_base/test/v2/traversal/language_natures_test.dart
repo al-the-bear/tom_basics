@@ -174,6 +174,25 @@ void main() {
       expect(rust.version, '1.9.0');
     });
 
+    test('BB-LNG-17: Scala: build.sbt, its name := and version := '
+        '[2026-11-18]', () {
+      final scala = single<ScalaFolder>(
+        project('scala', {
+          'build.sbt':
+              'ThisBuild / scalaVersion := "3.3.6"\n'
+              'name := "tom-demo"\n'
+              'version := "1.9.0"\n'
+              'libraryDependencies += "org.scalatest" %% "scalatest" % '
+              '"3.2.19" % Test\n',
+        }),
+      );
+      expect(scala.language, 'scala');
+      expect(scala.projectFile, 'build.sbt');
+      expect(scala.projectName, 'tom-demo');
+      expect(scala.version, '1.9.0');
+      expect(isProjectFolder(p.join(tmp.path, 'scala')), isTrue);
+    });
+
     test('BB-LNG-7: C and C++: a Makefile, the language decided by the '
         'sources; CMake too', () {
       final c = natures(
@@ -263,6 +282,7 @@ void main() {
           'JavaFolder',
           'GoFolder',
           'RustFolder',
+          'ScalaFolder',
           'CFolder',
           'CppFolder',
           'TypeScriptFolder',
@@ -276,6 +296,7 @@ void main() {
         JavaFolder,
         GoFolder,
         RustFolder,
+        ScalaFolder,
         CFolder,
         CppFolder,
         TypeScriptFolder,
@@ -364,6 +385,7 @@ void main() {
         'pyproject.toml': _pyproject,
         'Cargo.toml': _cargo,
         'pom.xml': _pom,
+        'build.sbt': 'name := "x"\nversion := "1.9.0"\n',
       };
       cases.forEach((file, text) {
         final dir = project('v_$file', {file: text});

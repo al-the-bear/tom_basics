@@ -47,6 +47,16 @@ ProjectIdentity cargoIdentity(String text) {
   return (name: values['name'], version: values['version']);
 }
 
+/// Name and version of a `build.sbt`: its top-level `name := "..."` and
+/// `version := "..."` settings (also `ThisBuild / version`).
+ProjectIdentity sbtIdentity(String text) {
+  String? setting(String key) => RegExp(
+    '^\\s*(?:ThisBuild\\s*/\\s*)?$key\\s*:=\\s*"([^"]*)"',
+    multiLine: true,
+  ).firstMatch(text)?.group(1);
+  return (name: setting('name'), version: setting('version'));
+}
+
 /// The module path of a `go.mod`.
 String? goModulePath(String text) =>
     RegExp(r'^module\s+(\S+)', multiLine: true).firstMatch(text)?.group(1);
@@ -140,8 +150,8 @@ Set<String> nativeSourceLanguages(String dir) {
 /// the rest of the file as it was.
 ///
 /// One per format that has a version: `pubspec.yaml`, `package.json`,
-/// `pyproject.toml`, `Cargo.toml`, `pom.xml`. Go modules and C / C++ make or
-/// CMake projects state no version in their project file.
+/// `pyproject.toml`, `Cargo.toml`, `pom.xml`, `build.sbt`. Go modules and
+/// C / C++ make or CMake projects state no version in their project file.
 abstract class ProjectVersionFile {
   /// The file, relative to the project folder.
   String get fileName;
@@ -169,7 +179,27 @@ abstract class ProjectVersionFile {
     _TomlVersion('pyproject.toml', const ['project', 'tool.poetry']),
     _TomlVersion('Cargo.toml', const ['package']),
     _PomVersion(),
+    _SbtVersion(),
   ];
+}
+
+class _SbtVersion extends ProjectVersionFile {
+  static final _line = RegExp(
+    r'^(\s*(?:ThisBuild\s*/\s*)?version\s*:=\s*")([^"]*)(")',
+    multiLine: true,
+  );
+
+  @override
+  String get fileName => 'build.sbt';
+
+  @override
+  String? read(String text) => _line.firstMatch(text)?.group(2);
+
+  @override
+  String write(String text, String version) => text.replaceFirstMapped(
+    _line,
+    (m) => '${m.group(1)}$version${m.group(3)}',
+  );
 }
 
 class _PubspecVersion extends ProjectVersionFile {
@@ -286,6 +316,7 @@ const languageProjectFiles = [
   'build.gradle.kts',
   'go.mod',
   'Cargo.toml',
+  'build.sbt',
 ];
 
 /// Whether [dir] is a project folder of any language the build tools know:
