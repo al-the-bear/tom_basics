@@ -3,7 +3,7 @@
 ///
 /// The fixtures under `test/fixtures/live_trail/` were written by the
 /// extension's own `LiveTrailWriter` (its compiled `out/`) driven through the
-/// same scenario by `tool/live_trail_fixture/generate.js`; regenerate them
+/// same scenarios by `tool/live_trail_fixture/generate.js`; regenerate them
 /// with that script when the extension's format changes.
 library;
 
@@ -263,9 +263,57 @@ void main() {
     expect(llmLiveTrailFileName('a/b c'), 'live-trail.a_b_c.md');
   });
 
-  test('streamed thinking and text are written a line at a '
-      'time, so a word split across deltas stays whole; a line is written as '
-      'soon as it ends', () {
+  test('a streamed run is written as the extension writes its delta form: '
+      'a word or line split across chunks stays whole, a block after an open '
+      'line closes it', () {
+    var seq = 0;
+    LlmTrailRecord r(LlmEvent e) => LlmTrailRecord(
+      sessionId: 's',
+      runId: 'a',
+      seq: ++seq,
+      at: DateTime(2026, 10, 12, 14, 40).toUtc(),
+      event: e,
+    );
+    final session = LlmLiveTrailSession();
+    final records = [
+      r(const LlmRunStarted(purpose: 'summarize', providerId: 'hosted-cli')),
+      r(const LlmUserPrompt(instruction: 'Sum up the numbers.')),
+      for (final d in ['I am checking num', 'bers above 380.\nThen', ' I sum.'])
+        r(LlmThinkingDelta(d)),
+      for (final d in ['The sum ', 'is 1,2', '40.']) r(LlmTextDelta(d)),
+      r(
+        const LlmToolCall(
+          callId: 'c1',
+          name: 'webwork_get_section',
+          arguments: {'sectionId': 'a1'},
+        ),
+      ),
+      r(
+        const LlmToolResult(
+          callId: 'c1',
+          isError: false,
+          text: 'Table.',
+          fullLength: 6,
+        ),
+      ),
+      for (final d in ['Checked: the ', 'total ', 'stands.'])
+        r(LlmTextDelta(d)),
+      r(
+        const LlmRunCompleted(
+          report: _report,
+          rounds: 2,
+          toolCalls: 1,
+          duration: Duration(milliseconds: 2500),
+        ),
+      ),
+    ];
+    for (final record in records) {
+      session.apply(record);
+    }
+    expect(session.text, _fixture('extension_streamed.md'));
+  });
+
+  test('a delta is written the moment it arrives, its line left open', () {
     var seq = 0;
     LlmTrailRecord r(LlmEvent e) => LlmTrailRecord(
       sessionId: 's',
@@ -279,24 +327,28 @@ void main() {
       ..apply(r(const LlmUserPrompt(instruction: 'Sum up.')));
     expect(
       session.apply(r(const LlmThinkingDelta('I am checking num'))),
-      isFalse,
-      reason: 'half a line is held back',
-    );
-    expect(
-      session.apply(r(const LlmThinkingDelta('bers above 380.\nThen'))),
       isTrue,
-      reason: 'a finished line is written at once',
     );
-    expect(session.text, endsWith('I am checking numbers above 380.\n'));
-    session
-      ..apply(r(const LlmThinkingDelta(' I sum.')))
-      ..apply(r(const LlmTextDelta('The ans')))
-      ..apply(r(const LlmTextDelta('wer.')))
-      ..apply(r(const LlmRunCompleted(report: _report)));
-    final text = session.text;
-    expect(text, contains('above 380.\nThen I sum.\n'));
-    expect(text, contains('### 💬 assistant\n\nThe answer.\n'));
-    expect(text, isNot(contains('num\nbers')));
+    expect(session.text, endsWith('I am checking num'));
+    session.apply(r(const LlmThinkingDelta('bers.')));
+    expect(session.text, endsWith('I am checking numbers.'));
+  });
+
+  test('a whole block is unchanged by the delta form: it ends in a newline, '
+      'and a delta after it continues the same block', () {
+    final text = LlmLiveTrailText()
+      ..beginPrompt(
+        transport: 't',
+        config: 'c',
+        userText: 'u',
+        at: DateTime(2026, 10, 12, 15),
+      )
+      ..appendAssistantText('Whole.');
+    expect(text.text, endsWith('### 💬 assistant\n\nWhole.\n'));
+    text
+      ..appendAssistantText('More', delta: true)
+      ..appendNotice('n');
+    expect(text.text, contains('Whole.\nMore\n\n### ⏳ notice\n\nn\n'));
   });
 }
 

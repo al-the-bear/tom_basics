@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.1.2
+
+- The live trail writes streamed thinking and text in the VS Code
+  extension's delta form: `LlmLiveTrailText.appendThinking` /
+  `appendAssistantText` take `delta: true` and append a chunk with no newline
+  of its own; the next write that does not continue the stream closes the open
+  line first. `LlmLiveTrailSession` passes each delta as it arrives instead of
+  a line at a time, so a word split across chunks stays whole and an open line
+  is written at once. Whole blocks are written as before. New fixture
+  `extension_streamed.md`, recorded from the extension's writer.
+
 ## 0.1.1
 
 ### Documentation

@@ -6,19 +6,19 @@
 /// restated over a string, operation for operation: a prompt block opens with
 /// its header and the user's line, thinking and assistant text continue under
 /// one heading while the same kind keeps arriving, a tool call is a JSON block
-/// and its result a `<details>` block, and every write leaves the file ending
-/// in a newline — which is why streamed deltas land on lines of their own in
-/// the extension's files. The fixture under
-/// `test/fixtures/live_trail/` is what the extension's own writer produced for
-/// the same calls, and the test holds the two byte for byte.
+/// and its result a `<details>` block. A whole block ends with a newline; a
+/// streamed chunk of thinking or text (`delta: true`) is appended as it came,
+/// with no newline of its own, so the chunks of one paragraph stay one
+/// paragraph, and the next write that does not continue that stream (a
+/// heading, a tool call, DONE / ERROR, the next prompt) first closes the open
+/// line. The fixtures under `test/fixtures/live_trail/` are what the
+/// extension's own writer produced for the same calls, and the tests hold the
+/// two byte for byte.
 ///
 /// [LlmLiveTrailSession] maps a session's trail records onto those
-/// operations and holds the two bounds the extension does not have: the
-/// file's size and a run that alone exceeds it. It hands the writer streamed
-/// thinking and text **a line at a time**: the writer ends every write with a
-/// newline, so a delta written as it came would cut words in two wherever the
-/// model's stream did ("num" / "bers"), and Markdown renders those breaks as
-/// spaces.
+/// operations — streamed thinking and text as deltas, the moment they
+/// arrive — and holds the two bounds the extension does not have: the file's
+/// size and a run that alone exceeds it.
 library;
 
 import 'dart:convert';
@@ -96,20 +96,26 @@ class LlmLiveTrailText {
     _write(lines.join('\n'));
   }
 
-  void appendThinking(String text) {
+  /// Thinking: a whole block, or with [delta] a streamed chunk, appended with
+  /// no newline of its own so the next chunk continues its line.
+  void appendThinking(String text, {bool delta = false}) {
     if (text.isEmpty) return;
-    final body = _inThinking ? text : '\n### 🧠 thinking\n\n$text';
+    final continuing = _inThinking;
+    final body = continuing ? text : '\n### 🧠 thinking\n\n$text';
     _inThinking = true;
     _inAssistant = false;
-    _append(body);
+    _append(body, keepOpen: delta, continuing: continuing);
   }
 
-  void appendAssistantText(String text) {
+  /// Assistant text: a whole block, or with [delta] a streamed chunk (see
+  /// [appendThinking]).
+  void appendAssistantText(String text, {bool delta = false}) {
     if (text.isEmpty) return;
-    final body = _inAssistant ? text : '\n### 💬 assistant\n\n$text';
+    final continuing = _inAssistant;
+    final body = continuing ? text : '\n### 💬 assistant\n\n$text';
     _inAssistant = true;
     _inThinking = false;
-    _append(body);
+    _append(body, keepOpen: delta, continuing: continuing);
   }
 
   void beginToolCall(String name, Map<String, Object?> input, String callId) {
@@ -194,9 +200,19 @@ class LlmLiveTrailText {
     _file = body.endsWith('\n') ? body : '$body\n';
   }
 
-  void _append(String content) {
-    final next = (_file.isNotEmpty ? _file : '$header\n\n') + content;
-    _file = next.endsWith('\n') ? next : '$next\n';
+  /// Appends [content]. A block ends with a newline; a streamed delta
+  /// ([keepOpen]) does not, so the next chunk continues its line. A write
+  /// that does not continue the stream ([continuing] false) closes an open
+  /// line first, so a block starts where it always did.
+  void _append(
+    String content, {
+    bool keepOpen = false,
+    bool continuing = false,
+  }) {
+    var base = _file.isNotEmpty ? _file : '$header\n\n';
+    if (!continuing && !base.endsWith('\n')) base += '\n';
+    final next = base + content;
+    _file = keepOpen || next.endsWith('\n') ? next : '$next\n';
   }
 
   String? _trimToKeep(int keep) {
@@ -316,12 +332,6 @@ class LlmLiveTrailSession {
   bool _clipped = false;
   String? _error;
 
-  /// Streamed thinking or text whose line has not ended yet.
-  final StringBuffer _pending = StringBuffer();
-
-  /// Whether [_pending] is thinking rather than assistant text.
-  bool _pendingThinking = false;
-
   LlmLiveTrailSession({String existing = '', this.maxBytes = 1 << 20})
     : _text = LlmLiveTrailText(existing);
 
@@ -332,9 +342,6 @@ class LlmLiveTrailSession {
   bool apply(LlmTrailRecord record) {
     final before = _text.text;
     final event = record.event;
-    if (event is! LlmThinkingDelta && event is! LlmTextDelta) {
-      _flushPending();
-    }
     switch (event) {
       case final LlmRunStarted started:
         _started = started;
@@ -345,9 +352,9 @@ class LlmLiveTrailSession {
       case LlmUserPrompt(:final instruction):
         _open(instruction);
       case LlmThinkingDelta(:final text):
-        _stream(text, thinking: true);
+        _output(() => _text.appendThinking(text, delta: true));
       case LlmTextDelta(:final text):
-        _stream(text, thinking: false);
+        _output(() => _text.appendAssistantText(text, delta: true));
       case LlmToolCall(:final name, :final arguments, :final callId):
         _output(() => _text.beginToolCall(name, arguments, callId));
       case LlmToolResult(:final text, :final fullLength):
@@ -388,34 +395,6 @@ class LlmLiveTrailSession {
     _bound();
     return _text.text != before;
   }
-
-  /// Adds a streamed delta, writing every line it completes.
-  void _stream(String text, {required bool thinking}) {
-    if (text.isEmpty) return;
-    if (_pendingThinking != thinking) _flushPending();
-    _pendingThinking = thinking;
-    _pending.write(text);
-    final held = _pending.toString();
-    final end = held.lastIndexOf('\n');
-    if (end < 0) return;
-    _pending
-      ..clear()
-      ..write(held.substring(end + 1));
-    _writeStreamed(held.substring(0, end + 1), thinking: thinking);
-  }
-
-  /// Writes what is held of a line, at the end of its block.
-  void _flushPending() {
-    if (_pending.isEmpty) return;
-    final held = _pending.toString();
-    _pending.clear();
-    _writeStreamed(held, thinking: _pendingThinking);
-  }
-
-  void _writeStreamed(String text, {required bool thinking}) => _output(
-    () =>
-        thinking ? _text.appendThinking(text) : _text.appendAssistantText(text),
-  );
 
   /// Opens the run's block, once.
   void _open(String instruction) {
