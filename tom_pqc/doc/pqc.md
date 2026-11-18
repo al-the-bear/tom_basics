@@ -272,7 +272,8 @@ bundle the library themselves.
 | macOS (arm64) | supported, verified | `SecRandomCopyBytes` |
 | Linux (x64) | supported, verified | `getrandom` |
 | Windows (x64) | supported, verified | `BCryptGenRandom` |
-| iOS, Android | not built yet | — |
+| iOS (arm64) | supported, verified | `SecRandomCopyBytes` |
+| Android (arm64-v8a, armeabi-v7a, x86_64) | supported, verified | the `getrandom` system call through `syscall(2)` (bionic declares `getrandom()` only from API 28), `/dev/urandom` on a kernel without it |
 | Web | not supported (`dart:ffi`) | — |
 
 ## Error Handling

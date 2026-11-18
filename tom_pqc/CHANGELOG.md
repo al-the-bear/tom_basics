@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.1.2
+
+- Android builds: the random generator calls the `getrandom` system call
+  through `syscall(2)` (bionic declares `getrandom()` only from API 28,
+  below the minimum of a Flutter app, so the build failed), and reads
+  `/dev/urandom` on a kernel without it. Built for arm64-v8a,
+  armeabi-v7a and x86_64 and checked against the ACVP vectors on an
+  Android 13 emulator; iOS built for devices and checked on a simulator
+  (the Tom Secrets Manager's mobile spike).
+
 ## 0.1.1
 
 - The README rewritten: installation with the C compiler each platform's build needs (clang on macOS and Linux, MSVC on Windows), `dart build cli` instead of `dart compile exe`, a verified quick start, usage per algorithm, key sizes, the test vectors, platforms, limits.

@@ -1,6 +1,6 @@
 # Tom PQC
 
-Published on pub.dev as [`tom_pqc` 0.1.1](https://pub.dev/packages/tom_pqc).
+Published on pub.dev as [`tom_pqc` 0.1.2](https://pub.dev/packages/tom_pqc).
 
 > Tom PQC is part of the **Tom framework** by al-the-bear.
 > Distributed under the terms in this package's license — see
@@ -331,11 +331,12 @@ Each set is kept as its source wrote it, with its origin and commit;
 | macOS (arm64) | supported, verified |
 | Linux (x64) | supported, verified |
 | Windows (x64) | supported, verified |
-| iOS, Android | not built yet |
+| iOS (arm64, device and simulator) | supported, verified (Flutter; the ACVP vectors on a simulator) |
+| Android (arm64-v8a, armeabi-v7a, x86_64) | supported, verified (Flutter; the ACVP vectors on an emulator, API 33) |
 | Web | not supported (`dart:ffi`) |
 
 The library is bundled by `dart run` and `dart test`, by `dart build cli` and
-by Flutter desktop release builds.
+by Flutter builds, desktop and mobile.
 
 ## Limits
 
@@ -375,7 +376,7 @@ commit, the Dart dependencies' licences and the licences of the test vectors.
 
 ## Status
 
-Version **0.1.1**, published on [pub.dev](https://pub.dev/packages/tom_pqc).
+Version **0.1.2**, published on [pub.dev](https://pub.dev/packages/tom_pqc).
 `dart test` from the package root runs the known-answer and cross-check suites
 listed under [Test vectors](#test-vectors), the API's behaviour and the licence
 checks; the build hook compiles the C on the first run.
