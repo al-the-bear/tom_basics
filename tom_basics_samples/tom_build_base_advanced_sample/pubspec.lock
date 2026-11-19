@@ -391,7 +391,7 @@ packages:
       path: "../../tom_build_base"
       relative: true
     source: path
-    version: "2.41.0"
+    version: "2.45.0"
   tom_dcli:
     dependency: transitive
     description:
