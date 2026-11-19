@@ -167,7 +167,7 @@ Usage: buildkit [options] <pipeline|:command> [args...] [<pipeline|:command> [ar
 | `--build-order` | `-b` | Sort projects in dependency build order |
 | `--project <path>` | `-p` | Project(s) to run on |
 | `--root [dir]` | `-R` | Workspace root (bare: detected, path: specified workspace) |
-| `--workspace-recursion` | `-w` | Shell out to sub-workspaces instead of skipping |
+| `--workspace-recursion` | `-w` | Also run in the sub-workspaces the scan skips (each with its own `buildkit_master.yaml`) |
 | `--inner-first-git` | `-i` | Scan git repos, process innermost (deepest) first |
 | `--outer-first-git` | `-o` | Scan git repos, process outermost (shallowest) first |
 | `--top-repo` | `-T` | Find topmost git repo by traversing up from current directory (requires `-i` or `-o`) |
@@ -382,19 +382,22 @@ Sub-workspaces are directories containing `buildkit_master.yaml`. They represent
 
 **Default behavior:** Sub-workspaces are skipped during recursive scans, similar to `buildkit_skip.yaml`.
 
-**To process sub-workspaces:** Use the `-w` / `--workspace-recursion` flag to shell out to each sub-workspace:
+**To process sub-workspaces:** Use the `-w` / `--workspace-recursion` flag to shell out to each sub-workspace the scan skipped:
 
 ```bash
-# Process all workspaces including sub-workspaces
-buildkit -w -R :versioner :compiler
+# Process the workspace and every sub-workspace below it
+buildkit -w :versioner :compiler
+buildkit -w -l :pubget                   # list the projects of all of them
 
 # What happens:
-# 1. BuildKit runs in the main workspace
-# 2. For each sub-workspace, it shells out: bk :versioner :compiler
-# 3. Each sub-workspace uses its own buildkit_master.yaml configuration
+# 1. BuildKit runs in the current workspace (sub-workspaces skipped)
+# 2. For each sub-workspace it skipped, it shells out from that folder:
+#    buildkit -w :versioner :compiler (the same arguments, without -s / --scan)
+# 3. Each sub-workspace uses its own buildkit_master.yaml configuration and
+#    runs its own sub-workspaces in turn (-w goes along)
 ```
 
-This ensures each workspace is processed with its own configuration context.
+This ensures each workspace is processed with its own configuration context. A failing run in a sub-workspace fails the run. An option that pins the traversal (`--root`, `--project`, `--exclude`, `--group`) keeps the sub-workspaces out, with `Skipped workspace: <name>, global traversal option specified.`
 
 ---
 
@@ -1983,7 +1986,7 @@ BuildKit's pipeline execution is implemented by the shared base engine (`tom_bui
 
 `--verbose` and `--dry-run` always propagate to sub-workspace invocations and are never treated as disqualifying options.
 
-**Multi-workspace traversal** is only active for pipeline execution. Direct commands always run in the current workspace only. If disqualifying global options (e.g. `--root`, `--filter`, `--depth`, `--workspace`) are present at invocation time, sub-workspace traversal is skipped with a message:
+**Multi-workspace traversal** is the default for an invocation of pipelines only; direct commands reach the sub-workspaces with `-w` (see [Sub-Workspace Handling](#sub-workspace-handling)). If disqualifying global options (e.g. `--root`, `--filter`, `--depth`, `--workspace`) are present at invocation time, sub-workspace traversal is skipped with a message:
 
 ```text
 Skipped workspace: <directory>, global traversal option specified.

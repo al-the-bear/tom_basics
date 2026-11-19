@@ -1,3 +1,16 @@
+## 1.36.0
+
+### Fixed — `-w` reaches the sub-workspaces with a direct command
+
+- Takes tom_build_base 2.45.0: `buildkit -w :pubget` (and every other
+  direct command) runs in each sub-workspace below the scan root (a folder
+  with its own `buildkit_master.yaml`) after the current workspace, with the
+  same arguments; `buildkit -w -l :pubget` lists their projects too. Before,
+  `-w` only affected pipelines.
+- The `-w` help text and the guide's Sub-Workspace Handling section say
+  so; the guide's example no longer passes `-R`, which keeps the
+  sub-workspaces out.
+
 ## 1.35.0
 
 ### Added — C built by Ceedling

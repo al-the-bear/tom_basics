@@ -1410,7 +1410,9 @@ final buildkitTool = ToolDefinition(
     OptionDefinition.flag(
       name: 'workspace-recursion',
       abbr: 'w',
-      description: 'Shell out to sub-workspaces instead of skipping',
+      description:
+          'Also run in the sub-workspaces the scan skips (each with its own '
+          'buildkit_master.yaml)',
     ),
   ],
   commands: [
