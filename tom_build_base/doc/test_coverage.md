@@ -77,7 +77,8 @@ This document lists all testable features across `tom_build_base` and tracks tes
 | 62 | [Stand-Alone Commands](#62-stand-alone-commands) | 16 | 16✅ | `v2/core/strict_command_options_test.dart` | [→](#62-stand-alone-commands) |
 | 63 | [Git Mode Skips](#63-git-mode-skips) | 12 | 12✅ | `v2/traversal/git_repo_finder_skip_test.dart` | [→](#63-git-mode-skips) |
 | 64 | [Repository Selection by Path](#64-repository-selection-by-path) | 6 | 6✅ | `v2/traversal/module_filter_path_test.dart` | [→](#64-repository-selection-by-path) |
-| — | **Total** | **1181** | **1181✅** | | | | |
+| 65 | [Workspace Recursion](#65-workspace-recursion) | 6 | 6✅ | `v2/core/workspace_recursion_test.dart` | [→](#65-workspace-recursion) |
+| — | **Total** | **1187** | **1187✅** | | | | |
 
 > Every row links to a section, and the counts are measured from
 > `dart test --reporter json -j 1` rather than maintained by hand. Run it
@@ -1328,6 +1329,21 @@ independent clones).
 
 ---
 
+## 65. Workspace Recursion
+
+**Test file:** `test/v2/core/workspace_recursion_test.dart`
+
+| ID | Feature | Status | Description |
+|----|---------|--------|-------------|
+| BB-WSR-1 | Skipped without `-w` | ✅ | A nested workspace (its own `buildkit_master.yaml`) below the scan root is skipped with `Skipping subworkspace: <name>`; its projects are not run. |
+| BB-WSR-2 | Run with `-w` | ✅ | The tool runs in the nested workspace with the run's arguments, and that run in its own nested workspace: every project is run, each workspace once. |
+| BB-WSR-3 | Arguments handed on | ✅ | The nested run gets the run's options without the scan roots (`-s`, `--scan`). |
+| BB-WSR-4 | Pinned traversal | ✅ | `--root`, `--project`, `--exclude` or `--group` keep the nested workspaces out, with `Skipped workspace: <name>, global traversal option specified.` |
+| BB-WSR-5 | A failing nested run | ✅ | Fails the run. |
+| BB-WSR-6 | `-w -l` | ✅ | Lists the projects of the nested workspaces too, running nothing. |
+
+---
+
 ## Test Gaps & Potential Additions
 
 The current test suite is comprehensive. Areas where additional tests could be valuable:
@@ -1340,4 +1356,4 @@ The current test suite is comprehensive. Areas where additional tests could be v
 | `--dump-definitions` output format | Tested in ToolRunner | Validate complete YAML structure | Low |
 | ConfigLoader with nested `@{...}` in `@[...]` | ✅ Recursive test exists | Additional nesting depth scenarios | Low |
 
-Overall coverage assessment: **Excellent — 1181 tests covering all features.**
+Overall coverage assessment: **Excellent — 1187 tests covering all features.**

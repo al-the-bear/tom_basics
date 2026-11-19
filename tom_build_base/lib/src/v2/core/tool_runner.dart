@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:ffi' show Abi;
 import 'dart:io';
 
+import 'package:path/path.dart' as p;
 import 'package:yaml/yaml.dart';
 import 'package:yaml_edit/yaml_edit.dart';
 
@@ -388,10 +389,34 @@ class ToolRunner {
     this.verbose = true,
     StringSink? output,
     StringSink? errorOutput,
+    Future<ProcessResult> Function(
+      String binary,
+      List<String> args,
+      String workingDirectory,
+    )?
+    workspaceRunner,
   }) : output = _resolveOutput(output),
-       errorOutput = errorOutput ?? _resolveOutput(output) {
+       errorOutput = errorOutput ?? _resolveOutput(output),
+       _workspaceRunner = workspaceRunner ?? runBinary {
     _effectiveTool = tool;
   }
+
+  /// How `-w` runs the tool in a nested workspace: [runBinary] unless a test
+  /// hands its own.
+  final Future<ProcessResult> Function(
+    String binary,
+    List<String> args,
+    String workingDirectory,
+  )
+  _workspaceRunner;
+
+  /// The arguments of the run after macro expansion and normalization: what
+  /// `-w` hands a nested workspace (without the scan roots).
+  List<String> _invocationArgs = const [];
+
+  /// The nested workspaces `-w` has run the tool in during this run, so a
+  /// workspace passed over by several commands' traversals runs once.
+  final _ranInWorkspaces = <String>{};
 
   /// Resolve the output sink.
   ///
@@ -614,6 +639,7 @@ class ToolRunner {
 
     // Normalize legacy flags before parsing.
     final normalizedArgs = normalizeArgs(expandedArgs);
+    _invocationArgs = normalizedArgs;
 
     // Parse arguments
     final parser = CliArgParser(toolDefinition: tool);
@@ -1101,8 +1127,70 @@ class ToolRunner {
       ], cliArgs);
       if (extra != null) results.add(extra);
     }
+    results.addAll(await _runInNestedWorkspaces(processingResult, cliArgs));
 
     return ToolResult.fromItems(results);
+  }
+
+  /// With `-w`: runs this tool, with this run's arguments, in each nested
+  /// workspace (a folder with its own `buildkit_master.yaml`) the traversal
+  /// passed over, from that folder; each uses its own configuration and,
+  /// with `-w` handed on, its own nested workspaces. A traversal option that
+  /// pins this run (`--root`, `--project`, `--exclude`, `--group`) keeps
+  /// them out, with a message. One item per workspace: it fails when the
+  /// tool exits with an error there.
+  Future<List<ItemResult>> _runInNestedWorkspaces(
+    ProcessingResult processing,
+    CliArgs cliArgs,
+  ) async {
+    if (!cliArgs.workspaceRecursion || cliArgs.nested) return const [];
+    final workspaces = processing.skippedWorkspaces
+        .where(_ranInWorkspaces.add)
+        .toList();
+    if (workspaces.isEmpty) return const [];
+    if (PipelineOptionResolver.hasDisqualifyingTraversalOptions(cliArgs)) {
+      for (final ws in workspaces) {
+        output.writeln(
+          'Skipped workspace: ${p.basename(ws)}, global traversal option '
+          'specified.',
+        );
+      }
+      return const [];
+    }
+    final args = argsForNestedWorkspace(_invocationArgs);
+    final results = <ItemResult>[];
+    for (final ws in workspaces) {
+      final name = p.basename(ws);
+      output.writeln('>>> workspace $name: ${tool.name} ${args.join(' ')}');
+      final ProcessResult run;
+      try {
+        run = await _workspaceRunner(tool.name, args, ws);
+      } on ProcessException catch (e) {
+        results.add(
+          ItemResult.failure(
+            path: ws,
+            name: 'workspace $name',
+            error: 'could not start ${tool.name}: ${e.message}',
+          ),
+        );
+        continue;
+      }
+      for (final stream in [run.stdout, run.stderr]) {
+        final text = '$stream'.trimRight();
+        if (text.isNotEmpty) output.writeln(text);
+      }
+      results.add(
+        run.exitCode == 0
+            ? ItemResult.success(path: ws, name: 'workspace $name')
+            : ItemResult.failure(
+                path: ws,
+                name: 'workspace $name',
+                error: '${tool.name} exited with code ${run.exitCode}',
+                exitCode: run.exitCode,
+              ),
+      );
+    }
+    return results;
   }
 
   bool _contextPassesPerCommandFilters(
@@ -1583,6 +1671,7 @@ class ToolRunner {
       cliArgs,
     );
     if (extra != null) results.add(extra);
+    results.addAll(await _runInNestedWorkspaces(processingResult, cliArgs));
 
     return ToolResult.fromItems(results);
   }
@@ -3008,4 +3097,21 @@ class _JobPool {
   }
 
   Future<void> drain() => Future.wait(_tasks);
+}
+
+/// [args] for a run in a nested workspace (`-w`): without the scan roots
+/// (`-s` / `--scan`), which name folders of this run; the nested run scans
+/// from its own workspace.
+List<String> argsForNestedWorkspace(List<String> args) {
+  final result = <String>[];
+  for (var i = 0; i < args.length; i++) {
+    final arg = args[i];
+    if (arg == '-s' || arg == '--scan') {
+      i++; // and its value
+      continue;
+    }
+    if (arg.startsWith('--scan=') || arg.startsWith('-s=')) continue;
+    result.add(arg);
+  }
+  return result;
 }

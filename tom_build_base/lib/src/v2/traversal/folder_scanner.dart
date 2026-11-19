@@ -66,6 +66,11 @@ class FolderScanner {
   /// and traverse into everything. Activated by `--no-skip`.
   final bool ignoreSkipMarkers;
 
+  /// The nested workspaces (folders with `{toolBasename}_master.yaml`) the
+  /// scans so far passed over, in the order met: `-w` runs the command in
+  /// each of them.
+  final skippedWorkspaces = <String>[];
+
   /// Create a FolderScanner.
   ///
   /// [toolBasename] - Tool name for tool-specific skip files. Defaults to 'buildkit'.
@@ -126,7 +131,12 @@ class FolderScanner {
     if (skipMarker != null) {
       _reportSkip(skipMarker, dir.path, toolBasename);
       // When --all is active, continue into skipped folders instead of returning.
-      if (!ignoreSkipMarkers) return;
+      if (!ignoreSkipMarkers) {
+        if (skipMarker == _SkipType.workspaceBoundary) {
+          skippedWorkspaces.add(dir.path);
+        }
+        return;
+      }
       stderr.writeln('Ignoring skip file, --no-skip active');
     }
 
@@ -248,6 +258,9 @@ class GitRepoFinder {
   /// (`--no-skip`); hidden and always-skipped folders still do.
   final bool ignoreSkipMarkers;
 
+  /// The nested workspaces the walks so far passed over, in the order met.
+  final skippedWorkspaces = <String>[];
+
   /// Find all git repositories under [root] recursively. [root] itself is
   /// not checked for skip markers (its own workspace marker is its root).
   Future<List<FsFolder>> findAll(String root) async {
@@ -353,7 +366,12 @@ class GitRepoFinder {
     final skipMarker = isRoot ? null : _skipMarkerIn(dir.path, toolBasename);
     if (skipMarker != null) {
       _reportSkip(skipMarker, dir.path, toolBasename);
-      if (!ignoreSkipMarkers) return;
+      if (!ignoreSkipMarkers) {
+        if (skipMarker == _SkipType.workspaceBoundary) {
+          skippedWorkspaces.add(dir.path);
+        }
+        return;
+      }
       stderr.writeln('Ignoring skip file, --no-skip active');
     }
 

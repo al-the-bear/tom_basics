@@ -199,11 +199,11 @@ Command-level options always win. Invocation options override pipeline-level opt
 
 ### Multi-Workspace Traversal
 
-Multi-workspace traversal applies **only** to pipeline execution. Direct commands always run in the current workspace only.
-
 When only pipelines are invoked, `tom_build_base` shells out to each sub-workspace that contains its own `<tool>_master.yaml` by default.
 
 For mixed command+pipeline invocations, cross-workspace delegation requires `-w` / `--workspace-recursion`.
+
+Direct commands run in the current workspace and skip the sub-workspaces below the scan root (`Skipping subworkspace: <name>`), unless `-w` is given: then, after the run, the tool shells out to each sub-workspace the traversal skipped, from that folder, with the run's arguments without the scan roots (`-s`, `--scan`), `-w` included, so each sub-workspace runs its own sub-workspaces in turn. A failing run in a sub-workspace fails the run.
 
 **Disqualifying options** prevent multi-workspace traversal:
 

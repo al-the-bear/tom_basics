@@ -174,7 +174,7 @@ is a global option and may stand before or after the command name.
 |--------|------|-------------|
 | `--root` | `-R` | Bare: auto-detect workspace root |
 | `--root=<path>` | `-R` | Use specified path as workspace root |
-| `--workspace-recursion` | `-w` | Shell out to sub-workspaces for mixed command+pipeline invocations (pipeline-only invocations recurse by default) |
+| `--workspace-recursion` | `-w` | Also run in the nested workspaces (folders with their own `buildkit_master.yaml`) the traversal skips: the tool shells out to each with the run's arguments (without the scan roots); for a mixed command+pipeline invocation the pipelines delegate too (pipeline-only invocations recurse by default). A tool declares it (buildkit does). |
 
 **Workspace detection:** the workspace root is the nearest directory at or above
 the current one that holds `buildkit_master.yaml`. Nothing else marks a

@@ -69,6 +69,20 @@ class ProcessingResult {
   void recordError(String path, Object error) => _errors[path] = error;
   void recordUnmatchedProjectPatterns(List<String> patterns) =>
       _unmatchedProjectPatterns = List<String>.of(patterns);
+
+  /// The nested workspaces (folders with their own `buildkit_master.yaml`)
+  /// the scan passed over, absolute, each once: a run with `-w` shells out
+  /// to each of them.
+  List<String> get skippedWorkspaces => List.unmodifiable(_skippedWorkspaces);
+  final List<String> _skippedWorkspaces = [];
+
+  void recordSkippedWorkspaces(Iterable<String> paths) {
+    for (final path in paths) {
+      final abs = p.normalize(p.absolute(path));
+      if (!_skippedWorkspaces.contains(abs)) _skippedWorkspaces.add(abs);
+    }
+  }
+
   void recordUnmatchedGroups(List<String> groups) =>
       _unmatchedGroups = List<String>.of(groups);
 
@@ -162,9 +176,16 @@ abstract class BuildBase {
     List<FsFolder> folders;
     switch (info) {
       case ProjectTraversalInfo pi:
-        folders = await _scanProjects(pi, verbose: verbose);
+        final scanner = FolderScanner(
+          verbose: verbose,
+          ignoreSkipMarkers: pi.ignoreSkipMarkers,
+        );
+        folders = await scanRoots(scanner, pi);
+        result.recordSkippedWorkspaces(scanner.skippedWorkspaces);
       case GitTraversalInfo gi:
-        folders = await _findGitRepos(gi);
+        final finder = GitRepoFinder(ignoreSkipMarkers: gi.ignoreSkipMarkers);
+        folders = await finder.findAll(gi.executionRoot);
+        result.recordSkippedWorkspaces(finder.skippedWorkspaces);
       default:
         folders = [];
     }
@@ -362,18 +383,6 @@ abstract class BuildBase {
     });
   }
 
-  /// Scan for projects based on ProjectTraversalInfo.
-  static Future<List<FsFolder>> _scanProjects(
-    ProjectTraversalInfo info, {
-    bool verbose = false,
-  }) async {
-    final scanner = FolderScanner(
-      verbose: verbose,
-      ignoreSkipMarkers: info.ignoreSkipMarkers,
-    );
-    return scanRoots(scanner, info);
-  }
-
   /// The folders under every root of [info] (`--scan a,b`), each once, in
   /// the order of the roots.
   static Future<List<FsFolder>> scanRoots(
@@ -394,12 +403,6 @@ abstract class BuildBase {
       }
     }
     return folders;
-  }
-
-  /// Find all git repositories based on GitTraversalInfo.
-  static Future<List<FsFolder>> _findGitRepos(GitTraversalInfo info) async {
-    final finder = GitRepoFinder(ignoreSkipMarkers: info.ignoreSkipMarkers);
-    return await finder.findAll(info.executionRoot);
   }
 
   /// Get list of projects without executing anything.

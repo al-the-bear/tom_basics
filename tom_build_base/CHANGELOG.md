@@ -1,3 +1,20 @@
+## 2.45.0
+
+### Fixed — `-w` reaches the sub-workspaces with a direct command
+
+- `-w` / `--workspace-recursion` worked only for pipelines: a direct command
+  (`buildkit -w :pubget`) still skipped every sub-workspace (a folder with
+  its own `buildkit_master.yaml`). Now, after the run, the tool shells out
+  to each sub-workspace the traversal skipped, from that folder, with the
+  run's arguments without the scan roots; `-w` goes along, so a
+  sub-workspace runs its own. `-l` lists their projects too. An option that
+  pins the traversal (`--root`, `--project`, `--exclude`, `--group`) keeps
+  them out, with the existing message; a failing run there fails the run.
+- `FolderScanner.skippedWorkspaces`, `GitRepoFinder.skippedWorkspaces`,
+  `ProcessingResult.skippedWorkspaces`: the nested workspaces a traversal
+  passed over. `ToolRunner(workspaceRunner:)` runs the tool in one (default
+  `runBinary`); `argsForNestedWorkspace()`.
+
 ## 2.44.0
 
 ### Added — C built by Ceedling
