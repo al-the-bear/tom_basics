@@ -1173,7 +1173,7 @@ workspace/
 │       └── .git/                  # Sub-repo: cloud (ID: CLD)
 ```
 
-**Global reference:** See `_copilot_guidelines/projects_and_repos.md` for the complete list of repository names and IDs.
+**Global reference:** See `_agent_guidelines/projects_and_repos.md` for the complete list of repository names and IDs.
 
 ```bash
 # Filter by repository name (detected from folder/submodule config)
@@ -1701,7 +1701,7 @@ project_id: D4G
 name: d4rtgen
 ```
 
-**Global reference:** See `_copilot_guidelines/projects_and_repos.md` for the complete list of project names and IDs.
+**Global reference:** See `_agent_guidelines/projects_and_repos.md` for the complete list of project names and IDs.
 
 **Usage:**
 ```bash

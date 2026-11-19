@@ -99,7 +99,7 @@ Windows) compiles `buildkit`, `findproject` and `wssetup` into
 `$TOM_BINARY_PATH/<platform>/` (`~/tac/tom_binaries/tom/<platform>/`), and with
 `--setup-shell` puts that folder on `PATH` for every shell, non-interactive ones
 included (`~/.zshenv`, the top of `~/.bashrc`). `buildkit setup` then builds
-the other tools. The workspace's `_copilot_guidelines/tool_dependencies.md`
+the other tools. The workspace's `_agent_guidelines/tool_dependencies.md`
 describes the sequence.
 
 A short alias and a `cd`-helper are conventional:

@@ -25,7 +25,7 @@ All dependent projects inherit from tom_build_base:
 When adding a new project that depends on tom_build_base:
 
 1. Add `tom_build_base:` to pubspec.yaml dependencies
-2. Create `_copilot_guidelines/implementation_hints.md` for the project
+2. Create `_agent_guidelines/implementation_hints.md` for the project
 3. Update this list in both:
-   - `tom_build_base/_copilot_guidelines/build_base_projects.md`
-   - `tom_build_kit/_copilot_guidelines/build_base_projects.md`
+   - `tom_build_base/_agent_guidelines/build_base_projects.md`
+   - `tom_build_kit/_agent_guidelines/build_base_projects.md`
