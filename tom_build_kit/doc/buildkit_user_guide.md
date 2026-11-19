@@ -919,7 +919,7 @@ Run it by hand from the repository; it is never scheduled.
 ### Apisummary Command
 
 The `apisummary` command says where a package's API summaries are out of date. The summaries
-(`doc/api/api_summary_*.md`, written by hand as `_copilot_guidelines/dart/api_summary_creation.md` describes) drift
+(`doc/api/api_summary_*.md`, written by hand as `_agent_guidelines/dart/api_summary_creation.md` describes) drift
 from the code; `doc/` is hand-authored, so the command writes nothing there. It reads the package's public API with
 the analyzer's parser — what the `lib/*.dart` entry points export, `show` / `hide` applied: classes, mixins, enums,
 extensions, extension types, typedefs, top-level functions and constants, and the public members of the types — and
@@ -982,7 +982,7 @@ Run it by hand from the repository, or from a pipeline step (`buildkit :apisumma
 ### Apireference Command
 
 The `apireference` command renders a package's combined API reference PDF from its hand-authored documents — the
-summary index, the module summaries and the module guides — as `_copilot_guidelines/dart/api_reference_creation.md`
+summary index, the module summaries and the module guides — as `_agent_guidelines/dart/api_reference_creation.md`
 describes. It assembles them into one Markdown document and renders it with tom_md2pdf (`md2pdf`, pure Dart: no
 Pandoc, no TeX), both into the gitignored `build/api_reference/` of the package; nothing goes into `doc/`.
 
@@ -1036,7 +1036,7 @@ Run it by hand from the repository, or as a pipeline step (`buildkit :apireferen
 ### Doccheck Command
 
 The `doccheck` command reports, per package, which of the documents the workspace guidelines ask for are missing
-(`_copilot_guidelines/component_module_readme_example.md`, `_copilot_guidelines/documentation_guidelines.md`). It
+(`_agent_guidelines/component_module_readme_example.md`, `_agent_guidelines/documentation_guidelines.md`). It
 reads the files and writes nothing.
 
 **Syntax:**

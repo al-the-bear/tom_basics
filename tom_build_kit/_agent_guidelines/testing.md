@@ -2,7 +2,7 @@
 
 ## Test Strategy: Integration Tests on the Workspace Clone
 
-Buildkit's integration tests exercise the real CLI tools by spawning them as child processes against the workspace's project tree, then verify outcomes through file system checks and git diffs. They do NOT run in the live workspace: they run on the machine's **workspace clone** (tom_test_support `TomWorkspaceClone`; see `_copilot_guidelines/dart/tests_buildtools.md` at the workspace root), so they can run while other sessions edit the tree, and nothing they install, generate or revert can reach it.
+Buildkit's integration tests exercise the real CLI tools by spawning them as child processes against the workspace's project tree, then verify outcomes through file system checks and git diffs. They do NOT run in the live workspace: they run on the machine's **workspace clone** (tom_test_support `TomWorkspaceClone`; see `_agent_guidelines/dart/tests_buildtools.md` at the workspace root), so they can run while other sessions edit the tree, and nothing they install, generate or revert can reach it.
 
 No preparation is needed: no commit, no push, no backup. `testkit :test` (or `dart test`) from the package root runs everything. The first run on a machine creates the clone (a few minutes); later runs only bring it up to date.
 
