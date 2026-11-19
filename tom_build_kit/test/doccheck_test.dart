@@ -1,5 +1,5 @@
 // BK-DOCCHK: `buildkit :doccheck` — the documents the guidelines ask of a
-// package. BK-DOCCHK-1..5 call the check on fixture packages; 6..8 run the
+// package. BK-DOCCHK-1..5 and 9 call the check on fixture packages; 6..8 run the
 // real executable, rooted at the fixtures under .dart_tool (-R) so the
 // workspace is never read.
 @TestOn('vm')
@@ -129,6 +129,53 @@ void main() {
       'attribution: README.md has no attribution blockquote under its title',
       'readme-sections: README.md has no "Documentation" section',
     ]);
+  });
+
+  test('BK-DOCCHK-9: the guidelines folder is _agent_guidelines, else the '
+      'old _copilot_guidelines; the gap names the folder found; both: the new '
+      'name wins; neither: no gap [2026-11-19]', () {
+    final complete = {..._complete}..remove('_copilot_guidelines/index.md');
+    List<String> indexGaps(Map<String, String> guidelines) {
+      final dir = package('shop', {...complete, ...guidelines});
+      final found = gaps(dir).where((g) => g.startsWith('guidelines-index'));
+      Directory(dir).deleteSync(recursive: true);
+      return found.toList();
+    }
+
+    expect(indexGaps({'_agent_guidelines/build.md': '# Build\n'}), [
+      'guidelines-index: _agent_guidelines/ has no index.md',
+    ]);
+    expect(indexGaps({'_agent_guidelines/index.md': '# Shop\n'}), isEmpty);
+    expect(indexGaps({'_copilot_guidelines/build.md': '# Build\n'}), [
+      'guidelines-index: _copilot_guidelines/ has no index.md',
+    ]);
+    expect(indexGaps({'_copilot_guidelines/index.md': '# Shop\n'}), isEmpty);
+    // Both: only the new folder is read.
+    expect(
+      indexGaps({
+        '_agent_guidelines/index.md': '# Shop\n',
+        '_copilot_guidelines/build.md': '# Build\n',
+      }),
+      isEmpty,
+    );
+    expect(
+      indexGaps({
+        '_agent_guidelines/build.md': '# Build\n',
+        '_copilot_guidelines/index.md': '# Shop\n',
+      }),
+      ['guidelines-index: _agent_guidelines/ has no index.md'],
+    );
+    expect(indexGaps({}), isEmpty);
+
+    final dir = package('both', {
+      '_agent_guidelines/a.md': '',
+      '_copilot_guidelines/b.md': '',
+    });
+    expect(p.basename(guidelinesFolderOf(dir)!.path), '_agent_guidelines');
+    Directory(p.join(dir, '_agent_guidelines')).deleteSync(recursive: true);
+    expect(p.basename(guidelinesFolderOf(dir)!.path), '_copilot_guidelines');
+    Directory(p.join(dir, '_copilot_guidelines')).deleteSync(recursive: true);
+    expect(guidelinesFolderOf(dir), isNull);
   });
 
   test('BK-DOCCHK-4: the configuration: the workspace\'s checks and '

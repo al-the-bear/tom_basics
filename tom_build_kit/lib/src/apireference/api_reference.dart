@@ -1,6 +1,6 @@
 /// The combined API reference behind `buildkit :apireference`: a package's
 /// hand-authored API summaries and module guides, collected in the order
-/// `_copilot_guidelines/dart/api_reference_creation.md` gives and assembled
+/// `_agent_guidelines/dart/api_reference_creation.md` gives and assembled
 /// into one Markdown document, which tom_md2pdf renders to PDF.
 ///
 /// **The parts:** Part I is `doc/api/api_summary_index.md`; Part II every

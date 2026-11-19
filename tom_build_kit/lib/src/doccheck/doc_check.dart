@@ -1,5 +1,5 @@
 /// The per-package documentation check behind `buildkit :doccheck`: the
-/// documents `_copilot_guidelines/component_module_readme_example.md` and
+/// documents `_agent_guidelines/component_module_readme_example.md` and
 /// `documentation_guidelines.md` ask every package to carry, and the README
 /// sections both of them name.
 ///
@@ -14,7 +14,7 @@
 /// | `changelog` | `CHANGELOG.md` exists |
 /// | `example` | `example/` holds a `.dart` file |
 /// | `doc` | `doc/` holds a `.md` file |
-/// | `guidelines-index` | a `_copilot_guidelines/` folder, where there is one, has `index.md` |
+/// | `guidelines-index` | the package's guidelines folder ([guidelinesFolderOf]: `_agent_guidelines/`, else the old `_copilot_guidelines/`), where there is one, has `index.md` |
 ///
 /// The required sections default to the ones both guidelines name — Features,
 /// Installation, Quick start, Documentation (which `Further documentation`
@@ -32,6 +32,23 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 import 'package:tom_build_base/tom_build_base.dart' show TomBuildConfig;
+
+/// The name of a guidelines folder.
+const kAgentGuidelinesFolder = '_agent_guidelines';
+
+/// The old name of a guidelines folder, still read where the new one is
+/// missing (other workspaces, older checkouts).
+const kCopilotGuidelinesFolder = '_copilot_guidelines';
+
+/// The guidelines folder of [dir]: `<dir>/_agent_guidelines` when it exists,
+/// else `<dir>/_copilot_guidelines` when that exists, else null.
+Directory? guidelinesFolderOf(String dir) {
+  for (final name in const [kAgentGuidelinesFolder, kCopilotGuidelinesFolder]) {
+    final folder = Directory(p.join(dir, name));
+    if (folder.existsSync()) return folder;
+  }
+  return null;
+}
 
 /// The checks, in the order they are reported.
 const kDocChecks = [
@@ -252,13 +269,13 @@ DocCheckReport checkPackageDocs(String packageDir, DocCheckConfig config) {
           gaps.add(const DocGap('doc', 'no user documentation (doc/*.md)'));
         }
       case 'guidelines-index':
-        final guidelines = Directory(p.join(packageDir, '_copilot_guidelines'));
-        if (guidelines.existsSync() &&
+        final guidelines = guidelinesFolderOf(packageDir);
+        if (guidelines != null &&
             !File(p.join(guidelines.path, 'index.md')).existsSync()) {
           gaps.add(
-            const DocGap(
+            DocGap(
               'guidelines-index',
-              '_copilot_guidelines/ has no index.md',
+              '${p.basename(guidelines.path)}/ has no index.md',
             ),
           );
         }

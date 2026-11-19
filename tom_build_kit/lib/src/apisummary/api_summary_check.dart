@@ -1,7 +1,7 @@
 /// The API-summary drift check behind `buildkit :apisummary`: a package's
 /// public API (what its `lib/*.dart` entry points export, read with the
 /// analyzer's parser) against the names its hand-authored API summaries
-/// (`doc/api/api_summary_*.md`, `_copilot_guidelines/dart/api_summary_creation.md`)
+/// (`doc/api/api_summary_*.md`, `_agent_guidelines/dart/api_summary_creation.md`)
 /// mention. It reports, and writes nothing: `doc/` is hand-authored.
 ///
 /// **Missing:** a public symbol the summaries never name. A type is missing

@@ -1057,7 +1057,7 @@ bk -p tom_build_kit :doccheck --strict
 | `changelog` | `CHANGELOG.md` exists |
 | `example` | `example/` holds a `.dart` file |
 | `doc` | `doc/` holds a `.md` file (user documentation) |
-| `guidelines-index` | a `_copilot_guidelines/` folder, where the package has one, contains `index.md` |
+| `guidelines-index` | the package's guidelines folder, where it has one, contains `index.md`: `_agent_guidelines/`, else the old name `_copilot_guidelines/` (still read); the gap names the folder found |
 
 **Per package:**
 

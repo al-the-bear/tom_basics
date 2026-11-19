@@ -1,3 +1,12 @@
+## 1.37.0
+
+### Changed — the guidelines folder is `_agent_guidelines`
+
+- `:doccheck`'s `guidelines-index` reads the package's `_agent_guidelines/`,
+  else the old `_copilot_guidelines/` (`guidelinesFolderOf()`); the gap names
+  the folder found (`_agent_guidelines/ has no index.md`).
+- Doc comments name the guideline files under `_agent_guidelines/`.
+
 ## 1.36.0
 
 ### Fixed — `-w` reaches the sub-workspaces with a direct command
