@@ -322,7 +322,7 @@ guidelines ask for and is missing: README.md, its attribution blockquote,
 its required sections (default Features, Installation, Quick start,
 Documentation — the ones component_module_readme_example.md and
 documentation_guidelines.md share), CHANGELOG.md, an example, user docs in
-doc/, and an index in a `_copilot_guidelines/` folder. `--strict` exits 1 on
+doc/, and an index in a `_agent_guidelines/` folder. `--strict` exits 1 on
 a gap. The checks and sections come from `doccheck:` in buildkit_master.yaml;
 a package opts out in its buildkit.yaml, always with a reason (`skip:`,
 `exclude: {check: reason}`, its own `readme-sections:`); an opt-out without a
@@ -581,7 +581,7 @@ The integration suites run on the machine's workspace clone (tom_test_support
 workspace) instead of a skeleton copy of descriptor files. The clone is
 created on first use, brought to the live repositories' commits before a run
 and reset after it. Test-only: the library is unchanged by it. See
-`_copilot_guidelines/testing.md`.
+`_agent_guidelines/testing.md`.
 
 ## 1.13.0
 
@@ -609,7 +609,7 @@ workspace, and then selected no project (tom_build_base 2.17.1 / 2.17.2).
 
 The integration suites no longer touch the live workspace: each test file
 works in its own copy (`test/helpers/scratch_workspace.dart`), so they run
-while other sessions edit the tree. See `_copilot_guidelines/testing.md`.
+while other sessions edit the tree. See `_agent_guidelines/testing.md`.
 
 ## 1.12.0
 

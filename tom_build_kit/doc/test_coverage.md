@@ -617,7 +617,7 @@ workspace protocol, so it runs whatever the state of the workspace.
 
 **Test files:** `test/workspace_isolation_test.dart`, `test/workspace_cleanliness_test.dart`
 
-The integration suites run on the machine's workspace clone (tom_test_support `TomWorkspaceClone`, taken by `TestWorkspace.isolated()`); see `_copilot_guidelines/testing.md`.
+The integration suites run on the machine's workspace clone (tom_test_support `TomWorkspaceClone`, taken by `TestWorkspace.isolated()`); see `_agent_guidelines/testing.md`.
 
 | ID | Feature | Status | How to Test |
 |----|---------|--------|-------------|

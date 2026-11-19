@@ -109,6 +109,6 @@ if (dartPath == null) {
 
 ## Related Documentation
 
-- [DCli Overview](../../../../_copilot_guidelines/d4rt/dcli_overview.md) - General DCli documentation
-- [DCli Scripting Guide](../../../../_copilot_guidelines/d4rt/dcli_scripting_guide.md) - Complete API reference
+- [DCli Overview](../../../../_agent_guidelines/d4rt/dcli_overview.md) - General DCli documentation
+- [DCli Scripting Guide](../../../../_agent_guidelines/d4rt/dcli_scripting_guide.md) - Complete API reference
 - [DCli on pub.dev](https://pub.dev/packages/dcli) - Source code and examples
