@@ -60,6 +60,7 @@ Each library is its own entry point; `tom_test_support.dart` exports them all.
 | `processTreeOf` / `aliveAmong` | functions | `process_tree.dart` | A process and its descendants / which pids still run |
 | `TomWorkspaceClone` | class | `workspace_clone.dart` | The machine's clone of the workspace for build-tool tests |
 | `tomIsWorkspaceClone` / `tomRequireWorkspaceClone` | functions | `workspace_clone.dart` | Whether a directory is a clone's root / throw unless inside one |
+| `tomMarkWorkspaceClone` / `tomWorkspaceCloneSkipFile` | function / constant | `workspace_clone.dart` | Write `tom_skip.yaml` into a clone's root (kept out of its git status), so the tools leave the clone out when they walk from above |
 | `tomTestWorkspaceEnv` / `tomWorkspaceCloneMarker` | constants | `workspace_clone.dart` | `TOM_TEST_WORKSPACE` / `tom_workspace_clone.json` |
 | `TomLicence` | enum | `licence_audit.dart` | The licences the audit recognises |
 | `TomLinkedPackage` | typedef | `licence_audit.dart` | A linked package: name, root, whether it is the SDK's |

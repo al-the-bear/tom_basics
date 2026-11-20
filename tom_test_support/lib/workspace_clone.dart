@@ -47,6 +47,36 @@ import 'roots.dart';
 /// The environment variable that names the clone's directory.
 const tomTestWorkspaceEnv = 'TOM_TEST_WORKSPACE';
 
+/// The skip file in the clone's root: every tool built on tom_build_base
+/// leaves the clone out when it walks from above (`buildkit -w` at the
+/// workspace's parent does not run in the clone).
+const tomWorkspaceCloneSkipFile = 'tom_skip.yaml';
+
+/// Marks [root], a workspace clone, as a folder the tools leave out: writes
+/// [tomWorkspaceCloneSkipFile] into it and keeps the file out of the
+/// clone's git status (`.git/info/exclude`), so the clone's reset keeps it.
+/// Safe to call again.
+void tomMarkWorkspaceClone(Directory root) {
+  final skip = File(p.join(root.path, tomWorkspaceCloneSkipFile));
+  if (!skip.existsSync()) {
+    skip.writeAsStringSync(
+      '# The build tools\' workspace clone (tom_test_support TomWorkspaceClone):\n'
+      '# every tool built on tom_build_base skips this folder when it walks\n'
+      '# from above. Written by the clone, kept out of its git status.\n',
+    );
+  }
+  final exclude = File(p.join(root.path, '.git', 'info', 'exclude'));
+  final line = '/$tomWorkspaceCloneSkipFile';
+  final text = exclude.existsSync() ? exclude.readAsStringSync() : '';
+  if (!text.split('\n').contains(line)) {
+    exclude
+      ..parent.createSync(recursive: true)
+      ..writeAsStringSync(
+        '${text.isEmpty || text.endsWith('\n') ? text : '$text\n'}$line\n',
+      );
+  }
+}
+
 /// The marker and state file inside the clone root's `.git` directory.
 const tomWorkspaceCloneMarker = 'tom_workspace_clone.json';
 
@@ -218,6 +248,7 @@ class TomWorkspaceClone {
     final state = _readState();
     await _reset(state);
     await _update();
+    tomMarkWorkspaceClone(root);
   }
 
   /// Bring every repository to what its live repository has checked out.

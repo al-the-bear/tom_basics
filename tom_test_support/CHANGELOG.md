@@ -1,3 +1,12 @@
+## 0.8.2
+
+- **The workspace clone carries `tom_skip.yaml`** in its root
+  (`tomMarkWorkspaceClone`, `tomWorkspaceCloneSkipFile`), written when the
+  clone is prepared and kept out of its git status (`.git/info/exclude`), so
+  its reset keeps it. Every tool built on tom_build_base (2.46.0: a skip file
+  wins over a workspace marker) leaves the clone out when it walks from
+  above: `buildkit -w` at the workspace's parent no longer runs in it. WC-15.
+
 ## 0.8.1
 
 - The entry below shipped first in 0.8.0, whose changelog named it 0.7.1.

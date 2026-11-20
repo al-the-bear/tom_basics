@@ -186,7 +186,10 @@ void main() {
     final clone = await acquire();
     addTearDown(clone.release);
     expect(await _head(cloneDir.path), await _head(live));
-    expect(await _head(p.join(cloneDir.path, 'pkgs/mid')), await _head(liveMid));
+    expect(
+      await _head(p.join(cloneDir.path, 'pkgs/mid')),
+      await _head(liveMid),
+    );
   });
 
   test('WC-2: an update follows the live commits, unpushed ones included, '
@@ -254,6 +257,30 @@ void main() {
     expect(File(p.join(mid, 'lib/leak.dart')).existsSync(), isFalse);
     expect(File(p.join(mid, 'scratch.txt')).existsSync(), isFalse);
   });
+
+  test(
+    'WC-15: the clone carries tom_skip.yaml, kept out of its git status '
+    'and through a reset; the live workspace has none [2026-11-20]',
+    () async {
+      final clone = await acquire();
+      final root = cloneDir.path;
+      final skip = File(p.join(root, tomWorkspaceCloneSkipFile));
+      expect(skip.existsSync(), isTrue);
+      expect(await _git(root, ['status', '--porcelain']), isEmpty);
+      await clone.release();
+      expect(skip.existsSync(), isTrue);
+      // Marking again changes nothing.
+      tomMarkWorkspaceClone(Directory(root));
+      final exclude = File(
+        p.join(root, '.git', 'info', 'exclude'),
+      ).readAsLinesSync();
+      expect(exclude.where((l) => l == '/tom_skip.yaml'), hasLength(1));
+      expect(
+        File(p.join(live, tomWorkspaceCloneSkipFile)).existsSync(),
+        isFalse,
+      );
+    },
+  );
 
   test('WC-5: nothing in the live workspace changes [2026-11-07]', () async {
     File(p.join(live, 'pkgs/mid/pubspec.yaml')).writeAsStringSync('edited\n');
@@ -355,27 +382,30 @@ void main() {
     expect(TomWorkspaceClone.findLiveRoot(from: mid)?.path, live);
   });
 
-  test('WC-14: release removes the leftover checkout of a submodule that '
-      'is no longer recorded (an untracked nested repository) [2026-11-13]',
-      () async {
-    final clone = await acquire();
-    final mid = p.join(cloneDir.path, 'pkgs/mid');
-    // What a submodule removed upstream leaves behind in a checkout: a
-    // repository of its own, now untracked in its parent.
-    final leftover = Directory(p.join(mid, 'retired'))..createSync();
-    await Process.run('git', ['init', '-q'], workingDirectory: leftover.path);
-    File(p.join(leftover.path, 'lib.dart')).writeAsStringSync('x');
+  test(
+    'WC-14: release removes the leftover checkout of a submodule that '
+    'is no longer recorded (an untracked nested repository) [2026-11-13]',
+    () async {
+      final clone = await acquire();
+      final mid = p.join(cloneDir.path, 'pkgs/mid');
+      // What a submodule removed upstream leaves behind in a checkout: a
+      // repository of its own, now untracked in its parent.
+      final leftover = Directory(p.join(mid, 'retired'))..createSync();
+      await Process.run('git', ['init', '-q'], workingDirectory: leftover.path);
+      File(p.join(leftover.path, 'lib.dart')).writeAsStringSync('x');
 
-    await clone.release();
+      await clone.release();
 
-    expect(leftover.existsSync(), isFalse);
-    expect(
-      (await Process.run('git', ['status', '--porcelain'],
-              workingDirectory: mid))
-          .stdout,
-      isEmpty,
-    );
-  });
+      expect(leftover.existsSync(), isFalse);
+      expect(
+        (await Process.run('git', [
+          'status',
+          '--porcelain',
+        ], workingDirectory: mid)).stdout,
+        isEmpty,
+      );
+    },
+  );
 
   test('WC-12: the default location is a sibling named <name>_testclone, '
       'unless TOM_TEST_WORKSPACE says otherwise [2026-11-07]', () {
