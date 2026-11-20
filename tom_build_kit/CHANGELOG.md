@@ -1,3 +1,16 @@
+## 1.38.0
+
+### Fixed — `-w` runs the sub-workspaces with this buildkit; owned clones are left out
+
+- Takes tom_build_base 2.46.0: `buildkit -w` (and a delegated pipeline)
+  starts each sub-workspace's run with the running buildkit itself, not
+  `buildkit` looked up on the PATH: called by its full path with none on
+  the PATH it no longer fails (`could not start buildkit`), and every
+  sub-workspace runs the same version.
+- A folder holding `tom_skip.yaml` is left out even when it holds a
+  `buildkit_master.yaml`: the build tools' workspace clone (tom_test_support
+  0.8.2 writes the file into it) is no longer walked by `-w`.
+
 ## 1.37.0
 
 ### Changed — the guidelines folder is `_agent_guidelines`

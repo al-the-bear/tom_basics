@@ -397,7 +397,7 @@ buildkit -w -l :pubget                   # list the projects of all of them
 #    runs its own sub-workspaces in turn (-w goes along)
 ```
 
-This ensures each workspace is processed with its own configuration context. A failing run in a sub-workspace fails the run. An option that pins the traversal (`--root`, `--project`, `--exclude`, `--group`) keeps the sub-workspaces out, with `Skipped workspace: <name>, global traversal option specified.`
+This ensures each workspace is processed with its own configuration context. Each sub-workspace runs with the same buildkit that was started (the same binary or script, nothing looked up on the PATH). A failing run in a sub-workspace fails the run. A folder holding `tom_skip.yaml` or `buildkit_skip.yaml` is left out even when it also holds a `buildkit_master.yaml`: the build tools' workspace clone carries `tom_skip.yaml`, so `-w` never walks it. An option that pins the traversal (`--root`, `--project`, `--exclude`, `--group`) keeps the sub-workspaces out, with `Skipped workspace: <name>, global traversal option specified.`
 
 ---
 
