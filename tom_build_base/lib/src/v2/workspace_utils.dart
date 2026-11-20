@@ -303,22 +303,23 @@ void _scanRecursive(
     return;
   }
 
-  // Stop at workspace boundaries (sub-workspaces should be processed separately)
-  if (!isRoot) {
-    if (File(p.join(dir.path, kBuildkitMasterYaml)).existsSync()) {
-      if (verbose) {
-        stderr.writeln('Skipping subworkspace: $name');
-      }
-      return;
-    }
-  }
-
-  // Stop at skip markers
+  // Stop at skip markers (they win over a workspace marker in the same
+  // folder)
   if (!isRoot) {
     if (File(p.join(dir.path, kTomSkipYaml)).existsSync() ||
         File(p.join(dir.path, kBuildkitSkipYaml)).existsSync()) {
       if (verbose) {
         stderr.writeln('Skipping (skip marker): $name');
+      }
+      return;
+    }
+  }
+
+  // Stop at workspace boundaries (sub-workspaces should be processed separately)
+  if (!isRoot) {
+    if (File(p.join(dir.path, kBuildkitMasterYaml)).existsSync()) {
+      if (verbose) {
+        stderr.writeln('Skipping subworkspace: $name');
       }
       return;
     }

@@ -9,7 +9,7 @@ import 'package:tom_build_base/tom_build_base_v2.dart';
 /// `buildkit_master.yaml`) the traversal passed over; without it they are
 /// skipped with a message.
 ///
-/// Test IDs: BB-WSR-1..6.
+/// Test IDs: BB-WSR-1..9.
 
 const _tool = ToolDefinition(
   name: 'wstool',
@@ -195,6 +195,73 @@ void main() {
     expect(listed, contains('gamma'));
     expect(listed, contains('delta'));
   });
+
+  test('BB-WSR-7: a nested workspace with a skip file (a clone a tool '
+      'owns) is left out, also with -w [2026-11-20]', () async {
+    File(
+      p.join(root.path, 'apps', 'sub', 'tom_skip.yaml'),
+    ).writeAsStringSync('');
+    final (result, err) = await run(['-w', ':write']);
+    expect(result.success, isTrue);
+    expect(visited, ['alpha']);
+    expect(delegated, isEmpty);
+    expect(err, contains('Skipping - tom_skip.yaml found: sub'));
+  });
+
+  test('BB-WSR-8: selfInvocation: a compiled binary runs itself; under the '
+      'Dart VM, the VM with its flags and the script [2026-11-20]', () {
+    final binary = selfInvocation(
+      resolvedExecutable: '/opt/tom/darwin-arm64/buildkit',
+      script: Uri.file('/opt/tom/darwin-arm64/buildkit'),
+    )!;
+    expect(binary.executable, '/opt/tom/darwin-arm64/buildkit');
+    expect(binary.leading, isEmpty);
+    final vm = selfInvocation(
+      resolvedExecutable: '/sdk/bin/dart',
+      script: Uri.file('/ws/tom_build_kit/bin/buildkit.dart'),
+      executableArguments: ['--packages=/ws/.dart_tool/package_config.json'],
+    )!;
+    expect(vm.executable, '/sdk/bin/dart');
+    expect(vm.leading, [
+      '--packages=/ws/.dart_tool/package_config.json',
+      '/ws/tom_build_kit/bin/buildkit.dart',
+    ]);
+    final windows = selfInvocation(
+      resolvedExecutable: r'C:\sdk\bin\dart.exe',
+      script: Uri.file(r'C:\ws\bin\buildkit.dart', windows: true),
+      executableArguments: const [],
+    )!;
+    expect(windows.leading, hasLength(1));
+    expect(
+      selfInvocation(
+        resolvedExecutable: '/sdk/bin/dartaotruntime',
+        script: Uri.parse('data:application/dart;base64,AA=='),
+      ),
+      isNull,
+    );
+  });
+
+  test('BB-WSR-9: -w starts the nested runs with the running program itself: '
+      'nothing is looked up on the PATH [2026-11-20]', () async {
+    final package = previousCwd.path;
+    final result = await Process.run(
+      Platform.resolvedExecutable,
+      [
+        '--packages=${p.join(package, '.dart_tool', 'package_config.json')}',
+        p.join(package, 'test', 'v2', 'core', 'fixtures', 'self_tool.dart'),
+        '-w',
+        ':write',
+      ],
+      workingDirectory: root.path,
+      environment: {'PATH': ''},
+    );
+    final out = '${result.stdout}${result.stderr}';
+    expect(result.exitCode, 0, reason: out);
+    expect(out, contains('visited alpha'));
+    expect(out, contains('visited gamma'));
+    expect(out, contains('visited delta'));
+    expect(out, isNot(contains('could not start')));
+  }, timeout: const Timeout(Duration(minutes: 4)));
 }
 
 /// A [Stdout] stand-in that collects what is written.

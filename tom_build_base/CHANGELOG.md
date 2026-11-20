@@ -1,3 +1,20 @@
+## 2.46.0
+
+### Fixed — `-w` and delegated pipelines start the program itself
+
+- The runs a tool hands on (each sub-workspace of `-w`, each delegated
+  pipeline) were started as the tool's name looked up on the PATH: a tool
+  called by its full path with none on the PATH failed every sub-workspace
+  (`could not start buildkit`), and another one on the PATH ran there with
+  another version. They now start the running program itself:
+  `selfInvocation()` / `runSelf()` (a compiled binary runs itself; under the
+  Dart VM the VM with its flags and the script; the PATH only when the
+  program cannot name itself).
+- A skip file (`tom_skip.yaml`, `<tool>_skip.yaml`) now wins over a
+  workspace marker in the same folder: a marked folder with a
+  `buildkit_master.yaml` is left out instead of being run by `-w` (project
+  and git mode, the workspace walk, the pipelines' nested workspaces).
+
 ## 2.45.0
 
 ### Fixed — `-w` reaches the sub-workspaces with a direct command

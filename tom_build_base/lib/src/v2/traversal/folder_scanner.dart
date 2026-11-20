@@ -11,18 +11,20 @@ import '../workspace_utils.dart' show kAlwaysSkipDirectories;
 /// Global skip file that blocks all tools.
 const kTomSkipYaml = 'tom_skip.yaml';
 
-/// The skip marker in [dirPath], if any: a nested workspace
-/// (`{toolBasename}_master.yaml`), `tom_skip.yaml` (all tools) or
-/// `{toolBasename}_skip.yaml`. Shared by project and git mode.
+/// The skip marker in [dirPath], if any: `tom_skip.yaml` (all tools),
+/// `{toolBasename}_skip.yaml`, or a nested workspace
+/// (`{toolBasename}_master.yaml`). A skip file wins over the workspace
+/// marker: a marked workspace (a clone a tool owns) is left out, not run by
+/// `-w`. Shared by project and git mode.
 _SkipType? _skipMarkerIn(String dirPath, String toolBasename) {
-  if (File(p.join(dirPath, '${toolBasename}_master.yaml')).existsSync()) {
-    return _SkipType.workspaceBoundary;
-  }
   if (File(p.join(dirPath, kTomSkipYaml)).existsSync()) {
     return _SkipType.globalSkip;
   }
   if (File(p.join(dirPath, '${toolBasename}_skip.yaml')).existsSync()) {
     return _SkipType.toolSkip;
+  }
+  if (File(p.join(dirPath, '${toolBasename}_master.yaml')).existsSync()) {
+    return _SkipType.workspaceBoundary;
   }
   return null;
 }

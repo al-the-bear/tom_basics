@@ -397,12 +397,13 @@ class ToolRunner {
     workspaceRunner,
   }) : output = _resolveOutput(output),
        errorOutput = errorOutput ?? _resolveOutput(output),
-       _workspaceRunner = workspaceRunner ?? runBinary {
+       _workspaceRunner = workspaceRunner ?? runSelf {
     _effectiveTool = tool;
   }
 
-  /// How `-w` runs the tool in a nested workspace: [runBinary] unless a test
-  /// hands its own.
+  /// How `-w` runs the tool in a nested workspace: this program again
+  /// ([runSelf]: the same binary or script, nothing looked up on the PATH)
+  /// unless a test hands its own.
   final Future<ProcessResult> Function(
     String binary,
     List<String> args,

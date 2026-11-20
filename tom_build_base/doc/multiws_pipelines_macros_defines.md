@@ -205,6 +205,10 @@ For mixed command+pipeline invocations, cross-workspace delegation requires `-w`
 
 Direct commands run in the current workspace and skip the sub-workspaces below the scan root (`Skipping subworkspace: <name>`), unless `-w` is given: then, after the run, the tool shells out to each sub-workspace the traversal skipped, from that folder, with the run's arguments without the scan roots (`-s`, `--scan`), `-w` included, so each sub-workspace runs its own sub-workspaces in turn. A failing run in a sub-workspace fails the run.
 
+The tool starts every run it hands on (a sub-workspace of `-w`, a delegated pipeline) with the running program itself (`runSelf()`): a compiled binary runs itself, a run under the Dart VM runs the VM with the same script, so nothing is looked up on the PATH and every workspace runs the same version.
+
+A folder holding `tom_skip.yaml` or `<tool>_skip.yaml` is left out even when it also holds `<tool>_master.yaml`: the skip file wins, so a clone a tool owns (the build tools' workspace clone writes `tom_skip.yaml` into its root) is never walked or delegated to.
+
 **Disqualifying options** prevent multi-workspace traversal:
 
 - `--root <dir>` (explicit workspace root)

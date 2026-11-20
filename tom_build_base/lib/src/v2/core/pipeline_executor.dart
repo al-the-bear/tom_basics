@@ -118,7 +118,7 @@ class ToolPipelineExecutor {
 
       if (cliArgs.dryRun) continue;
 
-      final result = await runBinary(tool.name, delegatedArgs, wsDir);
+      final result = await runSelf(tool.name, delegatedArgs, wsDir);
       if (result.stdout.toString().trim().isNotEmpty) {
         output.writeln(result.stdout.toString().trimRight());
       }
@@ -622,6 +622,13 @@ class ToolPipelineExecutor {
           if (entity is! Directory) continue;
           final name = p.basename(entity.path);
           if (name.startsWith('.') || _nestedWsSkipNames.contains(name)) {
+            continue;
+          }
+          // A skip file leaves the folder out, a workspace in it included.
+          if (File(p.join(entity.path, 'tom_skip.yaml')).existsSync() ||
+              File(
+                p.join(entity.path, '${tool.name}_skip.yaml'),
+              ).existsSync()) {
             continue;
           }
 

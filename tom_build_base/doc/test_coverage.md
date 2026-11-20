@@ -77,8 +77,8 @@ This document lists all testable features across `tom_build_base` and tracks tes
 | 62 | [Stand-Alone Commands](#62-stand-alone-commands) | 16 | 16✅ | `v2/core/strict_command_options_test.dart` | [→](#62-stand-alone-commands) |
 | 63 | [Git Mode Skips](#63-git-mode-skips) | 12 | 12✅ | `v2/traversal/git_repo_finder_skip_test.dart` | [→](#63-git-mode-skips) |
 | 64 | [Repository Selection by Path](#64-repository-selection-by-path) | 6 | 6✅ | `v2/traversal/module_filter_path_test.dart` | [→](#64-repository-selection-by-path) |
-| 65 | [Workspace Recursion](#65-workspace-recursion) | 6 | 6✅ | `v2/core/workspace_recursion_test.dart` | [→](#65-workspace-recursion) |
-| — | **Total** | **1187** | **1187✅** | | | | |
+| 65 | [Workspace Recursion](#65-workspace-recursion) | 9 | 9✅ | `v2/core/workspace_recursion_test.dart` | [→](#65-workspace-recursion) |
+| — | **Total** | **1190** | **1190✅** | | | | |
 
 > Every row links to a section, and the counts are measured from
 > `dart test --reporter json -j 1` rather than maintained by hand. Run it
@@ -1341,6 +1341,9 @@ independent clones).
 | BB-WSR-4 | Pinned traversal | ✅ | `--root`, `--project`, `--exclude` or `--group` keep the nested workspaces out, with `Skipped workspace: <name>, global traversal option specified.` |
 | BB-WSR-5 | A failing nested run | ✅ | Fails the run. |
 | BB-WSR-6 | `-w -l` | ✅ | Lists the projects of the nested workspaces too, running nothing. |
+| BB-WSR-7 | A skip file wins | ✅ | A nested workspace holding `tom_skip.yaml` (a clone a tool owns) is left out, also with `-w`, with the skip message. |
+| BB-WSR-8 | `selfInvocation` | ✅ | A compiled binary runs itself; under the Dart VM, the VM with its flags and the script; a script that is no file gives null. |
+| BB-WSR-9 | The program starts itself | ✅ | A tool run under the Dart VM with an empty PATH runs its nested workspaces with itself: every project is visited. |
 
 ---
 
@@ -1356,4 +1359,4 @@ The current test suite is comprehensive. Areas where additional tests could be v
 | `--dump-definitions` output format | Tested in ToolRunner | Validate complete YAML structure | Low |
 | ConfigLoader with nested `@{...}` in `@[...]` | ✅ Recursive test exists | Additional nesting depth scenarios | Low |
 
-Overall coverage assessment: **Excellent — 1187 tests covering all features.**
+Overall coverage assessment: **Excellent — 1190 tests covering all features.**
