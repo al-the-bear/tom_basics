@@ -17,6 +17,7 @@ Resolving and publishing:
 
 Running buildkit:
 
+- [`Installation requirements not met` for a folder that is a link](#installation-requirements-not-met-for-a-folder-that-is-a-link)
 - [`binary <tool> not found` for a nested command](#binary-tool-not-found-for-a-nested-command)
 - [`selector matched no project`](#selector-matched-no-project)
 - [A step says `up to date` and does nothing](#a-step-says-up-to-date-and-does-nothing)
@@ -121,6 +122,27 @@ python3 _bin/publishing/rate_limit_wait.py <package>     # seconds until the nex
 ```
 
 **Fix:** let it wait (it publishes on its own), or stop it and bundle the next changes into one release.
+
+## `Installation requirements not met` for a folder that is a link
+
+**What you see:** every command stops with `Installation requirements not met`, naming a required folder (the
+`folders:` of `required-environment` in `buildkit_master.yaml`, e.g. `Workspace root symlink doesn't exist` for
+`$HOME/tac`), followed by `(<path> is a link to <target>, ... cannot be followed ...)`.
+
+**Why:** the folder is a link, and the link cannot be followed: its target is gone, or (on Windows) the link itself is
+one Windows cannot read. A junction made by Git Bash (MSYS) can hold its target with forward slashes or without the
+`\??\` prefix; Windows, `cmd` and Dart do not follow it, while PowerShell's `Test-Path` and .NET's
+`Directory.Exists`, which look only at the link, say it is there.
+
+**Fix:** recreate the link with the command the message names:
+
+```text
+rmdir "C:\Users\<you>\tac" && mklink /J "C:\Users\<you>\tac" "C:\Code\...\tom_agent_container"   (Windows, cmd)
+ln -sfn <target> ~/tac                                                                 (macOS, Linux)
+```
+
+On Windows make links with `mklink /J`, `New-Item -ItemType SymbolicLink`, or in Git Bash with
+`MSYS=winsymlinks:nativestrict ln -s ...`; never with a plain Git Bash `ln -s`.
 
 ## `binary <tool> not found` for a nested command
 
