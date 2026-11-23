@@ -208,8 +208,9 @@ application's) is never upgraded this way: its failure is reported as it is.
 
 ### Skipping unchanged projects
 
-`:compiler`, `:versioner` and `:runner` (with `--command=build`, the default) skip a project whose inputs did not
-change since the step last succeeded there:
+`:compiler`, `:versioner`, `:runner` (with `--command=build`, the default) and the code generators buildkit runs as
+nested tools — `:d4rtgen`, `:reflectiongenerator`, `:reflector` — skip a project whose inputs did not change since
+the step last succeeded there:
 
 ```text
 $ buildkit :compiler
@@ -222,8 +223,8 @@ The summary counts such a project as skipped. **The inputs** of a step in a proj
   tree, or in a folder git ignores, every file except those in `.dart_tool/`, `build/` and hidden folders;
 - `pubspec.lock` and `pubspec_overrides.yaml`, also when they are gitignored (a library's lock is);
 - the files of every path dependency the lock names;
-- the step's configuration: its options on the command line, the workspace's `buildkit_master.yaml`, and for
-  `:compiler` the platform it runs on and `TOM_BINARY_PATH`;
+- the step's configuration: its options on the command line, the workspace's `buildkit_master.yaml`, for
+  `:compiler` the platform it runs on, and for a generator what its binary answers to `--version`;
 - the buildkit version and the Dart SDK version (`dart --version`).
 
 The hash of these is recorded per step in `<project>/.dart_tool/buildkit/steps.json` right after a successful run,
@@ -231,7 +232,13 @@ so the files the step wrote itself count as unchanged on the next run. A failed 
 `.dart_tool` makes every step run again. A step that changes a file an earlier step read makes the earlier step run
 once more on the next run: in the `build` pipeline, `:versioner` writes `version.versioner.dart` after `:runner` has
 run, so the second `buildkit build` runs `:runner` again (and `:versioner` skips), and from the third on both skip
-while nothing changes.
+while nothing changes. `:versioner` and the generators are the exception: they are recorded once more with the
+project as the run leaves it, so a generator that rewrites files after `:versioner` does not make the next run stamp
+a new build number.
+
+A generator is tracked in a project with its section in `buildkit.yaml` (`d4rtgen:`, `tom_reflection_generator:`,
+`tom_reflector:`; for `:reflectiongenerator` also a `build.yaml`); elsewhere it runs as before and decides itself.
+A skipped generator is not started at all.
 
 - `--force` (`-f`) runs the step in every project anyway and records the new state. It is also `:cleanup`'s flag;
   given anywhere on the command line it applies to all of them.
@@ -240,7 +247,8 @@ while nothing changes.
   e.g. under `TOM_BINARY_PATH`) are kept with the step's entry, and each gets a record beside it,
   `<binary>.buildkit.json`: the project (its path from the workspace root), the buildkit version, the step's
   fingerprint, the time, and the binary's size and sha256. The record is committed with the binary (in the binaries
-  layer it says which build wrote it). A project whose inputs did not change is compiled again when one of its
+  layer it says which build wrote it). Under `TOM_BINARY_PATH` a binary is kept relative to it, so the entry names
+  it where the binaries are on this host. A project whose inputs did not change is compiled again when one of its
   binaries is missing, has no record, is recorded by another build (another fingerprint: other inputs, another
   project, another machine), or was replaced after its record was written:
 
@@ -251,6 +259,44 @@ while nothing changes.
 
   A binary written inside the project is one of its inputs already and gets no record.
 - Every other command runs in every project each time.
+
+### Skipping what another host built (fingerprint records)
+
+A workspace that takes its tools from the binaries layer names it in `buildkit_master.yaml`:
+
+```yaml
+required-environment:
+  binaryPath: $TOM_BINARY_PATH
+```
+
+There every step's entry is also written to the binaries layer, one file per project:
+`$TOM_BINARY_PATH/.buildkit/steps/<project>.json` for `:versioner` and the generators (what they write is code
+committed with the project, the same on every platform), and
+`$TOM_BINARY_PATH/<platform>/.buildkit/steps/<project>.json` for `:compiler`, which builds the host platform's
+binaries (`<project>` the project's path from the workspace root, or from `-R`; `<platform>` the host's, e.g.
+`darwin-arm64`). `tom_push_binaries` commits these records with the binaries.
+Another host — or another clone — that pulled the code (`tom_pull_code`) and the binaries (`tom_pull_binaries`)
+computes the same fingerprint for a project whose inputs are the same, finds it there and skips the step:
+
+```text
+$ ./build_binaries.sh
+  tom_build_kit: :versioner up to date (fingerprint) (inputs as recorded in .../tom/.buildkit/steps; --force runs it)
+  tom_build_kit: :compiler up to date (fingerprint) (inputs as recorded in .../darwin-arm64/.buildkit/steps; --force runs it)
+```
+
+So a second `build_binaries` over unchanged code compiles nothing, runs no generator and writes no new build number;
+a project whose inputs changed (its files, its lock, a path dependency, the step's options, the buildkit or Dart SDK
+version, a generator's version) runs as on the first host. The project's own `steps.json` is filled from the record
+and stays the fast path. A record holds no path of the host that wrote it: the fingerprint hashes paths relative to the
+project, and a binary is kept relative to `TOM_BINARY_PATH`; a skipped `:compiler` still checks that each binary is
+there and is the one its `<binary>.buildkit.json` describes.
+
+So a host of another platform skips `:versioner` and the generators too, and compiles its own binaries. The
+fingerprint covers the project's `pubspec.lock`, which a library does not commit: a host whose lock resolved other
+package versions runs the step. Without `TOM_BINARY_PATH` (or in a
+workspace whose `buildkit_master.yaml` names no `binaryPath`), and for a project in a scratch folder (`.dart_tool/`,
+`ztmp/`: a test's fixture), only the project's own `.dart_tool/buildkit/steps.json` is used. `--force` runs the step
+anyway and records the new state in both places; a failed run removes only the project's own entry.
 
 ### Build cache
 

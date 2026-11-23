@@ -128,14 +128,28 @@ class CompilerExecutor extends CommandExecutor with DeclaresStepInputs {
       _hasCompilerConfig(context.path) &&
       !_skipsCompileWithBuildkit(context.path);
 
-  /// Its options, the workspace's compiler sections (buildkit_master.yaml),
-  /// the platform it compiles on and where binaries go (`TOM_BINARY_PATH`).
+  /// Its options, the workspace's compiler sections (buildkit_master.yaml)
+  /// and the platform it compiles on. Where binaries go is no part of it (it
+  /// differs from host to host): they are recorded relative to
+  /// [outputsRoot], so a record names them where they are now.
   @override
   String stepConfiguration(CommandContext context, CliArgs args) =>
       '${optionsText(_getCmdOpts(args))}\n'
       'platform ${PlatformUtils.getCurrentPlatform()}\n'
-      'TOM_BINARY_PATH ${Platform.environment['TOM_BINARY_PATH'] ?? ''}\n'
       '${masterConfiguration(context.path)}';
+
+  /// It builds the host's binaries.
+  @override
+  bool get platformSpecific => true;
+
+  /// `TOM_BINARY_PATH`, where the binaries go.
+  @override
+  String? outputsRoot(CommandContext context) {
+    final binaries = Platform.environment['TOM_BINARY_PATH'];
+    return binaries == null || binaries.isEmpty
+        ? null
+        : p.normalize(p.absolute(binaries));
+  }
 
   /// Its `--list` mode lists the projects and changes nothing.
   @override

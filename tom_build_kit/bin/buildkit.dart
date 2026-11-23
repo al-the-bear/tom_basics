@@ -21,6 +21,8 @@ Future<void> _runCli(List<String> args) async {
   final runner = ToolRunner(
     tool: buildkitTool,
     executors: createBuildkitExecutors(),
+    // The wired generators skip a project whose inputs did not change.
+    wiredExecutorWrapper: wrapWiredGenerator,
     verbose: true,
   );
 

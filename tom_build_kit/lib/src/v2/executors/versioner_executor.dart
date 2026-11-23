@@ -142,6 +142,11 @@ class VersionerExecutor extends CommandExecutor with DeclaresStepInputs {
   bool tracksInputs(CommandContext context, CliArgs args) =>
       hasTomBuildConfig(context.path, 'versioner');
 
+  /// A new build is stamped when the project's inputs changed, not when a
+  /// later step of the run (a generator) rewrote files after the stamp.
+  @override
+  bool get recordsFinalState => true;
+
   /// Its options and the workspace's versioner defaults (in
   /// buildkit_master.yaml); the project's own entry is one of its files.
   @override

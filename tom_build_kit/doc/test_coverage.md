@@ -566,6 +566,19 @@ Unit tests for argument parsing and command shorthand resolution.
 | BK-OUT-1 | Output paths of compile commands | ✅ | `test/output_records_test.dart`: `-o`, `--output=`, a quoted path; `mkdir`, `cp` and `echo` name none. |
 | BK-OUT-2 | The record and the check | ✅ | A written record holds format, version, project, buildkit, fingerprint, time, size; the check names another fingerprint, a replaced binary, an unreadable or missing record and a missing binary. |
 
+### Skipping what another host built
+
+**Test file:** `test/binary_fingerprint_test.dart` (runs `bin/buildkit.dart` on a fixture workspace under `.dart_tool`, a git repository of its own whose `buildkit_master.yaml` names the binaries layer; a second clone of it stands for another host, and the binaries folder is moved before it builds; a fake `d4rtgen` first on the PATH stands for the generator)
+
+| ID | Feature | Status | How to Test |
+|----|---------|--------|-------------|
+| BK-FP-1 | Another clone skips | ✅ | `:versioner :d4rtgen :compiler` in the first clone writes the shared records (`:compiler`'s per platform, with the binary relative to `TOM_BINARY_PATH`; the others for every platform); the second clone compiles nothing, runs no generator, keeps the version file and reports each step `up to date (fingerprint)`; its next run skips by its own `steps.json`. |
+| BK-FP-2 | A changed input rebuilds | ✅ | A changed source in the second clone: a new build number, the generator and the compile run; the next run skips `:versioner` (recorded with the project as the run left it). |
+| BK-FP-3 | `--force` | ✅ | Runs every step although the shared records match. |
+| BK-FP-4 | Without `TOM_BINARY_PATH` | ✅ | Nothing is written to the binaries layer; the second clone runs, and its next run skips by its own record. |
+| BK-FP-5 | Outputs relative to their folder | ✅ | An output under the root is kept relative and found there again; one outside stays absolute; a project's label from `-R`. |
+| BK-FP-6 | Which workspaces share | ✅ | Only a workspace whose `buildkit_master.yaml` names `required-environment: binaryPath:`; never a project under `.dart_tool` or `ztmp`; a platform's step in `<platform>/.buildkit/steps`, another in `.buildkit/steps`. |
+
 ### Build cache
 
 **Test file:** `test/compile_cache_test.dart` (unit tests on a temporary cache folder; BK-CACHE-6 runs `bin/buildkit.dart` on a fixture project under `.dart_tool` with `TOM_BUILDKIT_CACHE_DIR` set, compiling with `dart compile kernel`)

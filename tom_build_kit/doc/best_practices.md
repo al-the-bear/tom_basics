@@ -138,8 +138,10 @@ buildkit :pubget :versioner
 
 - `:pubget`, `:pubgetall`, `:pubupdate` and `:pubupdateall` run their projects at once (`--jobs <n>`, default the CPU
   count up to 8). `--jobs 1` when you need the output in order.
-- `:compiler`, `:versioner` and `:runner` skip a project whose inputs did not change since the step last succeeded
-  there ("up to date"). `--force` runs them anyway — after deleting a binary, or to write a new build number on purpose.
+- `:compiler`, `:versioner`, `:runner` and the generators (`:d4rtgen`, `:reflectiongenerator`, `:reflector`) skip a
+  project whose inputs did not change since the step last succeeded there ("up to date") — or on another host whose
+  build records came with the binaries ("up to date (fingerprint)"). `--force` runs them anyway — after deleting a
+  binary, or to write a new build number on purpose.
 - `:compiler` copies a binary from its build cache (`~/.tom/cache/buildkit/`) when the same inputs were compiled for
   the same target before. `--no-cache` compiles.
 - The full `build` pipeline is dominated by build_runner's code generation; the second and later runs skip the

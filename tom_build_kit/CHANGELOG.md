@@ -1,3 +1,35 @@
+## 1.39.0
+
+### Added — skipping what another host built (fingerprint records in the binaries layer)
+
+- In a workspace whose `buildkit_master.yaml` names the binaries layer
+  (`required-environment: binaryPath: $TOM_BINARY_PATH`), every step's
+  recorded state is also written to `$TOM_BINARY_PATH/.buildkit/steps/`
+  (`:versioner`, the generators: the same for every platform) or
+  `$TOM_BINARY_PATH/<platform>/.buildkit/steps/` (`:compiler`), one
+  `<project>.json` each, which `tom_push_binaries` commits with the binaries. Another host or clone that
+  pulled the code and the binaries skips a step whose inputs are the same
+  (`up to date (fingerprint)`): a second `build_binaries` over unchanged code
+  compiles nothing, runs no generator and writes no new build number. The
+  project's own `.dart_tool/buildkit/steps.json` stays the fast path. Without
+  `TOM_BINARY_PATH`, and for a project under `.dart_tool` or `ztmp`, only
+  `steps.json` is used.
+- The generators buildkit runs as nested tools (`:d4rtgen`,
+  `:reflectiongenerator`, `:reflector`) are incremental steps: a project with
+  the generator's section (for `:reflectiongenerator` also a `build.yaml`)
+  whose inputs did not change is skipped without starting the generator. The
+  generator's `--version` is part of its configuration. Takes tom_build_base
+  2.47.0 (`ToolRunner(wiredExecutorWrapper:)`).
+- `:versioner` and the generators are recorded once more with the project as
+  the run leaves it: a generator that rewrites files after `:versioner` no
+  longer makes the next run stamp a new build number.
+
+### Changed
+
+- `:compiler`'s fingerprint no longer holds `TOM_BINARY_PATH` (a host's
+  path); its binaries are kept relative to it instead, so a record names
+  them where the binaries are on the host that reads it.
+
 ## 1.38.0
 
 ### Fixed — `-w` runs the sub-workspaces with this buildkit; owned clones are left out

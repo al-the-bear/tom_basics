@@ -166,9 +166,12 @@ or pass `--allow-empty` when matching nothing is expected (a script over optiona
 **What you see:** `<project>: :compiler up to date (inputs unchanged; --force runs it)`; the summary counts the project
 as skipped.
 
-**Why:** `:compiler`, `:versioner` and `:runner` skip a project whose files, lock, path dependencies and step
-configuration did not change since the step last succeeded there (recorded in `.dart_tool/buildkit/steps.json`).
-What the step wrote outside the project — a binary someone deleted — is not one of its inputs.
+**Why:** `:compiler`, `:versioner`, `:runner` and the generators (`:d4rtgen`, `:reflectiongenerator`, `:reflector`)
+skip a project whose files, lock, path dependencies and step configuration did not change since the step last
+succeeded there (recorded in `.dart_tool/buildkit/steps.json`). `up to date (fingerprint)` says the step succeeded
+with these inputs on another host or in another clone: its record is in the binaries layer,
+`$TOM_BINARY_PATH/.buildkit/steps/` (`:compiler`: `$TOM_BINARY_PATH/<platform>/.buildkit/steps/`;
+buildkit_user_guide.md, "Skipping what another host built").
 
 **Fix:**
 

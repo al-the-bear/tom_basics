@@ -23,3 +23,4 @@ export 'src/pubupdate_command.dart';
 // V2 API
 export 'src/v2/buildkit_tool.dart';
 export 'src/v2/buildkit_executors.dart';
+export 'src/v2/incremental/generator_steps.dart' show wrapWiredGenerator;
