@@ -1,3 +1,11 @@
+## 2.47.2
+
+### Fixed
+
+- The recreate command 2.47.1 prints for an unfollowable required folder
+  names the link with backslashes on Windows: `$HOME/tac` expands to a mixed
+  path, and `cmd`'s `rmdir` / `mklink` take a `/` for an option.
+
 ## 2.47.1
 
 ### Fixed — a required folder that is a link which cannot be followed

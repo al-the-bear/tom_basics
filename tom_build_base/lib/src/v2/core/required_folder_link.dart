@@ -33,17 +33,20 @@ String? requiredFolderLinkNote(
   } on FileSystemException {
     return '$path is a link whose target cannot be read; recreate it';
   }
+  // On Windows both with backslashes: `cmd` takes a `/` for an option, and
+  // `$HOME/tac` expands to a mixed path.
+  final shown = win ? path.replaceAll('/', r'\') : path;
   if (win) {
     target = target.replaceAll('/', r'\');
     if (target.startsWith(r'\??\')) target = target.substring(4);
   }
   final recreate = win
-      ? 'rmdir "$path" && mklink /J "$path" "$target"'
-      : 'ln -sfn "$target" "$path"';
+      ? 'rmdir "$shown" && mklink /J "$shown" "$target"'
+      : 'ln -sfn "$target" "$shown"';
   final targetThere = Directory(target).existsSync();
   return targetThere
-      ? '$path is a link to $target, which exists, but the link cannot be '
+      ? '$shown is a link to $target, which exists, but the link cannot be '
             'followed; recreate it: $recreate'
-      : '$path is a link to $target, which cannot be followed: the target is '
+      : '$shown is a link to $target, which cannot be followed: the target is '
             'not there (create it, or point the link elsewhere: $recreate)';
 }

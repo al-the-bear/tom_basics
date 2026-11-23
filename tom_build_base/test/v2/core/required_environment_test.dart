@@ -272,18 +272,20 @@ required-environment:
 
   test('BB-ENV-10: requiredFolderLinkNote names only a link: nothing for a '
       'folder or a path that is not there, the target for a link; on Windows '
-      'with backslashes [2026-11-23]', () {
+      'with backslashes, the link too [2026-11-23]', () {
     final folder = Directory(p.join(workspace.path, 'real'))..createSync();
     expect(requiredFolderLinkNote(folder.path), isNull);
     expect(requiredFolderLinkNote(p.join(workspace.path, 'nothing')), isNull);
     final link = p.join(workspace.path, 'dangling');
     Link(link).createSync(p.join(workspace.path, 'nowhere'));
     expect(requiredFolderLinkNote(link), contains('nowhere'));
+    // On Windows both paths with backslashes: cmd takes `/` for an option.
+    final winLink = link.replaceAll('/', r'\');
     expect(
       requiredFolderLinkNote(link, windows: true, readTarget: (_) => 'C:/x/y'),
       allOf(
-        contains(r'is a link to C:\x\y'),
-        contains(r'mklink /J "' + link + r'" "C:\x\y"'),
+        contains('$winLink is a link to C:\\x\\y'),
+        contains('rmdir "$winLink" && mklink /J "$winLink" "C:\\x\\y"'),
       ),
     );
     expect(
@@ -292,7 +294,7 @@ required-environment:
         windows: true,
         readTarget: (_) => r'\??\C:\x\y',
       ),
-      contains(r'mklink /J "' + link + r'" "C:\x\y"'),
+      contains('mklink /J "$winLink" "C:\\x\\y"'),
     );
   });
 
