@@ -17,9 +17,8 @@ environment:
 
 dependencies:
   # The insert-marker engine (InsertMarkerParser/Processor) lives here; it
-  # transitively brings tom_doc_scanner. Both are analyzer-free path deps.
-  tom_doc_specs:
-    path: ../../ai_build/tom_doc_specs
+  # transitively brings tom_doc_scanner. Both are analyzer-free.
+  tom_doc_specs: ^0.4.0
 
 dev_dependencies:
   lints: ^6.0.0
