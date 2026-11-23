@@ -17,6 +17,7 @@ import 'nested_tool_executor.dart';
 import 'builtin_help_topics.dart';
 import 'binary_helpers.dart';
 import 'pipeline_config.dart';
+import 'required_folder_link.dart';
 import 'pipeline_executor.dart';
 import 'tool_definition.dart';
 import 'tool_origin.dart';
@@ -2860,12 +2861,16 @@ Options:
         final err = item['error']?.toString();
         final warn = item['warning']?.toString();
         final name = item['name']?.toString() ?? pathRaw;
+        // A link that cannot be followed is there, but unusable: say so.
+        final linkNote = requiredFolderLinkNote(path);
+        String withNote(String text) =>
+            linkNote == null ? text : '$text ($linkNote)';
         if (err != null && err.isNotEmpty) {
-          errors.add(err);
+          errors.add(withNote(err));
         } else if (warn != null && warn.isNotEmpty) {
-          warnings.add(warn);
+          warnings.add(withNote(warn));
         } else {
-          warnings.add('$name folder missing: $path');
+          warnings.add(withNote('$name folder missing: $path'));
         }
       }
     }

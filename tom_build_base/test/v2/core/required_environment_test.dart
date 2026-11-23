@@ -20,7 +20,14 @@ import 'package:tom_build_base/tom_build_base_v2.dart';
 /// A command that declares `needsEnvironment: false` (a listing that runs no
 /// tool) is not checked when the run holds only such commands.
 ///
-/// Test IDs: BB-ENV-1..8.
+/// A required folder that is a link whose target cannot be followed is
+/// reported as such, with the target and how to recreate the link, not as
+/// missing: on Windows a junction whose reparse data Windows cannot follow
+/// (an MSYS-made one with forward slashes or without the `\??\` prefix in
+/// its substitute name, found on legiondary01) reads as not there, while
+/// .NET's `Directory.Exists`, which does not follow it, says it is.
+///
+/// Test IDs: BB-ENV-1..9.
 
 const _tool = ToolDefinition(
   name: 'envtool',
@@ -227,6 +234,66 @@ required-environment:
     expect((await runWith([':look', ':work'])).success, isFalse);
     expect(work.runs, 0);
     expect('$out', contains('Installation requirements not met'));
+  });
+
+  test('BB-ENV-9: a required folder that is a link whose target cannot be '
+      'followed is named as such, with its target and how to recreate it '
+      '[2026-11-23]', () async {
+    final target = p.join(workspace.path, 'gone');
+    final link = p.join(workspace.path, 'tac');
+    Link(link).createSync(target);
+    master('''
+required-environment:
+  folders:
+    - name: Workspace root
+      path: $link
+      error: Workspace root symlink doesn't exist
+''');
+    final result = await run([':work']);
+    expect(result.success, isFalse);
+    final text = out.toString();
+    expect(text, contains("Workspace root symlink doesn't exist"));
+    expect(text, contains('$link is a link to $target'));
+    expect(text, contains('cannot be followed'));
+    expect(
+      text,
+      contains(
+        Platform.isWindows
+            ? 'mklink /J "$link" "$target"'
+            : 'ln -sfn "$target" "$link"',
+      ),
+    );
+
+    // Once the target is there, the link passes.
+    Directory(target).createSync();
+    out.clear();
+    expect((await run([':work'])).success, isTrue, reason: out.toString());
+  });
+
+  test('BB-ENV-10: requiredFolderLinkNote names only a link: nothing for a '
+      'folder or a path that is not there, the target for a link; on Windows '
+      'with backslashes [2026-11-23]', () {
+    final folder = Directory(p.join(workspace.path, 'real'))..createSync();
+    expect(requiredFolderLinkNote(folder.path), isNull);
+    expect(requiredFolderLinkNote(p.join(workspace.path, 'nothing')), isNull);
+    final link = p.join(workspace.path, 'dangling');
+    Link(link).createSync(p.join(workspace.path, 'nowhere'));
+    expect(requiredFolderLinkNote(link), contains('nowhere'));
+    expect(
+      requiredFolderLinkNote(link, windows: true, readTarget: (_) => 'C:/x/y'),
+      allOf(
+        contains(r'is a link to C:\x\y'),
+        contains(r'mklink /J "' + link + r'" "C:\x\y"'),
+      ),
+    );
+    expect(
+      requiredFolderLinkNote(
+        link,
+        windows: true,
+        readTarget: (_) => r'\??\C:\x\y',
+      ),
+      contains(r'mklink /J "' + link + r'" "C:\x\y"'),
+    );
   });
 
   test('BB-ENV-6: doctor reports errors and warnings and how to fix them '

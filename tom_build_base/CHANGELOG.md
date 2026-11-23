@@ -1,3 +1,16 @@
+## 2.47.1
+
+### Fixed — a required folder that is a link which cannot be followed
+
+- `required-environment: folders:` reported a folder that is a link whose
+  target cannot be followed as missing. The message now names the link, its
+  target, whether the target is there, and the command that recreates it
+  (`mklink /J` on Windows, `ln -sfn` elsewhere): `requiredFolderLinkNote`.
+  On Windows a junction made by Git Bash (MSYS) with forward slashes, or
+  without `\??\`, in its substitute name is such a link: Windows and Dart do
+  not follow it, while .NET's `Directory.Exists` says it is there
+  (legiondary01's `~\tac`).
+
 ## 2.47.0
 
 ### Added — a wrapper around the wired nested commands

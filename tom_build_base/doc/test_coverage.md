@@ -71,7 +71,7 @@ This document lists all testable features across `tom_build_base` and tracks tes
 | 56 | [Repeated Options](#56-repeated-options) | 8 | 8✅ | `v2/core/repeated_option_test.dart` | [→](#56-repeated-options) |
 | 57 | [Console Styling](#57-console-styling) | 6 | 6✅ | `v2/core/console_styling_test.dart` | [→](#57-console-styling) |
 | 58 | [Help Command](#58-help-command) | 8 | 8✅ | `v2/core/help_command_test.dart` | [→](#58-help-command) |
-| 59 | [Required Environment](#59-required-environment) | 8 | 8✅ | `v2/core/required_environment_test.dart` | [→](#59-required-environment) |
+| 59 | [Required Environment](#59-required-environment) | 10 | 10✅ | `v2/core/required_environment_test.dart` | [→](#59-required-environment) |
 | 60 | [Tool Sections Without Defines](#60-tool-sections-without-defines) | 4 | 4✅ | `tool_section_test.dart` | [→](#60-tool-sections-without-defines) |
 | 61 | [Master File Edits](#61-master-file-edits) | 3 | 3✅ | `v2/core/master_yaml_edit_test.dart` | [→](#61-master-file-edits) |
 | 62 | [Stand-Alone Commands](#62-stand-alone-commands) | 16 | 16✅ | `v2/core/strict_command_options_test.dart` | [→](#62-stand-alone-commands) |
@@ -79,7 +79,7 @@ This document lists all testable features across `tom_build_base` and tracks tes
 | 64 | [Repository Selection by Path](#64-repository-selection-by-path) | 6 | 6✅ | `v2/traversal/module_filter_path_test.dart` | [→](#64-repository-selection-by-path) |
 | 65 | [Workspace Recursion](#65-workspace-recursion) | 9 | 9✅ | `v2/core/workspace_recursion_test.dart` | [→](#65-workspace-recursion) |
 | 66 | [Wired Executor Wrapper](#66-wired-executor-wrapper) | 2 | 2✅ | `v2/core/wired_executor_wrapper_test.dart` | [→](#66-wired-executor-wrapper) |
-| — | **Total** | **1193** | **1193✅** | | | | |
+| — | **Total** | **1195** | **1195✅** | | | | |
 
 > Every row links to a section, and the counts are measured from
 > `dart test --reporter json -j 1` rather than maintained by hand. Run it
@@ -1247,6 +1247,8 @@ it visited.
 | BB-ENV-6 | `doctor` | ✅ | Reports the errors and how to fix them, runs no command. |
 | BB-ENV-7 | Working directory gone | ✅ | The checks find no workspace and do not throw. |
 | BB-ENV-8 | Commands that need no environment | ✅ | A run of `needsEnvironment: false` commands only (by name or alias) is not stopped; next to a command that needs it, the run is checked. |
+| BB-ENV-9 | A required folder that is an unfollowable link | ✅ | A `folders:` entry whose path is a link to a missing target fails with its error plus the link, its target and the command that recreates it (`ln -sfn`, on Windows `mklink /J`); once the target is there, the run passes. |
+| BB-ENV-10 | `requiredFolderLinkNote` | ✅ | Nothing for a folder or a missing path; for a link its target; on Windows the target with backslashes and without `\??\`, and `mklink /J`. |
 
 ---
 
