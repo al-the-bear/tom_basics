@@ -24,7 +24,7 @@
 /// both test frameworks can share is here and framework-free: the order of
 /// the loop, the deadline, the step, the shape of the report. The binding to
 /// a `WidgetTester` — `tester.pumpUntil(finder)` — is
-/// `package:tom_reusable_ui/testing.dart`'s.
+/// `package:tom_ui_testing/tom_ui_testing.dart`'s.
 library;
 
 /// How long a wait may take before it reports. Two minutes: above a slow

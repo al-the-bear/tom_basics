@@ -3,7 +3,7 @@
 /// Driven with fakes for the three primitives — time passing, a frame, the
 /// screen — so what is pinned is the loop itself: the order of asking,
 /// waiting and pumping, the deadline, and the report. The `WidgetTester`
-/// binding is proven where it lives, in `tom_reusable_ui`'s suite.
+/// binding is proven where it lives, in `tom_ui_testing`'s suite.
 library;
 
 import 'package:test/test.dart';
