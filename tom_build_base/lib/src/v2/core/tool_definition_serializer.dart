@@ -257,12 +257,15 @@ class ToolDefinitionSerializer {
     }
 
     final hidden = map['hidden'] == true;
+    final requiredNatures = _parseNaturesList(map['required_natures']);
 
     return CommandDefinition(
       name: name,
       description: description,
       aliases: aliases,
       options: options,
+      worksWithNatures: _parseNaturesList(map['works_with_natures']),
+      requiredNatures: requiredNatures.isEmpty ? null : requiredNatures,
       hidden: hidden,
     );
   }

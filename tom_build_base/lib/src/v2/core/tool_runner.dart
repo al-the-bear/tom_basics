@@ -395,11 +395,19 @@ class ToolRunner {
       String workingDirectory,
     )?
     workspaceRunner,
+    this.wiredExecutorWrapper,
   }) : output = _resolveOutput(output),
        errorOutput = errorOutput ?? _resolveOutput(output),
        _workspaceRunner = workspaceRunner ?? runSelf {
     _effectiveTool = tool;
   }
+
+  /// Wraps each executor nested-tool wiring adds (a command another binary
+  /// carries out, `:d4rtgen`), by its host command name: a tool puts its own
+  /// behaviour around them, e.g. skipping a project whose inputs did not
+  /// change. Null leaves them as wired.
+  final CommandExecutor Function(String commandName, CommandExecutor executor)?
+  wiredExecutorWrapper;
 
   /// How `-w` runs the tool in a nested workspace: this program again
   /// ([runSelf]: the same binary or script, nothing looked up on the PATH)
@@ -1860,14 +1868,28 @@ class ToolRunner {
       // We can't reassign final executors, so we update _effectiveTool
       // and use a separate lookup. Actually, executors is final const.
       // Instead, we store the wired executors and check both maps.
-      _wiredExecutors.addAll(result.executors);
+      final wrap = wiredExecutorWrapper;
+      _wiredOriginals.addAll(result.executors);
+      _wiredExecutors.addAll(
+        wrap == null
+            ? result.executors
+            : {
+                for (final MapEntry(:key, :value) in result.executors.entries)
+                  key: wrap(key, value),
+              },
+      );
     }
 
     return true;
   }
 
-  /// Wired executors merged during lazy wiring.
+  /// Wired executors merged during lazy wiring ([wiredExecutorWrapper]
+  /// applied).
   final Map<String, CommandExecutor> _wiredExecutors = {};
+
+  /// The wired executors as wiring made them (a command's help comes from
+  /// its nested tool).
+  final Map<String, CommandExecutor> _wiredOriginals = {};
 
   /// `--list` was given: every executor is replaced by a [_ListingExecutor],
   /// so the run names what it would do and does none of it.
@@ -1967,7 +1989,7 @@ class ToolRunner {
     if (name.isEmpty) return null;
     final cmd = _effectiveTool.findCommand(name);
     if (cmd != null) {
-      final wiredExec = _wiredExecutors[cmd.name];
+      final wiredExec = _wiredOriginals[cmd.name];
       if (wiredExec is NestedToolExecutor) {
         return _delegateNestedHelp(wiredExec, cliArgs);
       }

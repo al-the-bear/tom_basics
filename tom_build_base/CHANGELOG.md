@@ -1,3 +1,18 @@
+## 2.47.0
+
+### Added — a wrapper around the wired nested commands
+
+- `ToolRunner(wiredExecutorWrapper:)`: called once per wired nested command
+  with its name and `NestedToolExecutor`; the executor it returns runs
+  instead (buildkit puts its input fingerprint around the generators).
+  `help <command>` still shows the nested tool's own help.
+
+### Fixed — a wired multi-command tool runs in its projects
+
+- Reading a nested tool's `--dump-definitions` dropped each command's
+  `works_with_natures` and `required_natures`, so a host command wired to a
+  multi-command tool matched no project and ran nowhere. They are read now.
+
 ## 2.46.0
 
 ### Fixed — `-w` and delegated pipelines start the program itself

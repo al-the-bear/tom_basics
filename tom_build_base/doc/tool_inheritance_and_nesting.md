@@ -781,6 +781,29 @@ class NestedToolExecutor extends CommandExecutor {
 }
 ```
 
+#### Wrapping the wired executors
+
+A host that adds behaviour around every nested command (buildkit skips a
+generator whose inputs have not changed) passes `wiredExecutorWrapper` to
+`ToolRunner`. It is called once per wired command with the host command name
+and its `NestedToolExecutor`, and the executor it returns runs instead:
+
+```dart
+final runner = ToolRunner(
+  tool: buildkitTool,
+  executors: executors,
+  wiredExecutorWrapper: (command, executor) =>
+      SkipWhenUnchanged(command, executor),
+);
+```
+
+`help <command>` still reaches the nested tool's own help: the runner keeps
+the unwrapped executor for it.
+
+A multi-command nested tool's `--dump-definitions` carries each command's
+`works_with_natures` and `required_natures`; the host command takes them, so
+it runs in the same projects the nested command does.
+
 ---
 
 ### 9. Binary Pre-Check

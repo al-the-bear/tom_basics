@@ -1,5 +1,6 @@
 import 'package:test/test.dart';
 import 'package:tom_build_base/tom_build_base_v2.dart';
+import 'package:yaml/yaml.dart';
 
 void main() {
   group('ToolDefinitionSerializer', () {
@@ -367,6 +368,30 @@ void main() {
 
         final tool = ToolDefinitionSerializer.fromYamlMap(map);
         expect(tool.commands.first.hidden, isTrue);
+      });
+
+      test('BB-SER-18: a command keeps the natures it works with and '
+          'requires, so a wired multi-command tool finds its projects '
+          '[2026-11-23]', () {
+        const original = ToolDefinition(
+          name: 'gen',
+          description: 'Generator',
+          mode: ToolMode.multiCommand,
+          commands: [
+            CommandDefinition(
+              name: 'dart',
+              description: 'Dart',
+              worksWithNatures: {DartProjectFolder},
+              requiredNatures: {BuildkitFolder},
+            ),
+          ],
+        );
+        final restored = ToolDefinitionSerializer.fromYamlMap(
+          loadYaml(ToolDefinitionSerializer.toYaml(original)) as Map,
+        );
+        final cmd = restored.findCommand('dart')!;
+        expect(cmd.worksWithNatures, {DartProjectFolder});
+        expect(cmd.requiredNatures, {BuildkitFolder});
       });
     });
 

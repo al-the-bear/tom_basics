@@ -23,7 +23,7 @@ This document lists all testable features across `tom_build_base` and tracks tes
 | 8 | [Help Generator](#8-help-generator) | 33 | 33✅ | `v2/core/help_generator_test.dart` | [→](#8-help-generator) |
 | 9 | [OptionDefinition](#9-optiondefinition) | 28 | 28✅ | `v2/core/option_definition_test.dart` | [→](#9-optiondefinition) |
 | 10 | [ToolDefinition](#10-tooldefinition) | 55 | 55✅ | `v2/core/tool_definition_test.dart` | [→](#10-tooldefinition) |
-| 11 | [ToolDefinition Serializer](#11-tooldefinition-serializer) | 19 | 19✅ | `v2/core/tool_definition_serializer_test.dart` | [→](#11-tooldefinition-serializer) |
+| 11 | [ToolDefinition Serializer](#11-tooldefinition-serializer) | 20 | 20✅ | `v2/core/tool_definition_serializer_test.dart` | [→](#11-tooldefinition-serializer) |
 | 12 | [Wiring Loader](#12-wiring-loader) | 17 | 17✅ | `v2/core/wiring_loader_test.dart` | [→](#12-wiring-loader) |
 | 13 | [Pipeline Config](#13-pipeline-config) | 11 | 11✅ | `v2/core/pipeline_config_test.dart` | [→](#13-pipeline-config) |
 | 14 | [Pipeline Executor](#14-pipeline-executor) | 11 | 11✅ | `v2/core/pipeline_executor_test.dart` | [→](#14-pipeline-executor) |
@@ -78,7 +78,8 @@ This document lists all testable features across `tom_build_base` and tracks tes
 | 63 | [Git Mode Skips](#63-git-mode-skips) | 12 | 12✅ | `v2/traversal/git_repo_finder_skip_test.dart` | [→](#63-git-mode-skips) |
 | 64 | [Repository Selection by Path](#64-repository-selection-by-path) | 6 | 6✅ | `v2/traversal/module_filter_path_test.dart` | [→](#64-repository-selection-by-path) |
 | 65 | [Workspace Recursion](#65-workspace-recursion) | 9 | 9✅ | `v2/core/workspace_recursion_test.dart` | [→](#65-workspace-recursion) |
-| — | **Total** | **1190** | **1190✅** | | | | |
+| 66 | [Wired Executor Wrapper](#66-wired-executor-wrapper) | 2 | 2✅ | `v2/core/wired_executor_wrapper_test.dart` | [→](#66-wired-executor-wrapper) |
+| — | **Total** | **1193** | **1193✅** | | | | |
 
 > Every row links to a section, and the counts are measured from
 > `dart test --reporter json -j 1` rather than maintained by hand. Run it
@@ -359,6 +360,7 @@ Tests for the recently implemented features: modes, persistent defines, runtime 
 | BB_SER_6–10 | Minimal/full fields | ✅ | Handles sparse and complete definitions. |
 | BB_SER_11–15 | Commands and options | ✅ | Nested structures serialize correctly. |
 | BB_SER_16–19 | Nested tools, aliases, edge cases | ✅ | Complex definition scenarios. |
+| BB-SER-18 | Command natures | ✅ | A command's `works_with_natures` and `required_natures` survive the dump, so a wired multi-command tool runs in its projects. |
 
 ---
 
@@ -1344,6 +1346,17 @@ independent clones).
 | BB-WSR-7 | A skip file wins | ✅ | A nested workspace holding `tom_skip.yaml` (a clone a tool owns) is left out, also with `-w`, with the skip message. |
 | BB-WSR-8 | `selfInvocation` | ✅ | A compiled binary runs itself; under the Dart VM, the VM with its flags and the script; a script that is no file gives null. |
 | BB-WSR-9 | The program starts itself | ✅ | A tool run under the Dart VM with an empty PATH runs its nested workspaces with itself: every project is visited. |
+
+---
+
+## 66. Wired Executor Wrapper
+
+**Test file:** `test/v2/core/wired_executor_wrapper_test.dart`
+
+| ID | Feature | Status | Description |
+|----|---------|--------|-------------|
+| BB-WEW-1 | The wrapper runs | ✅ | `ToolRunner(wiredExecutorWrapper:)` is put around a wired nested command; the executor it returns runs in each project and runs the nested tool. |
+| BB-WEW-2 | Without a wrapper | ✅ | The wired nested command runs as wired. |
 
 ---
 
