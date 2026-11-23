@@ -85,6 +85,7 @@ Target project: `_build` (main repo, has `variable-prefix: tomTools` in its `bui
 | VSDK-1 | No Dart SDK version: the project fails | ✅ | `test/versioner_dart_sdk_test.dart`: the executor with an SDK reader returning null, real and dry run. Verify failure naming `dart --version` and PATH, no file written. |
 | VSDK-2 | An existing stamp stays | ✅ | Stamp with SDK `3.13.7`, run again without an SDK. Verify failure and the file unchanged. |
 | VSDK-3 | buildkit with a PATH that has no `dart` | ✅ | Run `bin/buildkit.dart :versioner` with `PATH=/usr/bin:/bin`. Verify a non-zero exit, `dart --version failed (is dart on PATH?)`, no "version file generated", no file. |
+| DSV-1..3 | `dart --version` on Windows | ✅ | `test/dart_sdk_version_test.dart`: with a fake process runner, the version is read in a shell on Windows (a `dart.bat` on the PATH) and without one elsewhere; from stdout, stderr or a bare number; a `dart` that cannot start gives no version. |
 | VBN-4 | `tom_build_state.json` is neither read nor written | ✅ | A state file with 500 beside no stamp. Verify build 1 and the state file unchanged; without it, none is created. |
 | VBN-5 | `nextBuildNumber` reads the configured output file | ✅ | Another path with build 9 gives 10; a missing path gives 1. |
 

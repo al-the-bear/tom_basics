@@ -399,7 +399,7 @@ class TomToolsVersionInfo {
 
 **Build number:** The build number lives in the generated file itself: each run reads `buildNumber` from the existing versioner file and writes it plus one (1 when there is no file yet). The file is committed, so the count travels with the repository; when two machines built, the fleet's merge driver keeps the side with the higher number. A versioner file that holds no `buildNumber` is an error naming the file: restore it from git, or delete it to start again at build 1. No other file keeps build state.
 
-**Dart SDK version:** `dartSdkVersion` is what `dart --version` reports on the machine that runs the versioner. When it cannot be read (no `dart` on PATH, as on a host reached over SSH without the SDK in its PATH), the run fails for that project with `cannot read the Dart SDK version: dart --version failed (is dart on PATH?)` and writes nothing; an existing versioner file stays as it was.
+**Dart SDK version:** `dartSdkVersion` is what `dart --version` reports on the machine that runs the versioner. When it cannot be read (no `dart` on PATH, as on a host reached over SSH without the SDK in its PATH), the run fails for that project with `cannot read the Dart SDK version: dart --version failed (is dart on PATH?)` and writes nothing; an existing versioner file stays as it was. On Windows `dart` is run in a shell, so Flutter's `flutter\bin\dart.bat` on the PATH is enough; no `dart.exe` needs to be on it.
 
 **Config merge example:**
 

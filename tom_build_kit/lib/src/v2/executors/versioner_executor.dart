@@ -418,7 +418,8 @@ class VersionerExecutor extends CommandExecutor with DeclaresStepInputs {
   /// reason.
   void _formatInPlace(String path) {
     try {
-      Process.runSync('dart', ['format', path]);
+      // In a shell on Windows: Flutter's `dart` there is a `dart.bat`.
+      Process.runSync('dart', ['format', path], runInShell: Platform.isWindows);
     } on ProcessException {
       // No `dart` on PATH — the emitted template is already formatted.
     }

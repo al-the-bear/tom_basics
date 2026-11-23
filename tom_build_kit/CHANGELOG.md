@@ -1,3 +1,14 @@
+## 1.39.1
+
+### Fixed — `:versioner` on Windows with Flutter's `dart.bat`
+
+- `dart --version` (the Dart SDK version the versioner stamps and the
+  fingerprints hold) and the versioner's `dart format` now run in a shell on
+  Windows. The `dart` Flutter puts on the PATH there is `flutter\bin\dart.bat`,
+  which a compiled buildkit.exe could not start without one, so every
+  `:versioner` failed with "cannot read the Dart SDK version" and the build
+  cache keys read `dart ?`.
+
 ## 1.39.0
 
 ### Added — skipping what another host built (fingerprint records in the binaries layer)
