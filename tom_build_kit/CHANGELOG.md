@@ -1,3 +1,15 @@
+## Unreleased
+
+- Takes tom_build_base 2.48.0: git mode runs on the combined repository set
+  of `repos.yaml` (the root, the code, fork, ai and binaries entries and the
+  quest clones; upstreams, unmanaged and tool-owned clones skipped; build skip
+  markers no longer hide a repository; `-w` runs each repository once), and
+  project mode skips every `kind: upstream` path.
+- `wssetup` reads `repos.yaml` with tom_build_base's reader (`ReposManifest`,
+  `findReposRoot`, `reposHostId`), its own copy removed; `--manifest` reaches
+  it also where the parser takes it as the git traversal option
+  (BK-WSS-11).
+
 ## 1.39.1
 
 ### Fixed — `:versioner` on Windows with Flutter's `dart.bat`

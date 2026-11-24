@@ -7,7 +7,6 @@ import 'dart:io';
 import 'package:tom_build_base/tom_build_base_v2.dart';
 
 import '../version.versioner.dart';
-import 'repos_manifest.dart';
 import 'wssetup.dart';
 
 /// The options of `wssetup` and of `buildkit :wssetup`. Named so they do not
@@ -126,7 +125,9 @@ class WssetupExecutor extends CommandExecutor {
           folder: o['folder'] as String?,
           host: o['host'] as String?,
           only: only,
-          manifest: o['manifest'] as String?,
+          // Where the parser put it: wssetup's own option, or the global
+          // --manifest of the git traversal options (tom_build_base 2.48).
+          manifest: o['manifest'] as String? ?? args.manifest,
           check: o['check'] == true,
           dryRun: args.dryRun,
           verbose: args.verbose,

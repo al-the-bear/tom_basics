@@ -13,7 +13,6 @@ import 'package:test/test.dart';
 import 'package:tom_build_base/tom_build_base_v2.dart';
 import 'package:tom_build_kit/src/v2/buildkit_executors.dart';
 import 'package:tom_build_kit/src/v2/buildkit_tool.dart';
-import 'package:tom_build_kit/src/wssetup/repos_manifest.dart';
 import 'package:tom_build_kit/src/wssetup/wssetup.dart';
 import 'package:tom_build_kit/src/wssetup/wssetup_tool.dart';
 
@@ -367,6 +366,54 @@ required-environment:
         output: StringBuffer(),
       ).run([':wssetup', '-n', '--host', 'h1', '--folder', 'ws']);
       expect(viaBuildkit.success, isTrue, reason: viaBuildkit.errorMessage);
+    } finally {
+      Directory.current = previous;
+    }
+  });
+
+  test('BK-WSS-11: --manifest reaches wssetup in both tools, also where the '
+      'git traversal options have their own --manifest [2026-11-24]', () async {
+    final tree = rootCheckout();
+    final kept = Directory(p.join(base.path, 'kept'))..createSync();
+    final manifest = File(p.join(kept.path, 'repos.yaml'))
+      ..writeAsStringSync(
+        File(p.join(tree, 'repos.yaml')).readAsStringSync().replaceFirst(
+          'kind: code, branch: main}',
+          'kind: code, branch: main} # kept',
+        ),
+      );
+    File(p.join(tree, 'repos.yaml')).deleteSync();
+    final previous = Directory.current;
+    Directory.current = tree;
+    try {
+      for (final args in [
+        ['-n', '--host', 'h1', '--manifest', manifest.path, '--only', 'ws'],
+        ['--manifest', manifest.path, '-n', '--host', 'h1', '--only', 'ws'],
+      ]) {
+        final out = StringBuffer();
+        final viaTool = await ToolRunner(
+          tool: wssetupTool,
+          executors: {'default': WssetupExecutor(out: out)},
+          output: StringBuffer(),
+        ).run(args);
+        expect(viaTool.success, isTrue, reason: '$args\n$out');
+        expect('$out', contains('would clone'), reason: '$args');
+      }
+      for (final args in [
+        [':wssetup', '-n', '--host', 'h1', '--manifest', manifest.path],
+        ['--manifest', manifest.path, ':wssetup', '-n', '--host', 'h1'],
+      ]) {
+        final viaBuildkit = await ToolRunner(
+          tool: buildkitTool,
+          executors: createBuildkitExecutors(),
+          output: StringBuffer(),
+        ).run(args);
+        expect(
+          viaBuildkit.success,
+          isTrue,
+          reason: '$args ${viaBuildkit.errorMessage}',
+        );
+      }
     } finally {
       Directory.current = previous;
     }

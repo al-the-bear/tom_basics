@@ -21,7 +21,14 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 
-import 'repos_manifest.dart';
+import 'package:tom_build_base/tom_build_base_v2.dart'
+    show
+        RepoEntry,
+        RepoKind,
+        ReposManifest,
+        ReposManifestException,
+        findReposRoot,
+        reposHostId;
 
 /// The first and last line of a parent's generated ignore block.
 const wssetupBlockBegin = '# >>> repos.yaml (generated, tom_repos) >>>';
@@ -151,7 +158,7 @@ Future<WssetupResult> runWssetup(WssetupRequest request) async {
   );
   final root = request.tree != null
       ? p.normalize(p.absolute(cwd, request.tree!))
-      : _findRoot(cwd) ??
+      : findReposRoot(cwd) ??
             (request.manifest != null
                 ? cwd
                 : throw WssetupUsageException(
@@ -169,7 +176,7 @@ Future<WssetupResult> runWssetup(WssetupRequest request) async {
   _gitEnv = request.gitEnvironment;
 
   final scope = _scope(request.folder, cwd, root, manifest);
-  final host = request.host ?? _hostId(root);
+  final host = request.host ?? reposHostId(root);
   final reduced = File(p.join(root, '.gitmodules')).existsSync();
   final items = <WssetupItem>[];
 
@@ -275,16 +282,6 @@ bool _isRepo(String dir) =>
     FileSystemEntity.typeSync(p.join(dir, '.git')) !=
     FileSystemEntityType.notFound;
 
-String? _findRoot(String start) {
-  var dir = start;
-  while (true) {
-    if (File(p.join(dir, 'repos.yaml')).existsSync()) return dir;
-    final parent = p.dirname(dir);
-    if (parent == dir) return null;
-    dir = parent;
-  }
-}
-
 /// The folder to set up: [folder] as given, else the deepest entry the
 /// working directory is in, else the working directory's path below the
 /// root ('' at the root: the whole tree).
@@ -308,21 +305,6 @@ String _scope(String? folder, String cwd, String root, ReposManifest manifest) {
 }
 
 /// This host's fleet id, as tom_repos finds it.
-String _hostId(String root) {
-  final env = Platform.environment['TOM_REPOS_HOST'];
-  if (env != null && env.isNotEmpty) return env;
-  final file = File(p.join(root, '.tom', 'machine_id'));
-  if (file.existsSync()) return file.readAsStringSync().trim();
-  final h = Platform.localHostname.split('.').first.toLowerCase();
-  if (h.contains('macbook') || h.contains('mbp')) return 'mbp';
-  if (h.startsWith('bomber')) return 'bomber';
-  if (h.startsWith('bigbeast') || h.startsWith('h2883454')) return 'bigbeast';
-  if (h.startsWith('legiondary01') || h.startsWith('legion')) {
-    return 'legiondary01';
-  }
-  return h;
-}
-
 /// The paths of every submodule declared in a `.gitmodules` of the tree.
 Future<Set<String>> _gitlinks(String root) async {
   final out = <String>{};
