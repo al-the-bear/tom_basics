@@ -78,3 +78,68 @@ split rule). Consolidating them into a single shared
 consumed) is tracked as quest todo **AE1** — see
 `_ai/quests/cli_tools/todos.cli_tools.todo.yaml`. Until then, this document is
 the authoritative contract that both implementations conform to.
+
+## Run reports and their messages
+
+A command that ends with one report (buildkit's `:ws-*` and `:skill-*`) builds it with `RunReport`
+(`lib/src/v2/report/run_report.dart`). It defines each of its messages once, as a `MessageDefinition`, and gets
+from it the text, the JSON, the command line to repeat and the help topic:
+
+```dart
+const conflict = MessageDefinition(
+  code: 'ws-conflict',              // the help topic: `buildkit help ws-conflict`
+  level: MessageLevel.error,        // refusal (exit 2), error (exit 1), warning, note
+  label: 'CONFLICT',
+  summary: 'The merge of origin/<branch> conflicts.',
+  description: 'Why it matters and what to do, at length.',
+  options: [
+    MessageOption('merge-branch', 'Push your commits to ws-push/<host>/<stamp>.\nMerge the branch later.'),
+    MessageOption('skip', 'Leave the repository out of this run (exit 1).'),
+    // run options and value options:
+    // MessageOption('ignore-active', '...', repoList: false),
+    // MessageOption('skip-file', '...', repoList: false, valueName: 'glob'),
+  ],
+);
+final catalog = MessageCatalog([conflict, ...]);   // catalog.helpTopics -> ToolDefinition(helpTopics:)
+```
+
+A run raises messages and records what changed:
+
+```dart
+final report = RunReport(tool: 'buildkit', command: ':ws-push', root: root, host: host,
+    started: DateTime.now(), given: args, names: RepoNames(paths))
+  ..lookedAt.addAll(paths)
+  ..add(conflict.raise(repository: 'tom_ai/core', branch: 'main',
+      finding: 'Your 2 local commits and 3 incoming commits change the same lines:',
+      evidence: [ReportEvidence('files', ['lib/src/config.dart  both changed'])],
+      state: 'Nothing was pushed for this repository.'))
+  ..changed(ReportDone('_ai', ['committed 2 files', 'pushed'], files: [...]));
+print(json ? report.renderJson() : report.renderText(verbose: verbose));
+exitCode = report.exitCode;
+```
+
+- **The text** (`renderText`): the header (command, root, host, start time, options given), the summary line with
+  the exit code, then *Refused*, *Needs you*, *Warnings* and *Notes*, one block per message, *Done* (one line per
+  changed repository with its first 20 files; the others counted; `verbose` lists them and every file), and the
+  footer explaining the exit code and naming `<tool> help <topic>`. A block: the label, the repository and branch,
+  the code on the right; the finding, the evidence (indented, or after a label such as `Local:`), the state, every
+  option with its one or two explanation lines (a raised message may replace an option's explanation, to name the
+  branch or the stamp, or offer only some options), and `Repeat with:` the command line of the first option.
+- **The JSON** (`toJson` / `renderJson`): `command`, `root`, `host`, `started`, `options`, `exitCode`, `summary`
+  (`repositories`, `changed`, `needsYou`, `warnings`, `refused`), `messages` (each `code`, `level`, `repository`
+  `{name, path}`, `branch`, `finding`, `evidence` by kind, `state`, `options` `[{option, explanation,
+  commandLine}]`), `done`, `unchanged`.
+- **The command line to repeat** (`RepeatCommand`): the run's arguments as typed plus the chosen option; a
+  repository-list option already given takes the repository added to its list (`--skip a` + `b` gives
+  `--skip a,b`); arguments are shell-quoted where needed.
+- **Repository names** (`RepoNames`): the last path segment when it is unique in the set, else the path from the
+  root (`.` for the root). `resolve('core,basics')` throws `RepoNameException` for an unknown name (naming the
+  repositories whose path contains it) or an ambiguous one (naming each repository it could mean): a usage error,
+  exit 2. `RepoSelections.parse(args, options, names)` gives the repositories each option names; an option acts
+  only on those (`applies(option, path)`).
+- **Exit codes** (`ReportExitCode`): 0 nothing needs you, 1 something needs you, 2 refused before anything changed
+  (and usage errors), 3 a decision about uncommitted work is open (`MessageDefinition(exitCode: 3)`). A report ends
+  with the highest of its messages'.
+- **Help topics** (`MessageCatalog.helpTopics`): one per code, built from the definition (label, summary,
+  description, where it is listed and its exit code, every option with its syntax and explanation), so the text,
+  the options and the topic come from one place.

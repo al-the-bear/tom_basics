@@ -80,7 +80,8 @@ This document lists all testable features across `tom_build_base` and tracks tes
 | 65 | [Workspace Recursion](#65-workspace-recursion) | 9 | 9✅ | `v2/core/workspace_recursion_test.dart` | [→](#65-workspace-recursion) |
 | 66 | [Wired Executor Wrapper](#66-wired-executor-wrapper) | 2 | 2✅ | `v2/core/wired_executor_wrapper_test.dart` | [→](#66-wired-executor-wrapper) |
 | 67 | [Repository Set](#67-repository-set) | 11 | 11✅ | `v2/repos/repo_set_test.dart` | [→](#67-repository-set) |
-| — | **Total** | **1206** | **1206✅** | | | | |
+| 68 | [Run Report](#68-run-report) | 9 | 9✅ | `v2/report/run_report_test.dart` | [→](#68-run-report) |
+| — | **Total** | **1215** | **1215✅** | | | | |
 
 > Every row links to a section, and the counts are measured from
 > `dart test --reporter json -j 1` rather than maintained by hand. Run it
@@ -1380,6 +1381,24 @@ independent clones).
 | BB-RSET-9 | `--manifest` | ✅ | A repos.yaml kept elsewhere is used; the parser takes the option before or after the command, and into `GitTraversalInfo`. |
 | BB-RSET-10 | An invalid manifest | ✅ | Every problem is named. |
 | BB-RSET-11 | A tree of its own | ✅ | A run started inside an unmanaged clone or a scratch folder below the root gets no set from the root's repos.yaml. |
+
+---
+
+## 68. Run Report
+
+**Test file:** `test/v2/report/run_report_test.dart`
+
+| ID | Feature | Status | Description |
+|----|---------|--------|-------------|
+| BB-REP-1 | A message block | ✅ | Label, repository, branch, the code at the right edge; the finding, the evidence (indented and labelled), the state, every option aligned with its explanation lines (a case's own explanation), `Repeat with:` the first option's command line. |
+| BB-REP-2 | The layout | ✅ | Header, summary line with the exit code, Needs you / Warnings / Notes / Done in that order, no Refused without a refusal; the footer; a refusal with a run option. |
+| BB-REP-3 | Done and `-v` | ✅ | The first 20 files per repository, the rest counted; `-v` lists every file and the repositories with nothing to do. |
+| BB-REP-4 | The command line to repeat | ✅ | One repository; a second merged into an option given (`--skip a,b`, also `--skip=a,b`); a value option; a run option given once; shell quoting; an ambiguous segment named by its path. |
+| BB-REP-5 | Repository names | ✅ | Unique last segment, else the path; `.` for the root; unknown (with the paths containing it) and ambiguous (with each candidate) names are `RepoNameException`. |
+| BB-REP-6 | Selections | ✅ | An option acts only on the repositories it names; repeated and `=` forms; an ambiguous name refused. |
+| BB-REP-7 | Exit codes | ✅ | 0 (warnings, notes), 1 (an error), 2 (a refusal), 3 (a decision), the highest wins. |
+| BB-REP-8 | JSON | ✅ | The header, summary, every message with code, level, repository, branch, evidence by kind, state and options `{option, explanation, commandLine}`, done, unchanged. |
+| BB-REP-9 | Help topics | ✅ | One per code from the catalog, with summary, section, exit code and each option's syntax; duplicate and unknown codes refused; `<tool> help <code>` through ToolRunner. |
 
 ---
 

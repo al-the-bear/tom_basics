@@ -82,6 +82,7 @@ export 'src/v2/core/pipeline_executor.dart';
 export 'src/v2/core/mklink_executor.dart';
 export 'src/v2/core/binary_helpers.dart';
 export 'src/v2/core/required_folder_link.dart';
+export 'src/v2/report/run_report.dart';
 export 'src/v2/repos/repo_set.dart';
 export 'src/v2/repos/repos_manifest.dart';
 export 'src/v2/core/tool_origin.dart';

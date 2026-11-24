@@ -1,3 +1,22 @@
+## 2.49.0
+
+### Added — run reports and their messages
+
+- `RunReport` (`lib/src/v2/report/run_report.dart`): the one report a run
+  ends with (buildkit's coming `:ws-*` and `:skill-*` commands). A command
+  defines its messages once (`MessageDefinition`: code, level, label,
+  summary, description, options with their explanations; `MessageCatalog`)
+  and gets from them the text report (header, summary with the exit code,
+  Refused, Needs you, Warnings, Done, footer; `-v`), the JSON, the command
+  line to repeat for every option (`RepeatCommand`), and one help topic per
+  code (`MessageCatalog.helpTopics`).
+- `RepoNames` / `RepoSelections`: a repository is named by its last path
+  segment when unique, else by its path; an unknown or ambiguous name is a
+  `RepoNameException` naming the candidates; an option acts only on the
+  repositories it names.
+- `ReportExitCode`: 0, 1 (needs you), 2 (refused, usage), 3 (a decision
+  about uncommitted work).
+
 ## 2.48.0
 
 ### Added — git mode on the combined repository set of `repos.yaml`
