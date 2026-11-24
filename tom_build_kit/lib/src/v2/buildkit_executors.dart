@@ -287,6 +287,7 @@ Map<String, CommandExecutor> createBuildkitExecutors() {
     'git': GitPassthroughExecutor(),
     'gitstatus': GitStatusExecutor(),
     'gitcommit': GitCommitExecutor(),
+    'gitpush': GitPushExecutor(),
     'gitpull': GitPullExecutor(),
     'gitbranch': GitBranchExecutor(),
     'gittag': GitTagExecutor(),

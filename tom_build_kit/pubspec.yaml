@@ -21,7 +21,7 @@ dependencies:
   crypto: ^3.0.6
   # :docsite renders each package README to HTML.
   markdown: ^7.3.1
-  tom_build_base: ^2.48.0
+  tom_build_base: ^2.49.0
 
 dev_dependencies:
   build_runner: ^2.4.15

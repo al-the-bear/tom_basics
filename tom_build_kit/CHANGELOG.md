@@ -1,5 +1,25 @@
 ## Unreleased
 
+- Takes tom_build_base 2.49.0 (run reports and their messages).
+- `:gitcommit` stages only what you name: `--only <paths>` stages and
+  commits exactly those paths (untracked ones included, a path of another
+  repository ignored there), `--all` stages every change first; without
+  either nothing is staged and what is already staged is committed (it ran
+  `git add -A` whenever there were changes). `--push` pushes as `:gitpush`
+  and fails the repository when the push does.
+- New `:gitpush` (`gp`): pushes the checked-out branch of each repository
+  to origin, setting its upstream when it has none; never forced; a rejected
+  push is reported, a detached HEAD is not pushed.
+- `:gitstatus` reports each repository against `origin/<expected branch>`
+  (the entry's branch from repos.yaml, a quest clone's from
+  `_ai/quests.yaml`, else the branch checked out): ahead, behind, changes,
+  a detached HEAD, off its branch, and the upstreams of the set with their
+  pin (off its pin). Findings are messages with a help topic each
+  (`git-detached`, `git-off-branch`, `git-off-pin`,
+  `git-no-remote-branch`). `--json`: one document (the run report and
+  `repositories`). It walks the repositories itself, so `-w` covers the
+  nested workspaces in one run; eight repositories are fetched at a time.
+
 - Takes tom_build_base 2.48.0: git mode runs on the combined repository set
   of `repos.yaml` (the root, the code, fork, ai and binaries entries and the
   quest clones; upstreams, unmanaged and tool-owned clones skipped; build skip

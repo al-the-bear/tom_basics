@@ -7,6 +7,7 @@ import 'package:tom_build_base/tom_build_base_v2.dart';
 
 import '../version.versioner.dart';
 import '../wssetup/wssetup_tool.dart' show wssetupOptions;
+import 'executors/git_executors.dart' show gitstatusMessages;
 
 // =============================================================================
 // Common Options
@@ -351,6 +352,15 @@ const gitstatusOptions = <OptionDefinition>[
     description: 'Skip fetching from remote before status',
   ),
   OptionDefinition.flag(name: 'stash', description: 'Show stash information'),
+  OptionDefinition.flag(
+    name: 'json',
+    description:
+        'One JSON document on stdout: the run report (command, root, host, '
+        'exitCode, summary, messages with code, level, repository) and '
+        'repositories: [{path, name, kind, class, branch, detached, head, '
+        'expectedBranch, expectedFrom, offBranch, compareWith, ahead, '
+        'behind, changes, pin?, offPin?}]',
+  ),
 ];
 
 /// Options for gitcommit command.
@@ -361,12 +371,25 @@ const gitcommitOptions = <OptionDefinition>[
     description: 'Commit message',
     valueName: 'msg',
   ),
-  OptionDefinition.flag(name: 'amend', description: 'Amend last commit'),
-  OptionDefinition.flag(name: 'push', description: 'Push after commit'),
+  OptionDefinition.multi(
+    name: 'only',
+    description:
+        'Stage and commit exactly these paths (repeatable or comma-separated; '
+        'relative to each repository, or absolute); a path of another '
+        'repository is ignored there',
+    valueName: 'path',
+  ),
   OptionDefinition.flag(
     name: 'all',
     abbr: 'a',
-    description: 'Stage all modified files',
+    description:
+        'Stage every change first (git add -A). Without --only or --all '
+        'nothing is staged: what is already staged is committed',
+  ),
+  OptionDefinition.flag(name: 'amend', description: 'Amend last commit'),
+  OptionDefinition.flag(
+    name: 'push',
+    description: 'Push the checked-out branch after the commit (never forced)',
   ),
 ];
 
@@ -1080,7 +1103,9 @@ const gitCommand = CommandDefinition(
 
 const gitstatusCommand = CommandDefinition(
   name: 'gitstatus',
-  description: 'Show git status for all repositories',
+  description:
+      'Show each repository: branch, changes, ahead / behind '
+      'origin/<expected branch>, detached, off branch, upstream off its pin',
   aliases: ['gs'],
   options: gitstatusOptions,
   worksWithNatures: {GitFolder},
@@ -1088,14 +1113,21 @@ const gitstatusCommand = CommandDefinition(
   supportsGitTraversal: true,
   requiresGitTraversal: true,
   defaultGitOrder: GitTraversalOrder.innerFirst,
-  requiresTraversal: true,
+  // It walks the repository set itself, so --json is the only output.
+  requiresTraversal: false,
   canRunStandalone: true,
-  examples: ['buildkit :gitstatus', 'gitstatus --short'],
+  examples: [
+    'buildkit :gitstatus',
+    'buildkit -w :gitstatus --no-fetch',
+    'buildkit -w :gitstatus --json',
+  ],
 );
 
 const gitcommitCommand = CommandDefinition(
   name: 'gitcommit',
-  description: 'Commit and push all repositories',
+  description:
+      'Commit in each repository: --only <paths> or --all (nothing is '
+      'staged without them)',
   aliases: ['gc'],
   options: gitcommitOptions,
   worksWithNatures: {GitFolder},
@@ -1105,7 +1137,27 @@ const gitcommitCommand = CommandDefinition(
   defaultGitOrder: GitTraversalOrder.innerFirst, // Fixed: inner first
   requiresTraversal: true,
   canRunStandalone: true,
-  examples: ['buildkit :gitcommit -m "feat: add feature"', 'gitcommit --amend'],
+  examples: [
+    'buildkit :gitcommit -m "feat: add feature" --only lib/a.dart,test/a_test.dart',
+    'buildkit :gitcommit -m "Evening state" --all --push',
+    'gitcommit --amend',
+  ],
+);
+
+const gitpushCommand = CommandDefinition(
+  name: 'gitpush',
+  description:
+      'Push the checked-out branch of each repository to origin (never '
+      'forced; a rejected push is reported)',
+  aliases: ['gp'],
+  worksWithNatures: {GitFolder},
+  supportsProjectTraversal: false,
+  supportsGitTraversal: true,
+  requiresGitTraversal: true,
+  defaultGitOrder: GitTraversalOrder.innerFirst,
+  requiresTraversal: true,
+  canRunStandalone: true,
+  examples: ['buildkit :gitpush', 'buildkit -w :gitpush'],
 );
 
 const gitpullCommand = CommandDefinition(
@@ -1389,7 +1441,7 @@ final buildkitTool = ToolDefinition(
   versionString: 'BuildKit ${BuildkitVersionInfo.versionLong}',
   mode: ToolMode.multiCommand,
   wiringFile: ToolDefinition.kAutoWiringFile,
-  helpTopics: defaultHelpTopics,
+  helpTopics: [...defaultHelpTopics, ...gitstatusMessages.helpTopics],
   features: const NavigationFeatures(
     projectTraversal: true,
     gitTraversal: true,
@@ -1448,6 +1500,7 @@ final buildkitTool = ToolDefinition(
     gitCommand,
     gitstatusCommand,
     gitcommitCommand,
+    gitpushCommand,
     gitpullCommand,
     gitbranchCommand,
     gittagCommand,

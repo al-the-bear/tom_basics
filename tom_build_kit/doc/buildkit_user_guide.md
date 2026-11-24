@@ -611,8 +611,9 @@ Built-in commands run the respective tools directly via their Dart implementatio
 | `pubupdateall` | Shortcut for `pubupdate --scan . --recursive` |
 | `publisher` | Show publishing status for all projects |
 | `git` | Run git commands across all workspace repositories |
-| `gitstatus` | Show git status for all repositories |
-| `gitcommit` | Commit and push all repositories |
+| `gitstatus` | Show each repository: branch, changes, ahead / behind `origin/<expected branch>`, detached, off branch, upstream off its pin (`--json`) |
+| `gitcommit` | Commit `--only <paths>` or `--all` in each repository (nothing is staged without them) |
+| `gitpush` | Push the checked-out branch of each repository (never forced) |
 | `gitpull` | Pull latest from all repositories |
 | `gitbranch` | Branch management across repositories |
 | `gittag` | Tag management across repositories |
@@ -1673,11 +1674,18 @@ Git tools require explicit traversal order for correct operation with nested rep
 | Pull/Sync | Outer-first (`-o`) | Pull parent first to get correct submodule refs |
 | Checkout/Reset | Outer-first (`-o`) | Parent determines which submodule versions to use |
 
-**Which repositories git mode walks:** every git repository below the execution root, a submodule checkout (`.git`
-file) and an independent clone (`.git` folder) alike, ordered by depth and, at the same depth, by path. It skips what
-project mode skips: hidden folders, `ztmp/`, `_ai/`, `build/` and the other always-skipped folders, folders with
-`tom_skip.yaml` or `buildkit_skip.yaml` (a repository holding one included) and nested workspaces (a
-`buildkit_master.yaml` below the root). `--no-skip` walks into the marked folders and nested workspaces.
+**Which repositories git mode walks:** with a `repos.yaml` at or above the start folder (or `--manifest <file>`),
+the combined repository set: the root, the code, fork, ai and binaries entries of `repos.yaml` and the quest clones;
+upstreams, unmanaged and tool-owned clones and unknown clones are left out, build skip markers hide nothing, and `-w`
+runs each repository once (a test fixture workspace inside a repository is never run). Each repository carries the
+branch it should be on (`%{repo.branch}`), which `:gitstatus` compares with. The classes and rules: tom_build_base's
+`doc/cli_tools_navigation.md`, "The repository set from `repos.yaml`".
+
+Without a `repos.yaml`: every git repository below the execution root, a submodule checkout (`.git` file) and an
+independent clone (`.git` folder) alike, ordered by depth and, at the same depth, by path. It skips what project mode
+skips: hidden folders, `ztmp/`, `_ai/`, `build/` and the other always-skipped folders, folders with `tom_skip.yaml` or
+`buildkit_skip.yaml` (a repository holding one included) and nested workspaces (a `buildkit_master.yaml` below the
+root). `--no-skip` walks into the marked folders and nested workspaces.
 
 `--modules` / `--skip-modules` select repositories by a repository ID (the folder holding its `tom_repository.yaml`)
 or by a name or path matched as whole path segments: `-m basics` selects `tom_ai/basics`, `-m tom_basics` does not
@@ -1689,8 +1697,9 @@ These standalone tools provide purpose-built git operations:
 
 | Tool | Default Mode | Purpose |
 |------|-------------|--------|
-| `gitstatus` | Either | Show status for all repositories |
-| `gitcommit` | Inner-first | Commit and push all repositories |
+| `gitstatus` | Either | Show each repository against its expected branch |
+| `gitcommit` | Inner-first | Commit `--only <paths>` or `--all` |
+| `gitpush` | Inner-first | Push the checked-out branch (never forced) |
 | `gitpull` | Outer-first | Pull latest from all repositories |
 | `gitbranch` | Inner-first | Branch management |
 | `gittag` | Inner-first | Tag management |
@@ -1708,9 +1717,8 @@ These standalone tools provide purpose-built git operations:
 gitstatus
 buildkit :gitstatus -i
 
-# Commit all repos
-gitcommit -m "Fix bug"
-buildkit :gitcommit -i -m "Fix bug"
+# Commit every change in all repos, then push
+buildkit :gitcommit -i -m "Fix bug" --all --push
 
 # Pull all repos
 gitpull

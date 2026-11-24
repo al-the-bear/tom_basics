@@ -49,6 +49,7 @@ This package extends the shared infrastructure from **tom_build_base**:
   - [Git Traversal Modes](#git-traversal-modes)
   - [GitStatus](#gitstatus)
   - [GitCommit](#gitcommit)
+  - [GitPush](#gitpush)
   - [GitPull](#gitpull)
   - [GitBranch](#gitbranch)
   - [GitTag](#gittag)
@@ -78,7 +79,8 @@ Tom Build Kit provides seven CLI tools and additional built-in commands that sha
 | **DCli** | via `:dcli` | Execute Dart scripts/expressions via dcli with path resolution |
 | **Execute** | via `:execute` | Run shell commands in each folder with placeholder substitution |
 | **GitStatus** | `gitstatus` | Show git status for all repositories |
-| **GitCommit** | `gitcommit` | Commit and push all repositories |
+| **GitCommit** | `gitcommit` | Commit `--only <paths>` or `--all` in each repository |
+| **GitPush** | `gitpush` | Push the checked-out branch of each repository (never forced) |
 | **GitPull** | `gitpull` | Pull latest from all repositories |
 | **GitBranch** | `gitbranch` | Branch management across repositories |
 | **GitTag** | `gittag` | Tag management across repositories |
@@ -1333,76 +1335,115 @@ Git tools require explicit traversal order to ensure correct operation with nest
 
 ### GitStatus
 
-Shows git status for all repositories in the workspace, including uncommitted changes, unpushed commits, current branch, and stash count.
+Shows every repository of the run: its branch, its uncommitted changes, how far it is ahead of and behind
+`origin/<expected branch>`, and what is off: a detached `HEAD`, a repository on another branch than expected, an
+upstream off its pin.
+
+**The expected branch** comes from `repos.yaml` when the run is over the combined repository set (the entry's
+`branch:`, `root.branch`; a quest clone's from `_ai/quests.yaml`), else it is the branch checked out. The
+upstreams of the set (`kind: upstream`) are listed with their pin and never fetched.
+
+`:gitstatus` walks the repositories itself (the same git traversal as the other git commands, `-m` /
+`--skip-modules` and the order included), so with `--json` the JSON is the only output on stdout. `-w` covers the
+nested workspaces in the same run.
 
 **Usage:**
 
 ```bash
-gitstatus -i [options]        # Inner-first (standalone auto-injects -i)
-gitstatus -o [options]        # Outer-first
-buildkit :gitstatus -i        # Via buildkit
+buildkit :gitstatus [options]
+buildkit -w :gitstatus        # the nested workspaces too
 ```
 
 **Tool-specific options:**
 
 | Flag | Short | Description |
 |------|-------|-------------|
-| `--details` | `-d` | Show file-level details (changed files, unpushed commits) |
-| `--fetch` | — | Fetch from remote before checking status |
-| `--stash` | — | Include stash information |
+| `--details` | `-d` | List the changed files of each repository |
+| `--no-fetch` | — | Do not fetch `origin` first (the counts are then against the last fetch) |
+| `--stash` | — | Include the stash count |
+| `--json` | — | One JSON document: the run report and `repositories` (see below) |
+
+**Output:** one line per repository, e.g.
+`tom_ai/core: [main], 2 changed, 1 ahead, 3 behind of origin/main` or
+`xternal/tom_dcli: [feature], expected tom/10.4.7-no-ini, even with origin/tom/10.4.7-no-ini`, then one line per
+finding with its code:
+
+| Code | Finding | Help |
+|------|---------|------|
+| `git-detached` | a detached `HEAD` | `buildkit help git-detached` |
+| `git-off-branch` | on another branch than `repos.yaml` (or `_ai/quests.yaml`) expects | `buildkit help git-off-branch` |
+| `git-off-pin` | an upstream not at its pin | `buildkit help git-off-pin` |
+| `git-no-remote-branch` | no `origin/<expected branch>` to compare with | `buildkit help git-no-remote-branch` |
+
+The findings are warnings: the exit code is 0 unless a repository cannot be read.
+
+**`--json`:** the run report (`command`, `root`, `host`, `started`, `exitCode`, `summary`, `messages` with `code`,
+`level`, `repository`) and `repositories`, one per repository: `path`, `name`, `kind` (root, code, fork, ai,
+binaries, upstream), `class`, `branch`, `detached`, `head`, `expectedBranch`, `expectedFrom` (`repos.yaml`,
+`_ai/quests.yaml`, `checked out`), `offBranch`, `compareWith`, `ahead`, `behind`, `changes`, `stashes` (with
+`--stash`), and for an upstream `pin` and `offPin`.
 
 **Examples:**
 
 ```bash
-# Check all repos with default inner-first ordering
-gitstatus
-
-# Show detailed file changes
-gitstatus --details
-
-# Fetch and check status
-gitstatus --fetch
-
-# Via buildkit with outer-first ordering
-buildkit :gitstatus -o --details
+buildkit :gitstatus --details
+buildkit -w :gitstatus --no-fetch
+buildkit -w :gitstatus --json > status.json
 ```
 
 ---
 
 ### GitCommit
 
-Commits and pushes all repositories with pending changes. Uses inner-first traversal to ensure submodules are committed before their parent repositories.
+Commits in each repository what you name: `--only <paths>` stages and commits exactly those paths (an untracked
+one included; the other changes stay as they are, staged or not), `--all` stages every change first
+(`git add -A`). **Without `--only` or `--all` nothing is staged:** what is already staged is committed, and a
+repository with nothing staged is left alone. Inner-first, so nested repositories are committed before the
+repositories that hold them.
 
 **Usage:**
 
 ```bash
-gitcommit [options]           # Standalone (auto-injects -i)
-buildkit :gitcommit -i        # Via buildkit (requires -i)
+buildkit :gitcommit -i -m "<message>" --only <path>[,<path>...]
+buildkit :gitcommit -i -m "<message>" --all [--push]
 ```
 
 **Tool-specific options:**
 
 | Flag | Short | Description |
 |------|-------|-------------|
-| `--message <msg>` | `-m` | Commit message (required or prompts) |
-| `--push` | — | Push after committing (default: true) |
-| `--no-push` | — | Commit without pushing |
-| `--add-all` | `-a` | Stage all changes before commit |
+| `--message <msg>` | `-m` | Commit message (required, unless `--amend`) |
+| `--only <path>` | — | Stage and commit exactly these paths: repeatable or comma-separated, relative to each repository or absolute; a path of another repository is ignored there |
+| `--all` | `-a` | Stage every change first (`git add -A`) |
+| `--amend` | — | Amend the last commit (with `--only`: with those paths) |
+| `--push` | — | Push the checked-out branch afterwards, as `:gitpush` (never forced) |
 
 **Examples:**
 
 ```bash
-# Commit all repos with message
-gitcommit -m "Fix bug in parser"
+# Exactly two files, wherever they changed
+buildkit :gitcommit -i -m "Parser: the retry limit" --only lib/src/parser.dart,test/parser_test.dart
 
-# Commit and add all changes
-gitcommit -a -m "Update dependencies"
+# Everything, then push
+buildkit :gitcommit -i -m "Evening state" --all --push
 
-# Commit without pushing
-gitcommit --no-push -m "WIP changes"
+# What you staged yourself
+git add -p && buildkit :gitcommit -i -m "Part of it"
+```
 
-# Via buildkit
-buildkit :gitcommit -i -m "Release v1.0.0"
+---
+
+### GitPush
+
+Pushes the checked-out branch of each repository to `origin`, setting its upstream when it has none. It never
+forces: a push that `origin` rejects (it has commits the branch lacks) fails for that repository and says so;
+merge `origin/<branch>` and push again. A repository on a detached `HEAD` is not pushed.
+
+**Usage:**
+
+```bash
+buildkit :gitpush             # alias :gp; inner-first
+buildkit -w :gitpush          # the nested workspaces too
 ```
 
 ---

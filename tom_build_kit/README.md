@@ -300,8 +300,9 @@ are safe across nested repositories:
 
 | Command | Description | Traversal |
 | ------- | ----------- | --------- |
-| `:gitstatus` | Show status of all repositories | inner-first (default) |
-| `:gitcommit` | Commit and push all repos with same message | inner-first (fixed) |
+| `:gitstatus` | Each repository against its expected branch: changes, ahead / behind, detached, off branch, upstream off its pin (`--json`) | inner-first (default) |
+| `:gitcommit` | Commit `--only <paths>` or `--all` in each repository (nothing staged without them) | inner-first (fixed) |
+| `:gitpush` | Push the checked-out branch of each repository (never forced) | inner-first (fixed) |
 | `:gitpull` | Pull latest from all repositories | outer-first (fixed) |
 | `:gitsync` | Full sync: stash, fetch, merge, push | outer-first (fixed) |
 | `:gitbranch` | Manage branches across repos | inner-first (fixed) |

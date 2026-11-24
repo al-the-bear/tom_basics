@@ -34,7 +34,7 @@ This document lists all testable features across buildkit tools and tracks test 
 | 19 | [Help Footer](#19-help-footer) | 1 | 1✅ | `help_footer_test.dart` | [→](#19-help-footer) |
 | 20 | [Pub Get — Stale Git Refs](#20-pub-get--stale-git-refs) | 3 | 3✅ | `pubget_git_ref_test.dart` | [→](#20-pub-get--stale-git-refs) |
 | 21 | [Status — Git Mode](#21-status--git-mode) | 1 | 1✅ | `status_git_mode_test.dart` | [→](#21-status--git-mode) |
-| 21 | [wssetup — Tree Setup](#21-wssetup--tree-setup) | 10 | 10✅ | `wssetup_test.dart` | [→](#21-wssetup--tree-setup) |
+| 21 | [wssetup — Tree Setup](#21-wssetup--tree-setup) | 11 | 11✅ | `wssetup_test.dart` | [→](#21-wssetup--tree-setup) |
 | — | **Total** | **196** | **196✅** | | |
 
 ---
@@ -730,4 +730,19 @@ The integration suites run on the machine's workspace clone (tom_test_support `T
 | BK-WSS-8 | Usage errors | ✅ | No `repos.yaml` is a usage error; an invalid one names each problem. |
 | BK-WSS-9 | Block format | ✅ | `blockWritten` gives what `tom_repos --apply` writes (new, replaced, removed). |
 | BK-WSS-10 | Both entry points | ✅ | `wssetup` and `buildkit :wssetup` run the same; a failing `required-environment` does not stop it. |
+| BK-WSS-11 | `--manifest` | ✅ | Reaches wssetup in both tools, before or after the command, also where the git traversal options take it. |
+
+### Git commands on the repository set
+
+**Test file:** `test/git_commands_set_test.dart` (real repositories with bare remotes and a `repos.yaml` in a temporary folder; never the live workspace)
+
+| ID | Feature | Status | How to Test |
+|----|---------|--------|-------------|
+| BK-GSET-1 | `:gitcommit` stages nothing by itself | ✅ | Without `--only` / `--all` nothing is committed; what is already staged is. |
+| BK-GSET-2 | `--only` | ✅ | Exactly the named paths, an untracked one included, the rest left; a path of another repository is not this one's; absolute paths. |
+| BK-GSET-3 | `--all` | ✅ | Every change staged first; `--only` with `--all` refused. |
+| BK-GSET-4 | `:gitpush` | ✅ | Pushes the checked-out branch, says up to date, reports a rejected push without forcing (the remote unchanged), refuses a detached HEAD. |
+| BK-GSET-5 | `:gitstatus --json` | ✅ | Every repository of the set with branch, expected branch and where it comes from, ahead / behind `origin/<expected>`; detached, off branch and off pin as messages; exit 0. |
+| BK-GSET-6 | `:gitstatus` text; without repos.yaml | ✅ | One line per repository; without `repos.yaml` the branch checked out is the expected one. |
+| BK-GSET-7 | Help | ✅ | `:gitpush` (`gp`), `:gitcommit`'s `--only` / `--all`, `:gitstatus --json`, one topic per `:gitstatus` message. |
 
