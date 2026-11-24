@@ -1,5 +1,22 @@
 ## Unreleased
 
+- New `:skill-reconcile-code`, `:skill-status`, `:skill-dirty-scan`: the
+  per-host work of the fleet skills `tom_reconcile_code`, `tom_fleet_status`
+  (its probe) and `tom_dirty_work` (its scan), under their rules, for the
+  skills to run on each host and read. `:skill-reconcile-code`: an unknown
+  repository stops the run (`skill-unknown`, exit 1), unregistered merge
+  drivers too (`skill-driver`), uncommitted work stops a lone run
+  (`skill-decision`, exit 3; `--dirty=hold` holds it), then the code, fork
+  and upstream entries deepest first and the root: cloned when missing,
+  merged and pushed (a rejected push merged and retried once), forks
+  fast-forward only, upstreams at their pin, a repository whose files the
+  merge would overwrite held (`skill-held`); `--own-since <baseline>`
+  commits the run's own files. `:skill-status` prints with `--rows` exactly
+  what `status_probe.sh` prints (REPO, RUNBRANCH, OLDTREE, PROBED);
+  `:skill-dirty-scan --rows` exactly what `tom_dirty_work --scan` prints,
+  fingerprints included, and `--baseline <file>` what `tom_dirty_work
+  --baseline` writes. Every command `--json` (the run report plus its own
+  section; `buildkit help skill-json`), `-n`, `--help`.
 - New `:ws-repo-cleanup`: the surplus clones of the tree (on disk under the
   root, no entry of repos.yaml, not unmanaged, no quest or tool clone, never
   anything inside `_ai`). Report only by default: per clone its origin and

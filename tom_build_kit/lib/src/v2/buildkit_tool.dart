@@ -8,6 +8,7 @@ import 'package:tom_build_base/tom_build_base_v2.dart';
 import '../version.versioner.dart';
 import '../wssetup/wssetup_tool.dart' show wssetupOptions;
 import 'executors/git_executors.dart' show gitstatusMessages;
+import 'skill/skill_messages.dart' show skillAllMessages, skillJsonTopic;
 import 'ws/ws_messages.dart' show wsAllMessages;
 
 // =============================================================================
@@ -1505,6 +1506,163 @@ the named clones with their work, never deletes them. -n shows the plan.
   ],
 );
 
+/// Options for skill-reconcile-code (buildkit_ws_commands.md § 1.6).
+const skillreconcileOptions = <OptionDefinition>[
+  OptionDefinition.option(
+    name: 'dirty',
+    description:
+        'ask (default): stop with exit 3 when there is uncommitted work; hold: leave it where it is and go on',
+    valueName: 'ask|hold',
+  ),
+  OptionDefinition.option(
+    name: 'own-since',
+    description:
+        'Commit the files this run wrote after this baseline (buildkit :skill-dirty-scan --baseline <file>), nothing else',
+    valueName: 'file',
+  ),
+  OptionDefinition.flag(
+    name: 'json',
+    description: 'The report as one JSON document (buildkit help skill-json)',
+  ),
+];
+
+const skillreconcileCommand = CommandDefinition(
+  name: 'skill-reconcile-code',
+  description:
+      "This host's code repositories reconciled as tom_reconcile_code does: "
+      'merged with origin and pushed, never forced, uncommitted work never committed',
+  details: '''
+The per-host part of the skill tom_reconcile_code, under its rules. The tree:
+the repos.yaml at or above the folder you start in (or --manifest).
+
+1. A repository under the root that is no entry of repos.yaml stops the run
+   before anything is touched (skill-unknown, exit 1).
+2. The merge drivers generated-newer-wins and pubspec-lock-last-changed must
+   be registered (skill-driver, exit 1; .claude/skills/install.sh registers
+   them).
+3. Uncommitted work is never committed. A lone run with any stops first
+   (skill-decision, exit 3: the skill writes the decision document);
+   --dirty=hold, a fleet run (TOM_FR_FLEET_RUN=1) and -n go on.
+4. The code, fork and upstream entries of this host, deepest first, then the
+   root: a missing one is cloned (an upstream at its pin); code is put on its
+   branch, fetched, origin/<branch> merged and pushed (a rejected push is
+   merged and retried once); a fork is only fast-forwarded (a diverged one
+   fails); an upstream is put at its pin. A repository whose uncommitted
+   files the merge would overwrite is held (skill-held), not merged. With
+   --own-since the files written after the baseline are committed, nothing
+   else.
+
+-n shows what would change. --json: the report and a "reconcile" section.
+''',
+  exitCodes: {
+    0: 'every repository reconciled or held',
+    1: 'a repository failed, an unknown repository stopped the run, or the merge drivers are missing',
+    2: 'a usage error or a refusal (no or an invalid repos.yaml)',
+    3: 'a decision is needed on uncommitted work; nothing changed',
+  },
+  options: skillreconcileOptions,
+  supportsProjectTraversal: false,
+  supportsGitTraversal: false,
+  requiresTraversal: false,
+  canRunStandalone: true,
+  examples: [
+    'buildkit :skill-reconcile-code',
+    'buildkit :skill-reconcile-code --dirty=hold',
+    'buildkit :skill-reconcile-code --dirty=hold --own-since=ztmp/base.tsv',
+    'buildkit :skill-reconcile-code -n --json',
+  ],
+);
+
+/// Options for skill-status (buildkit_ws_commands.md § 1.6).
+const skillstatusOptions = <OptionDefinition>[
+  OptionDefinition.flag(
+    name: 'json',
+    description: 'The report as one JSON document (buildkit help skill-json)',
+  ),
+  OptionDefinition.flag(
+    name: 'rows',
+    description:
+        'The rows status_probe.sh prints (REPO, RUNBRANCH, OLDTREE, PROBED), byte for byte',
+  ),
+];
+
+const skillstatusCommand = CommandDefinition(
+  name: 'skill-status',
+  description:
+      'The state of every repository of this host against origin, as the fleet status probe reports it',
+  details: '''
+What status_probe.sh answers on a host, for tom_fleet_status: the root, then
+this host's entries of repos.yaml (every kind), deepest first. After a fetch
+(none with -n), per repository: its state (ok, missing, offpin: an upstream
+not at its pin, nobranch: origin has no such branch), HEAD, commits behind
+and ahead of origin/<branch> with the time of the oldest of each, uncommitted
+files, and the last sync in the reflog. Then the run branches under
+.worktrees/ that are not merged, and the folders <root>_old* beside the root
+with their size. Read-only, except git fetch; the verdict is the skill's.
+''',
+  exitCodes: {
+    0: 'the probe finished',
+    2: 'refused (no or an invalid repos.yaml)',
+  },
+  options: skillstatusOptions,
+  supportsProjectTraversal: false,
+  supportsGitTraversal: false,
+  requiresTraversal: false,
+  canRunStandalone: true,
+  examples: [
+    'buildkit :skill-status',
+    'buildkit :skill-status --json',
+    'buildkit :skill-status --rows',
+  ],
+);
+
+/// Options for skill-dirty-scan (buildkit_ws_commands.md § 1.6).
+const skilldirtyscanOptions = <OptionDefinition>[
+  OptionDefinition.flag(
+    name: 'json',
+    description: 'The report as one JSON document (buildkit help skill-json)',
+  ),
+  OptionDefinition.flag(
+    name: 'rows',
+    description:
+        'The rows of tom_dirty_work --scan (DIRTY, GROUP, UNKNOWN, SCANNED), byte for byte',
+  ),
+  OptionDefinition.option(
+    name: 'baseline',
+    description:
+        'Record every path uncommitted now in this file (for :skill-reconcile-code --own-since) instead of scanning',
+    valueName: 'file',
+  ),
+];
+
+const skilldirtyscanCommand = CommandDefinition(
+  name: 'skill-dirty-scan',
+  description:
+      "The uncommitted work of this host's repositories, grouped as tom_dirty_work scans it",
+  details: '''
+The scan behind tom_dirty_work: this host's code, fork and upstream entries,
+deepest first, each followed by its run worktrees under .worktrees/, then the
+root. Every uncommitted path in its group (secret, generated, modified, new)
+with the group's fingerprint (what tom_dirty_work --apply-group checks), and
+the repositories under the root that are no entry. _ai and tom_binaries are
+not scanned. Read-only; the decision document stays in the skill.
+''',
+  exitCodes: {
+    0: 'the scan finished',
+    2: 'refused (no or an invalid repos.yaml)',
+  },
+  options: skilldirtyscanOptions,
+  supportsProjectTraversal: false,
+  supportsGitTraversal: false,
+  requiresTraversal: false,
+  canRunStandalone: true,
+  examples: [
+    'buildkit :skill-dirty-scan',
+    'buildkit :skill-dirty-scan --json',
+    'buildkit :skill-dirty-scan --baseline ztmp/base.tsv',
+  ],
+);
+
 const gitpushCommand = CommandDefinition(
   name: 'gitpush',
   description:
@@ -1806,6 +1964,8 @@ final buildkitTool = ToolDefinition(
     ...defaultHelpTopics,
     ...gitstatusMessages.helpTopics,
     ...wsAllMessages.helpTopics,
+    ...skillAllMessages.helpTopics,
+    skillJsonTopic,
   ],
   features: const NavigationFeatures(
     projectTraversal: true,
@@ -1871,6 +2031,9 @@ final buildkitTool = ToolDefinition(
     wspushCommand,
     wsupdateCommand,
     wsrepocleanupCommand,
+    skillreconcileCommand,
+    skillstatusCommand,
+    skilldirtyscanCommand,
     gitbranchCommand,
     gittagCommand,
     gitcheckoutCommand,

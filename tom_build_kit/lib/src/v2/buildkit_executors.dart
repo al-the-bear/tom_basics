@@ -28,6 +28,9 @@ import 'executors/dependencies_executor.dart';
 import 'executors/execute_executor.dart';
 import 'executors/git_executors.dart';
 import 'ws/ws_push.dart';
+import 'skill/skill_dirty_scan.dart';
+import 'skill/skill_reconcile_code.dart';
+import 'skill/skill_status.dart';
 import 'ws/ws_repo_cleanup.dart';
 import 'ws/ws_update.dart';
 import 'executors/findproject_executor.dart';
@@ -294,6 +297,9 @@ Map<String, CommandExecutor> createBuildkitExecutors() {
     'ws-push': WsPushExecutor(),
     'ws-update': WsUpdateExecutor(),
     'ws-repo-cleanup': WsRepoCleanupExecutor(),
+    'skill-reconcile-code': SkillReconcileExecutor(),
+    'skill-status': SkillStatusExecutor(),
+    'skill-dirty-scan': SkillDirtyScanExecutor(),
     'gitpull': GitPullExecutor(),
     'gitbranch': GitBranchExecutor(),
     'gittag': GitTagExecutor(),

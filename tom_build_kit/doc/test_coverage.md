@@ -802,6 +802,33 @@ The integration suites run on the machine's workspace clone (tom_test_support `T
 | BK-WSR-8 | `--skip`, usage, `ws-manifest` | ✅ | A clone left out (exit 1); an unknown name exit 2; no repos.yaml refused. |
 | BK-WSR-9 | Help | ✅ | Every option, the steps, the exit codes; a topic per message; the text blocks. |
 
+### :skill-reconcile-code, :skill-status, :skill-dirty-scan
+
+**Test file:** `test/skill_commands_test.dart` (the fleet skills' own fixture, `.claude/skills/_lib/fixtures/make_fixture_repos.sh`, two hosts with shared bare remotes in a temporary folder; its URLs rewritten to `git@fixture:<name>.git` and mapped onto the remotes with `insteadOf`; compared with the skills' scripts on the same tree; skipped without the skills)
+
+| ID | Feature | Status | How to Test |
+|----|---------|--------|-------------|
+| BK-SKS-1 | Status rows | ✅ | On a tree with a stale, a behind and an ahead clone, an upstream off its pin, a missing clone, run branches and an old tree, `--rows` equals `status_probe.sh`; the JSON carries what `test_fleet_status.sh` case 11 checks; messages for off pin, missing, the run branch, the old tree. |
+| BK-SKS-2 | `nobranch` | ✅ | A branch origin lacks: the same row as the probe, `skill-no-branch`. |
+| BK-SKS-3 | `-n` | ✅ | Nothing fetched. |
+| BK-SKD-1 | Scan rows | ✅ | `--rows` equals `tom_dirty_work --scan` (ages aside): groups, fingerprints, a nested clone under its own path, an upstream, a run worktree, the root's own file, `_ai` and the binaries left out, the unknown repository, SCANNED; the JSON and messages. |
+| BK-SKD-2 | Fingerprints | ✅ | A group's fingerprint moves with that group only. |
+| BK-SKD-3 | `--baseline` | ✅ | The same lines as `tom_dirty_work --baseline`. |
+| BK-SKR-1 | converge | ✅ | A local and a remote commit on origin and both hosts; only the changed repository reported. |
+| BK-SKR-2 | ask | ✅ | Uncommitted work: exit 3, `skill-decision` with the groups and `--dirty=hold`, nothing changed. |
+| BK-SKR-3 | hold | ✅ | The repository the merge would overwrite held, the file kept and not committed; another reconciled; exit 0. |
+| BK-SKR-4 | staged | ✅ | A file another session staged stays staged and off origin; the local commit pushed. |
+| BK-SKR-5 | `--own-since` | ✅ | The file written after the baseline committed and pushed; the one from before not. |
+| BK-SKR-6 | fork | ✅ | Fast-forwarded when behind; diverged fails (exit 1), not merged. |
+| BK-SKR-7 | upstream | ✅ | Off its pin: put back. |
+| BK-SKR-8 | missing | ✅ | Cloned and reported. |
+| BK-SKR-9 | unknown | ✅ | Stops the run (exit 1), nothing touched. |
+| BK-SKR-10 | `-n` | ✅ | Nothing taken in or pushed; the plan. |
+| BK-SKR-11 | quiet | ✅ | A level host: no change, exit 0. |
+| BK-SKR-12 | merge drivers | ✅ | One unregistered: exit 1, named. |
+| BK-SKR-13 | conflict, usage | ✅ | Aborted, fails (exit 1); a bad `--dirty` or a missing baseline exit 2. |
+| BK-SKR-14 | Help | ✅ | Every option and the exit codes of the three; every message and `skill-json` a topic. |
+
 ### Git commands on the repository set
 
 **Test file:** `test/git_commands_set_test.dart` (real repositories with bare remotes and a `repos.yaml` in a temporary folder; never the live workspace)
