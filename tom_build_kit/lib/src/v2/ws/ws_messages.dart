@@ -390,6 +390,58 @@ const wsUnknownSeen = MessageDefinition(
       'unmanaged:, or remove them with :ws-repo-cleanup.',
 );
 
+/// `ws-surplus`: (`:ws-repo-cleanup`) a surplus clone that can be removed.
+const wsSurplus = MessageDefinition(
+  code: 'ws-surplus',
+  level: MessageLevel.warning,
+  label: 'SURPLUS',
+  summary: 'A clone on disk that repos.yaml does not list, clean and pushed.',
+  description:
+      'Nothing would be lost by removing it: no uncommitted files, every '
+      'commit on a remote branch, no stash. Without --apply it is only '
+      'reported. Or give it an entry in repos.yaml, or list it under '
+      'unmanaged:.',
+  options: [
+    MessageOption(
+      'apply',
+      'Move it to ztmp/<yymmdd>_ws_repo_cleanup/<path> under the root;\n'
+          'delete that folder by hand once you are sure.',
+      repoList: false,
+    ),
+    MessageOption(
+      'delete',
+      'Delete it at once (with or without --apply). Its commits stay on\n'
+          'its remote; nothing local is kept.',
+      repoList: false,
+    ),
+  ],
+);
+
+/// `ws-not-removable`: (`:ws-repo-cleanup`) a surplus clone with work that
+/// would be lost, or with repositories inside it.
+const wsNotRemovable = MessageDefinition(
+  code: 'ws-not-removable',
+  level: MessageLevel.error,
+  label: 'NOT REMOVABLE',
+  summary:
+      'A surplus clone with uncommitted work, unpushed commits or stashes, or '
+      'with repositories inside it.',
+  description:
+      'It stays where it is. Push its work first (buildkit :ws-push '
+      '--include-unknown <repo>), give it an entry in repos.yaml, list it '
+      'under unmanaged:, or move it anyway. A clone that holds an entry or '
+      'another clone is never moved as a whole: deal with what is inside '
+      'first.',
+  options: [
+    MessageOption(
+      'force-remove',
+      'Move it anyway to ztmp/<yymmdd>_ws_repo_cleanup/<path>, with its\n'
+          'work; never deleted, even with --delete.',
+    ),
+    _skip,
+  ],
+);
+
 /// The messages of `:ws-push`.
 final wsPushMessages = MessageCatalog([
   wsActive,
@@ -426,12 +478,20 @@ final wsUpdateMessages = MessageCatalog([
   wsUnknownSeen,
 ]);
 
+/// The messages of `:ws-repo-cleanup`.
+final wsRepoCleanupMessages = MessageCatalog([
+  wsManifest,
+  wsSurplus,
+  wsNotRemovable,
+]);
+
 /// Every message of the `:ws-*` commands, once: their help topics.
 final wsAllMessages = MessageCatalog(
   [
     for (final d in [
       ...wsPushMessages.definitions,
       ...wsUpdateMessages.definitions,
+      ...wsRepoCleanupMessages.definitions,
     ])
       d,
   ].fold<List<MessageDefinition>>([], (list, d) {

@@ -786,6 +786,22 @@ The integration suites run on the machine's workspace clone (tom_test_support `T
 | BK-WSU-17 | Help | ✅ | Every option, the steps, the exit codes, examples; one topic per message, shared ones once. |
 | BK-WSU-18 | `--skip`, `--ours`, `--set-branch`, `--rescue-detached` | ✅ | A held repository left out (exit 1); a conflict merged with the local side; the branch recorded in repos.yaml; the detached commits pushed to the rescue branch, the branch itself not. |
 
+### :ws-repo-cleanup
+
+**Test file:** `test/ws_repo_cleanup_test.dart` (a tree of real repositories with bare remotes in a temporary folder, `git@fixture:<name>.git` mapped onto them with `insteadOf`; surplus clones removable, dirty, unpushed, with a stash, holding a clone, holding an entry, and one under `_ai`; never the live workspace)
+
+| ID | Feature | Status | How to Test |
+|----|---------|--------|-------------|
+| BK-WSR-1 | Report only | ✅ | Every surplus clone named with origin, branch, uncommitted files, commits on no remote branch, branches without upstream, stashes, what is inside; options and repeat lines (`--apply`, `--delete`, `--force-remove`, `--skip`, the `:ws-push --include-unknown` alternative); a nest offers no `--force-remove`; nothing changed, nothing under `_ai` named; exit 1. |
+| BK-WSR-2 | Only removable clones | ✅ | Warnings only, exit 0. |
+| BK-WSR-3 | `--apply` | ✅ | Only the removable clones moved to `ztmp/<yymmdd>_ws_repo_cleanup/<path>`; the others, the entry inside a clone and `_ai` untouched; a second run does not look into `ztmp/` and moves a nest emptied by the first. |
+| BK-WSR-4 | `--apply --delete`, `--delete` | ✅ | Only the removable clones deleted, nothing moved. |
+| BK-WSR-5 | `--force-remove` | ✅ | A dirty and an unpushed clone moved with their work, also with `--delete`; a nest never. |
+| BK-WSR-6 | `-n` | ✅ | The plan (would move), nothing changed. |
+| BK-WSR-7 | Target taken | ✅ | A free name (`-2`). |
+| BK-WSR-8 | `--skip`, usage, `ws-manifest` | ✅ | A clone left out (exit 1); an unknown name exit 2; no repos.yaml refused. |
+| BK-WSR-9 | Help | ✅ | Every option, the steps, the exit codes; a topic per message; the text blocks. |
+
 ### Git commands on the repository set
 
 **Test file:** `test/git_commands_set_test.dart` (real repositories with bare remotes and a `repos.yaml` in a temporary folder; never the live workspace)

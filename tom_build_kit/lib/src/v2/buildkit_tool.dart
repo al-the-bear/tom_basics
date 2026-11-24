@@ -1428,6 +1428,83 @@ message. -n shows the plan and changes nothing.
   ],
 );
 
+/// Options for ws-repo-cleanup (buildkit_ws_commands.md § 1.5, § 1.8).
+const wsrepocleanupOptions = <OptionDefinition>[
+  OptionDefinition.flag(
+    name: 'apply',
+    description:
+        'Move every removable surplus clone to <root>/ztmp/<yymmdd>_ws_repo_cleanup/<path>',
+  ),
+  OptionDefinition.flag(
+    name: 'delete',
+    description:
+        'Delete the removable surplus clones instead of moving them (with or without --apply)',
+  ),
+  OptionDefinition.flag(
+    name: 'json',
+    description:
+        'The report as one JSON document (every message with its options)',
+  ),
+  OptionDefinition.multi(
+    name: 'force-remove',
+    description:
+        'Move these clones even with uncommitted work, unpushed commits or stashes; never deleted (ws-not-removable)',
+    valueName: 'repos',
+  ),
+  OptionDefinition.multi(
+    name: 'skip',
+    description:
+        'Leave these clones out of this run (the run then exits 1)',
+    valueName: 'repos',
+  ),
+];
+
+const wsrepocleanupCommand = CommandDefinition(
+  name: 'ws-repo-cleanup',
+  description:
+      'Report the surplus clones of the tree (on disk, not in repos.yaml); '
+      'with --apply move, with --delete delete the removable ones',
+  details: '''
+A surplus clone is on disk under the root of the repos.yaml at or above the
+folder you start in (or --manifest), is no entry, is not listed under
+unmanaged:, is no quest clone or tool's clone, and is not inside _ai
+(nothing under an _ai folder is ever touched).
+
+Per clone the report shows its origin and branch, its uncommitted files, the
+commits on no remote branch, the branches without an upstream, its stashes and
+what is inside it, and what each option would do with it:
+
+  ws-surplus        removable: clean, every commit on a remote branch, no
+                    stash, nothing inside (a warning; --apply, --delete)
+  ws-not-removable  it has work that removing would lose (--force-remove, or
+                    buildkit :ws-push --include-unknown <repo> first), or it
+                    holds an entry or another clone below it: never moved as a
+                    whole, the report names what is inside
+
+Default: report only, nothing changes. --apply moves every removable clone to
+<root>/ztmp/<yymmdd>_ws_repo_cleanup/<path>, to delete by hand later;
+--delete (with or without --apply) deletes them instead. --force-remove moves
+the named clones with their work, never deletes them. -n shows the plan.
+''',
+  exitCodes: {
+    0: 'nothing needs you (removable clones are only reported, or removed)',
+    1: 'a surplus clone is not removable, or a clone was left out (--skip)',
+    2: 'refused (no or an invalid repos.yaml), or a usage error (an unknown clone name)',
+  },
+  options: wsrepocleanupOptions,
+  supportsProjectTraversal: false,
+  supportsGitTraversal: false,
+  requiresTraversal: false,
+  canRunStandalone: true,
+  examples: [
+    'buildkit :ws-repo-cleanup',
+    'buildkit :ws-repo-cleanup --apply',
+    'buildkit :ws-repo-cleanup --apply --delete',
+    'buildkit :ws-repo-cleanup --apply --force-remove old_experiment',
+    'buildkit :ws-repo-cleanup --json',
+  ],
+);
+
 const gitpushCommand = CommandDefinition(
   name: 'gitpush',
   description:
@@ -1793,6 +1870,7 @@ final buildkitTool = ToolDefinition(
     // Workspace commands
     wspushCommand,
     wsupdateCommand,
+    wsrepocleanupCommand,
     gitbranchCommand,
     gittagCommand,
     gitcheckoutCommand,

@@ -28,6 +28,7 @@ import 'executors/dependencies_executor.dart';
 import 'executors/execute_executor.dart';
 import 'executors/git_executors.dart';
 import 'ws/ws_push.dart';
+import 'ws/ws_repo_cleanup.dart';
 import 'ws/ws_update.dart';
 import 'executors/findproject_executor.dart';
 import '../wssetup/wssetup_tool.dart' show WssetupExecutor;
@@ -292,6 +293,7 @@ Map<String, CommandExecutor> createBuildkitExecutors() {
     'gitpush': GitPushExecutor(),
     'ws-push': WsPushExecutor(),
     'ws-update': WsUpdateExecutor(),
+    'ws-repo-cleanup': WsRepoCleanupExecutor(),
     'gitpull': GitPullExecutor(),
     'gitbranch': GitBranchExecutor(),
     'gittag': GitTagExecutor(),

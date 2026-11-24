@@ -1,5 +1,18 @@
 ## Unreleased
 
+- New `:ws-repo-cleanup`: the surplus clones of the tree (on disk under the
+  root, no entry of repos.yaml, not unmanaged, no quest or tool clone, never
+  anything inside `_ai`). Report only by default: per clone its origin and
+  branch, uncommitted files, commits on no remote branch, branches without
+  an upstream, stashes and what is inside it, with what each option would
+  do. A removable clone (clean, every commit on a remote branch, no stash,
+  nothing inside) is `ws-surplus`; `--apply` moves it to
+  `<root>/ztmp/<yymmdd>_ws_repo_cleanup/<path>` (a free name when taken),
+  `--delete` (with or without `--apply`) deletes it. Any other is
+  `ws-not-removable` (`--force-remove`: moved with its work, never deleted;
+  or `:ws-push --include-unknown <repo>` first); one holding an entry or
+  another clone is never moved as a whole. `--skip`, `-n`, `--json`, exit
+  0/1/2.
 - New `:ws-update`: brings this machine up to the remotes, nothing pushed.
   The root first (fetch, merge, repos.yaml read again); missing entries
   cloned (an upstream at its pin; `ws-clone-failed`), a changed origin URL
