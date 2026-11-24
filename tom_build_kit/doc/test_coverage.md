@@ -732,6 +732,35 @@ The integration suites run on the machine's workspace clone (tom_test_support `T
 | BK-WSS-10 | Both entry points | ✅ | `wssetup` and `buildkit :wssetup` run the same; a failing `required-environment` does not stop it. |
 | BK-WSS-11 | `--manifest` | ✅ | Reaches wssetup in both tools, before or after the command, also where the git traversal options take it. |
 
+### :ws-push
+
+**Test file:** `test/ws_push_test.dart` (a tree of real repositories with bare remotes, a `repos.yaml` and a fixed host in a temporary folder; faked window heartbeats in a folder of the test; never the live workspace)
+
+| ID | Feature | Status | How to Test |
+|----|---------|--------|-------------|
+| BK-WSP-1 | Clean tree | ✅ | Nothing to do, exit 0; the upstream and an unknown clone are no part of the run. |
+| BK-WSP-2 | Commit and push | ✅ | `_ai` first, deeper first, the root last; the default message; after exit 0 nothing uncommitted and every `origin/<branch>` holds HEAD; the committed files listed. |
+| BK-WSP-3 | Incoming merge, `-m` | ✅ | Incoming commits merged before the push; `-m` is the commit message. |
+| BK-WSP-4 | `ws-conflict` | ✅ | Aborted, nothing pushed for it, the others pushed; options and repeat line; the text block. |
+| BK-WSP-5 | `--merge-branch`, `ws-rescue-open` | ✅ | Commits on `ws-push/<host>/<stamp>`, the branch left; the next run warns. |
+| BK-WSP-6 | `--ours`, `--theirs` | ✅ | Merged again with that side winning, pushed. |
+| BK-WSP-7 | `--leave-conflict`, `--skip` | ✅ | The conflict left in the working tree; the repository left out; exit 1. |
+| BK-WSP-8 | `ws-off-branch`, `--push-current` | ✅ | Reported with its options; the current branch pushed. |
+| BK-WSP-9 | `--to-branch`, `--set-branch` | ✅ | Merged into the expected branch and pushed; the branch recorded in repos.yaml, the root commits it. |
+| BK-WSP-10 | `ws-detached`, `--rescue-detached` | ✅ | A detached HEAD at its branch put back; commits on no branch reported, rescued and pushed. |
+| BK-WSP-11 | `ws-secret` | ✅ | Refused before anything changes; `--skip-file` (exit 1), `--allow-file`. |
+| BK-WSP-12 | `ws-large` | ✅ | A 51 MB file refused. |
+| BK-WSP-13 | `ws-active` | ✅ | A fresh heartbeat sending refuses, listing the window; a stale one is ignored; `--ignore-active`. |
+| BK-WSP-14 | `ws-unknown` | ✅ | Skipped and named first, exit 1; `--include-unknown` pushes it. |
+| BK-WSP-15 | `ws-binaries` | ✅ | A warning, exit 0, not committed; `--commit-binaries`. |
+| BK-WSP-16 | `ws-push-rejected` | ✅ | A remote that refuses the push (pre-receive hook): reported after one more merge, never forced. |
+| BK-WSP-17 | `ws-driver` | ✅ | An unregistered driver in a `.gitattributes` refuses the run; no override. |
+| BK-WSP-18 | `ws-in-progress` | ✅ | A repository mid-merge refuses the run; `--skip` leaves it out. |
+| BK-WSP-19 | `ws-manifest`, usage | ✅ | No repos.yaml and an invalid one refuse; an unknown repository name is a usage error. |
+| BK-WSP-20 | `ws-fetch-failed`, `ws-upstream-dirty` | ✅ | An unreachable remote; an upstream with a local change. |
+| BK-WSP-21 | `-n` | ✅ | The plan (would commit, would merge, would push), nothing changed. |
+| BK-WSP-22 | Help | ✅ | Every option, the steps, the exit codes, examples; a topic per message. |
+
 ### Git commands on the repository set
 
 **Test file:** `test/git_commands_set_test.dart` (real repositories with bare remotes and a `repos.yaml` in a temporary folder; never the live workspace)

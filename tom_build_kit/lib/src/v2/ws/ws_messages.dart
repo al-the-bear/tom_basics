@@ -1,0 +1,326 @@
+/// The messages of the `:ws-*` commands (buildkit_ws_commands.md § 1.10),
+/// defined once: each gives its block in the report, its JSON and its help
+/// topic (`buildkit help <code>`).
+library;
+
+import 'package:tom_build_base/tom_build_base_v2.dart';
+
+const _skip = MessageOption(
+  'skip',
+  'Leave the repository out of this run (the run then exits 1).',
+);
+
+/// `ws-active`: a Tom AI window on this host is sending a prompt or running.
+const wsActive = MessageDefinition(
+  code: 'ws-active',
+  level: MessageLevel.refusal,
+  label: 'ACTIVE',
+  summary:
+      'A Tom AI window on this host has a queue item sending or a run '
+      'running.',
+  description:
+      'What those sessions are writing would be committed half done, and a '
+      'merge could change files under them. Wait until their prompts '
+      'finish, or pause their queues, then run again. The windows are read '
+      'from the window-state files in _ai/local (a window counts while its '
+      'heartbeat is less than 90 seconds old).',
+  options: [
+    MessageOption(
+      'ignore-active',
+      'Run anyway: whatever those sessions have written so far is committed\n'
+          'with the rest, possibly half done.',
+      repoList: false,
+    ),
+  ],
+);
+
+/// `ws-secret`: a file that would be committed matches the secret list.
+const wsSecret = MessageDefinition(
+  code: 'ws-secret',
+  level: MessageLevel.refusal,
+  label: 'SECRET',
+  summary: 'A file that would be committed matches the secret list.',
+  description:
+      'The list is the one tom_push_code uses: .env and .env.*, *.pem, '
+      'credentials.*. A committed secret stays in the history even after it '
+      'is deleted. Add the file to the repository\'s .gitignore, or name it '
+      'with one of the options.',
+  options: [
+    MessageOption(
+      'skip-file',
+      'Leave it uncommitted in this run (the run then exits 1).',
+      repoList: false,
+      valueName: 'glob',
+    ),
+    MessageOption(
+      'allow-file',
+      'Commit it anyway: it is pushed with the rest.',
+      repoList: false,
+      valueName: 'glob',
+    ),
+  ],
+);
+
+/// `ws-large`: a file over 50 MB would be committed.
+const wsLarge = MessageDefinition(
+  code: 'ws-large',
+  level: MessageLevel.refusal,
+  label: 'LARGE',
+  summary: 'A file over 50 MB would be committed.',
+  description:
+      'GitHub refuses files over 100 MB, and every clone carries a committed '
+      'file for ever. Add it to the repository\'s .gitignore, or name it with '
+      'one of the options.',
+  options: [
+    MessageOption(
+      'skip-file',
+      'Leave it uncommitted in this run (the run then exits 1).',
+      repoList: false,
+      valueName: 'glob',
+    ),
+    MessageOption(
+      'allow-file',
+      'Commit it anyway (a file over 100 MB makes the push fail).',
+      repoList: false,
+      valueName: 'glob',
+    ),
+  ],
+);
+
+/// `ws-driver`: a merge driver a `.gitattributes` names is not registered.
+const wsDriver = MessageDefinition(
+  code: 'ws-driver',
+  level: MessageLevel.refusal,
+  label: 'DRIVER',
+  summary: 'A merge driver that a .gitattributes names is not registered.',
+  description:
+      'Without it git merges the files with its text merge, which breaks '
+      'generated and state files (trails, locks, version stamps). Register '
+      'the drivers with .claude/skills/install.sh (from tom_binaries), then '
+      'run again. There is no override.',
+);
+
+/// `ws-in-progress`: a repository is mid-merge, mid-rebase or mid-cherry-pick.
+const wsInProgress = MessageDefinition(
+  code: 'ws-in-progress',
+  level: MessageLevel.refusal,
+  label: 'IN PROGRESS',
+  summary: 'A repository is mid-merge, mid-rebase or mid-cherry-pick.',
+  description:
+      'Committing now would record a half-finished operation. Finish or '
+      'abort it by hand (git merge --continue / --abort, git rebase '
+      '--continue / --abort, git cherry-pick --continue / --abort), or leave '
+      'the repository out of this run.',
+  options: [_skip],
+);
+
+/// `ws-manifest`: no repos.yaml, or one that breaks its schema.
+const wsManifest = MessageDefinition(
+  code: 'ws-manifest',
+  level: MessageLevel.refusal,
+  label: 'MANIFEST',
+  summary: 'There is no repos.yaml, or it breaks its schema.',
+  description:
+      'The :ws-* commands work on the repositories repos.yaml lists (at the '
+      'root of the tree, at or above the folder they are started in, or '
+      'named with --manifest). Fix the file; there is no override.',
+);
+
+/// `ws-conflict`: the merge of `origin/<branch>` conflicts.
+const wsConflict = MessageDefinition(
+  code: 'ws-conflict',
+  level: MessageLevel.error,
+  label: 'CONFLICT',
+  summary: 'The merge of origin/<branch> conflicts.',
+  description:
+      'Your local commits and the incoming ones change the same lines. The '
+      'merge was aborted and nothing was pushed for the repository: your '
+      'commits are safe on this machine. Choose how to go on; there is no '
+      'force push.',
+  options: [
+    MessageOption(
+      'merge-branch',
+      'Push your commits to ws-push/<host>/<yymmdd-hhmm> and leave the branch\n'
+          'as it is on the remote. Your work is on the remote at once; merge later.',
+    ),
+    MessageOption(
+      'ours',
+      'Merge again; where both sides changed a line, yours wins. Then push.\n'
+          'The incoming change on those lines is lost (it stays in the history).',
+    ),
+    MessageOption(
+      'theirs',
+      'Merge again; where both sides changed a line, the incoming one wins.\n'
+          'Your change on those lines is lost (it stays in your commit).',
+    ),
+    MessageOption(
+      'leave-conflict',
+      'Merge again and stop with the conflict in the working tree for you\n'
+          'to resolve by hand; then commit and run :ws-push again.',
+    ),
+    _skip,
+  ],
+);
+
+/// `ws-off-branch`: a repository on another branch than expected.
+const wsOffBranch = MessageDefinition(
+  code: 'ws-off-branch',
+  level: MessageLevel.error,
+  label: 'OFF BRANCH',
+  summary:
+      'A repository is on another branch than repos.yaml (or '
+      '_ai/quests.yaml) expects.',
+  description:
+      'The fleet keeps every repository on its expected branch; work on '
+      'another branch would not reach the other machines. Nothing was '
+      'committed or pushed for it.',
+  options: [
+    MessageOption(
+      'push-current',
+      'Commit and push the branch it is on (the expected branch stays as it is).',
+    ),
+    MessageOption(
+      'to-branch',
+      'Commit, switch to the expected branch, merge the current one into it,\n'
+          'then go on as usual (merge origin, push).',
+    ),
+    MessageOption(
+      'set-branch',
+      "Record the current branch as the entry's branch: in repos.yaml (the\n"
+          'root commits the change), then go on with it.',
+    ),
+    _skip,
+  ],
+);
+
+/// `ws-detached`: a detached HEAD that is not the head of its branch.
+const wsDetached = MessageDefinition(
+  code: 'ws-detached',
+  level: MessageLevel.error,
+  label: 'DETACHED',
+  summary: 'A detached HEAD that is not the head of its branch.',
+  description:
+      'The commits since the branch are on no branch; switching back would '
+      'leave them behind. Nothing was committed or pushed for it.',
+  options: [
+    MessageOption(
+      'rescue-detached',
+      'Put them (and the uncommitted work) on ws-push/<host>/<yymmdd-hhmm>,\n'
+          'push it, and return the repository to its branch.',
+    ),
+    _skip,
+  ],
+);
+
+/// `ws-unknown`: a clone that is no entry and not unmanaged.
+const wsUnknown = MessageDefinition(
+  code: 'ws-unknown',
+  level: MessageLevel.error,
+  label: 'UNKNOWN',
+  summary: 'A clone on disk that repos.yaml does not list.',
+  description:
+      'It was left alone: the fleet does not know it, so its work reaches no '
+      'other machine. Give it an entry in repos.yaml, list it under '
+      'unmanaged:, or remove it with :ws-repo-cleanup.',
+  options: [
+    MessageOption(
+      'include-unknown',
+      'Treat it as an entry for this run: commit, merge and push its branch\n'
+          'to its own origin.',
+    ),
+  ],
+);
+
+/// `ws-push-rejected`: the push still fails after one more merge.
+const wsPushRejected = MessageDefinition(
+  code: 'ws-push-rejected',
+  level: MessageLevel.error,
+  label: 'REJECTED',
+  summary: 'The push still fails after one more merge.',
+  description:
+      'The remote refused the push (a protected branch, missing permission, '
+      'the network, or commits pushed meanwhile). Your commits are safe on '
+      'this machine. Repeat later, check your access, or put them on a '
+      'branch of their own.',
+  options: [
+    MessageOption(
+      'merge-branch',
+      'Push your commits to ws-push/<host>/<yymmdd-hhmm> instead; merge later.',
+    ),
+    _skip,
+  ],
+);
+
+/// `ws-fetch-failed`: the remote cannot be reached.
+const wsFetchFailed = MessageDefinition(
+  code: 'ws-fetch-failed',
+  level: MessageLevel.error,
+  label: 'FETCH FAILED',
+  summary: 'The remote cannot be reached.',
+  description:
+      'Nothing was committed, merged or pushed for the repository. Repeat '
+      'when the network is back, or check the remote URL.',
+  options: [_skip],
+);
+
+/// `ws-binaries`: tom_binaries has uncommitted binaries.
+const wsBinaries = MessageDefinition(
+  code: 'ws-binaries',
+  level: MessageLevel.warning,
+  label: 'BINARIES',
+  summary: 'tom_binaries has uncommitted binaries.',
+  description:
+      'Binaries are committed by the build (tom_push_binaries); :ws-push '
+      'pushes tom_binaries only when it has local commits and otherwise '
+      'leaves the files for the next build.',
+  options: [
+    MessageOption(
+      'commit-binaries',
+      'Commit and push them now, as :skill-push-binaries does.',
+      repoList: false,
+    ),
+  ],
+);
+
+/// `ws-rescue-open`: `ws-push/*` branches on a remote that are not merged.
+const wsRescueOpen = MessageDefinition(
+  code: 'ws-rescue-open',
+  level: MessageLevel.warning,
+  label: 'RESCUE OPEN',
+  summary: 'ws-push/* branches on the remote are not merged.',
+  description:
+      'An earlier :ws-push put commits there (--merge-branch, '
+      '--rescue-detached). Merge them by hand (git merge origin/ws-push/...) '
+      'and delete them; they are listed until then.',
+);
+
+/// `ws-upstream-dirty`: an upstream clone has local changes.
+const wsUpstreamDirty = MessageDefinition(
+  code: 'ws-upstream-dirty',
+  level: MessageLevel.warning,
+  label: 'UPSTREAM DIRTY',
+  summary: 'An upstream clone has local changes.',
+  description:
+      'Upstreams (third-party projects pinned to a commit) are never '
+      'committed or pushed; :ws-update leaves a dirty upstream off its pin '
+      'and says so. Nothing is needed unless you want the changes gone.',
+);
+
+/// The messages of `:ws-push`.
+final wsPushMessages = MessageCatalog([
+  wsActive,
+  wsSecret,
+  wsLarge,
+  wsDriver,
+  wsInProgress,
+  wsManifest,
+  wsUnknown,
+  wsConflict,
+  wsOffBranch,
+  wsDetached,
+  wsPushRejected,
+  wsFetchFailed,
+  wsBinaries,
+  wsRescueOpen,
+  wsUpstreamDirty,
+]);

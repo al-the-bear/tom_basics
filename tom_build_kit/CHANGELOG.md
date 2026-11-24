@@ -1,5 +1,28 @@
 ## Unreleased
 
+- New `:ws-push [-m <message>]`: everything this machine has, committed,
+  merged and pushed in every repository of the tree (`repos.yaml`, `_ai`
+  included; `_ai` and the leaves first, the root last; status and fetch
+  eight at a time). Refuses before anything changes for an active Tom AI
+  window (`ws-active`), a secret or a file over 50 MB that would be committed
+  (`ws-secret`, `ws-large`), an unregistered merge driver (`ws-driver`), a
+  repository mid-merge (`ws-in-progress`), no or an invalid repos.yaml
+  (`ws-manifest`). Per repository: a detached HEAD put back on its branch
+  when nothing is lost (`ws-detached`, `--rescue-detached`), off its branch
+  `ws-off-branch` (`--push-current`, `--to-branch`, `--set-branch`), one
+  commit with the run's message, fetch, merge `origin/<branch>`, push; a
+  conflict is aborted (`ws-conflict`: `--merge-branch`, `--ours`,
+  `--theirs`, `--leave-conflict`, `--skip`), a rejected push merged once
+  more and retried once (`ws-push-rejected`); never a force push.
+  `tom_binaries` only with local commits (`ws-binaries`,
+  `--commit-binaries`), unknown clones skipped (`ws-unknown`,
+  `--include-unknown`), `ws-rescue-open`, `ws-upstream-dirty`,
+  `ws-fetch-failed`. Every message with its options, explanations and the
+  command line to repeat (the run report of tom_build_base), a help topic
+  per code, `-n`, `--json`; exit 0 only when nothing is uncommitted and
+  `origin/<branch>` holds `HEAD` everywhere. Takes tom_build_base 2.50.0
+  (the command's help shows the steps and the exit codes).
+
 - Takes tom_build_base 2.49.0 (run reports and their messages).
 - `:gitcommit` stages only what you name: `--only <paths>` stages and
   commits exactly those paths (untracked ones included, a path of another

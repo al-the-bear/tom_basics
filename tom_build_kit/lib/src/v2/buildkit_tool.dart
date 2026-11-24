@@ -8,6 +8,7 @@ import 'package:tom_build_base/tom_build_base_v2.dart';
 import '../version.versioner.dart';
 import '../wssetup/wssetup_tool.dart' show wssetupOptions;
 import 'executors/git_executors.dart' show gitstatusMessages;
+import 'ws/ws_messages.dart' show wsPushMessages;
 
 // =============================================================================
 // Common Options
@@ -1144,6 +1145,159 @@ const gitcommitCommand = CommandDefinition(
   ],
 );
 
+/// Options for ws-push (buildkit_ws_commands.md § 1.3, § 1.8).
+const wspushOptions = <OptionDefinition>[
+  OptionDefinition.option(
+    name: 'message',
+    abbr: 'm',
+    description:
+        'The commit message of every repository (default: "ws-push on <host> at <iso time>")',
+    valueName: 'msg',
+  ),
+  OptionDefinition.flag(
+    name: 'json',
+    description:
+        'The report as one JSON document (every message with its options)',
+  ),
+  OptionDefinition.flag(
+    name: 'ignore-active',
+    description:
+        'Run although a Tom AI window on this host is sending or running (ws-active): '
+        'what those sessions wrote so far is committed, possibly half done',
+  ),
+  OptionDefinition.multi(
+    name: 'skip-file',
+    description:
+        'Leave matching files uncommitted (ws-secret, ws-large); the run then exits 1',
+    valueName: 'glob',
+  ),
+  OptionDefinition.multi(
+    name: 'allow-file',
+    description:
+        'Commit matching files although they are on the secret list or over 50 MB',
+    valueName: 'glob',
+  ),
+  OptionDefinition.flag(
+    name: 'commit-binaries',
+    description:
+        'Commit and push the uncommitted binaries of tom_binaries (ws-binaries)',
+  ),
+  OptionDefinition.multi(
+    name: 'skip',
+    description:
+        'Leave these repositories out of this run (the run then exits 1)',
+    valueName: 'repos',
+  ),
+  OptionDefinition.multi(
+    name: 'include-unknown',
+    description:
+        'Treat these unknown clones as entries for this run (ws-unknown)',
+    valueName: 'repos',
+  ),
+  OptionDefinition.multi(
+    name: 'rescue-detached',
+    description:
+        'Put their detached commits on ws-push/<host>/<yymmdd-hhmm>, push it, return to the branch (ws-detached)',
+    valueName: 'repos',
+  ),
+  OptionDefinition.multi(
+    name: 'push-current',
+    description: 'Commit and push the branch they are on (ws-off-branch)',
+    valueName: 'repos',
+  ),
+  OptionDefinition.multi(
+    name: 'to-branch',
+    description:
+        'Commit, switch to the expected branch and merge the current one into it (ws-off-branch)',
+    valueName: 'repos',
+  ),
+  OptionDefinition.multi(
+    name: 'set-branch',
+    description:
+        "Record the current branch as the entry's branch: in repos.yaml (ws-off-branch)",
+    valueName: 'repos',
+  ),
+  OptionDefinition.multi(
+    name: 'merge-branch',
+    description:
+        'On a conflict or a rejected push, push to ws-push/<host>/<yymmdd-hhmm> instead (ws-conflict)',
+    valueName: 'repos',
+  ),
+  OptionDefinition.multi(
+    name: 'ours',
+    description:
+        'On a conflict, merge again with your side winning, then push (ws-conflict)',
+    valueName: 'repos',
+  ),
+  OptionDefinition.multi(
+    name: 'theirs',
+    description:
+        'On a conflict, merge again with the incoming side winning, then push (ws-conflict)',
+    valueName: 'repos',
+  ),
+  OptionDefinition.multi(
+    name: 'leave-conflict',
+    description:
+        'On a conflict, leave it in the working tree for you to resolve (ws-conflict)',
+    valueName: 'repos',
+  ),
+];
+
+const wspushCommand = CommandDefinition(
+  name: 'ws-push',
+  description:
+      'Commit, merge and push everything this machine has, in every repository '
+      'of the tree (repos.yaml), _ai included',
+  details: '''
+The tree: the repositories of the repos.yaml at or above the folder you start
+in (or --manifest): the root, the code, fork, ai and binaries entries and the
+quest clones. _ai and the leaves first, the root last; status and fetch run
+eight repositories at a time.
+
+1. Checks, before anything changes (each refuses the run, exit 2):
+   ws-active       a Tom AI window on this host is sending or running
+   ws-secret       a file on the secret list would be committed
+   ws-large        a file over 50 MB would be committed
+   ws-driver       a merge driver a .gitattributes names is not registered
+   ws-in-progress  a repository is mid-merge, mid-rebase or mid-cherry-pick
+   ws-manifest     no repos.yaml, or an invalid one
+2. Per repository: a detached HEAD is put back on its branch when nothing is
+   lost (else ws-detached); off its expected branch: ws-off-branch. Then
+   git add -A and one commit with the run's message, fetch, merge
+   origin/<branch> with the merge drivers (a fork on its own branch), push.
+   A conflict is aborted and nothing is pushed for the repository
+   (ws-conflict); a rejected push is merged once more and retried once
+   (ws-push-rejected). Nothing is ever force-pushed.
+3. tom_binaries is pushed only with local commits; uncommitted binaries are
+   a warning (ws-binaries). Unknown clones are skipped (ws-unknown, exit 1),
+   upstreams too (ws-upstream-dirty). ws-rescue-open lists unmerged
+   ws-push/* branches; ws-fetch-failed when the remote cannot be reached.
+
+Every problem is reported with the options that resolve it and the command
+line to repeat; an option given repositories (--<option> <repo>[,<repo>...])
+acts only on those. A repository is named by its last path segment when that
+is unique, else by its path from the root. buildkit help <code> explains each
+message (ws-conflict, ...). -n shows the whole plan and changes nothing.
+''',
+  exitCodes: {
+    0: 'nothing is uncommitted anywhere and origin/<branch> contains HEAD everywhere',
+    1: 'something needs you (or a repository or file was left out): see "Needs you"',
+    2: 'refused before anything changed, or a usage error (an unknown repository name)',
+  },
+  options: wspushOptions,
+  supportsProjectTraversal: false,
+  supportsGitTraversal: false,
+  requiresTraversal: false,
+  canRunStandalone: true,
+  examples: [
+    'buildkit :ws-push -m "Evening state"',
+    'buildkit :ws-push -n',
+    'buildkit :ws-push --merge-branch core',
+    'buildkit :ws-push --skip-file secrets/local.env --skip tom_brain',
+    'buildkit :ws-push --json',
+  ],
+);
+
 const gitpushCommand = CommandDefinition(
   name: 'gitpush',
   description:
@@ -1441,7 +1595,11 @@ final buildkitTool = ToolDefinition(
   versionString: 'BuildKit ${BuildkitVersionInfo.versionLong}',
   mode: ToolMode.multiCommand,
   wiringFile: ToolDefinition.kAutoWiringFile,
-  helpTopics: [...defaultHelpTopics, ...gitstatusMessages.helpTopics],
+  helpTopics: [
+    ...defaultHelpTopics,
+    ...gitstatusMessages.helpTopics,
+    ...wsPushMessages.helpTopics,
+  ],
   features: const NavigationFeatures(
     projectTraversal: true,
     gitTraversal: true,
@@ -1502,6 +1660,8 @@ final buildkitTool = ToolDefinition(
     gitcommitCommand,
     gitpushCommand,
     gitpullCommand,
+    // Workspace commands
+    wspushCommand,
     gitbranchCommand,
     gittagCommand,
     gitcheckoutCommand,
