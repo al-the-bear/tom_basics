@@ -83,6 +83,13 @@ class CommandDefinition {
   /// not stopped by a missing build environment.
   final bool needsEnvironment;
 
+  /// Text shown in the command's help after [description]: what it does
+  /// step by step, its rules. Plain text, lines kept.
+  final String? details;
+
+  /// The command's exit codes and what each means, listed in its help.
+  final Map<int, String>? exitCodes;
+
   const CommandDefinition({
     required this.name,
     required this.description,
@@ -101,6 +108,8 @@ class CommandDefinition {
     this.hidden = false,
     this.parallel = false,
     this.needsEnvironment = true,
+    this.details,
+    this.exitCodes,
   });
 
   /// Get all options including traversal options if supported.

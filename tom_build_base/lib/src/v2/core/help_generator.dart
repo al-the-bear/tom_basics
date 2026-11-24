@@ -133,6 +133,10 @@ class HelpGenerator {
     buf.writeln();
     buf.writeln(command.description);
     buf.writeln();
+    if (command.details != null) {
+      buf.writeln(command.details!.trimRight());
+      buf.writeln();
+    }
 
     // Usage
     buf.writeln('<cyan>**Usage**</cyan>');
@@ -186,6 +190,16 @@ class HelpGenerator {
       buf.writeln('  -n, --dry-run               Show what would be done');
     }
     buf.writeln();
+
+    // Exit codes
+    if (command.exitCodes != null && command.exitCodes!.isNotEmpty) {
+      buf.writeln('<cyan>**Exit Codes**</cyan>');
+      final codes = command.exitCodes!.keys.toList()..sort();
+      for (final code in codes) {
+        buf.writeln('  $code  ${command.exitCodes![code]}');
+      }
+      buf.writeln();
+    }
 
     // Examples
     if (command.examples.isNotEmpty) {

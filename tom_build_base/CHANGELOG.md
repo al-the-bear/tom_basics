@@ -1,3 +1,11 @@
+## 2.50.0
+
+### Added
+
+- `CommandDefinition(details:, exitCodes:)`: a command's help shows its
+  details (what it does step by step) after the description and its exit
+  codes in their own section before the examples.
+
 ## 2.49.0
 
 ### Added — run reports and their messages

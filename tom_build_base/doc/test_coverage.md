@@ -20,7 +20,7 @@ This document lists all testable features across `tom_build_base` and tracks tes
 | 5 | [CommandDefinition](#5-commanddefinition) | 15 | 15✅ | `v2/core/command_definition_test.dart` | [→](#5-commanddefinition) |
 | 6 | [Completion Generator](#6-completion-generator) | 30 | 30✅ | `v2/core/completion_generator_test.dart` | [→](#6-completion-generator) |
 | 7 | [Features — Modes, Defines, Macros, Pipelines](#7-features--modes-defines-macros-pipelines) | 33 | 33✅ | `v2/core/features_test.dart` | [→](#7-features--modes-defines-macros-pipelines) |
-| 8 | [Help Generator](#8-help-generator) | 33 | 33✅ | `v2/core/help_generator_test.dart` | [→](#8-help-generator) |
+| 8 | [Help Generator](#8-help-generator) | 34 | 34✅ | `v2/core/help_generator_test.dart` | [→](#8-help-generator) |
 | 9 | [OptionDefinition](#9-optiondefinition) | 28 | 28✅ | `v2/core/option_definition_test.dart` | [→](#9-optiondefinition) |
 | 10 | [ToolDefinition](#10-tooldefinition) | 55 | 55✅ | `v2/core/tool_definition_test.dart` | [→](#10-tooldefinition) |
 | 11 | [ToolDefinition Serializer](#11-tooldefinition-serializer) | 20 | 20✅ | `v2/core/tool_definition_serializer_test.dart` | [→](#11-tooldefinition-serializer) |
@@ -81,7 +81,7 @@ This document lists all testable features across `tom_build_base` and tracks tes
 | 66 | [Wired Executor Wrapper](#66-wired-executor-wrapper) | 2 | 2✅ | `v2/core/wired_executor_wrapper_test.dart` | [→](#66-wired-executor-wrapper) |
 | 67 | [Repository Set](#67-repository-set) | 11 | 11✅ | `v2/repos/repo_set_test.dart` | [→](#67-repository-set) |
 | 68 | [Run Report](#68-run-report) | 9 | 9✅ | `v2/report/run_report_test.dart` | [→](#68-run-report) |
-| — | **Total** | **1215** | **1215✅** | | | | |
+| — | **Total** | **1216** | **1216✅** | | | | |
 
 > Every row links to a section, and the counts are measured from
 > `dart test --reporter json -j 1` rather than maintained by hand. Run it
@@ -318,6 +318,7 @@ Tests for the recently implemented features: modes, persistent defines, runtime 
 | BB_HLP_1–10 | Tool help output | ✅ | Name, version, description, usage, options, commands, aliases, hidden, footer, hint. |
 | BB_HLP_11–20 | Command help output | ✅ | Name, description, aliases, options, traversal, per-command filters, examples, usage. |
 | BB_HLP_21–33 | Summary help | ✅ | Basic usage, multi-command list, truncation, flag/option formatting, defaults. |
+| BB-HLP-34 | Details and exit codes | ✅ | A command's `details` follow its description and its `exitCodes` get their own section before the examples; neither without them. |
 
 ---
 

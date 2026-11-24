@@ -643,4 +643,33 @@ void main() {
       });
     });
   });
+
+  test('BB-HLP-34: a command\'s details and exit codes appear in its help, '
+      'after the description and before the examples [2026-11-24]', () {
+    const cmd = CommandDefinition(
+      name: 'push',
+      description: 'Pushes everything',
+      details: 'Steps:\n  1. check\n  2. commit',
+      exitCodes: {0: 'everything pushed', 1: 'something needs you'},
+      examples: ['tool :push'],
+    );
+    final help = HelpGenerator.generateCommandHelp(cmd);
+    final description = help.indexOf('Pushes everything');
+    final details = help.indexOf('Steps:\n  1. check\n  2. commit');
+    final codes = help.indexOf('**Exit Codes**');
+    final examples = help.indexOf('**Examples**');
+    expect(description, greaterThanOrEqualTo(0));
+    expect(details, greaterThan(description));
+    expect(codes, greaterThan(details));
+    expect(examples, greaterThan(codes));
+    expect(
+      help,
+      contains('  0  everything pushed\n  1  something needs you\n'),
+    );
+    const plain = CommandDefinition(name: 'x', description: 'X');
+    expect(
+      HelpGenerator.generateCommandHelp(plain),
+      isNot(contains('Exit Codes')),
+    );
+  });
 }
