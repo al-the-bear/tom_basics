@@ -8,7 +8,7 @@ import 'package:tom_build_base/tom_build_base_v2.dart';
 import '../version.versioner.dart';
 import '../wssetup/wssetup_tool.dart' show wssetupOptions;
 import 'executors/git_executors.dart' show gitstatusMessages;
-import 'ws/ws_messages.dart' show wsPushMessages;
+import 'ws/ws_messages.dart' show wsAllMessages;
 
 // =============================================================================
 // Common Options
@@ -1298,6 +1298,136 @@ message (ws-conflict, ...). -n shows the whole plan and changes nothing.
   ],
 );
 
+/// Options for ws-update (buildkit_ws_commands.md § 1.4, § 1.8).
+const wsupdateOptions = <OptionDefinition>[
+  OptionDefinition.option(
+    name: 'message',
+    abbr: 'm',
+    description:
+        'The message of a --commit-first commit (default: "ws-update on <host> at <iso time>")',
+    valueName: 'msg',
+  ),
+  OptionDefinition.flag(
+    name: 'json',
+    description:
+        'The report as one JSON document (every message with its options)',
+  ),
+  OptionDefinition.multi(
+    name: 'skip',
+    description:
+        'Leave these repositories out of this run (the run then exits 1)',
+    valueName: 'repos',
+  ),
+  OptionDefinition.multi(
+    name: 'commit-first',
+    description:
+        'Commit the uncommitted files the merge would overwrite, then merge; not pushed (ws-held)',
+    valueName: 'repos',
+  ),
+  OptionDefinition.multi(
+    name: 'stash-merge',
+    description:
+        'Stash them, merge, put them back; a conflict on the way back leaves the stash (ws-held)',
+    valueName: 'repos',
+  ),
+  OptionDefinition.multi(
+    name: 'merge-fork',
+    description:
+        'Merge origin/<branch> into these forks like code instead of fast-forward only (ws-fork-diverged)',
+    valueName: 'repos',
+  ),
+  OptionDefinition.multi(
+    name: 'to-branch',
+    description:
+        'Commit (-m), switch to the expected branch, merge the current one into it, then update it; not pushed (ws-off-branch)',
+    valueName: 'repos',
+  ),
+  OptionDefinition.multi(
+    name: 'set-branch',
+    description:
+        "Record the current branch as the entry's branch: in repos.yaml, then update it (ws-off-branch)",
+    valueName: 'repos',
+  ),
+  OptionDefinition.multi(
+    name: 'rescue-detached',
+    description:
+        'Put their detached commits on ws-push/<host>/<yymmdd-hhmm>, push that branch, return to the branch (ws-detached)',
+    valueName: 'repos',
+  ),
+  OptionDefinition.multi(
+    name: 'ours',
+    description:
+        'On a conflict, merge again with your side winning (ws-conflict)',
+    valueName: 'repos',
+  ),
+  OptionDefinition.multi(
+    name: 'theirs',
+    description:
+        'On a conflict, merge again with the incoming side winning (ws-conflict)',
+    valueName: 'repos',
+  ),
+  OptionDefinition.multi(
+    name: 'leave-conflict',
+    description:
+        'On a conflict, leave it in the working tree for you to resolve (ws-conflict)',
+    valueName: 'repos',
+  ),
+];
+
+const wsupdateCommand = CommandDefinition(
+  name: 'ws-update',
+  description:
+      'Bring every repository of the tree (repos.yaml) up to its remote: clone '
+      'what is missing, merge what is incoming; nothing is pushed',
+  details: '''
+The tree: the repositories of the repos.yaml at or above the folder you start
+in (or --manifest).
+
+1. Checks, before anything changes (each refuses the run, exit 2):
+   ws-manifest     no repos.yaml, or an invalid one
+   ws-driver       a merge driver a .gitattributes names is not registered
+   ws-in-progress  a repository is mid-merge, mid-rebase or mid-cherry-pick
+2. The root first: fetch and merge (it holds repos.yaml); then repos.yaml is
+   read again.
+3. Missing entries for this host are cloned (an upstream at its pin:
+   ws-clone-failed when it fails); a changed origin URL is re-pointed; a moved
+   entry (its URL checked out at another path) is moved when clean and fully
+   pushed, else ws-move-blocked.
+4. Every repository: put on its branch (ws-off-branch, ws-detached), fetch,
+   merge origin/<branch>. Forks only fast-forward (ws-fork-diverged); an
+   upstream goes to its pin (a dirty one is left alone: ws-upstream-dirty);
+   tom_binaries takes the remote (latest wins). Uncommitted files the merge
+   would overwrite hold the repository (ws-held); otherwise the merge goes
+   through with them in place. A conflict is aborted: ws-conflict.
+5. The parents' generated ignore blocks are written (as wssetup); unknown
+   clones are reported (ws-unknown-seen).
+
+Nothing is pushed (only a --rescue-detached branch). Every problem is
+reported with the options that resolve it and the command line to repeat; an
+option given repositories acts only on those, named by their last path
+segment when unique, else by their path. buildkit help <code> explains each
+message. -n shows the plan and changes nothing.
+''',
+  exitCodes: {
+    0: 'every repository is at or ahead of origin/<branch> (forks and upstreams by their rules)',
+    1: 'something needs you (held, a conflict, a diverged fork, a failed clone, ...) or a repository was left out',
+    2: 'refused before anything changed, or a usage error (an unknown repository name)',
+  },
+  options: wsupdateOptions,
+  supportsProjectTraversal: false,
+  supportsGitTraversal: false,
+  requiresTraversal: false,
+  canRunStandalone: true,
+  examples: [
+    'buildkit :ws-update',
+    'buildkit :ws-update -n',
+    'buildkit :ws-update --commit-first core -m "Before the update"',
+    'buildkit :ws-update --stash-merge basics',
+    'buildkit :ws-update --merge-fork tom_dcli',
+    'buildkit :ws-update --json',
+  ],
+);
+
 const gitpushCommand = CommandDefinition(
   name: 'gitpush',
   description:
@@ -1598,7 +1728,7 @@ final buildkitTool = ToolDefinition(
   helpTopics: [
     ...defaultHelpTopics,
     ...gitstatusMessages.helpTopics,
-    ...wsPushMessages.helpTopics,
+    ...wsAllMessages.helpTopics,
   ],
   features: const NavigationFeatures(
     projectTraversal: true,
@@ -1662,6 +1792,7 @@ final buildkitTool = ToolDefinition(
     gitpullCommand,
     // Workspace commands
     wspushCommand,
+    wsupdateCommand,
     gitbranchCommand,
     gittagCommand,
     gitcheckoutCommand,

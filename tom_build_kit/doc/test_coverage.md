@@ -761,6 +761,31 @@ The integration suites run on the machine's workspace clone (tom_test_support `T
 | BK-WSP-21 | `-n` | ✅ | The plan (would commit, would merge, would push), nothing changed. |
 | BK-WSP-22 | Help | ✅ | Every option, the steps, the exit codes, examples; a topic per message. |
 
+### :ws-update
+
+**Test file:** `test/ws_update_test.dart` (a tree of real repositories with bare remotes in a temporary folder; the entries' URLs `git@fixture:<name>.git` mapped onto the remotes by an `insteadOf` rule of the test's git configuration; never the live workspace)
+
+| ID | Feature | Status | How to Test |
+|----|---------|--------|-------------|
+| BK-WSU-1 | Behind the remotes | ✅ | Root, `_ai`, code merged, the fork fast-forwarded; every repository at or ahead of `origin/<branch>`; an uncommitted file the merge does not touch stays; nothing pushed; an `insteadOf` rewrite is no changed origin; exit 0. |
+| BK-WSU-2 | Root first, missing entries | ✅ | The root's merge brings new entries; repos.yaml read again; a code entry cloned on its branch, an upstream at its pin. |
+| BK-WSU-3 | `ws-clone-failed` | ✅ | An entry whose remote does not exist; `--skip <name>` as the repeat line. |
+| BK-WSU-4 | Moved entry, `ws-move-blocked` | ✅ | A dirty old checkout blocks the move; clean, it is moved. |
+| BK-WSU-5 | Changed origin URL | ✅ | Re-pointed to the URL of repos.yaml. |
+| BK-WSU-6 | `ws-held` | ✅ | A file the merge would overwrite holds the repository (files, incoming commits, options, repeat line); a dirty file the merge does not touch goes through. |
+| BK-WSU-7 | `--commit-first`, `--stash-merge` | ✅ | Committed with `-m` and merged, not pushed; stashed, merged, the file back unstaged, no stash left. |
+| BK-WSU-8 | `ws-conflict`, `--leave-conflict`, `--theirs` | ✅ | Aborted with its options; left in the working tree; merged with the incoming side. |
+| BK-WSU-9 | `ws-fork-diverged`, `--merge-fork` | ✅ | A fork with a local commit is not merged; `--merge-fork` merges it. |
+| BK-WSU-10 | Changed pin, `ws-upstream-dirty` | ✅ | An upstream put at its new pin; a dirty one left alone. |
+| BK-WSU-11 | `tom_binaries` latest wins | ✅ | A conflicting local commit merged with `-X theirs`. |
+| BK-WSU-12 | `ws-off-branch`, `--to-branch`, `ws-detached` | ✅ | Off its branch reported; `--to-branch` commits on it, switches back and merges it in, not pushed; commits on no branch reported. |
+| BK-WSU-13 | Ignore blocks, `ws-unknown-seen` | ✅ | The root's ignore block written; an unknown clone reported. |
+| BK-WSU-14 | Refusals | ✅ | `ws-driver`, `ws-in-progress`, `ws-manifest` refuse before anything changes; exit 2. |
+| BK-WSU-15 | `ws-fetch-failed` | ✅ | A remote that cannot be reached. |
+| BK-WSU-16 | `-n` | ✅ | The plan (would merge), nothing changed. |
+| BK-WSU-17 | Help | ✅ | Every option, the steps, the exit codes, examples; one topic per message, shared ones once. |
+| BK-WSU-18 | `--skip`, `--ours`, `--set-branch`, `--rescue-detached` | ✅ | A held repository left out (exit 1); a conflict merged with the local side; the branch recorded in repos.yaml; the detached commits pushed to the rescue branch, the branch itself not. |
+
 ### Git commands on the repository set
 
 **Test file:** `test/git_commands_set_test.dart` (real repositories with bare remotes and a `repos.yaml` in a temporary folder; never the live workspace)

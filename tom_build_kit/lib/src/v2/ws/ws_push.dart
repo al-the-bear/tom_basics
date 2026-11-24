@@ -36,6 +36,7 @@ import 'package:glob/glob.dart';
 import 'package:path/path.dart' as p;
 import 'package:tom_build_base/tom_build_base_v2.dart';
 
+import 'ws_common.dart';
 import 'ws_messages.dart';
 
 /// The secret list of `tom_push_code` (`.claude/skills/_lib/git_lib.sh`).
@@ -63,43 +64,9 @@ const wsPushRepoOptions = [
   'leave-conflict',
 ];
 
-/// Runs git in one folder.
-class _Git {
-  _Git(this.dir, this.environment);
+typedef _Git = WsGit;
 
-  final String dir;
-  final Map<String, String>? environment;
-
-  Future<ProcessResult> run(List<String> args) => Process.run(
-    'git',
-    args,
-    workingDirectory: dir,
-    environment: environment,
-    stdoutEncoding: utf8,
-    stderrEncoding: utf8,
-  );
-
-  Future<String> out(List<String> args) async =>
-      '${(await run(args)).stdout}'.trim();
-
-  Future<bool> ok(List<String> args) async => (await run(args)).exitCode == 0;
-
-  static String text(ProcessResult r) => '${r.stderr}\n${r.stdout}'
-      .trim()
-      .split('\n')
-      .map((l) => l.trim())
-      .where((l) => l.isNotEmpty)
-      .take(4)
-      .join(' | ');
-}
-
-/// One uncommitted change (`git status --porcelain`).
-class _Change {
-  const _Change(this.code, this.path);
-  final String code;
-  final String path;
-  bool get deleted => code.contains('D');
-}
+typedef _Change = WsChange;
 
 /// A repository of the run with what was measured.
 class _Repo {
@@ -247,19 +214,10 @@ class WsPushRun {
   String get _host => set.host;
 
   /// `ws-push/<host>/<yymmdd-hhmm>`.
-  String get rescueBranch {
-    String two(int v) => v.toString().padLeft(2, '0');
-    final y = (now.year % 100).toString().padLeft(2, '0');
-    return 'ws-push/$_host/$y${two(now.month)}${two(now.day)}-'
-        '${two(now.hour)}${two(now.minute)}';
-  }
+  String get rescueBranch => wsRescueBranch(_host, now);
 
-  String get _message {
-    String two(int v) => v.toString().padLeft(2, '0');
-    final iso =
-        '${now.year}-${two(now.month)}-${two(now.day)}T${two(now.hour)}:${two(now.minute)}';
-    return options.message ?? 'ws-push on $_host at $iso';
-  }
+  String get _message =>
+      options.message ?? 'ws-push on $_host at ${wsIsoMinute(now)}';
 
   /// The run's exit code.
   int get exitCode {
@@ -379,69 +337,13 @@ class WsPushRun {
     r.branch = branch.isEmpty ? null : branch;
     final head = await g.run(['rev-parse', 'HEAD']);
     r.head = head.exitCode == 0 ? '${head.stdout}'.trim() : null;
-    for (final (marker, what) in const [
-      ('MERGE_HEAD', 'a merge'),
-      ('rebase-merge', 'a rebase'),
-      ('rebase-apply', 'a rebase'),
-      ('CHERRY_PICK_HEAD', 'a cherry-pick'),
-      ('REVERT_HEAD', 'a revert'),
-    ]) {
-      final at = await g.out(['rev-parse', '--git-path', marker]);
-      final full = p.isAbsolute(at) ? at : p.join(r.path, at);
-      if (FileSystemEntity.typeSync(full) != FileSystemEntityType.notFound) {
-        r.inProgress = what;
-        break;
-      }
-    }
+    r.inProgress = await wsOperationInProgress(g);
     final status = await g.run(['status', '--porcelain=v1', '-z', '-uall']);
     r.changes = _parseStatus('${status.stdout}');
-    if (!r.isUpstream) await _drivers(r);
+    if (!r.isUpstream) r.missingDrivers.addAll(await wsMissingDrivers(g));
   }
 
-  static List<_Change> _parseStatus(String z) {
-    final out = <_Change>[];
-    final parts = z.split('\x00');
-    for (var i = 0; i < parts.length; i++) {
-      final e = parts[i];
-      if (e.length < 4) continue;
-      final code = e.substring(0, 2);
-      out.add(_Change(code, e.substring(3)));
-      if (code.startsWith('R') || code.startsWith('C')) i++;
-    }
-    return out;
-  }
-
-  Future<void> _drivers(_Repo r) async {
-    final g = _git(r.path);
-    final listed = (await g.out([
-      'ls-files',
-      '-z',
-      '--',
-      '.gitattributes',
-      '*/.gitattributes',
-    ])).split('\x00').where((f) => f.isNotEmpty).toSet();
-    if (File(p.join(r.path, '.gitattributes')).existsSync()) {
-      listed.add('.gitattributes');
-    }
-    final drivers = <String, String>{};
-    for (final rel in listed) {
-      final file = File(p.join(r.path, rel));
-      if (!file.existsSync()) continue;
-      for (final line in file.readAsLinesSync()) {
-        if (line.trimLeft().startsWith('#')) continue;
-        for (final m in RegExp(r'(?:^|\s)merge=([^\s]+)').allMatches(line)) {
-          final name = m.group(1)!;
-          if (const {'text', 'binary', 'union'}.contains(name)) continue;
-          drivers.putIfAbsent(name, () => rel);
-        }
-      }
-    }
-    for (final e in drivers.entries) {
-      if (!await g.ok(['config', '--get', 'merge.${e.key}.driver'])) {
-        r.missingDrivers.add((driver: e.key, file: e.value));
-      }
-    }
-  }
+  static List<_Change> _parseStatus(String z) => wsParseStatus(z);
 
   bool _matches(List<String> globs, _Repo r, String path) {
     final fromRoot = r.rel.isEmpty ? path : '${r.rel}/$path';
@@ -557,7 +459,7 @@ class WsPushRun {
 
   Future<void> _reportUnknown(_Repo r) async {
     final g = _git(r.path);
-    final url = await g.out(['remote', 'get-url', 'origin']);
+    final url = await g.originUrl();
     final unpushed = await g.out([
       'log',
       '--oneline',
@@ -633,9 +535,7 @@ class WsPushRun {
           branch: r.branch,
           finding: 'git fetch origin failed:',
           evidence: [
-            ReportEvidence('remote', [
-              await g.out(['remote', 'get-url', 'origin']),
-            ], label: 'Remote:'),
+            ReportEvidence('remote', [await g.originUrl()], label: 'Remote:'),
             ReportEvidence('git', [r.fetchError!], label: 'Git:'),
           ],
           state: 'Nothing was committed, merged or pushed for it.',

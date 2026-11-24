@@ -1,5 +1,23 @@
 ## Unreleased
 
+- New `:ws-update`: brings this machine up to the remotes, nothing pushed.
+  The root first (fetch, merge, repos.yaml read again); missing entries
+  cloned (an upstream at its pin; `ws-clone-failed`), a changed origin URL
+  re-pointed, a moved entry moved when clean and pushed (`ws-move-blocked`);
+  then every repository on its branch (`ws-off-branch`: `--to-branch`
+  commits, switches and merges the current branch in, `--set-branch`; `ws-detached`: `--rescue-detached`), fetched and merged
+  with `origin/<branch>`: forks fast-forward only (`ws-fork-diverged`,
+  `--merge-fork`), upstreams to their pin (`ws-upstream-dirty`),
+  `tom_binaries` with the remote winning. Uncommitted files the merge would
+  overwrite hold the repository (`ws-held`: `--commit-first`,
+  `--stash-merge`, `--skip`); a conflict is aborted (`ws-conflict`:
+  `--ours`, `--theirs`, `--leave-conflict`, `--skip`). Writes the ignore
+  blocks as wssetup does, reports unknown clones (`ws-unknown-seen`);
+  refuses for `ws-driver`, `ws-in-progress`, `ws-manifest`; `-n`, `--json`,
+  exit 0/1/2.
+- `:ws-push` compares and reports the origin URL as configured, not as an
+  `insteadOf` rule rewrites it.
+
 - New `:ws-push [-m <message>]`: everything this machine has, committed,
   merged and pushed in every repository of the tree (`repos.yaml`, `_ai`
   included; `_ai` and the leaves first, the root last; status and fetch

@@ -306,6 +306,90 @@ const wsUpstreamDirty = MessageDefinition(
       'and says so. Nothing is needed unless you want the changes gone.',
 );
 
+/// `ws-held`: (`:ws-update`) uncommitted files the merge would overwrite.
+const wsHeld = MessageDefinition(
+  code: 'ws-held',
+  level: MessageLevel.error,
+  label: 'HELD',
+  summary:
+      'Uncommitted files that the merge of origin/<branch> would overwrite.',
+  description:
+      'The repository was held: neither merged nor changed, so your '
+      'uncommitted work is as you left it. Commit it first, stash it around '
+      'the merge, or push it with :ws-push and update again.',
+  options: [
+    MessageOption(
+      'commit-first',
+      'Commit them (with -m, or "ws-update on <host> at <time>"), then merge.\n'
+          'The commit is not pushed; :ws-push pushes it later.',
+    ),
+    MessageOption(
+      'stash-merge',
+      'Stash them, merge, and put them back; a conflict on the way back\n'
+          'leaves them in the stash for you (git stash list).',
+    ),
+    _skip,
+  ],
+);
+
+/// `ws-fork-diverged`: (`:ws-update`) a fork that cannot fast-forward.
+const wsForkDiverged = MessageDefinition(
+  code: 'ws-fork-diverged',
+  level: MessageLevel.error,
+  label: 'FORK DIVERGED',
+  summary:
+      'A fork has local commits and incoming ones: it cannot fast-forward.',
+  description:
+      'Forks follow their own branch and are only fast-forwarded, so a '
+      'patch series stays as it was written. Nothing was changed. Merge like '
+      'code if that is what you want, or rebase it by hand.',
+  options: [
+    MessageOption(
+      'merge-fork',
+      'Merge origin/<branch> into it like a code repository (a merge commit).',
+    ),
+    _skip,
+  ],
+);
+
+/// `ws-clone-failed`: (`:ws-update`) a missing entry cannot be cloned.
+const wsCloneFailed = MessageDefinition(
+  code: 'ws-clone-failed',
+  level: MessageLevel.error,
+  label: 'CLONE FAILED',
+  summary: 'A missing entry of repos.yaml could not be cloned.',
+  description:
+      'Check the URL in repos.yaml and your access to it (an SSH key, a '
+      'token), then run :ws-update again.',
+  options: [_skip],
+);
+
+/// `ws-move-blocked`: (`:ws-update`) a moved entry whose old checkout is
+/// not clean or not pushed.
+const wsMoveBlocked = MessageDefinition(
+  code: 'ws-move-blocked',
+  level: MessageLevel.error,
+  label: 'MOVE BLOCKED',
+  summary:
+      'An entry moved in repos.yaml, but its old checkout is not clean or not '
+      'fully pushed.',
+  description:
+      'Moving it would carry work that is on no remote. Run :ws-push first '
+      '(with --include-unknown <repo> for the old checkout), then repeat.',
+  options: [_skip],
+);
+
+/// `ws-unknown-seen`: (`:ws-update`) unknown clones exist.
+const wsUnknownSeen = MessageDefinition(
+  code: 'ws-unknown-seen',
+  level: MessageLevel.warning,
+  label: 'UNKNOWN CLONES',
+  summary: 'Clones on disk that repos.yaml does not list.',
+  description:
+      ':ws-update leaves them alone. Give them an entry, list them under '
+      'unmanaged:, or remove them with :ws-repo-cleanup.',
+);
+
 /// The messages of `:ws-push`.
 final wsPushMessages = MessageCatalog([
   wsActive,
@@ -324,3 +408,34 @@ final wsPushMessages = MessageCatalog([
   wsRescueOpen,
   wsUpstreamDirty,
 ]);
+
+/// The messages of `:ws-update`.
+final wsUpdateMessages = MessageCatalog([
+  wsManifest,
+  wsDriver,
+  wsInProgress,
+  wsHeld,
+  wsConflict,
+  wsOffBranch,
+  wsDetached,
+  wsForkDiverged,
+  wsCloneFailed,
+  wsMoveBlocked,
+  wsFetchFailed,
+  wsUpstreamDirty,
+  wsUnknownSeen,
+]);
+
+/// Every message of the `:ws-*` commands, once: their help topics.
+final wsAllMessages = MessageCatalog(
+  [
+    for (final d in [
+      ...wsPushMessages.definitions,
+      ...wsUpdateMessages.definitions,
+    ])
+      d,
+  ].fold<List<MessageDefinition>>([], (list, d) {
+    if (!list.any((x) => x.code == d.code)) list.add(d);
+    return list;
+  }),
+);

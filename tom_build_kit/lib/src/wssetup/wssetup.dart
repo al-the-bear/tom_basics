@@ -430,7 +430,27 @@ List<WssetupItem> _blocks(
   String scope,
   bool reduced,
   WssetupRequest request,
-) {
+) => wssetupIgnoreBlocks(
+  manifest,
+  root,
+  scope: scope,
+  reduced: reduced,
+  dryRun: request.dryRun,
+  check: request.check,
+);
+
+/// Writes each parent's generated ignore block (its entries and links) into
+/// its `.gitignore` below [scope] ('' the whole tree), as `wssetup` and
+/// `:ws-update` do; [dryRun] and [check] write nothing. [reduced] (a root
+/// with `.gitmodules`) writes none.
+List<WssetupItem> wssetupIgnoreBlocks(
+  ReposManifest manifest,
+  String root, {
+  String scope = '',
+  bool reduced = false,
+  bool dryRun = false,
+  bool check = false,
+}) {
   if (reduced) {
     return const [
       WssetupItem(
@@ -469,11 +489,11 @@ List<WssetupItem> _blocks(
       }
       continue;
     }
-    if (request.dryRun) {
+    if (dryRun) {
       items.add(
         WssetupItem('would write block', label, '${lines.length} line(s)'),
       );
-    } else if (request.check) {
+    } else if (check) {
       items.add(
         WssetupItem('block differs', label, '${lines.length} line(s) expected'),
       );
