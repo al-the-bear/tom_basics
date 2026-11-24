@@ -4,6 +4,7 @@ import '../folder/fs_folder.dart';
 import '../folder/natures/dart_project_folder.dart';
 import '../folder/natures/git_folder.dart';
 import '../folder/run_folder.dart';
+import '../repos/repo_set.dart';
 import 'traversal_info.dart';
 
 /// Context provided to commands during execution.
@@ -32,6 +33,11 @@ class CommandContext {
 
   /// Absolute path to folder.
   String get path => fsFolder.path;
+
+  /// The repository of a git-mode run built from `repos.yaml`: its entry
+  /// (kind, branch, pin, url), its class and the branch it should be on.
+  /// Null in project mode and without a `repos.yaml`.
+  RepoSetMember? get repo => fsFolder.repo;
 
   /// Folder name.
   String get name => fsFolder.name;

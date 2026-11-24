@@ -205,7 +205,45 @@ class ExecutePlaceholderResolver {
     'flutter.isPlugin',
     'git.isSubmodule',
     'git.hasChanges',
+    'repo.exists',
   };
+
+  /// `%{repo.kind}` (root, code, fork, ai, binaries, upstream, or the class
+  /// of a clone with no entry), `%{repo.class}` (entry, questClone, ...),
+  /// `%{repo.branch}` (the branch it should be on), `%{repo.pin}` (an
+  /// upstream's commit), `%{repo.url}`, `%{repo.path}` (from the root, `.`
+  /// for the root): only in a git-mode run built from `repos.yaml`.
+  static String _repoPlaceholder(
+    String placeholder,
+    ExecutePlaceholderContext ctx,
+  ) {
+    final repo = ctx.folder.repo;
+    String? value;
+    String why = 'not in a git-mode run over a repos.yaml';
+    if (repo != null) {
+      value = switch (placeholder) {
+        'repo.kind' => repo.kindName,
+        'repo.class' => repo.repoClass.name,
+        'repo.branch' => repo.expectedBranch,
+        'repo.pin' => repo.pin,
+        'repo.url' => repo.url,
+        _ => repo.relPath.isEmpty ? '.' : repo.relPath,
+      };
+      why = switch (placeholder) {
+        'repo.pin' => 'not an upstream (no pin)',
+        'repo.branch' => 'no branch recorded for this repository',
+        _ => 'no URL recorded for this repository',
+      };
+    }
+    if (value == null) {
+      throw UnresolvedPlaceholderException(
+        placeholder,
+        ctx.folderPath,
+        message: why,
+      );
+    }
+    return value;
+  }
 
   /// Resolve a placeholder value from context.
   ///
@@ -290,6 +328,17 @@ class ExecutePlaceholderResolver {
         return ctx.hasC.toString();
       case 'cpp.exists':
         return ctx.hasCpp.toString();
+      // The repository of a git-mode run built from repos.yaml.
+      case 'repo.exists':
+        return (ctx.folder.repo != null).toString();
+      case 'repo.kind':
+      case 'repo.class':
+      case 'repo.branch':
+      case 'repo.pin':
+      case 'repo.url':
+      case 'repo.path':
+        return _repoPlaceholder(placeholder, ctx);
+
       case 'language':
         final language = ctx.languageProject;
         if (language == null) {
@@ -573,6 +622,16 @@ class ExecutePlaceholderResolver {
           'true when .git is a file (a submodule checkout or a worktree)',
       'git.hasChanges': 'true if uncommitted changes',
       'git.remotes': 'Comma-separated remote list',
+
+      // Repository (git mode over a repos.yaml)
+      'repo.exists': 'true if the run knows the repository (git mode over repos.yaml)',
+      'repo.kind':
+          'root, code, fork, ai, binaries, upstream (or the class of a clone with no entry)',
+      'repo.class': 'entry, questClone, unmanaged, toolOwned, unknown',
+      'repo.branch': 'The branch it should be on (repos.yaml, _ai/quests.yaml)',
+      'repo.pin': "An upstream's pinned commit",
+      'repo.url': 'Its origin URL as recorded',
+      'repo.path': 'Its path from the repos.yaml root (. for the root)',
 
       // VS Code extension attributes
       'vscode.name': 'Extension name',

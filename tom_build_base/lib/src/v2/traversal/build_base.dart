@@ -12,6 +12,7 @@ import 'command_context.dart';
 import 'filter_pipeline.dart';
 import 'folder_scanner.dart';
 import 'nature_detector.dart';
+import '../repos/repo_set.dart';
 import 'project_groups.dart';
 import 'traversal_info.dart';
 
@@ -179,13 +180,32 @@ abstract class BuildBase {
         final scanner = FolderScanner(
           verbose: verbose,
           ignoreSkipMarkers: pi.ignoreSkipMarkers,
+          skipPaths: upstreamPaths(pi.executionRoot),
         );
         folders = await scanRoots(scanner, pi);
         result.recordSkippedWorkspaces(scanner.skippedWorkspaces);
       case GitTraversalInfo gi:
-        final finder = GitRepoFinder(ignoreSkipMarkers: gi.ignoreSkipMarkers);
-        folders = await finder.findAll(gi.executionRoot);
-        result.recordSkippedWorkspaces(finder.skippedWorkspaces);
+        final set = RepoSet.discover(
+          gi.executionRoot,
+          manifestPath: gi.manifestPath,
+        );
+        if (set == null) {
+          final finder = GitRepoFinder(ignoreSkipMarkers: gi.ignoreSkipMarkers);
+          folders = await finder.findAll(gi.executionRoot);
+          result.recordSkippedWorkspaces(finder.skippedWorkspaces);
+        } else {
+          final scope = set.scope(
+            gi.executionRoot,
+            stopAtWorkspaces: !gi.ignoreSkipMarkers,
+          );
+          folders = [
+            for (final m in scope.members) FsFolder(path: m.path)..repo = m,
+          ];
+          for (final w in scope.nestedWorkspaces) {
+            stderr.writeln('Skipping subworkspace: ${p.basename(w)}');
+          }
+          result.recordSkippedWorkspaces(scope.nestedWorkspaces);
+        }
       default:
         folders = [];
     }

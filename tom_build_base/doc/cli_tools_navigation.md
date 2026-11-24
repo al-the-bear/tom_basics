@@ -190,6 +190,7 @@ the current directory.
 | `--top-repo` | `-T` | Find topmost git repo by traversing up (requires `-i` or `-o`) |
 | `--modules` | `-m` | Repositories to include (see below) |
 | `--skip-modules` | | Repositories to exclude (see below) |
+| `--manifest <file>` | | The `repos.yaml` the repository set is built from (default: the one at or above the start folder) |
 
 `--modules` and `--skip-modules` select repositories by path, so an independent clone (a `.git` directory) is
 selected like a submodule checkout. Each value is one of:
@@ -207,11 +208,49 @@ submodule checkout or a worktree); it is information only, and neither the filte
 - `-o`: For pull/fetch operations (parent repos first)
 - `-T`: Find and operate on the parent repository containing the current directory
 
+#### The repository set from `repos.yaml`
+
+When a `repos.yaml` (the root's repository manifest) is at or above the start folder, or `--manifest` names one, git
+mode works on the **combined repository set**: the entries of `repos.yaml` for this host and every clone found on
+disk below the folder holding it, each in its class:
+
+| Class | What | Git mode |
+| --- | --- | --- |
+| entry | the root (`root:`), and an entry of `repos.yaml` that is on disk | included, but `kind: upstream` is skipped |
+| quest clone | a clone inside `_ai/quests/` | included |
+| unmanaged | a clone at a path under `unmanaged:` | skipped |
+| tool-owned | a run worktree under `.worktrees/`, a bare `_ai/.quest-repos/*.git` | skipped |
+| unknown | any other clone on disk | skipped |
+| missing | an entry for this host (`hosts:`) that is not on disk | – |
+
+- `_ai` is a repository of the set (it stays out of project mode); the workspace folders' `_ai` links are not
+  followed. Hidden folders (but `.worktrees/` and `_ai/.quest-repos/`), `ztmp/`, `build/`, `node_modules/` and the
+  other always-skipped folders are never looked at.
+- Build skip markers (`tom_skip.yaml`, `{basename}_skip.yaml`) do not hide a repository: `repos.yaml` decides.
+- The host is `TOM_REPOS_HOST`, else `.tom/machine_id` at the root, else derived from the host name (as `wssetup`).
+- **Nested workspaces:** the run stops at a repository below the start folder that holds a workspace of its own
+  (`{basename}_master.yaml`); `-w` runs the command there. A workspace folder inside a repository that is not a
+  repository itself (a test fixture) is no boundary, so `-w` never processes a repository twice.
+- **The expected branch:** each repository carries its entry: kind, branch, pin, URL and the branch it should be on
+  (the entry's `branch:`, `root.branch`, for a quest clone the `_ai/quests.yaml` record: the `branch` of a repo
+  quest, `quest/<id>` of a multi-quest one). Executors read it as `CommandContext.repo`; `:execute` and pipelines
+  as `%{repo.kind}`, `%{repo.class}`, `%{repo.branch}`, `%{repo.pin}`, `%{repo.url}`, `%{repo.path}` and
+  `%{repo.exists?(..):(..)}`.
+- A run started inside an unmanaged clone or a scratch folder below the root (the workspace clone, a test fixture
+  under `.dart_tool/` or `ztmp/`) is a tree of its own: it walks the folders as without `repos.yaml`.
+- An invalid `repos.yaml` stops the run, naming every problem.
+
+The `:ws-*` commands take the whole tree from the folder holding `repos.yaml`: `RepoSet.discover(start)` and
+`RepoSet.members` (every class), `RepoSet.scope(root, stopAtWorkspaces: false)` for the git set.
+
+#### Without `repos.yaml`
+
 Git mode skips what project mode skips: hidden folders and the
 [always-skipped folders](#always-skipped-folders) (`ztmp`, `_ai`, `build`, ...), folders holding a
 [skip file](#skip-files) with everything below them (a repository holding one is not listed), and nested
 workspaces (a `{basename}_master.yaml` below the execution root). `--no-skip` lists the marked folders and the
-nested workspaces; rooting the run in a nested workspace (`-R`) lists its repositories.
+nested workspaces; rooting the run in a nested workspace (`-R`) lists its repositories. With a `repos.yaml`,
+`--no-skip` makes the run go on into the nested workspaces.
 
 The `--top-repo` flag traverses upward from the current directory to find the topmost git repository. It requires a git traversal mode (`-i` or `-o`) to be specified. This is useful when running from a nested subdirectory and you want to operate on the containing repository hierarchy.
 
@@ -547,6 +586,10 @@ Some folder names never hold a project to process, at any depth and for every to
 stale constraints) and `_ai` (the AI state mount, symlinked or not). The traversal (`FolderScanner`) and
 `scanForDartProjects` never descend into them, nor does git mode (`GitRepoFinder.findAll`), so a nested `ztmp/<copy>/pubspec.yaml` is not discovered, pub-updated
 or built. No skip file is needed for them, and `--no-skip` does not reach them: it lifts skip markers only.
+
+In git mode over a `repos.yaml` `_ai` is no longer skipped (it is a repository of the set). In project mode, with a
+`repos.yaml` at or above the scan, every `kind: upstream` entry (a third-party project pinned to a SHA) is skipped
+too, without a marker file (`upstreamPaths`).
 
 ### NavigationResult Properties
 

@@ -66,6 +66,16 @@ Each system is independent and uses its own syntax.
     %{folder.name}         Folder basename
     %{folder.relative}     Folder relative to workspace root
 
+  <cyan>Repository Placeholders</cyan> (git mode over a repos.yaml)
+
+    %{repo.kind}           root, code, fork, ai, binaries, upstream (or the class)
+    %{repo.class}          entry, questClone, unmanaged, toolOwned, unknown
+    %{repo.branch}         The branch it should be on (repos.yaml, _ai/quests.yaml)
+    %{repo.pin}            An upstream's pinned commit
+    %{repo.url}            Its origin URL as recorded
+    %{repo.path}           Its path from the repos.yaml root (. for the root)
+    %{repo.exists?(a):(b)} Whether the run knows the repository
+
   <cyan>Platform Placeholders</cyan>
 
     %{current-os}          Operating system (linux, macos, windows)

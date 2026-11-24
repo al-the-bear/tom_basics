@@ -1,3 +1,28 @@
+## 2.48.0
+
+### Added — git mode on the combined repository set of `repos.yaml`
+
+- The `repos.yaml` reader (`ReposManifest`, `RepoEntry`, `RepoKind`,
+  `RepoLink`, the host filter, `unmanaged:`, `links:`) moved here from
+  tom_build_kit's `wssetup`, with `findReposRoot` and `reposHostId`.
+- `RepoSet`: the entries for this host and every clone on disk, each in its
+  class (entry with kind, quest clone, unmanaged, tool-owned, unknown,
+  missing) with the branch it should be on (`branch:`, `root.branch`,
+  `_ai/quests.yaml`). When a `repos.yaml` is at or above the start folder,
+  or the new `--manifest <file>` names one, git mode runs on it: the root,
+  the code, fork, ai and binaries entries and the quest clones; upstreams,
+  unmanaged and tool-owned clones are skipped; build skip markers no longer
+  hide a repository; `_ai` is included. A nested workspace stops the run only
+  where it is a repository of the set, so `-w` never runs a repository twice
+  (the test fixture workspaces inside a repository). A run started inside an
+  unmanaged clone or a scratch folder walks the folders as before.
+- Executors get the repository: `CommandContext.repo` (kind, branch, pin,
+  URL, class, expected branch); `:execute` and pipelines `%{repo.kind}`,
+  `%{repo.class}`, `%{repo.branch}`, `%{repo.pin}`, `%{repo.url}`,
+  `%{repo.path}`, `%{repo.exists}`.
+- Project mode skips every `kind: upstream` path of `repos.yaml` without a
+  marker file (`FolderScanner(skipPaths:)`, `upstreamPaths`).
+
 ## 2.47.2
 
 ### Fixed

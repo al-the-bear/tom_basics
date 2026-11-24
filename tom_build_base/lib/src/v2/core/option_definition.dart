@@ -237,6 +237,13 @@ const List<OptionDefinition> gitTraversalOptions = [
     abbr: 'T',
     description: 'Find topmost git repo and use as root (requires -i or -o)',
   ),
+  OptionDefinition.option(
+    name: 'manifest',
+    description:
+        'The repos.yaml the repository set is built from (default: the one '
+        'at or above the start folder)',
+    valueName: 'file',
+  ),
 ];
 
 /// Common options for all tools.

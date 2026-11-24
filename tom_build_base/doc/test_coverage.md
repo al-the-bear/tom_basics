@@ -79,7 +79,8 @@ This document lists all testable features across `tom_build_base` and tracks tes
 | 64 | [Repository Selection by Path](#64-repository-selection-by-path) | 6 | 6✅ | `v2/traversal/module_filter_path_test.dart` | [→](#64-repository-selection-by-path) |
 | 65 | [Workspace Recursion](#65-workspace-recursion) | 9 | 9✅ | `v2/core/workspace_recursion_test.dart` | [→](#65-workspace-recursion) |
 | 66 | [Wired Executor Wrapper](#66-wired-executor-wrapper) | 2 | 2✅ | `v2/core/wired_executor_wrapper_test.dart` | [→](#66-wired-executor-wrapper) |
-| — | **Total** | **1195** | **1195✅** | | | | |
+| 67 | [Repository Set](#67-repository-set) | 11 | 11✅ | `v2/repos/repo_set_test.dart` | [→](#67-repository-set) |
+| — | **Total** | **1206** | **1206✅** | | | | |
 
 > Every row links to a section, and the counts are measured from
 > `dart test --reporter json -j 1` rather than maintained by hand. Run it
@@ -1359,6 +1360,26 @@ independent clones).
 |----|---------|--------|-------------|
 | BB-WEW-1 | The wrapper runs | ✅ | `ToolRunner(wiredExecutorWrapper:)` is put around a wired nested command; the executor it returns runs in each project and runs the nested tool. |
 | BB-WEW-2 | Without a wrapper | ✅ | The wired nested command runs as wired. |
+
+---
+
+## 67. Repository Set
+
+**Test file:** `test/v2/repos/repo_set_test.dart` (each test builds its tree of fake repositories in a temporary folder, never the live workspace)
+
+| ID | Feature | Status | Description |
+|----|---------|--------|-------------|
+| BB-RSET-1 | Classes | ✅ | Every clone on disk and every entry for this host, each in its class (entry with kind, quest clone, unmanaged, tool-owned, unknown, missing) with its expected branch (the entry's, `root.branch`, `_ai/quests.yaml`: `branch` of a repo quest, `quest/<id>` of a multi-quest one); `ztmp`, `node_modules` and the `_ai` link never looked at. |
+| BB-RSET-2 | Host filtering | ✅ | Only this host's entries are missing; an on-demand entry on disk is an entry. |
+| BB-RSET-3 | The git set | ✅ | The root, code, fork, ai and binaries entries and the quest clones; upstreams, unmanaged, tool-owned, unknown and missing ones left out; a build skip marker hides nothing. |
+| BB-RSET-4 | Nested workspaces | ✅ | A repository holding a workspace is a boundary named for `-w`; a workspace inside a repository (a test fixture) is none. |
+| BB-RSET-5 | `-w` through ToolRunner | ✅ | Every repository of the git set runs exactly once, each with its entry; the fixture workspace inside a repository is never run. |
+| BB-RSET-6 | `%{repo.*}` | ✅ | kind, class, branch, pin, url, path, exists; unresolved outside git mode or without a pin. |
+| BB-RSET-7 | Project mode | ✅ | Every upstream is skipped without a marker file (FolderScanner and BuildBase.traverse). |
+| BB-RSET-8 | Without repos.yaml | ✅ | Git mode walks the folders as before; skip markers still hide a repository. |
+| BB-RSET-9 | `--manifest` | ✅ | A repos.yaml kept elsewhere is used; the parser takes the option before or after the command, and into `GitTraversalInfo`. |
+| BB-RSET-10 | An invalid manifest | ✅ | Every problem is named. |
+| BB-RSET-11 | A tree of its own | ✅ | A run started inside an unmanaged clone or a scratch folder below the root gets no set from the root's repos.yaml. |
 
 ---
 

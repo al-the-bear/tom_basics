@@ -175,6 +175,10 @@ class GitTraversalInfo extends BaseTraversalInfo {
   /// for repositories. Activated by `--no-skip`.
   final bool ignoreSkipMarkers;
 
+  /// The `repos.yaml` to build the repository set from (`--manifest`);
+  /// null: the one at or above [executionRoot], if any.
+  final String? manifestPath;
+
   const GitTraversalInfo({
     required super.executionRoot,
     super.excludePatterns,
@@ -184,6 +188,7 @@ class GitTraversalInfo extends BaseTraversalInfo {
     this.skipModules = const [],
     required this.gitMode,
     this.ignoreSkipMarkers = false,
+    this.manifestPath,
   });
 
   @override
@@ -196,6 +201,7 @@ class GitTraversalInfo extends BaseTraversalInfo {
     List<String>? skipModules,
     GitTraversalMode? gitMode,
     bool? ignoreSkipMarkers,
+    String? manifestPath,
   }) {
     return GitTraversalInfo(
       executionRoot: executionRoot ?? this.executionRoot,
@@ -206,6 +212,7 @@ class GitTraversalInfo extends BaseTraversalInfo {
       skipModules: skipModules ?? this.skipModules,
       gitMode: gitMode ?? this.gitMode,
       ignoreSkipMarkers: ignoreSkipMarkers ?? this.ignoreSkipMarkers,
+      manifestPath: manifestPath ?? this.manifestPath,
     );
   }
 

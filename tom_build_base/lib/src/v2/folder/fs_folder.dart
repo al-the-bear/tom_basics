@@ -2,6 +2,8 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 
+import '../repos/repo_set.dart';
+
 /// Filesystem folder during scanning (minimal info).
 ///
 /// Represents a folder discovered during filesystem scanning, before
@@ -13,6 +15,10 @@ class FsFolder {
 
   /// List of detected natures (populated by NatureDetector).
   final List<dynamic> natures = [];
+
+  /// The repository this folder is in a git-mode run built from `repos.yaml`
+  /// (its entry, class and expected branch); null otherwise.
+  RepoSetMember? repo;
 
   FsFolder({required this.path});
 

@@ -73,6 +73,11 @@ class FolderScanner {
   /// each of them.
   final skippedWorkspaces = <String>[];
 
+  /// Absolute folders never scanned, without a marker file: the
+  /// `kind: upstream` entries of `repos.yaml` (third-party projects pinned
+  /// to a SHA are no projects to build).
+  final Set<String> skipPaths;
+
   /// Create a FolderScanner.
   ///
   /// [toolBasename] - Tool name for tool-specific skip files. Defaults to 'buildkit'.
@@ -82,6 +87,7 @@ class FolderScanner {
     this.toolBasename = 'buildkit',
     this.verbose = false,
     this.ignoreSkipMarkers = false,
+    this.skipPaths = const {},
   });
 
   /// Tool-specific skip filename.
@@ -128,6 +134,12 @@ class FolderScanner {
   }) async {
     // Check for skip markers.
     // Skip markers mean "don't include this folder AND don't descend into children"
+    if (!isRoot &&
+        skipPaths.isNotEmpty &&
+        skipPaths.contains(p.normalize(p.absolute(dir.path)))) {
+      if (verbose) stderr.writeln('Skipping upstream: ${p.basename(dir.path)}');
+      return;
+    }
     final skipMarker = !isRoot ? _skipMarkerIn(dir.path, toolBasename) : null;
 
     if (skipMarker != null) {

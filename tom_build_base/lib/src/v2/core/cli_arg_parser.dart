@@ -144,6 +144,10 @@ class CliArgs {
   final bool version;
   final bool noSkip;
 
+  /// `--manifest <file>`: the `repos.yaml` git mode builds its repository set
+  /// from, when none is at or above the start folder (or another one).
+  final String? manifest;
+
   // Nested tool options
   final bool nested;
   final bool dumpDefinitions;
@@ -209,6 +213,7 @@ class CliArgs {
     this.help = false,
     this.version = false,
     this.noSkip = false,
+    this.manifest,
     this.nested = false,
     this.dumpDefinitions = false,
     this.completion,
@@ -330,6 +335,7 @@ class CliArgs {
       includeTestProjects: includeTestProjects,
       testProjectsOnly: testProjectsOnly,
       ignoreSkipMarkers: noSkip,
+      manifestPath: manifest,
     );
   }
 
@@ -424,6 +430,7 @@ class CliArgs {
     bool? help,
     bool? version,
     bool? noSkip,
+    String? manifest,
     bool? nested,
     bool? dumpDefinitions,
     String? completion,
@@ -471,6 +478,7 @@ class CliArgs {
       help: help ?? this.help,
       version: version ?? this.version,
       noSkip: noSkip ?? this.noSkip,
+      manifest: manifest ?? this.manifest,
       nested: nested ?? this.nested,
       dumpDefinitions: dumpDefinitions ?? this.dumpDefinitions,
       completion: completion ?? this.completion,
@@ -952,6 +960,10 @@ class CliArgParser {
       case 'no-skip':
         state.noSkip = true;
         break;
+      case 'manifest':
+        if (value != null) _noteSingleValue(state, '', 'manifest', value);
+        state.manifest = value;
+        break;
       case 'nested':
         state.nested = true;
         break;
@@ -1214,6 +1226,7 @@ class CliArgParser {
       'modules', 'm',
       'skip-modules',
       'no-skip',
+      'manifest',
       'nested',
       'dump-definitions',
       'completion',
@@ -1274,6 +1287,7 @@ class CliArgParser {
       'modules',
       'm',
       'skip-modules',
+      'manifest',
       'config',
       'completion',
       'jobs',
@@ -1495,6 +1509,7 @@ class _ParseState {
   bool help = false;
   bool version = false;
   bool noSkip = false;
+  String? manifest;
   bool nested = false;
   bool dumpDefinitions = false;
   String? completion;
@@ -1542,6 +1557,7 @@ class _ParseState {
       help: help,
       version: version,
       noSkip: noSkip,
+      manifest: manifest,
       nested: nested,
       dumpDefinitions: dumpDefinitions,
       completion: completion,
