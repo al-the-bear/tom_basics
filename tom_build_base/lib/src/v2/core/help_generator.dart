@@ -276,6 +276,9 @@ class HelpGenerator {
     return buf.toString();
   }
 
+  /// The column an option's description starts at.
+  static const _optionColumn = 30;
+
   /// Write options in formatted help style.
   static void _writeOptions(StringBuffer buf, List<OptionDefinition> options) {
     for (final opt in options.where((o) => !o.hidden)) {
@@ -287,7 +290,13 @@ class HelpGenerator {
           : '';
 
       final optStr = '$shortPart$longPart$valuePart';
-      buf.write('  ${optStr.padRight(28)}');
+      // An option wider than the column would run into its description:
+      // the description goes on the next line, at the column.
+      buf.write(
+        optStr.length < _optionColumn - 2
+            ? '  ${optStr.padRight(_optionColumn - 2)}'
+            : '  $optStr\n${' ' * _optionColumn}',
+      );
       // A default the reader cannot see in --help is a trap, and the opt-out
       // form of a negatable flag is the only way to turn a default-on flag off.
       final suffix = StringBuffer();
@@ -301,11 +310,11 @@ class HelpGenerator {
       buf.writeln('${opt.description}$suffix');
 
       if (opt.defaultValue != null) {
-        buf.writeln('${' ' * 30}Default: ${opt.defaultValue}');
+        buf.writeln('${' ' * _optionColumn}Default: ${opt.defaultValue}');
       }
       final allowed = opt.allowedValues;
       if (allowed != null && allowed.isNotEmpty) {
-        buf.writeln('${' ' * 30}One of: ${allowed.join(', ')}');
+        buf.writeln('${' ' * _optionColumn}One of: ${allowed.join(', ')}');
       }
     }
   }

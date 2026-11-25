@@ -1,3 +1,12 @@
+## 2.53.1
+
+### Fixed
+
+- Command help: an option whose `--name=<value>` is wider than the option
+  column no longer runs into its description; the description goes on the
+  next line at the column (`buildkit :ws-push --help`: `--include-unknown`,
+  `--leave-conflict`). BB-HLP-36.
+
 ## 2.53.0
 
 ### Fixed

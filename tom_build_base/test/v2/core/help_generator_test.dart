@@ -12,7 +12,7 @@ void main() {
       ],
     );
 
-    test('BB-HLP-34: tool help, command help and the usage summary name '
+    test('BB-HLP-35: tool help, command help and the usage summary name '
         'the commands without the colon [2026-11-14]', () {
       final help = HelpGenerator.generateToolHelp(tool);
       expect(help, contains('tsm [global-options] command [command-options]'));
@@ -671,5 +671,35 @@ void main() {
       HelpGenerator.generateCommandHelp(plain),
       isNot(contains('Exit Codes')),
     );
+  });
+
+  test('BB-HLP-36: an option wider than the column gets its description on '
+      'the next line, indented to the column [2026-11-25]', () {
+    const cmd = CommandDefinition(
+      name: 'push',
+      description: 'Pushes everything',
+      options: [
+        OptionDefinition.multi(
+          name: 'include-unknown',
+          description: 'Treat these unknown clones as entries',
+          valueName: 'repos',
+        ),
+        OptionDefinition.multi(
+          name: 'skip',
+          description: 'Leave these out',
+          valueName: 'repos',
+        ),
+      ],
+    );
+    final help = HelpGenerator.generateCommandHelp(cmd);
+    expect(
+      help,
+      contains(
+        '      --include-unknown=<repos>\n'
+        '${' ' * 30}Treat these unknown clones as entries\n',
+      ),
+    );
+    // One that fits stays on its line.
+    expect(help, contains('      --skip=<repos>${' ' * 10}Leave these out\n'));
   });
 }
