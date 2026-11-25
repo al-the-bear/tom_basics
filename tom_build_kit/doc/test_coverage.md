@@ -848,6 +848,19 @@ The integration suites run on the machine's workspace clone (tom_test_support `T
 | BK-BIN-11 | `:skill-push-binaries` | ✅ | Committed by platform, rebased onto another platform's push, this build wins a path both changed, a no-op when level, an unrelated history refused (nothing pushed). |
 | BK-BIN-12 | `-n`, help | ✅ | The plan, nothing changed; every option and the exit codes; every message a topic. |
 
+### Help of the workspace and skill commands
+
+**Test file:** `test/ws_help_test.dart` (the help read through the tool as a user runs it)
+
+| ID | Feature | Status | How to Test |
+|----|---------|--------|-------------|
+| BK-WSH-1 | `buildkit --help` | ✅ | Every new command listed with its one line. |
+| BK-WSH-2 | Command pages | ✅ | Each `:ws-*` and `:skill-*` page has its steps, every option, the exit codes. |
+| BK-WSH-3 | Topics | ✅ | `help ws`, `help ws-options`, `help skill-json` print their contents. |
+| BK-WSH-4 | `ws-options` | ✅ | An option is credited only to the commands that accept it (`--merge-branch` not to `:ws-update`); every option a command's messages offer is on the page. |
+| BK-WSH-5 | A topic per message | ✅ | Every code of every catalog a report can show has exactly one topic; `help <code>` prints its summary and options. |
+| BK-WSH-6 | Footer and block | ✅ | A report's footer names `buildkit help <topic>`, its block the code that is the topic. |
+
 ### Git commands on the repository set
 
 **Test file:** `test/git_commands_set_test.dart` (real repositories with bare remotes and a `repos.yaml` in a temporary folder; never the live workspace)

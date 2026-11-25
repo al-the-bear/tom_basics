@@ -11,6 +11,7 @@ import 'executors/git_executors.dart' show gitstatusMessages;
 import 'binaries/binaries_messages.dart' show binAllMessages;
 import 'skill/skill_messages.dart' show skillAllMessages, skillJsonTopic;
 import 'ws/ws_messages.dart' show wsAllMessages;
+import 'ws/ws_topics.dart';
 
 // =============================================================================
 // Common Options
@@ -1455,8 +1456,7 @@ const wsrepocleanupOptions = <OptionDefinition>[
   ),
   OptionDefinition.multi(
     name: 'skip',
-    description:
-        'Leave these clones out of this run (the run then exits 1)',
+    description: 'Leave these clones out of this run (the run then exits 1)',
     valueName: 'repos',
   ),
 ];
@@ -1792,7 +1792,10 @@ rounds at most. A host without the clone has nothing to push (exit 0).
   supportsGitTraversal: false,
   requiresTraversal: false,
   canRunStandalone: true,
-  examples: ['buildkit :skill-push-binaries', 'buildkit :skill-push-binaries -n'],
+  examples: [
+    'buildkit :skill-push-binaries',
+    'buildkit :skill-push-binaries -n',
+  ],
 );
 
 const gitpushCommand = CommandDefinition(
@@ -2095,6 +2098,12 @@ final buildkitTool = ToolDefinition(
   helpTopics: [
     ...defaultHelpTopics,
     ...gitstatusMessages.helpTopics,
+    wsTopic,
+    wsOptionsTopic({
+      ':ws-push': {for (final o in wspushOptions) o.name},
+      ':ws-update': {for (final o in wsupdateOptions) o.name},
+      ':ws-repo-cleanup': {for (final o in wsrepocleanupOptions) o.name},
+    }),
     ...wsAllMessages.helpTopics,
     ...skillAllMessages.helpTopics,
     skillJsonTopic,

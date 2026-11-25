@@ -336,6 +336,41 @@ bk :gitbranch -c feature/new
 bk :git -i -- log --oneline -5
 ```
 
+### Workspace commands
+
+Keep a whole tree committed, pushed and in sync from its `repos.yaml`, on a
+quiet workspace (no session at work): `:ws-push` on the machine with the work,
+`:ws-update` on the others. Each ends with one report; every problem comes with
+the options that resolve it and the command line to repeat (`buildkit help ws`,
+`buildkit help ws-options`, `buildkit help <code>`).
+
+| Command | Description |
+| ------- | ----------- |
+| `:ws-push [-m <msg>]` | Commit, merge and push everything this machine has, in every repository of the tree; never forced |
+| `:ws-update` | Bring every repository up to its remote: clone what is missing, merge what is incoming; nothing pushed |
+| `:ws-repo-cleanup` | Report the clones that are no entry of `repos.yaml`; `--apply` moves, `--delete` deletes the removable ones |
+
+### Fleet skill commands
+
+The per-host work of the fleet skills, under their rules, with `--json` for the
+skills to read (`buildkit help skill-json`):
+
+| Command | Description |
+| ------- | ----------- |
+| `:skill-reconcile-code` | This host's code repositories merged with origin and pushed, as `tom_reconcile_code`; uncommitted work never committed (exit 3, `--dirty=hold`) |
+| `:skill-status` | Every repository against origin, as the fleet status probe (`--rows`: its rows) |
+| `:skill-dirty-scan` | The uncommitted work grouped as `tom_dirty_work` scans it (`--rows`, `--baseline`) |
+| `:skill-build-binaries` | The release binaries into `tom_binaries/tom/<platform>/`, buildkit itself included (`--list`: the set) |
+| `:skill-build-all-binaries` | Every binary of every project; the non-release ones into the ignored `all/<platform>/` |
+| `:skill-push-binaries` | Commit and push `tom_binaries`, rebased onto the other platforms; never forced |
+
+```bash
+bk :ws-push -m "Evening state"     # here
+bk :ws-update                      # on each other machine
+bk :ws-push --merge-branch core    # a report's repeat line
+bk :skill-build-binaries --list    # the release set and where it is declared
+```
+
 ### Project selection
 
 Specify projects with `--project` using comma-separated values and glob

@@ -66,6 +66,10 @@ This package extends the shared infrastructure from **tom_build_base**:
   - [Using Persistent Defines in Configuration](#using-persistent-defines-in-configuration)
   - [Managing Persistent Defines](#managing-persistent-defines)
 - [Setting Up a Tree: `wssetup`](#setting-up-a-tree-wssetup)
+- [Workspace Commands: `:ws-*`](#workspace-commands-ws-)
+  - [The Report](#the-report)
+- [Fleet Skill Commands: `:skill-*`](#fleet-skill-commands-skill-)
+  - [The Release Binaries](#the-release-binaries)
 - [Running Other Tools](#running-other-tools)
 - [Git Operations](#git-operations)
 - [Shell Commands](#shell-commands)
@@ -1495,6 +1499,8 @@ buildkit help macros         # Runtime macros with argument substitution
 buildkit help pipelines      # Pipeline system (phases, prefixes, execution)
 buildkit help placeholders   # Placeholder types and resolution order
 buildkit help wiring         # Nested tool wiring via buildkit_master.yaml
+buildkit help ws             # The :ws-* commands
+buildkit help ws-conflict    # One message of a report, at length
 ```
 
 | Topic | Description |
@@ -1504,6 +1510,10 @@ buildkit help wiring         # Nested tool wiring via buildkit_master.yaml
 | `pipelines` | Pipeline system — precore/core/postcore phases, command type prefixes (`shell:`, `shell-scan:`, `stdin:`, `tool:`), and option precedence |
 | `placeholders` | All placeholder types (`@{...}`, `@[...]`, `${...}`, `$VAR`, `%{...}`) and their resolution order |
 | `wiring` | Nested tool wiring — `nested_tools:` section in `buildkit_master.yaml` for embedding tools within build steps |
+| `ws` | The workspace commands `:ws-push`, `:ws-update`, `:ws-repo-cleanup`: the repository set, and synchronizing a quiet workspace machine by machine |
+| `ws-options` | Every option that resolves a problem of the `:ws-*` commands, with the messages and commands that offer it (read off the message definitions) |
+| `skill-json` | The JSON the `:skill-*` commands write, which the fleet skills read |
+| `<message code>` | One topic per message a report can show (`ws-conflict`, `skill-held`, `bin-missing`, `git-off-branch`, ...): the finding, why it matters, every option at length. The code is shown in brackets on the message's block; `buildkit --help` lists them all |
 
 Help topics are automatically injected from `buildkit_master.yaml` configuration. The `placeholders` topic is always available as a default built-in topic.
 
@@ -1633,6 +1643,120 @@ done, 1 a clone failed (or with `--check` a block differs), 2 no or an invalid `
 traversal and its build commands never read `repos.yaml`; only `wssetup` does.
 
 ---
+
+## Workspace Commands: `:ws-*`
+
+Three commands keep a tree committed, pushed and in sync from the `repos.yaml` at or above the folder you
+start in (or `--manifest`), wherever in the tree you start them. They are meant for a **quiet workspace**: no
+session is at work. While sessions work, the fleet skills (below) are the tools: they never commit work they
+did not make. `buildkit help ws` summarizes this section.
+
+**The repository set.** The root and every entry of `repos.yaml` for this host (`code`, `fork`, `ai`), the quest
+clones inside `_ai/quests/`, and `tom_binaries` (latest build wins). Skipped: `kind: upstream` (`:ws-push`),
+paths under `unmanaged:`, run worktrees under `.worktrees/`, `_ai/.quest-repos/`. A clone that is no entry is
+*unknown*: `:ws-push` skips it and exits 1, `:ws-repo-cleanup` reports it. An entry that is not on disk is
+*missing*: `:ws-update` clones it. Every entry has its expected branch (`branch:`; the root's `root.branch`).
+
+| Command | What it does |
+| --- | --- |
+| `:ws-push [-m <msg>]` | Refuses before anything changes for a busy Tom AI window (`ws-active`), a secret or a file over 50 MB that would be committed (`ws-secret`, `ws-large`), an unregistered merge driver (`ws-driver`), a repository mid-merge (`ws-in-progress`). Then per repository, `_ai` and the leaves first, the root last: back on its branch, one commit with the message (default `ws-push on <host> at <iso time>`), fetch, merge `origin/<branch>`, push. A conflict is aborted and nothing is pushed for that repository (`ws-conflict`); a rejected push is merged once more and retried once; nothing is ever forced. Exit 0 only when nothing is uncommitted and every `origin/<branch>` holds `HEAD`. |
+| `:ws-update` | The root first (fetch, merge, `repos.yaml` read again); missing entries cloned (an upstream at its pin), a changed origin re-pointed, a moved entry moved when clean and pushed; then every repository on its branch, fetched and merged: forks fast-forward only (`ws-fork-diverged`), upstreams at their pin, `tom_binaries` takes the remote. Uncommitted files the merge would overwrite hold the repository (`ws-held`). Writes the ignore blocks as `wssetup` does. Nothing is pushed. |
+| `:ws-repo-cleanup` | Reports the surplus clones (no entry, not unmanaged, never inside `_ai`) with their state; a removable one (clean, everything pushed, no stash, nothing inside) is `ws-surplus`, any other `ws-not-removable`. `--apply` moves the removable ones to `<root>/ztmp/<yymmdd>_ws_repo_cleanup/<path>`, `--delete` deletes them, `--force-remove <repos>` moves one with its work (never deletes it). |
+
+Synchronizing a quiet workspace machine by machine:
+
+```bash
+buildkit :ws-push -m "Evening state"     # on the machine with the work
+buildkit :ws-update                      # on each other machine
+buildkit :ws-push --merge-branch core    # a problem: repeat with the option the report offers
+```
+
+### The Report
+
+Every `:ws-*` and `:skill-*` command ends with one report: a header (command, root, host, the options
+given), a summary line, then the refusals, the problems that need you (one block per repository) and the
+warnings, what was done, and a footer with the exit code's meaning. A block says what was found, where, the
+evidence, the state it was left in, every option that resolves it with an explanation, and the command line
+to repeat:
+
+```text
+CONFLICT  tom_ai/core  (main)                                         [ws-conflict]
+  The merge of origin/main conflicts:
+    lib/src/config.dart        both changed
+  Nothing was pushed for this repository; your commits are safe on this machine.
+  Options (each acts only on the repositories you name):
+    --merge-branch core   Push your commits to ws-push/mbp/261124-1602 and leave main as it is ...
+    --ours core           Merge again; where both sides changed a line, yours wins. Then push. ...
+    --skip core           Leave the repository out of this run (the run exits 1).
+  Repeat with:  buildkit :ws-push --merge-branch core
+```
+
+An option given repositories acts only on those (`--skip core,basics`); a repository is named by the last
+segment of its path when unique, else by its path. The code in brackets is the message's help topic
+(`buildkit help ws-conflict`); `buildkit help ws-options` lists every option with the messages that offer it.
+`--json` writes the same report as one JSON document (`code`, `level`, `repository`, `evidence`, `options`
+with their `commandLine`); `-n` shows what would happen and changes nothing. Exit 0: nothing needs you; 1:
+something needs you or a repository was left out; 2: refused before anything changed, or a usage error.
+
+## Fleet Skill Commands: `:skill-*`
+
+The per-host work of the fleet skills, under the skills' rules, for the skills to run on each host and read
+(`--json`: the report plus a section of the command's own, described in `buildkit help skill-json`):
+
+| Command | The skill part it does |
+| --- | --- |
+| `:skill-reconcile-code [--dirty=ask\|hold] [--own-since=<file>]` | `tom_reconcile_code` on this host: an unknown repository stops the run (exit 1), so do unregistered merge drivers; a lone run with uncommitted work stops first (exit 3, `skill-decision`; the skill writes the decision document); then the code, fork and upstream entries deepest first and the root, merged and pushed (forks fast-forward only, upstreams at their pin, a repository whose files the merge would overwrite held). `--own-since` commits only the files written after that baseline. |
+| `:skill-status` | What `status_probe.sh` answers: per repository its state (`ok`, `missing`, `offpin`, `nobranch`), commits behind and ahead with the age of the oldest, uncommitted files, the last sync; unmerged run branches; old trees beside the root. `--rows` prints the probe's rows byte for byte. |
+| `:skill-dirty-scan` | The scan behind `tom_dirty_work`: every uncommitted path of the code, fork and upstream entries, their run worktrees and the root, grouped into secret, generated, modified and new with each group's fingerprint; the unknown repositories. `--rows` prints the scan's rows byte for byte; `--baseline <file>` writes the baseline `--own-since` reads. |
+| `:skill-build-binaries` | The release binaries (below). |
+| `:skill-build-all-binaries` | Every binary of every project (the check that everything compiles). |
+| `:skill-push-binaries` | `tom_binaries` committed (`chore: refresh binaries (<platforms>) at <iso time>`), rebased onto what the other platforms pushed (a path both changed is taken from this build), pushed; never forced. A clone whose history is unrelated to origin's is refused. |
+
+### The Release Binaries
+
+The release binaries are what `tom_binaries` tracks in `tom/<platform>/`. The set is the sum of two
+declarations, and an entry may be in both:
+
+```yaml
+# a project's buildkit.yaml: per executable it compiles (the name it is written as)
+compiler:
+  executables:
+    testkit: {release: true}
+
+# buildkit_master.yaml: any project's executable, what no project compiles, short names, platforms
+binaries:
+  - name: buildkit
+    project: tom_build_kit
+    short: [bk]
+    windows-hard-link: true          # bk.exe as well as bk and bk.cmd
+  - name: tomspecs
+    built-by: the VS Code extension's binaries-layer.cjs publish
+  - name: pdfium
+    bundled: true
+    path: pdfium                     # a folder of tom_binaries other than tom/<platform>
+  - name: tom_office_host
+    project: tom_office_host
+    files: [libtom_office_host_lok.dylib]
+    platforms: [darwin-arm64]
+```
+
+`buildkit :skill-build-binaries --list` prints the set and where each entry is declared. A build:
+
+1. builds the generators first (`tom_d4rt_generator`, `tom_reflection_generator`), then the projects that
+   compile a release executable (`:skill-build-all-binaries`: every project), with `:versioner :pubget
+   :d4rtgen :reflectiongenerator --no-cache :compiler`, as the layer is always built (`TOM_BINARY_PATH` =
+   `tom_binaries/tom`, so the shared step records stay where other hosts find them);
+2. moves every binary the run wrote into `tom/<platform>/` that is no release binary to
+   `tom_binaries/all/<platform>/`, which `tom_binaries/.gitignore` ignores (the run refuses without it);
+3. compiles buildkit, findproject and wssetup (tom_build_kit opts out of being compiled by buildkit) to
+   `<name>.new` beside their target, renames the running file aside to `<name>.old` and gives the new one
+   its name. A running executable can be renamed, also on Windows; the next run deletes the `.old` files.
+   When the running buildkit is too old for this command, `bootstrap_binaries.sh` builds buildkit instead;
+4. makes the short names: a symlink on macOS and Linux; on Windows a Git Bash script and a `.cmd` (and the
+   hard link with `windows-hard-link`).
+
+The binaries another tool builds and the bundled ones are named in the report and left as they are.
+`build_binaries.sh` / `.ps1` run the bootstrap, then `:skill-build-all-binaries`.
 
 ## Running Other Tools
 

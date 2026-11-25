@@ -1,5 +1,13 @@
-## Unreleased
+## 1.40.0
 
+- Help of the workspace and skill commands: `buildkit help ws` (the
+  repository set, the three `:ws-*` commands, synchronizing a quiet workspace
+  machine by machine), `buildkit help ws-options` (every option that resolves
+  a problem, with the messages and commands that offer it, read off the
+  message definitions), `buildkit help skill-json`; every message code has its
+  topic. The user guide's sections "Workspace Commands" and "Fleet Skill
+  Commands", the README's command tables.
+- Takes tom_build_base 2.51.0 (lock).
 - The release binaries (what tom_binaries tracks in `tom/<platform>/`) are
   declared: `compiler: executables: <name>: {release: true}` in a project's
   `buildkit.yaml`, and a `binaries:` list in `buildkit_master.yaml` (any
