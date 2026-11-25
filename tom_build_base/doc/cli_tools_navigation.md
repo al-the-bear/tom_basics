@@ -238,7 +238,8 @@ disk below the folder holding it, each in its class:
   `%{repo.exists?(..):(..)}`.
 - A run started inside an unmanaged clone or a scratch folder below the root (the workspace clone, a test fixture
   under `.dart_tool/` or `ztmp/`) is a tree of its own: it walks the folders as without `repos.yaml`.
-- An invalid `repos.yaml` stops the run, naming every problem.
+- An invalid `repos.yaml` stops the run, naming every problem. A key the reader does not know (a newer format's, or
+  your own) is no problem: it is passed over and listed in `ReposManifest.notes`; so is a `version:` above 1.
 
 The `:ws-*` commands take the whole tree from the folder holding `repos.yaml`: `RepoSet.discover(start)` and
 `RepoSet.members` (every class), `RepoSet.scope(root, stopAtWorkspaces: false)` for the git set.

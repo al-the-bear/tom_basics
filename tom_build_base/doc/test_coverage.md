@@ -1382,6 +1382,8 @@ independent clones).
 | BB-RSET-9 | `--manifest` | ✅ | A repos.yaml kept elsewhere is used; the parser takes the option before or after the command, and into `GitTraversalInfo`. |
 | BB-RSET-10 | An invalid manifest | ✅ | Every problem is named. |
 | BB-RSET-11 | A tree of its own | ✅ | A run started inside an unmanaged clone or a scratch folder below the root gets no set from the root's repos.yaml. |
+| BB-RSET-12 | Descriptions | ✅ | An entry's and the root's one-line `description` are read; an empty one is a problem, a missing one is not. |
+| BB-RSET-13 | Unknown keys and a newer version | ✅ | An unknown key at the top, in `root:`, an entry, a link or an `unmanaged:` item, and `version: 2`, are notes: the file is read; a clean file has none; a version below 1 is an error. |
 
 ---
 

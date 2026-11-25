@@ -1,3 +1,15 @@
+## 2.52.0
+
+### Changed
+
+- `repos.yaml`: a key the reader does not know — at the top level, in
+  `root:`, an entry, a link or an `unmanaged:` item — is no error any more:
+  it is passed over and named in the new `ReposManifest.notes`
+  (`repos/3: unknown key `team` (ignored)`), so a newer format or keys you
+  add for yourself are read, and a check can still show a misspelt key. A
+  `version:` above 1 is read as version 1, with a note; only a version
+  below 1 (or none) is an error.
+
 ## 2.51.0
 
 ### Added

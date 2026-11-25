@@ -505,10 +505,54 @@ void main() {
           'problems',
           allOf(
             contains('`description` must be one non-empty line'),
-            contains('root: unknown key `other`'),
+            isNot(contains('other')),
           ),
         ),
       ),
+    );
+  });
+
+  test('BB-RSET-13: an unknown key at any level, and a newer version, are '
+      'notes, not errors: the file is read [2026-11-25]', () {
+    final m = ReposManifest.parse(
+      'version: 2\n'
+      'future: {anything: 1}\n'
+      'root: {url: https://example.com/r.git, branch: main, owner: me}\n'
+      'repos:\n'
+      '  - {path: a, url: https://example.com/a.git, kind: code, '
+      'branch: main, team: core, labels: [x, y]}\n'
+      'links:\n'
+      '  - {path: l, target: a, mode: rel}\n'
+      'unmanaged:\n'
+      '  - {path: u, tool: scratch}\n',
+    );
+    expect(m.entries.single.path, 'a');
+    expect(m.entries.single.branch, 'main');
+    expect(m.links.single.target, 'a');
+    expect(m.unmanaged, ['u']);
+    expect(m.notes, [
+      '(top): unknown key `future` (ignored)',
+      'version: 2 is newer than this reader (1): read as version 1',
+      'root: unknown key `owner` (ignored)',
+      'repos/0: unknown key `team` (ignored)',
+      'repos/0: unknown key `labels` (ignored)',
+      'links/0: unknown key `mode` (ignored)',
+      'unmanaged/0: unknown key `tool` (ignored)',
+    ]);
+    expect(
+      ReposManifest.parse(
+        'version: 1\nroot: {url: https://example.com/r.git, branch: main}\n'
+        'repos: []\n',
+      ).notes,
+      isEmpty,
+    );
+    expect(
+      () => ReposManifest.parse(
+        'version: 0\nroot: {url: https://example.com/r.git, branch: main}\n'
+        'repos: []\n',
+      ),
+      throwsA(isA<ReposManifestException>()),
+      reason: 'a version below 1 is no format',
     );
   });
 }

@@ -8,6 +8,10 @@
 /// a tool makes and owns. Its JSON schema is
 /// `.tom/json-schema/repos/repos.schema.json`; [ReposManifest.parse] checks the
 /// same rules itself, so the tools run on a tree without `.tom`.
+///
+/// A key the reader does not know (one a newer format adds, or one you add
+/// for yourself) is no error: it is left alone and named in
+/// [ReposManifest.notes]. So is a `version:` above the one the reader knows.
 library;
 
 import 'dart:io';
@@ -118,6 +122,7 @@ class ReposManifest {
     required this.links,
     required this.unmanaged,
     this.rootDescription,
+    this.notes = const [],
   });
 
   final String rootUrl;
@@ -130,6 +135,14 @@ class ReposManifest {
 
   /// Paths of the clones a tool owns; never cloned, never walked.
   final List<String> unmanaged;
+
+  /// What the reader passed over without failing, one line each
+  /// (`repos/3: unknown key `foo` (ignored)`): keys it does not know and a
+  /// newer `version:`. A check names them, so a misspelt key stays visible.
+  final List<String> notes;
+
+  /// The format version this reader knows.
+  static const int knownVersion = 1;
 
   static final _path = RegExp(r'^(?!/)(?!.*\\)(?!(.*/)?\.\.(/|$))(?!.*/$).+$');
   static final _url = RegExp(r'^(git@[^:]+:.+|https://.+)$');
@@ -149,9 +162,18 @@ class ReposManifest {
 
   /// Parses [text], checking the rules of `repos.schema.json` and that no
   /// path is listed twice; throws [ReposManifestException] naming every
-  /// problem.
+  /// problem. Unknown keys and a newer version are [notes], not problems.
   factory ReposManifest.parse(String text) {
     final problems = <String>[];
+    final notes = <String>[];
+    void unknownKeys(YamlMap map, Set<String> known, String where) {
+      for (final key in map.keys) {
+        if (!known.contains(key)) {
+          notes.add('$where: unknown key `$key` (ignored)');
+        }
+      }
+    }
+
     final Object? doc;
     try {
       doc = loadYaml(text);
@@ -161,12 +183,22 @@ class ReposManifest {
     if (doc is! YamlMap) {
       throw ReposManifestException(['(top): not a mapping']);
     }
-    for (final key in doc.keys) {
-      if (!{'version', 'root', 'repos', 'links', 'unmanaged'}.contains(key)) {
-        problems.add('(top): unknown key `$key`');
-      }
+    unknownKeys(doc, const {
+      'version',
+      'root',
+      'repos',
+      'links',
+      'unmanaged',
+    }, '(top)');
+    final version = doc['version'];
+    if (version is! int || version < 1) {
+      problems.add('version: must be a whole number from 1');
+    } else if (version > knownVersion) {
+      notes.add(
+        'version: $version is newer than this reader ($knownVersion): '
+        'read as version $knownVersion',
+      );
     }
-    if (doc['version'] != 1) problems.add('version: must be 1');
 
     var rootUrl = '';
     var rootBranch = '';
@@ -177,11 +209,7 @@ class ReposManifest {
     } else {
       rootUrl = _string(root, 'url', 'root', problems, _url) ?? '';
       rootBranch = _string(root, 'branch', 'root', problems, _branch) ?? '';
-      for (final key in root.keys) {
-        if (!{'url', 'branch', 'description'}.contains(key)) {
-          problems.add('root: unknown key `$key`');
-        }
-      }
+      unknownKeys(root, const {'url', 'branch', 'description'}, 'root');
       rootDescription = _description(root, 'root', problems);
     }
 
@@ -191,7 +219,7 @@ class ReposManifest {
       problems.add('repos: missing (a list)');
     } else {
       for (var i = 0; i < repos.length; i++) {
-        final entry = _entry(repos[i], 'repos/$i', problems);
+        final entry = _entry(repos[i], 'repos/$i', problems, notes);
         if (entry != null) entries.add(entry);
       }
     }
@@ -205,6 +233,7 @@ class ReposManifest {
           problems.add('links/$i: not a mapping');
           continue;
         }
+        unknownKeys(l, const {'path', 'target', 'notes'}, 'links/$i');
         final path = _string(l, 'path', 'links/$i', problems, _path);
         final target = _string(l, 'target', 'links/$i', problems);
         if (path != null && target != null) links.add(RepoLink(path, target));
@@ -222,6 +251,9 @@ class ReposManifest {
             ? _string(u, 'path', 'unmanaged/$i', problems, _path)
             : null;
         if (u is! YamlMap) problems.add('unmanaged/$i: not a mapping');
+        if (u is YamlMap) {
+          unknownKeys(u, const {'path', 'notes'}, 'unmanaged/$i');
+        }
         if (path != null) unmanaged.add(path);
       }
     } else if (rawUnmanaged != null) {
@@ -241,6 +273,7 @@ class ReposManifest {
       links: links,
       unmanaged: unmanaged,
       rootDescription: rootDescription,
+      notes: notes,
     );
   }
 
@@ -260,13 +293,20 @@ class ReposManifest {
     return text;
   }
 
-  static RepoEntry? _entry(Object? raw, String where, List<String> problems) {
+  static RepoEntry? _entry(
+    Object? raw,
+    String where,
+    List<String> problems,
+    List<String> notes,
+  ) {
     if (raw is! YamlMap) {
       problems.add('$where: not a mapping');
       return null;
     }
     for (final key in raw.keys) {
-      if (!_entryKeys.contains(key)) problems.add('$where: unknown key `$key`');
+      if (!_entryKeys.contains(key)) {
+        notes.add('$where: unknown key `$key` (ignored)');
+      }
     }
     final path = _string(raw, 'path', where, problems, _path);
     final url = _string(raw, 'url', where, problems, _url);
