@@ -684,7 +684,9 @@ void main() {
     git(other, ['push', '-q', 'origin', 'main']);
 
     write(tom('testkit'), 'mac built here');
-    var r = await bk('skill-push-binaries', []);
+    var r = await bk('skill-push-binaries', ['-n']);
+    expect(r.json!['push']['outcome'], 'would push');
+    r = await bk('skill-push-binaries', []);
     expect(r.exit, 0, reason: r.text);
     expect(r.json!['push']['outcome'], 'pushed');
     final remote = p.join(base.path, 'bin.git');
