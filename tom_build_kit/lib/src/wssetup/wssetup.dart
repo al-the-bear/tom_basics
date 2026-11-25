@@ -103,7 +103,14 @@ class WssetupItem {
 
 /// What a run did.
 class WssetupResult {
-  WssetupResult(this.root, this.scope, this.host, this.reduced, this.items);
+  WssetupResult(
+    this.root,
+    this.scope,
+    this.host,
+    this.reduced,
+    this.items, {
+    this.notes = const [],
+  });
 
   final String root;
 
@@ -112,6 +119,10 @@ class WssetupResult {
   final String host;
   final bool reduced;
   final List<WssetupItem> items;
+
+  /// What the repos.yaml reader passed over ([ReposManifest.notes]): keys it
+  /// does not know, a newer version. Named in the report, never a failure.
+  final List<String> notes;
 
   int count(String status) => items.where((i) => i.status == status).length;
 
@@ -125,6 +136,9 @@ class WssetupResult {
         'of $root, host $host, '
         'mode ${reduced ? 'reduced (root .gitmodules present)' : 'full'}',
       );
+    for (final note in notes) {
+      b.writeln('  note             repos.yaml $note');
+    }
     for (final item in items) {
       b.writeln('  $item');
     }
@@ -264,7 +278,14 @@ Future<WssetupResult> runWssetup(WssetupRequest request) async {
   }
 
   items.addAll(_blocks(manifest, root, scope, reduced, request));
-  return WssetupResult(root, scope, host, reduced, items);
+  return WssetupResult(
+    root,
+    scope,
+    host,
+    reduced,
+    items,
+    notes: manifest.notes,
+  );
 }
 
 // ---------------------------------------------------------------- the tree

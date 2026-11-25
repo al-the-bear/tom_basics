@@ -731,6 +731,7 @@ The integration suites run on the machine's workspace clone (tom_test_support `T
 | BK-WSS-9 | Block format | ✅ | `blockWritten` gives what `tom_repos --apply` writes (new, replaced, removed). |
 | BK-WSS-10 | Both entry points | ✅ | `wssetup` and `buildkit :wssetup` run the same; a failing `required-environment` does not stop it. |
 | BK-WSS-11 | `--manifest` | ✅ | Reaches wssetup in both tools, before or after the command, also where the git traversal options take it. |
+| BK-WSS-12 | Unknown keys | ✅ | A repos.yaml with an unknown top-level key, an unknown entry key and `version: 2` is set up; the report names each as a note; a clean file has none. |
 
 ### :ws-push
 

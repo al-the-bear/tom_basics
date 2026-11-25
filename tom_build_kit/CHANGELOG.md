@@ -1,3 +1,10 @@
+## 1.40.1
+
+- Takes tom_build_base 2.52.0: a `repos.yaml` with keys the reader does not
+  know (a newer format's, or your own) or a newer `version:` is read instead
+  of refused; `wssetup` (and `buildkit :wssetup`) names each in its report
+  as a `note` line, never a failure.
+
 ## 1.40.0
 
 - Help of the workspace and skill commands: `buildkit help ws` (the

@@ -418,4 +418,39 @@ required-environment:
       Directory.current = previous;
     }
   });
+
+  test(
+    'BK-WSS-12: a repos.yaml with keys wssetup does not know, and a newer '
+    'version, is set up; the report names each as a note [2026-11-25]',
+    () async {
+      final tree = rootCheckout();
+      final file = File(p.join(tree, 'repos.yaml'));
+      file.writeAsStringSync(
+        file
+            .readAsStringSync()
+            .replaceFirst('version: 1', 'version: 2\nfuture: {x: 1}')
+            .replaceFirst('- {path: other,', '- {team: core, path: other,'),
+      );
+      final dry = await run(tree, dryRun: true);
+      expect(dry.hasFailures, isFalse);
+      expect(paths(dry, 'would clone'), contains('other'));
+      expect(
+        dry.notes,
+        containsAll([
+          '(top): unknown key `future` (ignored)',
+          'version: 2 is newer than this reader (1): read as version 1',
+          contains('unknown key `team` (ignored)'),
+        ]),
+      );
+      expect(
+        dry.render(),
+        contains(
+          'note             repos.yaml (top): unknown key `future` (ignored)',
+        ),
+      );
+      final clean = await run(rootCheckout('tree2'), dryRun: true);
+      expect(clean.notes, isEmpty);
+      expect(clean.render(), isNot(contains('note ')));
+    },
+  );
 }
