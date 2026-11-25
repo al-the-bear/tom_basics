@@ -1,3 +1,26 @@
+## 3.4.0
+
+- **Added: `package:tom_basics/native_binaries.dart`**, finding an external
+  native component (a helper program, a shared library) the way an
+  application ships it: inside the running application's bundle first, then
+  in the binaries layer named by `TOM_BINARY_PATH`. An application started
+  from the Finder or the Start menu sees no shell variable, so a release
+  carries its components in its bundle and a development run falls through
+  to the layer. Needs `dart:io`; the `tom_basics.dart` barrel does not export
+  it.
+  - `TomNativeBinaries.find` / `candidates` / `findInBundle`, with
+    `TomNativeFileKind` (`executable`, `library`) choosing the folder order.
+  - `TomNativeBinaries.bundleFolders`: macOS `<App>.app/Contents/MacOS/` and
+    `Contents/Frameworks/` (only for an executable inside an `.app`), Linux
+    the executable's folder and its `lib/`, Windows the executable's folder;
+    none under the Dart VM or `flutter_tester`.
+  - `TomNativeBinaries.platformFolder` (`darwin-arm64`, `linux-x64`,
+    `linux-armhf`, `win32-x64`, ... as `tom_binaries` names them),
+    `binariesLayer`, `binariesRepository`, `executableFileName`,
+    `libraryFileName`.
+  - The executable, operating system, architecture, environment and bundle
+    folders can each be given, so tests run on fake folders.
+
 ## 3.3.1
 
 - **Fixed: `tomYamlEntry` / `tomYamlListItem` write a boolean or a number

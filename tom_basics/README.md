@@ -62,7 +62,7 @@ Add the dependency with its hosted version constraint:
 
 ```yaml
 dependencies:
-  tom_basics: ^1.0.0
+  tom_basics: ^3.4.0
 ```
 
 or from the command line:
@@ -126,6 +126,14 @@ native or Flutter requirement.
 | Hand-edited YAML | `tomYamlScalar`, `tomYamlEntry`, `tomYamlListItem`, `tomNewlineOf`, `tomYamlSchemaRefOf` | Key-level writes into files people also edit, and the schema such a file names. |
 | Comment-preserving edits | `TomYamlConfigWriter` | Set and remove values without losing comments (`yaml_edit`). |
 | Protected clipboard | `TomProtectedClipboard`, `TomClipboardPort`, `TomProtectedClipboardState` | A copied secret is cleared after a delay, only while the clipboard still holds it; the port is the application's (Flutter bindings in `tom_host_ui`). |
+
+### Native components
+
+| Capability | Type / member | Notes |
+| ---------- | ------------- | ----- |
+| Bundle, then binaries layer | `TomNativeBinaries.find`, `candidates`, `findInBundle` | A helper program or shared library in the running application's bundle, else in `<TOM_BINARY_PATH>/<platform>/` (`native_binaries.dart`, needs `dart:io`). |
+| Bundle folders | `TomNativeBinaries.bundleFolders`, `TomNativeFileKind` | macOS `Contents/MacOS/` and `Contents/Frameworks/`, Linux the executable's folder and `lib/`, Windows the executable's folder; none under `dart` or `flutter_tester`. |
+| Names | `platformFolder`, `executableFileName`, `libraryFileName`, `binariesLayer`, `binariesRepository` | `darwin-arm64`, `linux-x64`, `win32-x64` ... as `tom_binaries` names them; `.exe`, `lib….dylib` / `.so`, `.dll`. |
 
 ### Platform abstraction
 
@@ -495,6 +503,48 @@ writes the same bytes; the hand-edited style changes only the keys it is asked
 to change in a file a person also edits.
 `tomYamlToPlain` reads either kind back as plain maps, lists and scalars.
 
+### Native components
+
+An application that drives an external native component — a helper program
+it starts, a shared library it loads — finds it with one lookup:
+
+```dart
+import 'package:tom_basics/native_binaries.dart';
+
+final helper = TomNativeBinaries.find(
+  TomNativeBinaries.executableFileName('tom_office_host'),
+);
+final pdfium = TomNativeBinaries.findInBundle(
+  TomNativeBinaries.libraryFileName('pdfium'),
+  kind: TomNativeFileKind.library,
+);
+```
+
+The order is fixed:
+
+1. **The running application's bundle**, from `Platform.resolvedExecutable`.
+   macOS: only an executable inside `<App>.app/Contents/MacOS/` has one; an
+   executable is looked for in `Contents/MacOS/`, then
+   `Contents/Frameworks/`, a library the other way round. Linux: the
+   executable's folder, and for a library also its `lib/` (a Flutter Linux
+   bundle's library folder). Windows: the executable's folder. The Dart VM
+   and `flutter_tester` have no bundle, so `dart run`, `dart test` and
+   `flutter test` go straight to step 2.
+2. **The binaries layer**: `<TOM_BINARY_PATH>/<platform>/<file>`, the
+   platform folder named as `tom_binaries` names it (`darwin-arm64`,
+   `linux-x64`, `win32-x64`). `binaryPath` replaces the variable.
+
+The bundle comes first because an application started from the Finder or the
+Start menu sees no shell variable: `TOM_BINARY_PATH` is set on a developer
+machine only, so a release carries its components inside its bundle.
+A component with a folder of its own in the binaries repository
+(`tom_binaries/pdfium/<platform>/`) takes `binariesRepository()` and
+`platformFolder()` for its second step.
+
+Every input read from the process — `executable`, `operatingSystem`, `arch`,
+`environment`, `bundleFolders` — can be given, so a test builds a fake bundle
+under a temporary folder.
+
 ### Platform abstraction
 
 Library code that must not import `dart:io` or `dart:html` directly talks to
@@ -643,7 +693,8 @@ the isolate name from it. Exceptions and the environment model stand alone.
 Two further modules have entry points of their own and depend on nothing
 else in the package: `diagnostics/` (`diagnostics.dart`, with the file sink in
 `diagnostics_io.dart`) and `utilities/` (`utilities.dart`). The barrel
-re-exports both.
+re-exports both. `native/` (`native_binaries.dart`) needs `dart:io` and is
+not re-exported.
 
 ### Key types
 
@@ -662,6 +713,7 @@ re-exports both.
 | `TomGitignoreSet` | Gitignore matching across several files. |
 | `TomOutputTranscript` / `TomOutputRecorder` | A bounded, interleaved stdout/stderr transcript that states how many lines it dropped. |
 | `TomYamlConfigWriter` | Comment-preserving YAML edits. |
+| `TomNativeBinaries` | Finds a native component in the application's bundle, then in the binaries layer. |
 | `TomProtectedClipboard` | Copies a secret and clears it again through an application-bound `TomClipboardPort`. |
 | `TomPlatformUtils` | Injectable platform seam: detection, console output, HTTP client, env vars. |
 | `TomFallbackPlatformUtils` | Default impl: console output works, detection throws until configured. |
