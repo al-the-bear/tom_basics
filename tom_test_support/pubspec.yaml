@@ -1,7 +1,7 @@
 name: tom_test_support
 description: >-
   Test support for Tom suites: roots by landmark, a workspace clone for build-tool tests, the Dart CLI, live-GitHub gating, a Docker Gitea and a licence audit.
-version: 0.8.2
+version: 0.9.0
 repository: https://github.com/al-the-bear/tom_basics
 
 environment:
@@ -12,6 +12,8 @@ dependencies:
   http: ^1.2.0
   # Joining and naming paths.
   path: ^1.9.0
+  # The repositories of a workspace from its repos.yaml (workspace_clone.dart).
+  tom_build_base: ^2.53.0
   # The credential the live contract classifies (github_live.dart).
   tom_github_api:
     path: ../tom_github_api

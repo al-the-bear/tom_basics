@@ -13,12 +13,19 @@
 ///
 /// One clone per machine, beside the workspace: `<parent>/<name>_testclone`
 /// for a workspace at `<parent>/<name>`, or the directory `TOM_TEST_WORKSPACE`
-/// names. Every repository of the live workspace — the superproject and each
-/// initialised submodule, recursively — is a repository of the clone at the
-/// same path, laid out as the live one is: a submodule's `.git` is a file
-/// pointing into its parent's `.git/modules/<name>`, and `origin` carries the
-/// live repository's URL (pushing is disabled), so tools that read a tree's
-/// git layout see what they see in the live one.
+/// names. Every repository of the live workspace is a repository of the
+/// clone at the same path, laid out as the live one is, and `origin` carries
+/// the live repository's URL (pushing is disabled), so tools that read a
+/// tree's git layout see what they see in the live one:
+///
+/// - With a `repos.yaml` in the live workspace or a folder above it, the
+///   repositories are the members of tom_build_base's `RepoSet` inside the
+///   live workspace that its git commands take (the entries but upstreams,
+///   and the quest clones); unmanaged, tool-owned and unknown clones are
+///   left out. Each is an independent clone, as in the live tree.
+/// - Without one, the superproject and each initialised submodule,
+///   recursively; a submodule's `.git` is a file pointing into its parent's
+///   `.git/modules/<name>`.
 ///
 /// [TomWorkspaceClone.acquire] takes the machine's lock, creates the clone if
 /// it is missing, resets it, and brings every repository to the commit (and
@@ -41,6 +48,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
+import 'package:tom_build_base/tom_build_base_v2.dart' show RepoSet;
 
 import 'roots.dart';
 
@@ -104,7 +112,8 @@ void tomRequireWorkspaceClone(Directory dir, {String operation = 'change'}) {
 }
 
 /// One repository of the workspace: its path relative to the root ('' for
-/// the root itself) and, for a submodule, its name in the parent.
+/// the root itself) and, for a submodule, its name in the parent. A nested
+/// repository without a parent is an independent clone (`repos.yaml`).
 class _Repo {
   const _Repo(this.path, {this.parent, this.name, this.pathInParent});
 
@@ -112,6 +121,8 @@ class _Repo {
   final String? parent;
   final String? name;
   final String? pathInParent;
+
+  bool get isSubmodule => parent != null;
 }
 
 /// The checked-out state of one repository.
@@ -261,8 +272,12 @@ class TomWorkspaceClone {
       final live = Directory(p.join(liveRoot.path, repo.path));
       final head = await _liveHead(live);
       final cloneDir = Directory(p.join(root.path, repo.path));
-      if (repo.parent != null && !_hasGit(cloneDir)) {
-        await _addSubmodule(repo);
+      if (repo.path.isNotEmpty && !_hasGit(cloneDir)) {
+        if (repo.isSubmodule) {
+          await _addSubmodule(repo);
+        } else {
+          await _addClone(repo);
+        }
         _fresh.add(repo.path);
       }
       if (_fresh.contains(repo.path)) {
@@ -286,7 +301,7 @@ class TomWorkspaceClone {
         await _checkout(cloneDir, head);
       }
       await _mirrorRemote(live, cloneDir);
-      if (repo.parent != null) await _mirrorSubmoduleConfig(repo);
+      if (repo.isSubmodule) await _mirrorSubmoduleConfig(repo);
       heads[repo.path] = head;
     }
     _writeState(heads);
@@ -296,9 +311,29 @@ class TomWorkspaceClone {
     );
   }
 
-  /// Every repository of the live workspace, each parent before its
-  /// submodules.
-  Future<List<_Repo>> _liveRepos() async {
+  /// Every repository of the live workspace, each parent before the
+  /// repositories inside it: from `repos.yaml` when one is at or above the
+  /// live workspace, else its submodules.
+  Future<List<_Repo>> _liveRepos() async =>
+      _reposFromManifest() ?? await _liveSubmodules();
+
+  /// The repositories of the git set ([RepoSet], tom_build_base) inside the
+  /// live workspace, or null when no `repos.yaml` covers it (none above it,
+  /// or the live workspace lies in a folder the set never looks at).
+  List<_Repo>? _reposFromManifest() {
+    final set = RepoSet.discover(liveRoot.path);
+    if (set == null) return null;
+    return [
+      const _Repo(''),
+      for (final m in set.members)
+        if (m.inGitSet && m.onDisk && p.isWithin(liveRoot.path, m.path))
+          _Repo(p.relative(m.path, from: liveRoot.path)),
+    ];
+  }
+
+  /// The superproject and its submodules, recursively, each parent before
+  /// its submodules.
+  Future<List<_Repo>> _liveSubmodules() async {
     final out = await _git(liveRoot, [
       'submodule',
       'foreach',
@@ -354,6 +389,26 @@ class TomWorkspaceClone {
     File(p.join(worktree.path, '.git')).writeAsStringSync(
       'gitdir: ${p.relative(moduleDir.path, from: worktree.path)}\n',
     );
+  }
+
+  /// Clone an independent repository from its live repository at its path,
+  /// as the live tree has it (a `.git` directory of its own).
+  Future<void> _addClone(_Repo repo) async {
+    final worktree = Directory(p.join(root.path, repo.path));
+    if (worktree.existsSync() && worktree.listSync().isNotEmpty) {
+      throw StateError(
+        'Cannot add repository ${repo.path} to the clone: ${worktree.path} '
+        'exists and is not empty.',
+      );
+    }
+    worktree.parent.createSync(recursive: true);
+    await _git(worktree.parent, [
+      'clone',
+      '--quiet',
+      '--no-checkout',
+      p.join(liveRoot.path, repo.path),
+      worktree.path,
+    ]);
   }
 
   /// The parent's submodule entry as the live parent has it.
@@ -424,12 +479,24 @@ class TomWorkspaceClone {
       if (!atHead) await _checkout(dir, head);
       await _git(dir, ['reset', '--quiet', '--hard']);
       // -ff: also an untracked nested repository, e.g. the checkout a
-      // submodule removed upstream leaves behind. Ignored files stay.
-      await _git(dir, ['clean', '-ffdq']);
+      // submodule removed upstream leaves behind. Ignored files stay, and so
+      // do the clone's own repositories inside this one (an independent
+      // clone its parent does not ignore would otherwise go).
+      await _git(dir, ['clean', '-ffdq', ..._innerExcludes(path, paths)]);
       cleaned++;
     }
     if (cleaned > 0) _log('reset $cleaned repositories');
   }
+
+  /// `git clean` excludes for the repositories in [all] that lie inside the
+  /// one at [path] (paths relative to the clone's root, '' for the root).
+  static List<String> _innerExcludes(String path, Iterable<String> all) => [
+    for (final inner in all)
+      if (inner.isNotEmpty &&
+          inner != path &&
+          (path.isEmpty || p.isWithin(path, inner)))
+        '--exclude=/${p.split(path.isEmpty ? inner : p.relative(inner, from: path)).join('/')}',
+  ];
 
   Future<void> _checkout(Directory dir, _Head head) async {
     if (head.branch != null) {

@@ -1,3 +1,17 @@
+## 0.9.0
+
+- **The workspace clone follows `repos.yaml`.** With a `repos.yaml` in the
+  live workspace or a folder above it, the clone's repositories are the
+  members of tom_build_base's `RepoSet` inside the live workspace that its git
+  commands take (every entry but an upstream, and the quest clones;
+  unmanaged, tool-owned and unknown clones are left out), each cloned as an
+  independent repository at its path, as the live tree has them since it left
+  submodules. Without one, the submodule walk stays. A clone made before held
+  only the container repository. WC-R1..3.
+- A reset's `git clean` leaves the clone's repositories inside a repository
+  alone, also one its parent does not ignore.
+- Depends on tom_build_base (^2.53.0).
+
 ## 0.8.2
 
 - **The workspace clone carries `tom_skip.yaml`** in its root

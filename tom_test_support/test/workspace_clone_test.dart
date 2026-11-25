@@ -13,36 +13,7 @@ import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 import 'package:tom_test_support/workspace_clone.dart';
 
-Future<String> _git(String dir, List<String> args) async {
-  final r = await Process.run('git', [
-    '-c',
-    'protocol.file.allow=always',
-    ...args,
-  ], workingDirectory: dir);
-  if (r.exitCode != 0) {
-    throw StateError('git ${args.join(' ')} in $dir: ${r.stderr}');
-  }
-  return r.stdout.toString();
-}
-
-Future<void> _initRepo(String dir, String origin) async {
-  Directory(dir).createSync(recursive: true);
-  await _git(dir, ['init', '-q', '-b', 'main']);
-  await _git(dir, ['config', 'user.email', 'wc@example.com']);
-  await _git(dir, ['config', 'user.name', 'WC']);
-  await _git(dir, ['config', 'commit.gpgsign', 'false']);
-  await _git(dir, ['remote', 'add', 'origin', origin]);
-}
-
-Future<void> _commit(String dir, String file, String content) async {
-  final f = File(p.join(dir, file))..parent.createSync(recursive: true);
-  f.writeAsStringSync(content);
-  await _git(dir, ['add', file]);
-  await _git(dir, ['commit', '-q', '-m', file]);
-}
-
-Future<String> _head(String dir) async =>
-    (await _git(dir, ['rev-parse', 'HEAD'])).trim();
+import 'support/git_fixture.dart';
 
 /// Every repository's `git status --porcelain` and HEAD, to compare a tree
 /// before and after.
@@ -51,7 +22,7 @@ Future<Map<String, String>> _snapshot(String root) async {
   for (final rel in ['', 'pkgs/mid', 'pkgs/mid/nested/inner']) {
     final dir = p.join(root, rel);
     out[rel] =
-        '${await _head(dir)}\n${await _git(dir, ['status', '--porcelain'])}';
+        '${await head(dir)}\n${await git(dir, ['status', '--porcelain'])}';
   }
   return out;
 }
@@ -68,31 +39,31 @@ void main() {
     final upstream = p.join(scratch.path, 'upstream');
 
     final inner = p.join(upstream, 'inner');
-    await _initRepo(inner, 'git@example.com:al/inner.git');
-    await _commit(inner, 'lib/inner.dart', 'inner 1');
+    await initRepo(inner, 'git@example.com:al/inner.git');
+    await commit(inner, 'lib/inner.dart', 'inner 1');
 
     final mid = p.join(upstream, 'mid');
-    await _initRepo(mid, 'git@example.com:al/mid.git');
-    await _commit(mid, 'pubspec.yaml', 'name: mid\n');
-    await _git(mid, ['submodule', 'add', '-q', inner, 'nested/inner']);
-    await _git(mid, ['commit', '-q', '-m', 'inner']);
+    await initRepo(mid, 'git@example.com:al/mid.git');
+    await commit(mid, 'pubspec.yaml', 'name: mid\n');
+    await git(mid, ['submodule', 'add', '-q', inner, 'nested/inner']);
+    await git(mid, ['commit', '-q', '-m', 'inner']);
 
     live = p.join(scratch.path, 'ws');
-    await _initRepo(live, 'git@example.com:al/ws.git');
-    await _commit(live, 'buildkit_master.yaml', 'master\n');
-    await _commit(live, '.gitignore', '.dart_tool/\n');
-    await _git(live, ['submodule', 'add', '-q', mid, 'pkgs/mid']);
-    await _git(live, ['commit', '-q', '-m', 'mid']);
-    await _git(live, ['submodule', 'update', '-q', '--init', '--recursive']);
+    await initRepo(live, 'git@example.com:al/ws.git');
+    await commit(live, 'buildkit_master.yaml', 'master\n');
+    await commit(live, '.gitignore', '.dart_tool/\n');
+    await git(live, ['submodule', 'add', '-q', mid, 'pkgs/mid']);
+    await git(live, ['commit', '-q', '-m', 'mid']);
+    await git(live, ['submodule', 'update', '-q', '--init', '--recursive']);
     for (final rel in ['pkgs/mid', 'pkgs/mid/nested/inner']) {
       final dir = p.join(live, rel);
-      await _git(dir, ['config', 'user.email', 'wc@example.com']);
-      await _git(dir, ['config', 'user.name', 'WC']);
-      await _git(dir, ['config', 'commit.gpgsign', 'false']);
-      await _git(dir, ['checkout', '-q', 'main']);
+      await git(dir, ['config', 'user.email', 'wc@example.com']);
+      await git(dir, ['config', 'user.name', 'WC']);
+      await git(dir, ['config', 'commit.gpgsign', 'false']);
+      await git(dir, ['checkout', '-q', 'main']);
       // As the real tree has it: origin is the hosted repository, not the
       // path the submodule was first cloned from.
-      await _git(dir, [
+      await git(dir, [
         'remote',
         'set-url',
         'origin',
@@ -122,8 +93,8 @@ void main() {
     expect(tomIsWorkspaceClone(cloneDir), isTrue);
     for (final rel in ['', 'pkgs/mid', 'pkgs/mid/nested/inner']) {
       expect(
-        await _head(p.join(cloneDir.path, rel)),
-        await _head(p.join(live, rel)),
+        await head(p.join(cloneDir.path, rel)),
+        await head(p.join(live, rel)),
         reason: '$rel is at the live commit',
       );
     }
@@ -136,11 +107,11 @@ void main() {
     // Submodules are `.git` files into the parent's modules, as in the live
     // tree, and on the live branch.
     for (final rel in ['pkgs/mid', 'pkgs/mid/nested/inner']) {
-      final git = p.join(cloneDir.path, rel, '.git');
-      expect(FileSystemEntity.typeSync(git), FileSystemEntityType.file);
-      expect(File(git).readAsStringSync(), startsWith('gitdir: ../'));
+      final dotGit = p.join(cloneDir.path, rel, '.git');
+      expect(FileSystemEntity.typeSync(dotGit), FileSystemEntityType.file);
+      expect(File(dotGit).readAsStringSync(), startsWith('gitdir: ../'));
       expect(
-        (await _git(p.join(cloneDir.path, rel), [
+        (await git(p.join(cloneDir.path, rel), [
           'branch',
           '--show-current',
         ])).trim(),
@@ -150,15 +121,15 @@ void main() {
     // origin as the live repository has it; pushing goes nowhere.
     final mid = p.join(cloneDir.path, 'pkgs/mid');
     expect(
-      (await _git(mid, ['remote', 'get-url', 'origin'])).trim(),
+      (await git(mid, ['remote', 'get-url', 'origin'])).trim(),
       'git@example.com:al/mid.git',
     );
     expect(
-      (await _git(mid, ['remote', 'get-url', '--push', 'origin'])).trim(),
+      (await git(mid, ['remote', 'get-url', '--push', 'origin'])).trim(),
       startsWith('disabled:'),
     );
     // The root's submodule bookkeeping is initialised.
-    final status = await _git(cloneDir.path, ['submodule', 'status']);
+    final status = await git(cloneDir.path, ['submodule', 'status']);
     expect(status, isNot(startsWith('-')));
   });
 
@@ -172,24 +143,21 @@ void main() {
     final liveMid = p.join(live, 'pkgs/mid');
     final bare = p.join(scratch.path, 'bare', 'mid.git');
     Directory(bare).parent.createSync(recursive: true);
-    await _git(scratch.path, ['clone', '-q', '--bare', liveMid, bare]);
-    await _git(liveMid, ['remote', 'set-url', 'origin', bare]);
+    await git(scratch.path, ['clone', '-q', '--bare', liveMid, bare]);
+    await git(liveMid, ['remote', 'set-url', 'origin', bare]);
     await (await acquire()).release();
 
-    await _commit(liveMid, 'lib/dropped.dart', 'never pushed');
-    await _git(live, ['add', 'pkgs/mid']);
-    await _git(live, ['commit', '-q', '-m', 'bump mid']);
-    await _git(liveMid, ['reset', '-q', '--hard', 'HEAD~1']);
-    await _git(liveMid, ['reflog', 'expire', '--expire=now', '--all']);
-    await _git(liveMid, ['gc', '-q', '--prune=now']);
+    await commit(liveMid, 'lib/dropped.dart', 'never pushed');
+    await git(live, ['add', 'pkgs/mid']);
+    await git(live, ['commit', '-q', '-m', 'bump mid']);
+    await git(liveMid, ['reset', '-q', '--hard', 'HEAD~1']);
+    await git(liveMid, ['reflog', 'expire', '--expire=now', '--all']);
+    await git(liveMid, ['gc', '-q', '--prune=now']);
 
     final clone = await acquire();
     addTearDown(clone.release);
-    expect(await _head(cloneDir.path), await _head(live));
-    expect(
-      await _head(p.join(cloneDir.path, 'pkgs/mid')),
-      await _head(liveMid),
-    );
+    expect(await head(cloneDir.path), await head(live));
+    expect(await head(p.join(cloneDir.path, 'pkgs/mid')), await head(liveMid));
   });
 
   test('WC-2: an update follows the live commits, unpushed ones included, '
@@ -197,13 +165,13 @@ void main() {
     await (await acquire()).release();
 
     final liveMid = p.join(live, 'pkgs/mid');
-    await _commit(liveMid, 'lib/new.dart', 'committed, never pushed');
+    await commit(liveMid, 'lib/new.dart', 'committed, never pushed');
     File(p.join(liveMid, 'pubspec.yaml')).writeAsStringSync('dirty\n');
 
     final clone = await acquire();
     addTearDown(clone.release);
     final cloneMid = p.join(cloneDir.path, 'pkgs/mid');
-    expect(await _head(cloneMid), await _head(liveMid));
+    expect(await head(cloneMid), await head(liveMid));
     expect(File(p.join(cloneMid, 'lib/new.dart')).existsSync(), isTrue);
     expect(
       File(p.join(cloneMid, 'pubspec.yaml')).readAsStringSync(),
@@ -214,15 +182,15 @@ void main() {
   test('WC-3: a detached live repository is detached at the same commit in '
       'the clone [2026-11-07]', () async {
     final liveInner = p.join(live, 'pkgs/mid/nested/inner');
-    final first = await _head(liveInner);
-    await _commit(liveInner, 'lib/second.dart', '2');
-    await _git(liveInner, ['checkout', '-q', '--detach', first]);
+    final first = await head(liveInner);
+    await commit(liveInner, 'lib/second.dart', '2');
+    await git(liveInner, ['checkout', '-q', '--detach', first]);
 
     final clone = await acquire();
     addTearDown(clone.release);
     final cloneInner = p.join(cloneDir.path, 'pkgs/mid/nested/inner');
-    expect(await _head(cloneInner), first);
-    expect((await _git(cloneInner, ['branch', '--show-current'])).trim(), '');
+    expect(await head(cloneInner), first);
+    expect((await git(cloneInner, ['branch', '--show-current'])).trim(), '');
   });
 
   test('WC-4: release resets every repository: tracked and untracked changes '
@@ -230,18 +198,18 @@ void main() {
     final clone = await acquire();
     final root = cloneDir.path;
     final mid = p.join(root, 'pkgs/mid');
-    final rootHead = await _head(root);
-    final midHead = await _head(mid);
+    final rootHead = await head(root);
+    final midHead = await head(mid);
 
     File(p.join(root, 'buildkit_master.yaml')).writeAsStringSync('x');
     File(p.join(root, 'untracked.txt')).writeAsStringSync('x');
     File(p.join(root, '.dart_tool', 'kept.json'))
       ..parent.createSync()
       ..writeAsStringSync('resolution state');
-    await _git(mid, ['config', 'user.email', 'wc@example.com']);
-    await _git(mid, ['config', 'user.name', 'WC']);
-    await _git(mid, ['config', 'commit.gpgsign', 'false']);
-    await _commit(mid, 'lib/leak.dart', 'a commit a test made');
+    await git(mid, ['config', 'user.email', 'wc@example.com']);
+    await git(mid, ['config', 'user.name', 'WC']);
+    await git(mid, ['config', 'commit.gpgsign', 'false']);
+    await commit(mid, 'lib/leak.dart', 'a commit a test made');
     File(p.join(mid, 'scratch.txt')).writeAsStringSync('x');
 
     await clone.release();
@@ -252,8 +220,8 @@ void main() {
     );
     expect(File(p.join(root, 'untracked.txt')).existsSync(), isFalse);
     expect(File(p.join(root, '.dart_tool', 'kept.json')).existsSync(), isTrue);
-    expect(await _head(root), rootHead);
-    expect(await _head(mid), midHead);
+    expect(await head(root), rootHead);
+    expect(await head(mid), midHead);
     expect(File(p.join(mid, 'lib/leak.dart')).existsSync(), isFalse);
     expect(File(p.join(mid, 'scratch.txt')).existsSync(), isFalse);
   });
@@ -266,7 +234,7 @@ void main() {
       final root = cloneDir.path;
       final skip = File(p.join(root, tomWorkspaceCloneSkipFile));
       expect(skip.existsSync(), isTrue);
-      expect(await _git(root, ['status', '--porcelain']), isEmpty);
+      expect(await git(root, ['status', '--porcelain']), isEmpty);
       await clone.release();
       expect(skip.existsSync(), isTrue);
       // Marking again changes nothing.
@@ -300,15 +268,15 @@ void main() {
     await (await acquire()).release();
 
     final extra = p.join(scratch.path, 'upstream', 'extra');
-    await _initRepo(extra, 'git@example.com:al/extra.git');
-    await _commit(extra, 'README.md', 'extra');
-    await _git(live, ['submodule', 'add', '-q', extra, 'pkgs/extra']);
-    await _git(live, ['commit', '-q', '-m', 'extra']);
+    await initRepo(extra, 'git@example.com:al/extra.git');
+    await commit(extra, 'README.md', 'extra');
+    await git(live, ['submodule', 'add', '-q', extra, 'pkgs/extra']);
+    await git(live, ['commit', '-q', '-m', 'extra']);
 
     final clone = await acquire();
     addTearDown(clone.release);
     final cloneExtra = p.join(cloneDir.path, 'pkgs/extra');
-    expect(await _head(cloneExtra), await _head(p.join(live, 'pkgs/extra')));
+    expect(await head(cloneExtra), await head(p.join(live, 'pkgs/extra')));
     expect(
       FileSystemEntity.typeSync(p.join(cloneExtra, '.git')),
       FileSystemEntityType.file,

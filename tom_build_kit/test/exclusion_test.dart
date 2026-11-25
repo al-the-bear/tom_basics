@@ -139,14 +139,11 @@ void main() {
   /// whose `**` glob matches core projects at any depth (direct children and
   /// deeper `tom_core_samples/...` ones) in flat or nested layouts.
   String coreContainerPattern(List<String> coreBaseline) {
-    final sample = coreBaseline.firstWhere(
-      (proj) {
-        final segs = p.split(proj);
-        final idx = segs.indexOf('core');
-        return idx >= 0 && idx < segs.length - 1;
-      },
-      orElse: () => coreBaseline.first,
-    );
+    final sample = coreBaseline.firstWhere((proj) {
+      final segs = p.split(proj);
+      final idx = segs.indexOf('core');
+      return idx >= 0 && idx < segs.length - 1;
+    }, orElse: () => coreBaseline.first);
     final segs = p.split(sample);
     final coreIndex = segs.indexOf('core');
     return '${p.joinAll(segs.sublist(0, coreIndex + 1))}/**';
@@ -291,11 +288,14 @@ void main() {
         reason: 'Bug #13 fixed: bumpversion should start successfully',
       );
 
-      final stdout = result.stdout as String;
-      log.expectation(
-        '_build excluded from output',
-        !stdout.contains('_build/'),
-      );
+      // A project folder named `_build` (a path segment, not a substring:
+      // `tom_ai/ai_build/...` is no such project).
+      final listed = parseListOutput(result.stdout as String)
+          .map((line) => line.split(' (').first)
+          .where((path) => p.split(path).contains('_build'))
+          .toList();
+      log.expectation('_build excluded from output', listed.isEmpty);
+      expect(listed, isEmpty, reason: '--exclude-projects _build');
     });
 
     test('glob pattern excludes multiple projects', () async {
@@ -337,9 +337,9 @@ void main() {
       // Harden it: capture a real baseline, require core projects to be
       // present, derive the actual '<container>/**' pattern, apply it via the
       // CLI, and assert those core projects are genuinely removed.
-      final baseline = parseListOutput(await runToolList('dependencies'))
-          .where((line) => !line.startsWith('->'))
-          .toList();
+      final baseline = parseListOutput(
+        await runToolList('dependencies'),
+      ).where((line) => !line.startsWith('->')).toList();
       final coreBaseline = coreProjectsIn(baseline);
       log.expectation(
         'baseline has core projects to exclude (${coreBaseline.length})',
@@ -436,9 +436,9 @@ void main() {
       // pattern. The old literal 'core/*' was vacuous (see EXCL_PP01 /
       // EXCL_MY02); derive the actual '<container>/**' from the baseline so
       // both halves of the combined exclusion are genuinely exercised.
-      final baseline = parseListOutput(await runToolList('dependencies'))
-          .where((line) => !line.startsWith('->'))
-          .toList();
+      final baseline = parseListOutput(
+        await runToolList('dependencies'),
+      ).where((line) => !line.startsWith('->')).toList();
       final coreBaseline = coreProjectsIn(baseline);
       log.expectation(
         'baseline has _build and core projects to exclude',
@@ -468,7 +468,10 @@ void main() {
         ),
       ).where((line) => !line.startsWith('->')).toList();
 
-      log.expectation('_build excluded by basename', !excluded.contains('_build'));
+      log.expectation(
+        '_build excluded by basename',
+        !excluded.contains('_build'),
+      );
       expect(
         excluded,
         isNot(contains('_build')),
@@ -482,7 +485,10 @@ void main() {
         );
       }
       final coreStillPresent = coreProjectsIn(excluded);
-      log.expectation('no core/ projects (path pattern)', coreStillPresent.isEmpty);
+      log.expectation(
+        'no core/ projects (path pattern)',
+        coreStillPresent.isEmpty,
+      );
       expect(coreStillPresent, isEmpty);
       log.expectation(
         'other projects remain (${excluded.length} of ${baseline.length})',
@@ -561,19 +567,22 @@ void main() {
       // PathNotFoundException. The runner --list output interleaves
       // '-> :runner skipped/listed' status lines with the clean project-path
       // lines, so filter the status lines out to get the real project paths.
-      final baseline = parseListOutput(await runToolList('runner'))
-          .where((line) => !line.startsWith('->'))
-          .toList();
-      expect(baseline, isNotEmpty,
-          reason: 'runner should list at least one project with build.yaml');
+      final baseline = parseListOutput(
+        await runToolList('runner'),
+      ).where((line) => !line.startsWith('->')).toList();
+      expect(
+        baseline,
+        isNotEmpty,
+        reason: 'runner should list at least one project with build.yaml',
+      );
       final target = baseline.first;
 
       // Place a skip file at that real project and re-run; it must disappear.
       tempSkipFiles.add(ws.placeSkipFile(target));
 
-      final projects = parseListOutput(await runToolList('runner'))
-          .where((line) => !line.startsWith('->'))
-          .toList();
+      final projects = parseListOutput(
+        await runToolList('runner'),
+      ).where((line) => !line.startsWith('->')).toList();
       final excluded = !projects.contains(target);
       expect(
         projects,
@@ -617,9 +626,9 @@ void main() {
       // PathNotFoundException. The --list output interleaves
       // '-> :dependencies listed' status lines with the clean project-path
       // lines, so filter the status lines out to get the real project paths.
-      final baseline = parseListOutput(await runToolList('dependencies'))
-          .where((line) => !line.startsWith('->'))
-          .toList();
+      final baseline = parseListOutput(
+        await runToolList('dependencies'),
+      ).where((line) => !line.startsWith('->')).toList();
       final childCountByParent = <String, int>{};
       for (final proj in baseline) {
         final parent = p.dirname(proj);
@@ -639,11 +648,12 @@ void main() {
       // within parentDir must disappear (parent skip excludes all children).
       tempSkipFiles.add(ws.placeSkipFile(parentDir));
 
-      final remaining = parseListOutput(await runToolList('dependencies'))
-          .where((line) => !line.startsWith('->'))
+      final remaining = parseListOutput(
+        await runToolList('dependencies'),
+      ).where((line) => !line.startsWith('->')).toList();
+      final childrenRemain = remaining
+          .where((proj) => p.isWithin(parentDir, proj))
           .toList();
-      final childrenRemain =
-          remaining.where((proj) => p.isWithin(parentDir, proj)).toList();
       expect(
         childrenRemain,
         isEmpty,
@@ -765,10 +775,7 @@ void main() {
         '--verbose',
         '--list',
       ]);
-      log.capture(
-        'versioner --verbose --list (baseline)',
-        baselineResult,
-      );
+      log.capture('versioner --verbose --list (baseline)', baselineResult);
       final baselineOut = baselineResult.stdout as String;
 
       // Core project paths present in the baseline verbose output (e.g.
@@ -776,8 +783,10 @@ void main() {
       // enough to prove the exclusion — the derived '<container>/**' removes
       // every core project regardless of basename shape.
       final coreRe = RegExp(r'[\w./-]*?/core/tom_core_[\w-]+');
-      final baselineCore =
-          coreRe.allMatches(baselineOut).map((m) => m.group(0)!).toSet();
+      final baselineCore = coreRe
+          .allMatches(baselineOut)
+          .map((m) => m.group(0)!)
+          .toSet();
       log.expectation(
         'baseline verbose output has core projects (${baselineCore.length})',
         baselineCore.isNotEmpty,
@@ -948,9 +957,9 @@ versioner:
       //     master YAML from a prior test first). ---
       final masterFile = File(masterPath);
       if (masterFile.existsSync()) masterFile.deleteSync();
-      final baseline = parseListOutput(await runToolList('dependencies'))
-          .where((line) => !line.startsWith('->'))
-          .toList();
+      final baseline = parseListOutput(
+        await runToolList('dependencies'),
+      ).where((line) => !line.startsWith('->')).toList();
       final coreBaseline = coreProjectsIn(baseline);
       log.expectation(
         'baseline has core projects to exclude (${coreBaseline.length})',
@@ -987,9 +996,9 @@ versioner:
   variable-prefix: testDefault
 ''');
 
-      final excluded = parseListOutput(await runToolList('dependencies'))
-          .where((line) => !line.startsWith('->'))
-          .toList();
+      final excluded = parseListOutput(
+        await runToolList('dependencies'),
+      ).where((line) => !line.startsWith('->')).toList();
 
       // Every core project present in the baseline must now be gone.
       for (final coreProj in coreBaseline) {
@@ -1058,9 +1067,9 @@ versioner:
       // path segment instead. (The --list output interleaves
       // '-> :dependencies listed' status lines with the clean path lines, so
       // filter the status lines out.)
-      final projects = parseListOutput(stdout)
-          .where((line) => !line.startsWith('->'))
-          .toList();
+      final projects = parseListOutput(
+        stdout,
+      ).where((line) => !line.startsWith('->')).toList();
       final coreProjects = projects
           .where((proj) => p.split(proj).contains('core'))
           .toList();

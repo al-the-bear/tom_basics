@@ -322,15 +322,21 @@ try {
   lock (a file beside the clone; another run waits up to `lockTimeout`, default
   30 minutes, then the call throws naming the holder), creates the clone on
   first use — this copies the whole workspace and takes minutes — and brings
-  every repository, the superproject and each submodule recursively, to the
-  commit and branch its live counterpart has checked out. Commits are fetched
-  from the live repositories on this machine, so unpushed commits are included
-  and uncommitted edits are not. Submodules are laid out as in the live tree
-  (`.git` files pointing into `.git/modules`); `origin` carries the live URL and
-  pushing is disabled.
+  every repository to the commit and branch its live counterpart has checked
+  out. The repositories are, with a `repos.yaml` in the live workspace or a
+  folder above it, the members of tom_build_base's `RepoSet` inside the live
+  workspace that its git commands take (every entry but an upstream, and the
+  quest clones; unmanaged, tool-owned and unknown clones are left out), each an
+  independent clone at its path as in the live tree; without one, the
+  superproject and each submodule recursively, laid out as submodules (`.git`
+  files pointing into `.git/modules`). Commits are fetched from the live
+  repositories on this machine, so unpushed commits are included and
+  uncommitted edits are not; `origin` carries the live URL and pushing is
+  disabled.
 - **`release()`** resets every repository to the recorded commit
   (`git reset --hard`, `git clean -ffd`; ignored files such as `.dart_tool/`
-  stay) and gives the lock back. It is safe to call twice.
+  stay, and so do the clone's repositories inside a repository) and gives the
+  lock back. It is safe to call twice.
 - `root` is the clone, `liveRoot` the workspace it follows; `findLiveRoot` and
   `locationFor` answer the defaults.
 - The clone is marked by `.git/tom_workspace_clone.json`.
