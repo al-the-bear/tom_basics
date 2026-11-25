@@ -35,7 +35,7 @@ class SkillPushBinariesRun {
   final Map<String, String>? gitEnvironment;
   late final RunReport report;
 
-  /// `pushed`, `committed` (dry run), `no-op`, `not cloned` or `failed`.
+  /// `pushed`, `would push` (dry run), `no-op`, `not cloned` or `failed`.
   String outcome = 'failed';
 
   WsGit get _g => WsGit(binaries, gitEnvironment);
@@ -86,7 +86,7 @@ class SkillPushBinariesRun {
           'would fetch, rebase onto origin/$branch and push',
         ]),
       );
-      outcome = 'committed';
+      outcome = 'would push';
       return report;
     }
     await g.run(['add', '-A']);
