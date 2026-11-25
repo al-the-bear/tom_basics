@@ -18,6 +18,11 @@ versioner:
 
 # Compiler tool configuration
 compiler:
+  # The release executables (tom_binaries/tom/<platform>/; buildkit :skill-build-binaries --list).
+  executables:
+    buildkit: {release: true}
+    findproject: {release: true}
+    wssetup: {release: true}
   # Opt out of being compiled by a running buildkit: buildkit.exe (and the
   # `bk` hardlink) cannot be overwritten while this very process holds the
   # file lock on Windows (the "self-overwrite file lock"). buildkit is built

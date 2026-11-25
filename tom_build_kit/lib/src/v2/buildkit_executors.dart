@@ -28,6 +28,7 @@ import 'executors/dependencies_executor.dart';
 import 'executors/execute_executor.dart';
 import 'executors/git_executors.dart';
 import 'ws/ws_push.dart';
+import 'binaries/binaries_executors.dart';
 import 'skill/skill_dirty_scan.dart';
 import 'skill/skill_reconcile_code.dart';
 import 'skill/skill_status.dart';
@@ -300,6 +301,9 @@ Map<String, CommandExecutor> createBuildkitExecutors() {
     'skill-reconcile-code': SkillReconcileExecutor(),
     'skill-status': SkillStatusExecutor(),
     'skill-dirty-scan': SkillDirtyScanExecutor(),
+    'skill-build-binaries': SkillBuildBinariesExecutor(all: false),
+    'skill-build-all-binaries': SkillBuildBinariesExecutor(all: true),
+    'skill-push-binaries': SkillPushBinariesExecutor(),
     'gitpull': GitPullExecutor(),
     'gitbranch': GitBranchExecutor(),
     'gittag': GitTagExecutor(),

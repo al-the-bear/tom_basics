@@ -1,5 +1,23 @@
 ## Unreleased
 
+- The release binaries (what tom_binaries tracks in `tom/<platform>/`) are
+  declared: `compiler: executables: <name>: {release: true}` in a project's
+  `buildkit.yaml`, and a `binaries:` list in `buildkit_master.yaml` (any
+  project's executable, bundled applications and libraries, binaries another
+  tool builds, short names, per-platform limits); the set is the sum. New
+  `:skill-build-binaries` (`--list` prints the set and where each entry is
+  declared): the generators first, then the projects with release
+  executables, built by a buildkit subprocess into `tom_binaries/tom/`
+  (where the shared step records belong); a binary the run wrote there that
+  is no release binary moved to the ignored `all/<platform>/`; buildkit, findproject and
+  wssetup compiled beside their target and swapped in (the running file
+  renamed aside to `.old`, deleted by the next run; works on Windows); the
+  short names as symlinks, on Windows as a Git Bash script, a `.cmd` and a
+  hard link. New `:skill-build-all-binaries`: the same over every project,
+  every non-release binary left in the ignored `all/<platform>/`. New
+  `:skill-push-binaries`: as `tom_push_binaries` (commit by platform, rebase
+  onto the other platforms, this build wins a path both changed, never
+  forced). `--json`, `-n`, `--help`.
 - New `:skill-reconcile-code`, `:skill-status`, `:skill-dirty-scan`: the
   per-host work of the fleet skills `tom_reconcile_code`, `tom_fleet_status`
   (its probe) and `tom_dirty_work` (its scan), under their rules, for the

@@ -8,6 +8,7 @@ import 'package:tom_build_base/tom_build_base_v2.dart';
 import '../version.versioner.dart';
 import '../wssetup/wssetup_tool.dart' show wssetupOptions;
 import 'executors/git_executors.dart' show gitstatusMessages;
+import 'binaries/binaries_messages.dart' show binAllMessages;
 import 'skill/skill_messages.dart' show skillAllMessages, skillJsonTopic;
 import 'ws/ws_messages.dart' show wsAllMessages;
 
@@ -1663,6 +1664,137 @@ not scanned. Read-only; the decision document stays in the skill.
   ],
 );
 
+/// Options for skill-build-binaries and skill-build-all-binaries (§ 1.9).
+const skillbuildbinariesOptions = <OptionDefinition>[
+  OptionDefinition.option(
+    name: 'binaries',
+    description:
+        'The tom_binaries clone (default: the binaries entry of repos.yaml, else <workspace>/tom_binaries)',
+    valueName: 'dir',
+  ),
+  OptionDefinition.flag(
+    name: 'json',
+    description: 'The report (or the --list) as one JSON document',
+  ),
+];
+
+const _skillBuildDetails = '''
+The release set is the sum of two declarations, an entry in both is fine:
+`compiler: executables: <name>: {release: true}` in a project's buildkit.yaml,
+and the `binaries:` list of buildkit_master.yaml (any project's executable,
+the bundled applications and libraries, the binaries another tool builds, the
+short names, the platforms an entry exists on). --list (the common option)
+prints it and where each entry is declared, and builds nothing.
+
+1. The generators first (tom_d4rt_generator, tom_reflection_generator:
+   :versioner :pubget :compiler).
+2. :skill-build-binaries: the projects that compile a release executable;
+   :skill-build-all-binaries: every project (the check that everything
+   compiles). By a buildkit subprocess with TOM_BINARY_PATH=tom_binaries/tom,
+   as every build of the layer (the shared step records in .buildkit/steps
+   stay where the other hosts find them): :versioner :pubget :d4rtgen
+   :reflectiongenerator --no-cache :compiler.
+3. Every binary the run wrote into tom/<platform>/ that is no release binary
+   moves to tom_binaries/all/<platform>/, which tom_binaries/.gitignore
+   ignores (/all/; the run refuses without it).
+4. buildkit, findproject and wssetup (tom_build_kit opts out of being
+   compiled by buildkit) are compiled to <name>.new beside their target, the
+   target renamed aside to <name>.old (a running executable can be renamed,
+   also on Windows), the new one given its name; *.old is deleted on the next
+   run. When the running buildkit is too old for this command,
+   tom_build_kit/bootstrap_binaries.sh builds buildkit instead.
+5. The short names: a symlink on macOS and Linux; on Windows a Git Bash
+   script and a .cmd, and a hard link (bk.exe).
+
+The binaries another tool builds (tom_bs's extension copy, tomspecs, the
+Tom Secrets Manager) and the bundled ones (MarkText, pdfium, sqlite_vec) are
+named and left as they are. -n shows the commands and changes nothing.
+''';
+
+const skillbuildbinariesCommand = CommandDefinition(
+  name: 'skill-build-binaries',
+  description:
+      'Build the release binaries into tom_binaries/tom/<platform>/, buildkit itself included',
+  details: _skillBuildDetails,
+  exitCodes: {
+    0: 'every release binary of this platform was built and is in place',
+    1: 'a build step failed or a release binary was not written',
+    2: 'refused (the release set does not add up, no tom_binaries, all/ not ignored)',
+  },
+  options: skillbuildbinariesOptions,
+  supportsProjectTraversal: false,
+  supportsGitTraversal: false,
+  requiresTraversal: false,
+  canRunStandalone: true,
+  examples: [
+    'buildkit :skill-build-binaries --list',
+    'buildkit :skill-build-binaries',
+    'buildkit :skill-build-binaries -n',
+    'buildkit :skill-build-binaries --json',
+  ],
+);
+
+const skillbuildallbinariesCommand = CommandDefinition(
+  name: 'skill-build-all-binaries',
+  description:
+      'Build every binary of every project (the check that everything compiles): the release ones into tom/<platform>/, the others into the ignored all/<platform>/',
+  details: _skillBuildDetails,
+  exitCodes: {
+    0: 'the full build passed and every release binary is in place',
+    1: 'a build step failed or a release binary was not written',
+    2: 'refused (the release set does not add up, no tom_binaries, all/ not ignored)',
+  },
+  options: skillbuildbinariesOptions,
+  supportsProjectTraversal: false,
+  supportsGitTraversal: false,
+  requiresTraversal: false,
+  canRunStandalone: true,
+  examples: [
+    'buildkit :skill-build-all-binaries',
+    'buildkit :skill-build-all-binaries -n',
+  ],
+);
+
+/// Options for skill-push-binaries.
+const skillpushbinariesOptions = <OptionDefinition>[
+  OptionDefinition.option(
+    name: 'binaries',
+    description:
+        'The tom_binaries clone (default: the binaries entry of repos.yaml, else <workspace>/tom_binaries)',
+    valueName: 'dir',
+  ),
+  OptionDefinition.flag(
+    name: 'json',
+    description: 'The report as one JSON document',
+  ),
+];
+
+const skillpushbinariesCommand = CommandDefinition(
+  name: 'skill-push-binaries',
+  description:
+      'Commit tom_binaries and push it, rebased onto what the other platforms pushed; never forced',
+  details: '''
+As the skill tom_push_binaries: git add -A; nothing staged and nothing
+unpushed is a no-op. One commit "chore: refresh binaries (<platforms>) at
+<iso time>" (the platforms of the staged paths, never the host). Fetch; a
+clone whose history shares no commit with origin's is refused (origin was
+recreated). Rebase onto what the other platforms pushed; a path both sides
+changed (the same platform built elsewhere too) is taken from this build.
+Push, never forced; origin moved meanwhile: fetch, rebase, push again, three
+rounds at most. A host without the clone has nothing to push (exit 0).
+''',
+  exitCodes: {
+    0: 'pushed, or nothing to push',
+    1: 'the rebase or the push failed, or the history is unrelated to origin\'s',
+  },
+  options: skillpushbinariesOptions,
+  supportsProjectTraversal: false,
+  supportsGitTraversal: false,
+  requiresTraversal: false,
+  canRunStandalone: true,
+  examples: ['buildkit :skill-push-binaries', 'buildkit :skill-push-binaries -n'],
+);
+
 const gitpushCommand = CommandDefinition(
   name: 'gitpush',
   description:
@@ -1966,6 +2098,7 @@ final buildkitTool = ToolDefinition(
     ...wsAllMessages.helpTopics,
     ...skillAllMessages.helpTopics,
     skillJsonTopic,
+    ...binAllMessages.helpTopics,
   ],
   features: const NavigationFeatures(
     projectTraversal: true,
@@ -2034,6 +2167,9 @@ final buildkitTool = ToolDefinition(
     skillreconcileCommand,
     skillstatusCommand,
     skilldirtyscanCommand,
+    skillbuildbinariesCommand,
+    skillbuildallbinariesCommand,
+    skillpushbinariesCommand,
     gitbranchCommand,
     gittagCommand,
     gitcheckoutCommand,

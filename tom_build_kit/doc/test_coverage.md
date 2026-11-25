@@ -829,6 +829,25 @@ The integration suites run on the machine's workspace clone (tom_test_support `T
 | BK-SKR-13 | conflict, usage | ✅ | Aborted, fails (exit 1); a bad `--dirty` or a missing baseline exit 2. |
 | BK-SKR-14 | Help | ✅ | Every option and the exit codes of the three; every message and `skill-json` a topic. |
 
+### The release binaries: :skill-build-binaries, :skill-build-all-binaries, :skill-push-binaries
+
+**Test file:** `test/binaries_test.dart` (a workspace and a tom_binaries clone with a bare remote in a temporary folder; the buildkit subprocess and the self-compile are fakes that write what the real ones write; never the live workspace)
+
+| ID | Feature | Status | How to Test |
+|----|---------|--------|-------------|
+| BK-BIN-1 | The set from both declarations | ✅ | `release: true` flags and the master list summed; an entry in both is one, declared in both; `release: false` and test fixtures left out; projects by folder name or path; external, bundled, short names, platforms. |
+| BK-BIN-2 | Problems | ✅ | A missing project and an entry that says nothing of how it is built: `--list` names them (exit 2), the build refuses (`bin-set`). |
+| BK-BIN-3 | `--list` | ✅ | Every entry with where it is declared, text and JSON. |
+| BK-BIN-4 | `:skill-build-binaries` | ✅ | The generators first, then only the release projects, into `tom/<platform>/`; a non-release binary the run wrote moved to `all/` with its stamp, files from before left alone; buildkit swapped in (`.old`); short names; tom_binaries' status shows only release files; `bin-not-built` names the externals and bundled ones. |
+| BK-BIN-5 | `.old` deleted next time | ✅ | The next run deletes what the previous one set aside. |
+| BK-BIN-6 | Self-swap of a running executable | ✅ | A running executable replaced twice; the running process goes on; deleted once it has exited. On Windows with a running AOT executable (checked on legiondary01). |
+| BK-BIN-7 | `:skill-build-all-binaries` | ✅ | Every project; the non-release binaries only in the ignored `all/<platform>/`; tom_binaries' status without them. |
+| BK-BIN-8 | Refusals | ✅ | No clone (`bin-no-clone`), `all/` not ignored (`bin-not-ignored`): nothing built. |
+| BK-BIN-9 | Failures | ✅ | A failing step (`bin-build-failed`) and a release binary not written (`bin-missing`): exit 1, the rest in place. |
+| BK-BIN-10 | Windows layout | ✅ | `.exe` binaries; a short name is a Git Bash script and a CRLF `.cmd`. |
+| BK-BIN-11 | `:skill-push-binaries` | ✅ | Committed by platform, rebased onto another platform's push, this build wins a path both changed, a no-op when level, an unrelated history refused (nothing pushed). |
+| BK-BIN-12 | `-n`, help | ✅ | The plan, nothing changed; every option and the exit codes; every message a topic. |
+
 ### Git commands on the repository set
 
 **Test file:** `test/git_commands_set_test.dart` (real repositories with bare remotes and a `repos.yaml` in a temporary folder; never the live workspace)
