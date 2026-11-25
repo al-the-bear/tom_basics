@@ -48,14 +48,37 @@ class ToolWiringEntry {
   /// command name to the nested tool's command name.
   ///
   /// For [WiringMode.standalone] tools, this should be null or empty —
-  /// the host command name defaults to the binary name.
+  /// the host command is [name].
   final Map<String, String>? commands;
+
+  /// The host command of a [WiringMode.standalone] tool: in
+  /// `nested_tools:` the entry's YAML key, so `d4rtgen: {binary:
+  /// /opt/x/d4rtgen}` is `:d4rtgen`. Null: the base name of [binary]
+  /// (without its folder and a `.exe`), which is what a code-level
+  /// `defaultIncludes` entry such as `binary: 'astgen'` gives.
+  final String? name;
 
   const ToolWiringEntry({
     required this.binary,
     required this.mode,
     this.commands,
+    this.name,
   });
+
+  /// The base name of [binary]: without its folder (after the last slash or
+  /// backslash) and a trailing `.exe`.
+  String get binaryBaseName {
+    final last = binary.split(RegExp(r'[/\\]')).last;
+    return last.toLowerCase().endsWith('.exe')
+        ? last.substring(0, last.length - 4)
+        : last;
+  }
+
+  /// What identifies the entry when code-level defaults and YAML entries are
+  /// merged (a YAML entry replaces the code entry of the same key): a
+  /// standalone tool's host command, a multi-command tool's binary.
+  String get key =>
+      mode == WiringMode.standalone ? (name ?? binaryBaseName) : binary;
 
   /// Whether this entry has any command mappings.
   bool get hasCommands => commands != null && commands!.isNotEmpty;
@@ -63,10 +86,11 @@ class ToolWiringEntry {
   /// All host command names defined by this wiring entry.
   ///
   /// For multi-command tools, returns the keys of [commands].
-  /// For standalone tools, returns a single-element set with the [binary] name.
+  /// For standalone tools, returns a single-element set with [name], else the
+  /// base name of [binary].
   Set<String> get hostCommandNames {
     if (mode == WiringMode.standalone) {
-      return {binary};
+      return {name ?? binaryBaseName};
     }
     return commands?.keys.toSet() ?? {};
   }
@@ -74,5 +98,6 @@ class ToolWiringEntry {
   @override
   String toString() =>
       'ToolWiringEntry($binary, $mode'
+      '${name != null ? ', name: $name' : ''}'
       '${hasCommands ? ', commands: $commands' : ''})';
 }

@@ -300,13 +300,16 @@ nested_tools:
   });
 
   group('ToolWiringEntry.hostCommandNames', () {
-    test('BB-WRL-15: Standalone uses binary name [2026-02-27]', () {
-      const entry = ToolWiringEntry(
-        binary: 'astgen',
-        mode: WiringMode.standalone,
-      );
-      expect(entry.hostCommandNames, equals({'astgen'}));
-    });
+    test(
+      'BB-WRL-15: Standalone without a name uses its binary\'s name [2026-02-27]',
+      () {
+        const entry = ToolWiringEntry(
+          binary: 'astgen',
+          mode: WiringMode.standalone,
+        );
+        expect(entry.hostCommandNames, equals({'astgen'}));
+      },
+    );
 
     test('BB-WRL-16: Multi-command uses command map keys [2026-02-27]', () {
       const entry = ToolWiringEntry(
@@ -330,5 +333,113 @@ nested_tools:
         expect(entry.hostCommandNames, isEmpty);
       },
     );
+  });
+
+  group('A standalone entry is named by its YAML key', () {
+    test('BB-WRL-18: a standalone nested_tools entry whose binary is an '
+        'absolute path wires the command named by the key and runs that '
+        'binary [2026-11-25]', () async {
+      final bin = Directory('${tmpDir.path}/elsewhere/bin')
+        ..createSync(recursive: true);
+      final gen = File('${bin.path}/mygen')
+        ..writeAsStringSync(r'''#!/bin/sh
+if [ "$1" = "--dump-definitions" ]; then
+cat <<YAML
+name: mygen
+version: 1.0.0
+description: A generator kept outside the PATH
+mode: single_command
+YAML
+exit 0
+fi
+echo "ran $*" > "$PWD/ran.txt"
+''');
+      Process.runSync('chmod', ['+x', gen.path]);
+      File('${tmpDir.path}/hosttool_master.yaml').writeAsStringSync(
+        'nested_tools:\n'
+        '  fakegen:\n'
+        '    binary: ${gen.path}\n'
+        '    mode: standalone\n',
+      );
+      const tool = ToolDefinition(
+        name: 'hosttool',
+        description: 'Host',
+        wiringFile: '',
+      );
+
+      final result = await WiringLoader(
+        tool: tool,
+      ).resolve(requestedCommands: {'fakegen'}, workspaceRoot: tmpDir.path);
+      expect(result.errors, isEmpty);
+      expect(result.commands.map((c) => c.name), ['fakegen']);
+      expect(result.commands.single.description, contains('via ${gen.path}'));
+      final executor = result.executors['fakegen']!;
+      expect(executor.binary, gen.path);
+      expect(executor.hostCommandName, 'fakegen');
+
+      final project = Directory('${tmpDir.path}/project')..createSync();
+      final run = await executor.execute(
+        CommandContext(
+          fsFolder: FsFolder(path: project.path),
+          natures: const [],
+          executionRoot: tmpDir.path,
+        ),
+        const CliArgs(),
+      );
+      expect(run.success, isTrue, reason: '${run.message}');
+      expect(
+        File('${project.path}/ran.txt').readAsStringSync(),
+        contains('ran --nested'),
+      );
+    }, testOn: '!windows');
+
+    test('BB-WRL-19: a YAML entry overrides the code default of the same '
+        'command, also with another binary [2026-11-25]', () {
+      File('${tmpDir.path}/hosttool_master.yaml').writeAsStringSync(
+        'nested_tools:\n'
+        '  astgen:\n'
+        '    binary: /opt/tools/astgen\n'
+        '    mode: standalone\n',
+      );
+      final tool = ToolDefinition(
+        name: 'hosttool',
+        description: 'Host',
+        wiringFile: '',
+        defaultIncludes: [
+          const ToolWiringEntry(binary: 'astgen', mode: WiringMode.standalone),
+        ],
+      );
+      final loader = WiringLoader(tool: tool)
+        ..mergeWiringSources(workspaceRoot: tmpDir.path);
+      expect(loader.effectiveWiring.keys, ['astgen']);
+      expect(loader.effectiveWiring['astgen']!.binary, '/opt/tools/astgen');
+      expect(loader.effectiveWiring['astgen']!.hostCommandNames, {'astgen'});
+    });
+
+    test('BB-WRL-20: a standalone entry\'s command: its name, else the base '
+        'name of its binary [2026-11-25]', () {
+      expect(
+        const ToolWiringEntry(
+          binary: '/opt/x/d4rtgen',
+          mode: WiringMode.standalone,
+          name: 'gen',
+        ).hostCommandNames,
+        {'gen'},
+      );
+      expect(
+        const ToolWiringEntry(
+          binary: '/opt/x/d4rtgen',
+          mode: WiringMode.standalone,
+        ).hostCommandNames,
+        {'d4rtgen'},
+      );
+      expect(
+        const ToolWiringEntry(
+          binary: r'C:\tools\astgen',
+          mode: WiringMode.standalone,
+        ).hostCommandNames,
+        {'astgen'},
+      );
+    });
   });
 }

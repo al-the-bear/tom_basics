@@ -235,14 +235,18 @@ class ToolWiringEntry {
   final WiringMode mode;
 
   /// Command mapping: `{ hostName: nestedName }`.
-  /// Required for multi-command tools. Null/empty for standalone tools
-  /// (the host command name defaults to the binary name).
+  /// Required for multi-command tools. Null/empty for standalone tools.
   final Map<String, String>? commands;
+
+  /// A standalone tool's host command: the `nested_tools:` key; null: the
+  /// base name of [binary] (without folder and `.exe`).
+  final String? name;
 
   const ToolWiringEntry({
     required this.binary,
     required this.mode,
     this.commands,
+    this.name,
   });
 }
 
@@ -494,9 +498,9 @@ nested_tools:
       buildkitbaseline: baseline  # :buildkitbaseline → :baseline in testkit
   buildkitAstgen:
     binary: astgen
-    mode: standalone           # single-command tool, no :commands
-  buildkitD4rtgen:
-    binary: d4rtgen
+    mode: standalone           # :buildkitAstgen runs astgen (the key names the command)
+  d4rtgen:
+    binary: /opt/tools/d4rtgen # a path works too: :d4rtgen runs this binary
     mode: standalone
 ```
 
@@ -504,11 +508,15 @@ nested_tools:
 
 | Field | Required | Values | Purpose |
 |-------|----------|--------|---------|
-| `binary` | Yes | String | Executable name (no `.exe` — added automatically on Windows) |
-| `mode` | Yes | `multi_command` / `standalone` | Whether tool has sub-commands |
+| (key) | Yes | String | A standalone tool's host command (`:<key>`); for a multi-command tool only a label |
+| `binary` | No (default: the key) | String | What is run: a name looked up on the PATH, or a path (no `.exe` — added automatically on Windows) |
+| `mode` | No (default `standalone`) | `multi_command` / `standalone` | Whether tool has sub-commands |
 | `commands` | If multi_command | Map of `host_name: nested_name` | Command mapping with renames |
 
-That's it. Everything else is auto-discovered.
+**A standalone tool's host command is its key, not its binary:** `buildkitAstgen: {binary: astgen}` is
+`:buildkitAstgen`, and `d4rtgen: {binary: /opt/tools/d4rtgen}` is `:d4rtgen`, run from that path. A code-level
+`defaultIncludes` entry (`ToolWiringEntry(binary: 'astgen', mode: WiringMode.standalone)`) has no key: its command is
+the base name of its binary (`:astgen`), unless it gives `name:`. That's it. Everything else is auto-discovered.
 
 ---
 
@@ -529,7 +537,8 @@ The effective wiring is assembled from two sources:
 1. **Code-level:** `tool.defaultIncludes` (if any)
 2. **File-level:** `nested_tools:` from the resolved `wiringFile` (if file exists)
 
-YAML entries override code entries when both define wiring for the same binary.
+A YAML entry replaces the code entry of the same command (a standalone tool's host command; a multi-command tool's
+binary): `d4rtgen: {binary: /opt/tools/d4rtgen}` replaces the code default `ToolWiringEntry(binary: 'd4rtgen')`.
 
 #### Flow
 

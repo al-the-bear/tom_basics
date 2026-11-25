@@ -1,3 +1,15 @@
+## 2.53.0
+
+### Fixed
+
+- `nested_tools:`: a standalone entry's host command is its YAML key, not its
+  `binary:` value: `d4rtgen: {binary: /opt/x/d4rtgen, mode: standalone}` is
+  `:d4rtgen` and runs `/opt/x/d4rtgen` (it was `:/opt/x/d4rtgen`).
+  `ToolWiringEntry.name` carries the command; without it (a code-level
+  `defaultIncludes` entry) the command is the base name of the binary. A YAML
+  entry replaces the code entry of the same command (`ToolWiringEntry.key`);
+  `WiringLoader.effectiveWiring` shows the merged entries.
+
 ## 2.52.0
 
 ### Changed

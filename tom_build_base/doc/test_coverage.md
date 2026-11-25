@@ -24,7 +24,7 @@ This document lists all testable features across `tom_build_base` and tracks tes
 | 9 | [OptionDefinition](#9-optiondefinition) | 28 | 28✅ | `v2/core/option_definition_test.dart` | [→](#9-optiondefinition) |
 | 10 | [ToolDefinition](#10-tooldefinition) | 55 | 55✅ | `v2/core/tool_definition_test.dart` | [→](#10-tooldefinition) |
 | 11 | [ToolDefinition Serializer](#11-tooldefinition-serializer) | 20 | 20✅ | `v2/core/tool_definition_serializer_test.dart` | [→](#11-tooldefinition-serializer) |
-| 12 | [Wiring Loader](#12-wiring-loader) | 17 | 17✅ | `v2/core/wiring_loader_test.dart` | [→](#12-wiring-loader) |
+| 12 | [Wiring Loader](#12-wiring-loader) | 20 | 20✅ | `v2/core/wiring_loader_test.dart` | [→](#12-wiring-loader) |
 | 13 | [Pipeline Config](#13-pipeline-config) | 11 | 11✅ | `v2/core/pipeline_config_test.dart` | [→](#13-pipeline-config) |
 | 14 | [Pipeline Executor](#14-pipeline-executor) | 11 | 11✅ | `v2/core/pipeline_executor_test.dart` | [→](#14-pipeline-executor) |
 | 15 | [ToolRunner](#15-toolrunner) | 64 | 64✅ | `v2/core/tool_runner_test.dart` | [→](#15-toolrunner) |
@@ -81,7 +81,7 @@ This document lists all testable features across `tom_build_base` and tracks tes
 | 66 | [Wired Executor Wrapper](#66-wired-executor-wrapper) | 2 | 2✅ | `v2/core/wired_executor_wrapper_test.dart` | [→](#66-wired-executor-wrapper) |
 | 67 | [Repository Set](#67-repository-set) | 11 | 11✅ | `v2/repos/repo_set_test.dart` | [→](#67-repository-set) |
 | 68 | [Run Report](#68-run-report) | 9 | 9✅ | `v2/report/run_report_test.dart` | [→](#68-run-report) |
-| — | **Total** | **1216** | **1216✅** | | | | |
+| — | **Total** | **1219** | **1219✅** | | | | |
 
 > Every row links to a section, and the counts are measured from
 > `dart test --reporter json -j 1` rather than maintained by hand. Run it
@@ -377,6 +377,9 @@ Tests for the recently implemented features: modes, persistent defines, runtime 
 | BB_WIR_6–10 | Command wiring | ✅ | Wire commands from parent to nested tools. |
 | BB_WIR_11–14 | Option resolution | ✅ | Resolve options across wired tools. |
 | BB_WIR_15–17 | Configuration merging | ✅ | Merge wiring config with tool definitions. |
+| BB-WRL-18 | A standalone entry named by its key | ✅ | `fakegen: {binary: <absolute path>}` wires `:fakegen` and runs that binary. |
+| BB-WRL-19 | YAML replaces the code default of the same command | ✅ | Also with another binary (a path). |
+| BB-WRL-20 | A standalone entry's command | ✅ | Its `name`, else the base name of its binary (folder and `.exe` stripped). |
 
 ---
 

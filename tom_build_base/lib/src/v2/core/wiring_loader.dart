@@ -63,6 +63,11 @@ class WiringLoader {
   /// Map from host command name → wiring entry that owns it.
   late final Map<String, ToolWiringEntry> _commandToWiring;
 
+  /// The merged wiring entries by [ToolWiringEntry.key], after
+  /// [mergeWiringSources].
+  Map<String, ToolWiringEntry> get effectiveWiring =>
+      Map.unmodifiable(_effectiveWiring);
+
   WiringLoader({required this.tool});
 
   /// Resolve nested tool wiring for the given context.
@@ -96,7 +101,7 @@ class WiringLoader {
       for (final cmdName in requestedCommands) {
         final wiring = _commandToWiring[cmdName];
         if (wiring != null) {
-          neededTools[wiring.binary] = wiring;
+          neededTools[wiring.key] = wiring;
         }
       }
     }
@@ -111,9 +116,8 @@ class WiringLoader {
     final warnings = <String>[];
     final errors = <String>[];
 
-    for (final entry in neededTools.entries) {
-      final binary = entry.key;
-      final wiring = entry.value;
+    for (final wiring in neededTools.values) {
+      final binary = wiring.binary;
       final resolved = resolveBinary(binary);
 
       // Check binary exists
@@ -160,7 +164,8 @@ class WiringLoader {
   /// Merge code-level [ToolDefinition.defaultIncludes] with YAML
   /// `nested_tools:` entries.
   ///
-  /// YAML entries override code entries for the same binary.
+  /// A YAML entry replaces the code entry of the same [ToolWiringEntry.key]
+  /// (a standalone tool's host command, a multi-command tool's binary).
   /// Updates [_effectiveWiring] and [_commandToWiring].
   void mergeWiringSources({required String workspaceRoot}) {
     _effectiveWiring = {};
@@ -169,7 +174,7 @@ class WiringLoader {
     // Start with code-level defaults
     if (tool.defaultIncludes != null) {
       for (final entry in tool.defaultIncludes!) {
-        _effectiveWiring[entry.binary] = entry;
+        _effectiveWiring[entry.key] = entry;
       }
     }
 
@@ -236,11 +241,15 @@ class WiringLoader {
         }
       }
 
-      result[binary] = ToolWiringEntry(
+      // A standalone tool's host command is the entry's key; `binary:` is
+      // only what is run (it may be a path).
+      final wiring = ToolWiringEntry(
         binary: binary,
         mode: mode,
         commands: commands,
+        name: mode == WiringMode.standalone ? key : null,
       );
+      result[wiring.key] = wiring;
     }
 
     return result;
