@@ -1,3 +1,14 @@
+## 2.51.0
+
+### Added
+
+- `repos.yaml`: an optional one-line `description` on every entry and on
+  `root:` (what the repository holds and what it is for), as
+  `repos.schema.json` allows it. `RepoEntry.description` and
+  `ReposManifest.rootDescription` carry it; a missing one is fine, an empty
+  or multi-line one is a problem. Unknown keys of `root:` are now reported
+  like those of an entry.
+
 ## 2.50.0
 
 ### Added

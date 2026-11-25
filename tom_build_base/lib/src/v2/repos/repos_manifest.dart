@@ -71,6 +71,7 @@ class RepoEntry {
     this.branch,
     this.pin,
     this.hosts,
+    this.description,
   });
 
   /// Relative to the root, with `/`.
@@ -89,6 +90,10 @@ class RepoEntry {
 
   /// The fleet hosts that clone it; null: every host, empty: on demand only.
   final List<String>? hosts;
+
+  /// What the repository holds and what it is for, one line; null when the
+  /// entry has none (`tom_repos --check` reports that).
+  final String? description;
 
   /// Whether the entry is cloned only when asked for (`hosts: []`).
   bool get onDemand => hosts != null && hosts!.isEmpty;
@@ -112,10 +117,14 @@ class ReposManifest {
     required this.entries,
     required this.links,
     required this.unmanaged,
+    this.rootDescription,
   });
 
   final String rootUrl;
   final String rootBranch;
+
+  /// The root's `description`, null when it has none.
+  final String? rootDescription;
   final List<RepoEntry> entries;
   final List<RepoLink> links;
 
@@ -135,6 +144,7 @@ class ReposManifest {
     'describe',
     'hosts',
     'notes',
+    'description',
   };
 
   /// Parses [text], checking the rules of `repos.schema.json` and that no
@@ -160,12 +170,19 @@ class ReposManifest {
 
     var rootUrl = '';
     var rootBranch = '';
+    String? rootDescription;
     final root = doc['root'];
     if (root is! YamlMap) {
       problems.add('root: missing (url and branch)');
     } else {
       rootUrl = _string(root, 'url', 'root', problems, _url) ?? '';
       rootBranch = _string(root, 'branch', 'root', problems, _branch) ?? '';
+      for (final key in root.keys) {
+        if (!{'url', 'branch', 'description'}.contains(key)) {
+          problems.add('root: unknown key `$key`');
+        }
+      }
+      rootDescription = _description(root, 'root', problems);
     }
 
     final entries = <RepoEntry>[];
@@ -223,7 +240,24 @@ class ReposManifest {
       entries: entries,
       links: links,
       unmanaged: unmanaged,
+      rootDescription: rootDescription,
     );
+  }
+
+  /// The optional one-line `description` of [map]: absent is fine, an empty
+  /// or multi-line one is a problem (the schema's rule).
+  static String? _description(
+    YamlMap map,
+    String where,
+    List<String> problems,
+  ) {
+    if (!map.containsKey('description')) return null;
+    final text = '${map['description'] ?? ''}';
+    if (text.isEmpty || text.contains('\n')) {
+      problems.add('$where: `description` must be one non-empty line');
+      return null;
+    }
+    return text;
   }
 
   static RepoEntry? _entry(Object? raw, String where, List<String> problems) {
@@ -261,6 +295,7 @@ class ReposManifest {
     } else if (rawHosts != null) {
       problems.add('$where: hosts must be a list');
     }
+    final description = _description(raw, where, problems);
     if (path == null || url == null || kind == null) return null;
     return RepoEntry(
       path: path,
@@ -269,6 +304,7 @@ class ReposManifest {
       branch: branch,
       pin: pin,
       hosts: hosts,
+      description: description,
     );
   }
 

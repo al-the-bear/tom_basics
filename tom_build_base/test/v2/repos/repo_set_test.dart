@@ -476,6 +476,41 @@ void main() {
       ),
     );
   });
+
+  test('BB-RSET-12: an entry\'s and the root\'s description are read; an '
+      'empty one is a problem, a missing one is not [2026-11-25]', () {
+    final m = ReposManifest.parse(
+      'version: 1\n'
+      'root: {url: https://example.com/r.git, branch: main, '
+      'description: "The root."}\n'
+      'repos:\n'
+      '  - {path: a, url: https://example.com/a.git, kind: code, '
+      'branch: main, description: "Code, with a comma."}\n'
+      '  - {path: b, url: https://example.com/b.git, kind: code, '
+      'branch: main}\n',
+    );
+    expect(m.rootDescription, 'The root.');
+    expect(m.entries.first.description, 'Code, with a comma.');
+    expect(m.entries.last.description, isNull);
+    expect(
+      () => ReposManifest.parse(
+        'version: 1\nroot: {url: https://example.com/r.git, branch: main, '
+        'other: x}\nrepos:\n'
+        '  - {path: a, url: https://example.com/a.git, kind: code, '
+        'branch: main, description: ""}\n',
+      ),
+      throwsA(
+        isA<ReposManifestException>().having(
+          (e) => e.problems.join('\n'),
+          'problems',
+          allOf(
+            contains('`description` must be one non-empty line'),
+            contains('root: unknown key `other`'),
+          ),
+        ),
+      ),
+    );
+  });
 }
 
 /// A [Stdout] stand-in that drops what is written.
