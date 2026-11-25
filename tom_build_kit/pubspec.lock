@@ -718,7 +718,7 @@ packages:
       path: "../tom_test_support"
       relative: true
     source: path
-    version: "0.8.2"
+    version: "0.9.0"
   typed_data:
     dependency: transitive
     description:
