@@ -1,3 +1,9 @@
+## 1.40.2
+
+- Takes tom_build_base 2.53.0: a standalone `nested_tools:` entry is wired as
+  its key (`d4rtgen: {binary: /opt/x/d4rtgen}` is `:d4rtgen`). The binary
+  fingerprint tests name their fake generator by path.
+
 ## 1.40.1
 
 - Takes tom_build_base 2.52.0: a `repos.yaml` with keys the reader does not

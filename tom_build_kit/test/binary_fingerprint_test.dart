@@ -29,7 +29,8 @@ const _gitEnv = {
 };
 
 /// A fake generator wired as `:d4rtgen` (buildkit_master.yaml's
-/// `nested_tools:` names it in place of the real one): it writes `lib/generated.dart` into
+/// `nested_tools:` names it by path in place of the real one): it writes
+/// `lib/generated.dart` into
 /// the project (from `lib/source.dart`, so a changed source changes it) and
 /// appends the project to `gen.log` in the clone.
 const _fakegen = r'''#!/bin/sh
@@ -78,12 +79,16 @@ void main() {
     base = dartTool.createTempSync('binary_fingerprint_test_');
     clone1 = Directory(p.join(base.path, 'one'))..createSync();
     binaries = Directory(p.join(base.path, 'binaries'))..createSync();
+    final fakegen = File(p.join(base.path, 'fakebin', 'fakegen'))
+      ..parent.createSync()
+      ..writeAsStringSync(_fakegen);
+    Process.runSync('chmod', ['+x', fakegen.path]);
     write(
       clone1,
       'buildkit_master.yaml',
       'required-environment:\n  binaryPath: \$TOM_BINARY_PATH\n'
           'nested_tools:\n  d4rtgen:\n'
-          '    binary: d4rtgen\n'
+          '    binary: ${fakegen.path}\n'
           '    mode: standalone\n',
     );
     write(clone1, '.gitignore', '*.log\n.dart_tool/\npubspec.lock\n');
@@ -106,10 +111,6 @@ void main() {
           '\$TOM_BINARY_PATH/$platform/alpha.dill\n'
           '      files:\n        - bin/main.dart\n',
     );
-    final fakegen = File(p.join(base.path, 'fakebin', 'd4rtgen'))
-      ..parent.createSync()
-      ..writeAsStringSync(_fakegen);
-    Process.runSync('chmod', ['+x', fakegen.path]);
     _git(clone1.path, ['init', '-q', '-b', 'main']);
     _git(clone1.path, ['add', '-A']);
     _git(clone1.path, ['commit', '-q', '-m', 'fixture']);
@@ -123,10 +124,6 @@ void main() {
     bool withBinaries = true,
   }) async {
     final env = Map.of(Platform.environment);
-    // The fake generator comes first on the PATH, before a real d4rtgen.
-    env['PATH'] =
-        '${p.join(base.path, 'fakebin')}${Platform.isWindows ? ';' : ':'}'
-        '${env['PATH'] ?? ''}';
     if (withBinaries) {
       env['TOM_BINARY_PATH'] = binaries.path;
     } else {
