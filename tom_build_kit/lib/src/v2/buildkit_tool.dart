@@ -1340,6 +1340,18 @@ const wsupdateOptions = <OptionDefinition>[
     valueName: 'repos',
   ),
   OptionDefinition.multi(
+    name: 'include-unknown',
+    description:
+        'Update these unknown clones from their own origin for this run; nothing pushed (ws-unknown-seen)',
+    valueName: 'repos',
+  ),
+  OptionDefinition.multi(
+    name: 'push-current',
+    description:
+        'Bring the branch they are on up to its origin and push it; the recorded branch stays (ws-off-branch)',
+    valueName: 'repos',
+  ),
+  OptionDefinition.multi(
     name: 'to-branch',
     description:
         'Commit (-m), switch to the expected branch, merge the current one into it, then update it; not pushed (ws-off-branch)',
@@ -1355,6 +1367,12 @@ const wsupdateOptions = <OptionDefinition>[
     name: 'rescue-detached',
     description:
         'Put their detached commits on ws-push/<host>/<yymmdd-hhmm>, push that branch, return to the branch (ws-detached)',
+    valueName: 'repos',
+  ),
+  OptionDefinition.multi(
+    name: 'merge-branch',
+    description:
+        'On a conflict, push your commits to ws-push/<host>/<yymmdd-hhmm> and put the branch on origin (ws-conflict)',
     valueName: 'repos',
   ),
   OptionDefinition.multi(
@@ -1405,7 +1423,9 @@ in (or --manifest).
 5. The parents' generated ignore blocks are written (as wssetup); unknown
    clones are reported (ws-unknown-seen).
 
-Nothing is pushed (only a --rescue-detached branch). Every problem is
+Nothing is pushed but what an option given for a repository pushes: a
+--rescue-detached or --merge-branch branch ws-push/<host>/<yymmdd-hhmm>, and
+the branch a --push-current repository is on. Every problem is
 reported with the options that resolve it and the command line to repeat; an
 option given repositories acts only on those, named by their last path
 segment when unique, else by their path. buildkit help <code> explains each

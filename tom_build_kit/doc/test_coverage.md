@@ -775,17 +775,20 @@ The integration suites run on the machine's workspace clone (tom_test_support `T
 | BK-WSU-5 | Changed origin URL | ✅ | Re-pointed to the URL of repos.yaml. |
 | BK-WSU-6 | `ws-held` | ✅ | A file the merge would overwrite holds the repository (files, incoming commits, options, repeat line); a dirty file the merge does not touch goes through. |
 | BK-WSU-7 | `--commit-first`, `--stash-merge` | ✅ | Committed with `-m` and merged, not pushed; stashed, merged, the file back unstaged, no stash left. |
-| BK-WSU-8 | `ws-conflict`, `--leave-conflict`, `--theirs` | ✅ | Aborted with its options; left in the working tree; merged with the incoming side. |
+| BK-WSU-8 | `ws-conflict`, `--leave-conflict`, `--theirs` | ✅ | Aborted with its options (`--merge-branch` first); left in the working tree; merged with the incoming side. |
 | BK-WSU-9 | `ws-fork-diverged`, `--merge-fork` | ✅ | A fork with a local commit is not merged; `--merge-fork` merges it. |
 | BK-WSU-10 | Changed pin, `ws-upstream-dirty` | ✅ | An upstream put at its new pin; a dirty one left alone. |
 | BK-WSU-11 | `tom_binaries` latest wins | ✅ | A conflicting local commit merged with `-X theirs`. |
-| BK-WSU-12 | `ws-off-branch`, `--to-branch`, `ws-detached` | ✅ | Off its branch reported; `--to-branch` commits on it, switches back and merges it in, not pushed; commits on no branch reported. |
-| BK-WSU-13 | Ignore blocks, `ws-unknown-seen` | ✅ | The root's ignore block written; an unknown clone reported. |
+| BK-WSU-12 | `ws-off-branch`, `--to-branch`, `ws-detached` | ✅ | Off its branch reported (`--push-current` first); `--to-branch` commits on it, switches back and merges it in, not pushed; commits on no branch reported. |
+| BK-WSU-13 | Ignore blocks, `ws-unknown-seen` | ✅ | The root's ignore block written; an unknown clone reported with `--include-unknown <clone>`. |
 | BK-WSU-14 | Refusals | ✅ | `ws-driver`, `ws-in-progress`, `ws-manifest` refuse before anything changes; exit 2. |
 | BK-WSU-15 | `ws-fetch-failed` | ✅ | A remote that cannot be reached. |
 | BK-WSU-16 | `-n` | ✅ | The plan (would merge), nothing changed. |
 | BK-WSU-17 | Help | ✅ | Every option, the steps, the exit codes, examples; one topic per message, shared ones once. |
 | BK-WSU-18 | `--skip`, `--ours`, `--set-branch`, `--rescue-detached` | ✅ | A held repository left out (exit 1); a conflict merged with the local side; the branch recorded in repos.yaml; the detached commits pushed to the rescue branch, the branch itself not. |
+| BK-WSU-19 | `--merge-branch` | ✅ | On a conflict the local commits pushed to `ws-push/<host>/<stamp>`, the branch put on `origin/<branch>`, an uncommitted file kept; exit 0. |
+| BK-WSU-20 | `--push-current` | ✅ | A feature branch pushed to its origin (created), `main` and repos.yaml untouched, nothing committed; incoming commits on `origin/feature` merged before the next push. |
+| BK-WSU-21 | `--include-unknown` | ✅ | An unknown clone merged from its own origin, its local commit not pushed, no `ws-unknown-seen` for it. |
 
 ### :ws-repo-cleanup
 
@@ -858,7 +861,7 @@ The integration suites run on the machine's workspace clone (tom_test_support `T
 | BK-WSH-1 | `buildkit --help` | ✅ | Every new command listed with its one line. |
 | BK-WSH-2 | Command pages | ✅ | Each `:ws-*` and `:skill-*` page has its steps, every option, the exit codes. |
 | BK-WSH-3 | Topics | ✅ | `help ws`, `help ws-options`, `help skill-json` print their contents. |
-| BK-WSH-4 | `ws-options` | ✅ | An option is credited only to the commands that accept it (`--merge-branch` not to `:ws-update`); every option a command's messages offer is on the page. |
+| BK-WSH-4 | `ws-options` | ✅ | An option is credited only to the commands that accept it (`--skip-file` not to `:ws-update`; `--merge-branch` to both); every option a command's messages offer is on the page. |
 | BK-WSH-5 | A topic per message | ✅ | Every code of every catalog a report can show has exactly one topic; `help <code>` prints its summary and options. |
 | BK-WSH-6 | Footer and block | ✅ | A report's footer names `buildkit help <topic>`, its block the code that is the topic. |
 

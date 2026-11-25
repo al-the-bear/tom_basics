@@ -17,9 +17,14 @@
 ///    `tom_binaries` takes the remote (latest wins). Uncommitted files the
 ///    merge would overwrite hold the repository (`ws-held`: `--commit-first`,
 ///    `--stash-merge`); otherwise the merge goes through with them in place.
-///    A conflict: `ws-conflict` (`--ours`, `--theirs`, `--leave-conflict`).
+///    A conflict: `ws-conflict` (`--merge-branch`, `--ours`, `--theirs`,
+///    `--leave-conflict`).
 /// 5. The parents' generated ignore blocks are written (as wssetup); unknown
-///    clones are reported (`ws-unknown-seen`).
+///    clones are reported (`ws-unknown-seen`, `--include-unknown`).
+///
+/// Nothing is pushed but what an option given for a repository pushes: a
+/// `--rescue-detached` or `--merge-branch` branch `ws-push/<host>/<stamp>`,
+/// and the branch a `--push-current` repository is on.
 ///
 /// Exit 0 when every repository of the set is at or ahead of
 /// `origin/<branch>` (forks and upstreams by their rules); 1 when one needs
@@ -38,12 +43,15 @@ import 'ws_messages.dart';
 /// The options of `:ws-update` that take repositories.
 const wsUpdateRepoOptions = [
   'skip',
+  'include-unknown',
   'rescue-detached',
+  'push-current',
   'to-branch',
   'set-branch',
   'merge-fork',
   'commit-first',
   'stash-merge',
+  'merge-branch',
   'ours',
   'theirs',
   'leave-conflict',
@@ -150,6 +158,13 @@ class WsUpdateRun {
 
   bool _skipped(String rel) => _sel.applies('skip', rel);
 
+  /// Whether the run updates [m]: a member of the git set, or an unknown
+  /// clone named by `--include-unknown`.
+  bool _takes(RepoSetMember m) =>
+      m.inGitSet ||
+      (m.repoClass == RepoClass.unknown &&
+          _sel.applies('include-unknown', m.relPath));
+
   /// Runs it; [RepoNameException] for an unknown or ambiguous name.
   Future<RunReport> run() async {
     _resolveNames();
@@ -251,18 +266,19 @@ class WsUpdateRun {
       _resolveNames();
     }
 
-    // 4. Every repository of the set, parents first.
+    // 4. Every repository of the set, parents first; an unknown clone
+    // named by --include-unknown is updated like an entry.
     final rest = [
       for (final m in set.members)
         if (m.onDisk &&
             !done.contains(m.relPath) &&
             !_skipped(m.relPath) &&
-            (m.inGitSet || m.kind == RepoKind.upstream))
+            (_takes(m) || m.kind == RepoKind.upstream))
           m,
     ];
     report.lookedAt.addAll([
       for (final m in set.members)
-        if (m.onDisk && m.inGitSet) m.relPath,
+        if (m.onDisk && _takes(m)) m.relPath,
     ]);
     if (!_dry) {
       await wsPool([
@@ -299,15 +315,19 @@ class WsUpdateRun {
     }
     final unknown = [
       for (final m in set.members)
-        if (m.repoClass == RepoClass.unknown) m.relPath,
+        if (m.repoClass == RepoClass.unknown &&
+            !_sel.applies('include-unknown', m.relPath))
+          m.relPath,
     ];
-    if (unknown.isNotEmpty) {
+    for (final rel in unknown) {
       report.add(
         wsUnknownSeen.raise(
-          finding:
-              '${unknown.length} clone(s) on disk that repos.yaml does not list:',
-          evidence: [ReportEvidence('paths', unknown)],
-          state: 'Left alone; :ws-repo-cleanup reports and removes them.',
+          repository: rel,
+          finding: 'A clone on disk that repos.yaml does not list:',
+          evidence: [
+            ReportEvidence('paths', [rel]),
+          ],
+          state: 'Left alone; :ws-repo-cleanup reports and removes it.',
         ),
       );
     }
@@ -529,6 +549,7 @@ class WsUpdateRun {
     }
 
     var expected = m.expectedBranch;
+    var pushCurrent = false;
     final current = await g.out(['symbolic-ref', '--short', '-q', 'HEAD']);
     var branch = current.isEmpty ? null : current;
 
@@ -575,7 +596,12 @@ class WsUpdateRun {
 
     // Off its branch.
     if (expected != null && branch != expected) {
-      if (_sel.applies('to-branch', m.relPath)) {
+      if (_sel.applies('push-current', m.relPath)) {
+        // This run only: the branch it is on, brought up to its origin and
+        // pushed; repos.yaml keeps the expected branch.
+        expected = branch;
+        pushCurrent = true;
+      } else if (_sel.applies('to-branch', m.relPath)) {
         if (!_dry) {
           await g.run(['add', '-A']);
           if (!await g.ok(['diff', '--cached', '--quiet'])) {
@@ -638,6 +664,7 @@ class WsUpdateRun {
 
     final remote = 'refs/remotes/origin/${expected ?? branch}';
     if (!await g.hasRef(remote) || await g.contains(remote, 'HEAD')) {
+      if (pushCurrent) await _pushCurrent(m, g, branch, remote, actions);
       done();
       return;
     }
@@ -749,6 +776,7 @@ class WsUpdateRun {
       if (_sel.applies('stash-merge', m.relPath) && overlap.isNotEmpty) {
         actions.add('would stash and restore ${dirty.length} file(s)');
       }
+      if (pushCurrent) actions.add('would push $branch');
       done();
       return;
     }
@@ -773,6 +801,7 @@ class WsUpdateRun {
         '${ffOnly ? 'fast-forwarded' : 'merged'} ${incoming.length} incoming commit(s)'
         '${side == null ? '' : ' (-X $side)'}',
       );
+      if (pushCurrent) await _pushCurrent(m, g, branch, remote, actions);
       if (stashed) {
         final pop = await g.run(['stash', 'pop', '-q']);
         if (pop.exitCode != 0) {
@@ -806,6 +835,9 @@ class WsUpdateRun {
       '--diff-filter=U',
     ])).split('\n').where((l) => l.isNotEmpty).toList();
     final local = await g.log('$remote..HEAD');
+    final localCount =
+        int.tryParse(await g.out(['rev-list', '--count', '$remote..HEAD'])) ??
+        local.length;
     final evidence = [
       ReportEvidence('files', [for (final f in conflicted) '$f  both changed']),
       ReportEvidence('local', local, label: 'Local:'),
@@ -813,6 +845,14 @@ class WsUpdateRun {
         '${incoming.length} commit(s)',
       ], label: 'Incoming:'),
     ];
+    if (_sel.applies('merge-branch', m.relPath) &&
+        !_sel.applies('leave-conflict', m.relPath)) {
+      await g.run(['merge', '--abort']);
+      if (stashed) await g.run(['stash', 'pop', '-q']);
+      await _mergeBranch(m, g, branch, remote, localCount, actions);
+      done();
+      return;
+    }
     _unresolved.add(m.relPath);
     if (_sel.applies('leave-conflict', m.relPath)) {
       report.add(
@@ -834,12 +874,22 @@ class WsUpdateRun {
           repository: m.relPath,
           branch: branch,
           finding:
-              'Your ${local.length} local commit(s) and ${incoming.length} '
+              'Your $localCount local commit(s) and ${incoming.length} '
               'incoming commit(s) change the same lines:',
           evidence: evidence,
           state: 'The merge was aborted; the repository is as it was.',
-          offer: const ['ours', 'theirs', 'leave-conflict', 'skip'],
-          explanations: const {
+          offer: const [
+            'merge-branch',
+            'ours',
+            'theirs',
+            'leave-conflict',
+            'skip',
+          ],
+          explanations: {
+            'merge-branch':
+                'Push your $localCount local commit(s) to ${wsRescueBranch(_host, now)},\n'
+                'then put $branch on origin/$branch (your uncommitted files stay).\n'
+                'Merge the branch later.',
             'ours':
                 'Merge again; where both sides changed a line, yours wins.\n'
                 'The incoming change on those lines is lost (it stays in the history).',
@@ -855,6 +905,99 @@ class WsUpdateRun {
     }
     done();
   }
+
+  /// `--push-current`: pushes [branch] when origin lacks its commits.
+  Future<void> _pushCurrent(
+    RepoSetMember m,
+    WsGit g,
+    String branch,
+    String remote,
+    List<String> actions,
+  ) async {
+    if (await g.hasRef(remote) && await g.contains('HEAD', remote)) return;
+    if (_dry) {
+      actions.add('would push $branch');
+      return;
+    }
+    final push = await g.run([
+      'push',
+      '-q',
+      '--set-upstream',
+      'origin',
+      branch,
+    ]);
+    if (push.exitCode == 0) {
+      actions.add('pushed $branch');
+      return;
+    }
+    _unresolved.add(m.relPath);
+    report.add(_pushRejected(m, branch, push));
+  }
+
+  /// `--merge-branch` on a conflict: the local commits pushed to the rescue
+  /// branch, then [branch] put on [remote] (`git reset --keep`: uncommitted
+  /// files stay, and one the move would overwrite stops it).
+  Future<void> _mergeBranch(
+    RepoSetMember m,
+    WsGit g,
+    String branch,
+    String remote,
+    int localCount,
+    List<String> actions,
+  ) async {
+    final rescue = wsRescueBranch(_host, now);
+    final push = await g.run([
+      'push',
+      '-q',
+      'origin',
+      'HEAD:refs/heads/$rescue',
+    ]);
+    if (push.exitCode != 0) {
+      _unresolved.add(m.relPath);
+      report.add(_pushRejected(m, rescue, push));
+      return;
+    }
+    actions.add(
+      'pushed $localCount local commit(s) to $rescue (merge it later)',
+    );
+    final reset = await g.run(['reset', '-q', '--keep', remote]);
+    if (reset.exitCode == 0) {
+      actions.add('put $branch on origin/$branch');
+      return;
+    }
+    _unresolved.add(m.relPath);
+    report.add(
+      wsConflict.raise(
+        repository: m.relPath,
+        branch: branch,
+        finding:
+            'Your commits are on $rescue; putting $branch on origin/$branch '
+            'would overwrite uncommitted files:',
+        evidence: [
+          ReportEvidence('git', [WsGit.text(reset)], label: 'Git:'),
+        ],
+        state:
+            '$branch stays at your commits; commit or move the files, then '
+            'git reset --keep origin/$branch.',
+        offer: const ['skip'],
+      ),
+    );
+  }
+
+  ReportMessage _pushRejected(
+    RepoSetMember m,
+    String branch,
+    ProcessResult push,
+  ) => wsPushRejected.raise(
+    repository: m.relPath,
+    branch: branch,
+    finding: 'The push of $branch fails:',
+    evidence: [
+      ReportEvidence('git', [WsGit.text(push)], label: 'Git:'),
+    ],
+    state: 'Your commits are safe on this machine; nothing was forced.',
+    offer: const ['skip'],
+  );
 
   Future<void> _detached(
     RepoSetMember m,
@@ -901,8 +1044,11 @@ class WsUpdateRun {
           '${commits.isEmpty ? '' : ' Commits on $branch that $expected lacks:'}',
       evidence: [if (commits.isNotEmpty) ReportEvidence('commits', commits)],
       state: 'Nothing was merged for it.',
-      offer: const ['to-branch', 'set-branch', 'skip'],
+      offer: const ['push-current', 'to-branch', 'set-branch', 'skip'],
       explanations: {
+        'push-current':
+            'Bring $branch up to origin/$branch and push it there, this run\n'
+            'only ($expected stays the recorded branch; nothing is committed).',
         'to-branch':
             'Commit the uncommitted files on $branch (-m), switch to\n'
             '$expected, merge $branch into it, then bring it up to\n'
@@ -937,7 +1083,7 @@ class WsUpdateRun {
     final behind = <String>[];
     for (final m in set.members) {
       if (!m.onDisk ||
-          !m.inGitSet ||
+          !_takes(m) ||
           _skipped(m.relPath) ||
           _unresolved.contains(m.relPath)) {
         continue;

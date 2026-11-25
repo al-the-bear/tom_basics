@@ -1,3 +1,17 @@
+## 1.41.0
+
+- `:ws-update` offers the push options of `:ws-push` where they apply:
+  `--merge-branch` on a conflict (your commits pushed to
+  `ws-push/<host>/<yymmdd-hhmm>`, the branch then put on `origin/<branch>`
+  with `git reset --keep`, uncommitted files kept), `--push-current` off its
+  branch (the branch it is on brought up to its origin and pushed; nothing
+  committed, `repos.yaml` unchanged), `--include-unknown` on the warning
+  `ws-unknown-seen`, now one per clone (the clone merged from its own origin
+  for the run; nothing pushed). A failing push is `ws-push-rejected`.
+  Nothing else of the run pushes.
+- The local commit count of a `:ws-update` conflict is counted, no longer
+  the first ten of the log.
+
 ## 1.40.2
 
 - Takes tom_build_base 2.53.0: a standalone `nested_tools:` entry is wired as

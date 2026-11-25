@@ -384,10 +384,18 @@ const wsUnknownSeen = MessageDefinition(
   code: 'ws-unknown-seen',
   level: MessageLevel.warning,
   label: 'UNKNOWN CLONES',
-  summary: 'Clones on disk that repos.yaml does not list.',
+  summary: 'A clone on disk that repos.yaml does not list.',
   description:
-      ':ws-update leaves them alone. Give them an entry, list them under '
-      'unmanaged:, or remove them with :ws-repo-cleanup.',
+      ':ws-update leaves it alone. Update it for one run with '
+      '--include-unknown, give it an entry, list it under unmanaged:, or '
+      'remove it with :ws-repo-cleanup.',
+  options: [
+    MessageOption(
+      'include-unknown',
+      'Treat it as an entry for this run: bring its branch up to its own\n'
+          'origin (merge origin/<branch>); nothing is pushed.',
+    ),
+  ],
 );
 
 /// `ws-surplus`: (`:ws-repo-cleanup`) a surplus clone that can be removed.
@@ -474,6 +482,7 @@ final wsUpdateMessages = MessageCatalog([
   wsCloneFailed,
   wsMoveBlocked,
   wsFetchFailed,
+  wsPushRejected,
   wsUpstreamDirty,
   wsUnknownSeen,
 ]);

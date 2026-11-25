@@ -113,13 +113,18 @@ void main() {
   test('BK-WSH-4: ws-options credits an option only to the commands that '
       'take it [2026-11-25]', () async {
     final options = await run(['help', 'ws-options']);
-    final mergeBranch = options.substring(options.indexOf('--merge-branch'));
-    final credit = mergeBranch.split('\n')[2];
+    final skipFile = options.substring(options.indexOf('--skip-file'));
+    final credit = skipFile.split('\n')[2];
     expect(credit, contains(':ws-push'));
     expect(
       credit,
       isNot(contains(':ws-update')),
-      reason: ':ws-update has no --merge-branch',
+      reason: ':ws-update has no --skip-file',
+    );
+    final mergeBranch = options.substring(options.indexOf('--merge-branch'));
+    expect(
+      mergeBranch.split('\n')[2],
+      allOf(contains(':ws-push'), contains(':ws-update')),
     );
     for (final cmd in ['ws-push', 'ws-update', 'ws-repo-cleanup']) {
       final def = buildkitTool.commands.firstWhere((x) => x.name == cmd);

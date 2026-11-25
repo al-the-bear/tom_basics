@@ -5,7 +5,7 @@
 /// remotes by a git configuration of the test. Each message code of
 /// `:ws-update` (§ 1.10) is produced with its options and repeat line.
 ///
-/// Test IDs: BK-WSU-1..18.
+/// Test IDs: BK-WSU-1..21.
 @TestOn('vm')
 @Timeout(Duration(minutes: 5))
 library;
@@ -494,16 +494,12 @@ repos:
         r.json,
         'ws-conflict',
         repo: 'tom_ai/core',
-        options: ['ours', 'theirs', 'leave-conflict', 'skip'],
+        options: ['merge-branch', 'ours', 'theirs', 'leave-conflict', 'skip'],
       );
       expect(m['evidence']['files'], ['shared.txt  both changed']);
       expect(
-        (m['options'] as List).cast<Map>().map((o) => o['option']),
-        isNot(contains(startsWith('--merge-branch'))),
-      );
-      expect(
         (m['options'] as List).cast<Map>().first['commandLine'],
-        'buildkit :ws-update --ours core',
+        'buildkit :ws-update --merge-branch core',
       );
       expect(head('tom_ai/core'), before);
       expect(
@@ -610,12 +606,12 @@ repos:
         r.json,
         'ws-off-branch',
         repo: 'tom_ai/core',
-        options: ['to-branch', 'set-branch', 'skip'],
+        options: ['push-current', 'to-branch', 'set-branch', 'skip'],
       );
       expect(m['finding'], contains('On feature; repos.yaml expects main'));
       expect(
         (m['options'] as List).cast<Map>().first['commandLine'],
-        'buildkit :ws-update --to-branch core',
+        'buildkit :ws-update --push-current core',
       );
       r = await wsUpdate(['--to-branch', 'core']);
       expect(r.exit, 0, reason: r.text);
@@ -661,8 +657,16 @@ repos:
     repo('stray', 'stray');
     final r = await wsUpdate([]);
     expect(r.exit, 0, reason: r.text);
-    final m = expectMessage(r.json, 'ws-unknown-seen');
+    final m = expectMessage(
+      r.json,
+      'ws-unknown-seen',
+      options: ['include-unknown'],
+    );
     expect(m['evidence']['paths'], ['stray']);
+    expect(
+      (m['options'] as List).cast<Map>().single['commandLine'],
+      'buildkit :ws-update --include-unknown stray',
+    );
     final gitignore = File(p.join(root, '.gitignore')).readAsStringSync();
     expect(gitignore, contains('# >>> repos.yaml (generated, tom_repos) >>>'));
     expect(gitignore, contains('/tom_ai/core/'));
@@ -831,5 +835,96 @@ repos:
       doneOf(r.json)['tom_ai/xternal/fork'],
       contains('rescued the detached commits to $rescue'),
     );
+  });
+
+  test('BK-WSU-19: --merge-branch on a conflict pushes the local commits to '
+      'ws-push/<host>/<stamp> and puts the branch on origin; uncommitted '
+      'files stay [2026-11-25]', () async {
+    final core = at('tom_ai/core');
+    incoming('core', 'shared.txt', 'line 1\nTHEIRS\nline 3\n');
+    write(p.join(core, 'shared.txt'), 'line 1\nOURS\nline 3\n');
+    git(core, ['commit', '-qam', 'ours']);
+    final mine = head('tom_ai/core');
+    write(p.join(core, 'notes.txt'), 'uncommitted\n');
+
+    final r = await wsUpdate(['--merge-branch', 'core']);
+    expect(r.exit, 0, reason: r.text);
+    final rescue = 'ws-push/${r.json!['host']}/261124-1602';
+    expect(remoteHead('core', rescue), mine, reason: 'your commits pushed');
+    expect(head('tom_ai/core'), remoteHead('core'), reason: 'up to date');
+    expect(out(core, ['symbolic-ref', '--short', 'HEAD']), 'main');
+    expect(File(p.join(core, 'notes.txt')).readAsStringSync(), 'uncommitted\n');
+    expect(messages(r.json, 'ws-conflict'), isEmpty);
+    expect(doneOf(r.json)['tom_ai/core'], [
+      'pushed 1 local commit(s) to $rescue (merge it later)',
+      'put main on origin/main',
+    ]);
+  });
+
+  test('BK-WSU-20: --push-current brings the branch it is on up to its '
+      'origin and pushes it; the expected branch stays [2026-11-25]', () async {
+    final core = at('tom_ai/core');
+    git(core, ['checkout', '-q', '-b', 'feature']);
+    write(p.join(core, 'feature.txt'), 'feature\n');
+    git(core, ['add', '-A']);
+    git(core, ['commit', '-qm', 'feature work']);
+    write(p.join(core, 'wip.txt'), 'not committed\n');
+    final mainBefore = remoteHead('core');
+
+    var r = await wsUpdate(['--push-current', 'core']);
+    expect(r.exit, 0, reason: r.text);
+    expect(remoteHead('core', 'feature'), head('tom_ai/core'));
+    expect(remoteHead('core'), mainBefore, reason: 'main untouched');
+    expect(out(core, ['symbolic-ref', '--short', 'HEAD']), 'feature');
+    expect(status('tom_ai/core'), '?? wip.txt', reason: 'nothing committed');
+    expect(
+      File(p.join(root, 'repos.yaml')).readAsStringSync(),
+      contains(
+        'path: tom_ai/core, url: git@fixture:core.git, kind: code, '
+        'branch: main}',
+      ),
+    );
+    expect(doneOf(r.json)['tom_ai/core'], ['pushed feature']);
+
+    // Commits on origin/feature from elsewhere are merged first.
+    incoming('core', 'other.txt', 'o\n', branch: 'feature');
+    write(p.join(core, 'more.txt'), 'm\n');
+    git(core, ['add', 'more.txt']);
+    git(core, ['commit', '-qm', 'more']);
+    r = await wsUpdate(['--push-current', 'core']);
+    expect(r.exit, 0, reason: r.text);
+    expect(File(p.join(core, 'other.txt')).existsSync(), isTrue);
+    expect(remoteHead('core', 'feature'), head('tom_ai/core'));
+    expect(doneOf(r.json)['tom_ai/core'], [
+      'merged 1 incoming commit(s)',
+      'pushed feature',
+    ]);
+  });
+
+  test('BK-WSU-21: --include-unknown updates an unknown clone from its own '
+      'origin for this run; nothing is pushed [2026-11-25]', () async {
+    repo('stray', 'stray');
+    incoming('stray', 'new.txt', 'n\n');
+    final stray = at('stray');
+    write(p.join(stray, 'local.txt'), 'l\n');
+    git(stray, ['add', '-A']);
+    git(stray, ['commit', '-qm', 'local']);
+    final remoteBefore = remoteHead('stray');
+
+    final r = await wsUpdate(['--include-unknown', 'stray']);
+    expect(r.exit, 0, reason: r.text);
+    expect(File(p.join(stray, 'new.txt')).existsSync(), isTrue);
+    expect(
+      git(stray, [
+        'merge-base',
+        '--is-ancestor',
+        remoteBefore,
+        'HEAD',
+      ]).exitCode,
+      0,
+    );
+    expect(remoteHead('stray'), remoteBefore, reason: 'nothing pushed');
+    expect(messages(r.json, 'ws-unknown-seen'), isEmpty);
+    expect(doneOf(r.json)['stray'], ['merged 1 incoming commit(s)']);
   });
 }

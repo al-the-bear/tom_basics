@@ -49,8 +49,11 @@ reported with the options that resolve it.
                               unregistered merge driver, a repository mid-merge.
   :ws-update                  this machine brought up to the remotes: the
                               root first, missing entries cloned, every
-                              repository merged; nothing pushed. Uncommitted
-                              files a merge would overwrite hold the repository.
+                              repository merged. Uncommitted files a merge
+                              would overwrite hold the repository. Nothing is
+                              pushed but what --rescue-detached,
+                              --merge-branch and --push-current push for the
+                              repositories they name.
   :ws-repo-cleanup            the surplus clones reported; --apply moves the
                               removable ones to ztmp/<yymmdd>_ws_repo_cleanup/,
                               --delete deletes them.
