@@ -50,6 +50,7 @@ This package extends the shared infrastructure from **tom_build_base**:
   - [Apisummary Command](#apisummary-command)
   - [Apireference Command](#apireference-command)
   - [Doccheck Command](#doccheck-command)
+  - [Textresources Command](#textresources-command)
   - [Docsite Command](#docsite-command)
   - [Projects Command](#projects-command)
   - [Status Command](#status-command)
@@ -608,6 +609,7 @@ Built-in commands run the respective tools directly via their Dart implementatio
 | `apisummary` | Compare each Dart package's public API with its hand-authored `doc/api/api_summary_*.md`: API the summary misses, and names it gives that do not exist (see [Apisummary Command](#apisummary-command)) |
 | `apireference` | Render each documented package's combined API reference PDF (index, module summaries, guides) with tom_md2pdf into `build/api_reference` (see [Apireference Command](#apireference-command)) |
 | `doccheck` | Report the documents each package lacks: README and its required sections, attribution, CHANGELOG, example, `doc/`, a guidelines index (see [Doccheck Command](#doccheck-command)) |
+| `textresources` | Assemble an application's text resource files, one per language, from the `lib/resources/<package>_<language>.json` files of the packages its `text-resources:` section mounts, each under its scope; `:build` runs it first (see [Textresources Command](#textresources-command)) |
 | `docsite` | Assemble the selected packages' dartdoc output into one browsable site with an index page, in `build/doc_site` (see [Docsite Command](#docsite-command)) |
 | `pubget` | Run `dart pub get` on projects |
 | `pubgetall` | Shortcut for `pubget --scan . --recursive` |
@@ -1148,6 +1150,68 @@ not parse never passes silently.
 | `--strict` | Exit 1 when a package lacks a document or README section |
 
 Run it by hand from the repository, or as a pipeline step (`buildkit :doccheck --strict`); it is never scheduled.
+
+### Textresources Command
+
+The `textresources` command assembles an application's text resource files: one JSON file per language, built from
+the `lib/resources/<package>_<language>.json` files of the packages the application uses, each package's block placed
+under the scope the application mounts it with instead of under the package name (the workspace guideline
+`_agent_guidelines/i18n.md`, section 8). A package mounted under two scopes appears twice; a nested scope `a.b` nests
+its block one level deeper. `:build` runs it first in every project with a `text-resources:` section, so the files
+are current before the Flutter build.
+
+**Syntax:**
+
+```bash
+bk :textresources                  # assemble and write
+bk :textresources --check          # write nothing; exit 1 when a committed file differs
+bk -p tom_forge_app :textresources
+```
+
+**Configuration** (the project's `buildkit.yaml`):
+
+```yaml
+text-resources:
+  languages: [en, de]                                  # the first is the reference language (default [en])
+  output: assets/resources/{app}_{language}.json       # the default; {app} is the pubspec name
+  dart: lib/generated/{app}_texts.g.dart               # optional: every language as a Dart const map
+  overrides: lib/resources/overrides_{language}.json   # optional: laid over the result last
+  mounts:
+    - scope: app
+      package: my_app                                  # the application's own texts
+    - scope: files
+      package: rename_demo
+    - scope: workbench.explorer                        # the same package a second time
+      package: rename_demo
+```
+
+The packages' files are found through the application's package configuration (`.dart_tool/package_config.json`;
+run `pub get` first), so a mounted package must be one of its dependencies. The output has the scopes' first segments
+at its top level, the mounts in their order and each block in its file's order: an unchanged input gives an unchanged
+file. The `dart:` file (`const Map<String, Map<String, Object?>> textResources`, by language code) is for a program
+that cannot read a file at start, such as a compiled command-line tool; install a language with
+`TomTextResourceProvider.from(textResources['en']!)`.
+
+An overrides file has the output's shape. Each of its texts must replace one the assembly produced, except under the
+top-level sections `form` and `file`, Tom Core's global captions, which are added.
+
+The command fails, naming package, scope and entry, for:
+
+- a mounted package without a file for the reference language;
+- two mounts whose blocks would overwrite each other: the same scope, an entry both place, or a scope that is an entry
+  of a package mounted before it (a scope inside another package's block where that block has no such entry is
+  allowed);
+- an override for an entry that does not exist;
+- a scope Tom Core refuses (an empty segment) or a segment that is no identifier;
+- a mounted package that is not a dependency, a malformed section.
+
+A language a package lacks is filled from the reference language, entry by entry, and reported as a warning.
+
+| Option | Description |
+| ------ | ----------- |
+| `--check` | Write nothing; exit 1 when a committed file differs from a fresh assembly |
+
+Run it by hand, as part of `:build`, or as a pipeline step; it is never scheduled.
 
 ### Docsite Command
 

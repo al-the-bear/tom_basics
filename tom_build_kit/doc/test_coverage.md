@@ -515,6 +515,29 @@ Unit tests for argument parsing and command shorthand resolution.
 | BK-DOCCHK-7 | Opted out | ✅ | A skipped package reported with its reason and no gaps; an excluded check named; `--strict` passes. |
 | BK-DOCCHK-8 | A configuration error | ✅ | Fails the package without `--strict`. |
 
+### Textresources
+
+**Test file:** `test/textresources_test.dart` (BK-TXTRES-1..13 call the assembly on fixture packages written under `.dart_tool`; 14..16 run `bin/buildkit.dart` on them)
+
+| ID | Feature | Status | How to Test |
+| --- | --- | --- | --- |
+| BK-TXTRES-1 | Mounts and output | ✅ | The application's own texts and a package under their scopes, written to the default output in the mounts' order, each block in its file's order. |
+| BK-TXTRES-2 | Two scopes, a nested scope | ✅ | A package mounted twice appears twice; `workbench.explorer` nests one level deeper. |
+| BK-TXTRES-3 | Stable output, `check` | ✅ | A second run writes nothing; the check passes, then reports a changed file and writes nothing. |
+| BK-TXTRES-4 | Overrides | ✅ | An override replaces a text; Tom Core's `form` captions are added. |
+| BK-TXTRES-5 | A missing language | ✅ | A package without the language and one lacking entries are filled from English, in English's order, each with a warning. |
+| BK-TXTRES-6 | The Dart source | ✅ | `dart:` writes `textResources` with every language's map. |
+| BK-TXTRES-7 | Dart escaping | ✅ | Quotes, dollars and line breaks are escaped. |
+| BK-TXTRES-8 | No reference file | ✅ | A mounted package without its English file is reported with package and scope. |
+| BK-TXTRES-9 | The same scope twice | ✅ | Reported, naming both packages. |
+| BK-TXTRES-10 | A scope that is another package's entry | ✅ | Reported in either order of the mounts. |
+| BK-TXTRES-11 | Inside another block, no such entry | ✅ | Allowed: the package is placed beside the block's own entries. |
+| BK-TXTRES-12 | An override for nothing | ✅ | Reported with its path. |
+| BK-TXTRES-13 | Malformed input | ✅ | Scopes Tom Core refuses, an unknown key, no mounts, a package that is no dependency. |
+| BK-TXTRES-14 | The command | ✅ | `:textresources` writes the file; `--check` passes, then fails once the file is changed. |
+| BK-TXTRES-15 | A report fails the command | ✅ | Exit 1 with the message. |
+| BK-TXTRES-16 | `:build` assembles first | ✅ | The build step finds the assembled file. |
+
 ### Docsite
 
 **Test file:** `test/docsite_test.dart` (BK-DOCSITE-1..3 read, render and build; 4..5 run `bin/buildkit.dart` on fixture packages under `.dart_tool`)

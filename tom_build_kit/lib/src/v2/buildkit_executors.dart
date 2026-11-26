@@ -18,6 +18,7 @@ import 'executors/apireference_executor.dart';
 import 'executors/apisummary_executor.dart';
 import 'executors/boundaries_executor.dart';
 import 'executors/doccheck_executor.dart';
+import 'executors/textresources_executor.dart';
 import 'executors/docsite_executor.dart';
 import 'executors/buildsorter_executor.dart';
 import 'executors/bumppubspec_executor.dart';
@@ -276,6 +277,7 @@ Map<String, CommandExecutor> createBuildkitExecutors() {
     'apisummary': ApisummaryExecutor(),
     'apireference': ApireferenceExecutor(),
     'doccheck': DoccheckExecutor(),
+    'textresources': TextresourcesExecutor(),
     'docsite': DocsiteExecutor(),
     'publisher': PublisherExecutor(),
     'projects': ProjectsExecutor(),

@@ -292,6 +292,16 @@ const doccheckOptions = <OptionDefinition>[
   ),
 ];
 
+/// Options for the textresources command.
+const textresourcesOptions = <OptionDefinition>[
+  OptionDefinition.flag(
+    name: 'check',
+    description:
+        'Write nothing; exit 1 when a committed file differs from a fresh '
+        'assembly',
+  ),
+];
+
 /// Options for the docsite command.
 const docsiteOptions = <OptionDefinition>[
   OptionDefinition.option(
@@ -908,6 +918,26 @@ const doccheckCommand = CommandDefinition(
     'buildkit :doccheck',
     'buildkit -s tom_ai/basics :doccheck',
     'buildkit -p tom_build_kit :doccheck --strict',
+  ],
+);
+
+const textresourcesCommand = CommandDefinition(
+  name: 'textresources',
+  description:
+      'Assemble an application\'s text resource files (one per language) '
+      'from the lib/resources/<package>_<language>.json files of the '
+      'packages its buildkit.yaml text-resources: section mounts, each under '
+      'its scope; :build runs it first',
+  options: textresourcesOptions,
+  worksWithNatures: {DartProjectFolder},
+  supportsProjectTraversal: true,
+  supportsGitTraversal: false,
+  requiresTraversal: true,
+  canRunStandalone: true,
+  examples: [
+    'buildkit :textresources',
+    'buildkit :textresources --check',
+    'buildkit -p tom_forge_app :textresources',
   ],
 );
 
@@ -2171,6 +2201,7 @@ final buildkitTool = ToolDefinition(
     apisummaryCommand,
     apireferenceCommand,
     doccheckCommand,
+    textresourcesCommand,
     docsiteCommand,
     publisherCommand,
     projectsCommand,

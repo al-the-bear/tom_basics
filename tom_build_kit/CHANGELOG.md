@@ -1,3 +1,16 @@
+## 1.42.0
+
+- `:textresources`: an application's text resource files, one per language,
+  assembled from the `lib/resources/<package>_<language>.json` files of the
+  packages its `buildkit.yaml` `text-resources:` section mounts, each under
+  its scope (a package under two scopes twice, a nested scope deeper), with
+  an optional overrides file and an optional Dart source for programs that
+  cannot read a file at start; missing languages are filled from the
+  reference language with a warning; collisions, missing files, overrides
+  for nothing and scopes Tom Core refuses fail with package, scope and entry.
+  `--check` writes nothing and fails when a committed file differs. `:build`
+  runs it first in every project with the section.
+
 ## 1.41.0
 
 - `:ws-update` offers the push options of `:ws-push` where they apply:

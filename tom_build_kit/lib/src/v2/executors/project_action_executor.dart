@@ -24,6 +24,8 @@ import 'package:tom_build_base/tom_build_base.dart'
 import 'package:tom_build_base/tom_build_base_v2.dart';
 import 'package:yaml/yaml.dart';
 
+import 'textresources_executor.dart';
+
 /// The actions that behave the same in every language.
 enum ProjectAction {
   /// Produce the project's outputs (or, for code without a build step, check
@@ -328,6 +330,12 @@ class ProjectActionExecutor extends CommandExecutor {
       );
     }
 
+    // An application's text resources are assembled before its build
+    // (`text-resources:`, buildkit :textresources).
+    if (action == ProjectAction.build) {
+      final texts = await runTextResourcesStep(context);
+      if (!texts.success) return texts;
+    }
     for (final command in step.commands) {
       print('  \$ $command');
       final code = await ProcessRunner.runStreaming(
